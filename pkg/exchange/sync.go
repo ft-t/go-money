@@ -3,7 +3,7 @@ package exchange
 import (
 	"context"
 	"encoding/json"
-	"go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/database"
 	"gorm.io/gorm/clause"
 	"net/http"
 	"time"
