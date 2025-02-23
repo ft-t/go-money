@@ -27,6 +27,51 @@ func NewService(
 	}
 }
 
+func (s *Service) ShouldCreateAdmin(ctx context.Context) (bool, error) {
+	db := database.FromContext(ctx, database.GetDb(database.DbTypeReadonly))
+
+	var count int64
+	if err := db.Model(&database.User{}).Count(&count).Error; err != nil {
+		return false, err
+	}
+
+	return count == 0, nil
+}
+
+func (s *Service) Create(
+	ctx context.Context,
+	req *usersv1.CreateRequest,
+) (*usersv1.CreateResponse, error) {
+	db := database.FromContext(ctx, database.GetDb(database.DbTypeMaster))
+
+	shouldCreate, err := s.ShouldCreateAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !shouldCreate {
+		return nil, errors.New("admin already exists")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 5)
+	if err != nil {
+		return nil, err
+	}
+
+	targetUser := &database.User{
+		Login:    req.Login,
+		Password: string(hashedPassword),
+	}
+
+	if err = db.Create(targetUser).Error; err != nil {
+		return nil, err
+	}
+
+	return &usersv1.CreateResponse{
+		Id: targetUser.ID,
+	}, nil
+}
+
 func (s *Service) Login(
 	ctx context.Context,
 	req *usersv1.LoginRequest,

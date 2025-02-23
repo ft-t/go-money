@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/ft-t/go-money/pkg/appcfg"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/jwt"
@@ -46,18 +47,28 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create user handler")
 	}
 
+	_, err = NewConfigApi(grpcServer, appcfg.NewService(&appcfg.ServiceConfig{
+		UserSvc: userService,
+	}))
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
+	}
+
 	go func() {
 		grpcServer.ServeAsync(config.GrpcPort)
-		sg := <-sig
 
-		log.Logger.Info().Msgf("GOT SIGNAL %v", sg.String())
-		log.Logger.Info().Msgf("[Graceful Shutdown] GOT SIGNAL %v", sg.String())
-
-		log.Logger.Info().Msgf("[Graceful Shutdown] Shutting down webservers")
-
-		cancel()
-		_ = grpcServer.Shutdown(context.TODO())
-
-		log.Logger.Info().Msg("[Graceful Shutdown] Exit")
+		log.Logger.Info().Msgf("server started on port %v", config.GrpcPort)
 	}()
+
+	sg := <-sig
+
+	log.Logger.Info().Msgf("GOT SIGNAL %v", sg.String())
+	log.Logger.Info().Msgf("[Graceful Shutdown] GOT SIGNAL %v", sg.String())
+
+	log.Logger.Info().Msgf("[Graceful Shutdown] Shutting down webservers")
+
+	cancel()
+	_ = grpcServer.Shutdown(context.TODO())
+
+	log.Logger.Info().Msg("[Graceful Shutdown] Exit")
 }

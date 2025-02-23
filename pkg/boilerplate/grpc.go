@@ -11,8 +11,6 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"net/http"
-	"net/http/pprof"
-	"strings"
 	"time"
 )
 
@@ -90,20 +88,6 @@ func (d *DefaultGrpcServer) GetDefaultHandlerOptions() []connect.HandlerOption {
 	return options
 }
 
-func (d *DefaultGrpcServer) addProfiler() {
-	mux := d.GetMux()
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	mux.HandleFunc("/debug/pprof/", func(w http.ResponseWriter, r *http.Request) {
-		name := strings.TrimPrefix(r.URL.Path, "/debug/pprof/")
-		if handler := pprof.Handler(name); handler != nil {
-			handler.ServeHTTP(w, r)
-		} else {
-			http.NotFound(w, r)
-		}
-	})
-}
-
 func (d *DefaultGrpcServer) ServeAsync(grpcPort int) {
 	grpcWebAddress := fmt.Sprintf("0.0.0.0:%d", grpcPort)
 
@@ -116,9 +100,7 @@ func (d *DefaultGrpcServer) ServeAsync(grpcPort int) {
 			grpcreflect.NewStaticReflector(d.reflectionServices...),
 		))
 	}
-
-	d.addProfiler()
-
+	
 	go func() {
 		d.srv = &http.Server{
 			Addr: grpcWebAddress,
