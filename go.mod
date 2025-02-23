@@ -4,7 +4,7 @@ go 1.23.5
 
 require (
 	github.com/cockroachdb/errors v1.11.3
-	github.com/ft-t/go-money-pb v0.0.0-20250223114528-c624a854682e
+	github.com/ft-t/go-money-pb v0.0.0-20250223145139-c11de6abad88
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b
