@@ -1,0 +1,11 @@
+FROM golang:1.24-alpine as builder
+RUN apk update && apk add openssh-client git
+ARG SOURCE_PATH=""
+ADD . /src
+WORKDIR /src/$SOURCE_PATH
+RUN GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o /src/dist/app
+
+FROM alpine:latest as done
+COPY --from=builder /src/dist /opt/app
+WORKDIR /opt/app
+ENTRYPOINT ["./app"]

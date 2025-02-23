@@ -1,7 +1,7 @@
 package database
 
 type User struct {
-	ID       int
+	ID       int32
 	Login    string
 	Password string
 }

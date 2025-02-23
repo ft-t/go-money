@@ -12,10 +12,19 @@ import (
 )
 
 type Service struct {
+	cfg *ServiceConfig
 }
 
-func NewService() *Service {
-	return &Service{}
+type ServiceConfig struct {
+	JwtSvc JwtSvc
+}
+
+func NewService(
+	cfg *ServiceConfig,
+) *Service {
+	return &Service{
+		cfg: cfg,
+	}
 }
 
 func (s *Service) Login(
@@ -50,8 +59,13 @@ func (s *Service) Login(
 		return nil, errors.New("password is invalid")
 	}
 
+	token, err := s.cfg.JwtSvc.GenerateToken(ctx, client)
+	if err != nil {
+		return nil, err
+	}
+
 	return &usersv1.LoginResponse{
-		Token: "", // todo
+		Token: token,
 	}, nil
 }
 
