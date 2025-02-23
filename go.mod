@@ -18,6 +18,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/rs/zerolog v1.33.0
 	github.com/samber/lo v1.49.1
+	github.com/sethvargo/go-envconfig v1.1.1
 	github.com/shopspring/decimal v1.4.0
 	golang.org/x/crypto v0.34.0
 	golang.org/x/net v0.23.0

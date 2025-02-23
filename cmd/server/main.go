@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
+	"github.com/ft-t/go-money/pkg/jwt"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
 	"os"
@@ -17,6 +18,17 @@ func main() {
 
 	config := configuration.GetConfiguration()
 	_, cancel := context.WithCancel(context.Background())
+
+	logger := log.Logger
+
+	if config.JwtPrivateKey == "" {
+		logger.Warn().Msgf("jwt private key is empty. Will create a new temporary key")
+
+		keyGen := jwt.NewKeyGenerator()
+		newKey := keyGen.Generate()
+
+		config.JwtPrivateKey = string(keyGen.Serialize(newKey))
+	}
 
 	grpcServer := boilerplate.GetDefaultGrpcServerBuilder().Build()
 
