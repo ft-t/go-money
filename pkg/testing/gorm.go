@@ -3,9 +3,9 @@ package testing
 import (
 	"context"
 	"fmt"
+	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/jackc/pgx/v5"
 	"github.com/juju/fslock"
-	"go-money/pkg/boilerplate"
 	"os"
 	"path"
 )

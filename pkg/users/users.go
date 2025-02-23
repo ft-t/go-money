@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	usersv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/users/v1"
+	"github.com/ft-t/go-money/pkg/database"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
@@ -20,7 +21,7 @@ func NewService() *Service {
 func (s *Service) Login(
 	ctx context.Context,
 	req *usersv1.LoginRequest,
-) {
+) (*usersv1.LoginResponse, error) {
 	db := database.FromContext(ctx, database.GetDb(database.DbTypeMaster))
 
 	if req.Login == "" {
@@ -32,7 +33,7 @@ func (s *Service) Login(
 		return nil, errors.New("invalid email")
 	}
 
-	var client *database.Client
+	var client *database.User
 	if err = db.Where("email = ?", parsedEmail.Address).
 		First(&client).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -49,7 +50,9 @@ func (s *Service) Login(
 		return nil, errors.New("password is invalid")
 	}
 
-	return client, nil
+	return &usersv1.LoginResponse{
+		Token: "", // todo
+	}, nil
 }
 
 func (s *Service) isPasswordValid(hashedPwd string, plainPwd []byte) bool {

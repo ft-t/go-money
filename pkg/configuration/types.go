@@ -1,6 +1,6 @@
 package configuration
 
-import "go-money/pkg/boilerplate"
+import "github.com/ft-t/go-money/pkg/boilerplate"
 
 type Configuration struct {
 	Db         boilerplate.DbConfig

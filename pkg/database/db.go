@@ -2,10 +2,10 @@ package database
 
 import (
 	"context"
+	"github.com/ft-t/go-money/pkg/boilerplate"
+	"github.com/ft-t/go-money/pkg/configuration"
+	"github.com/ft-t/go-money/pkg/testing"
 	"github.com/rs/zerolog/log"
-	"go-money/pkg/boilerplate"
-	"go-money/pkg/configuration"
-	"go-money/pkg/testing"
 	"gorm.io/gorm"
 )
 
