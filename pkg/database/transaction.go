@@ -18,7 +18,9 @@ type Transaction struct {
 	SourceAccountID      *int
 	DestinationAccountID *int
 
-	LabelIDs []pq.Int32Array
+	LabelIDs pq.Int32Array
 
 	CreatedAt time.Time
+	Notes     string
+	Extra     map[string]string
 }

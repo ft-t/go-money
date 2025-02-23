@@ -1,6 +1,7 @@
 package database
 
 import (
+	gomoneypbv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"time"
@@ -22,5 +23,5 @@ type Account struct {
 	CreatedAt     time.Time
 
 	DeletedAt gorm.DeletedAt
-	Type      string
+	Type      gomoneypbv1.AccountType
 }
