@@ -4,7 +4,7 @@ go 1.23.5
 
 require (
 	github.com/cockroachdb/errors v1.11.3
-	github.com/ft-t/go-money-pb v0.0.0-20250222174901-2254b70df625
+	github.com/ft-t/go-money-pb v0.0.0-20250223094738-ab46bc4bbe4b
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b
@@ -14,6 +14,7 @@ require (
 	github.com/samber/lo v1.49.1
 	github.com/shopspring/decimal v1.4.0
 	golang.org/x/crypto v0.34.0
+	google.golang.org/protobuf v1.36.5
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.10
 )
@@ -36,5 +37,4 @@ require (
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
 )

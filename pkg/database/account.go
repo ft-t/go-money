@@ -22,4 +22,5 @@ type Account struct {
 	CreatedAt     time.Time
 
 	DeletedAt gorm.DeletedAt
+	Type      string
 }
