@@ -14,22 +14,12 @@ jobs:
     steps:
       - id: generateVersion
         run: echo "version=$(date '+%Y.%m.%d.%H%M%S').${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-  target-env:
-    runs-on: ubuntu-latest
-    outputs:
-      targetEnv: ${{ steps.getTargetEnvironment.outputs.targetEnv }}
-    steps:
-      - id: getTargetEnvironment
-        run: |
-          echo $GITHUB_REF
-          echo "${GITHUB_REF##refs/heads/}"
-          echo "targetEnv=${GITHUB_REF##refs/heads/}" >> "$GITHUB_OUTPUT"
   image:
     runs-on: ubuntu-latest
     needs:
       - version
     env:
-      DOCKER_SERVER_IMAGE_NAME: "go-money-backend:${{needs.version.outputs.versionOut}}"
+      DOCKER_SERVER_IMAGE_NAME: "ghcr.io/go-money-backend:${{needs.version.outputs.versionOut}}"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
