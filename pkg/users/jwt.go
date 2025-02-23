@@ -17,20 +17,20 @@ type JwtGenerator struct {
 	privateKey *rsa.PrivateKey
 }
 
-func NewJwtGenerator(secretKey string) *JwtGenerator {
+func NewJwtGenerator(secretKey string) (*JwtGenerator, error) {
 	block, _ := pem.Decode([]byte(secretKey))
 	if block == nil {
-		panic("Failed to decode PEM block containing private key")
+		return nil, errors.New("failed to decode PEM block containing private key")
 	}
 
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		panic(errors.Wrap(err, "Failed to parse private key: %v"))
+		return nil, errors.Wrap(err, "failed to parse private key: %v")
 	}
 
 	return &JwtGenerator{
 		privateKey: privateKey,
-	}
+	}, nil
 }
 
 func (j *JwtGenerator) GenerateToken(

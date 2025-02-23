@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
+	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
 	"os"
 	"os/signal"
@@ -19,7 +20,16 @@ func main() {
 
 	grpcServer := boilerplate.GetDefaultGrpcServerBuilder().Build()
 
-	_, err := NewUserApi(grpcServer)
+	jwtService, err := users.NewJwtGenerator(config.JwtPrivateKey)
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create jwt service")
+	}
+
+	userService := users.NewService(&users.ServiceConfig{
+		JwtSvc: jwtService,
+	})
+
+	_, err = NewUserApi(grpcServer, userService)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create user handler")
 	}

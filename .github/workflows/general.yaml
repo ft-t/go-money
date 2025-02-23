@@ -19,7 +19,7 @@ jobs:
     needs:
       - version
     env:
-      DOCKER_SERVER_IMAGE_NAME: "ghcr.io/go-money-backend:${{needs.version.outputs.versionOut}}"
+      DOCKER_SERVER_IMAGE_NAME: "ghcr.io/${{ github.repository }}/go-money-backend:${{needs.version.outputs.versionOut}}"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

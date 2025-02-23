@@ -9,20 +9,28 @@ import (
 )
 
 type UserApi struct {
+	userSvc UserSvc
 }
 
 func (u *UserApi) Login(
 	ctx context.Context,
 	c *connect.Request[usersv1.LoginRequest],
 ) (*connect.Response[usersv1.LoginResponse], error) {
-	//TODO implement me
-	panic("implement me")
+	resp, err := u.userSvc.Login(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(resp), nil
 }
 
 func NewUserApi(
 	mux *boilerplate.DefaultGrpcServer,
+	userSvc UserSvc,
 ) (*UserApi, error) {
-	res := &UserApi{}
+	res := &UserApi{
+		userSvc: userSvc,
+	}
 
 	mux.GetMux().Handle(
 		usersv1connect.NewUsersServiceHandler(res, mux.GetDefaultHandlerOptions()...),
