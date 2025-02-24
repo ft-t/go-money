@@ -31,6 +31,9 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     env:
       ENVIRONMENT: ci
+      DB_DB: money
+      DB_HOST: postgres
+      DB_USER: postgres
     steps:
       - uses: actions/checkout@v4
       - run: apk update && apk add curl openssl git openssh-client build-base && mkdir -p /root/.ssh
