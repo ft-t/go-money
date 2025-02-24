@@ -7,8 +7,6 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-
-	"net/mail"
 )
 
 type Service struct {
@@ -76,35 +74,26 @@ func (s *Service) Login(
 	ctx context.Context,
 	req *usersv1.LoginRequest,
 ) (*usersv1.LoginResponse, error) {
-	db := database.FromContext(ctx, database.GetDb(database.DbTypeMaster))
+	db := database.FromContext(ctx, database.GetDb(database.DbTypeReadonly))
 
 	if req.Login == "" {
-		return nil, errors.New("email is required")
+		return nil, errors.New("login is required")
 	}
 
-	parsedEmail, err := mail.ParseAddress(req.Login)
-	if err != nil {
-		return nil, errors.New("invalid email")
-	}
-
-	var client *database.User
-	if err = db.Where("email = ?", parsedEmail.Address).
-		First(&client).Error; err != nil {
+	var user *database.User
+	if err := db.Where("login = ?", req.Login).
+		First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
 
 		return nil, err
 	}
-	if client.Password == "" {
-		return nil, errors.New("password not set")
-	}
-
-	if !s.isPasswordValid(client.Password, []byte(req.Password)) {
+	if !s.isPasswordValid(user.Password, []byte(req.Password)) {
 		return nil, errors.New("password is invalid")
 	}
 
-	token, err := s.cfg.JwtSvc.GenerateToken(ctx, client)
+	token, err := s.cfg.JwtSvc.GenerateToken(ctx, user)
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
-	"github.com/ft-t/go-money/pkg/testing"
+	"github.com/ft-t/go-money/pkg/testingutils"
+	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -27,7 +28,7 @@ func init() {
 	log.Info().Msg("setup postgres database")
 
 	if boilerplate.GetCurrentEnvironment() == boilerplate.Ci {
-		if err := testing.EnsurePostgresDbExists(config.Db); err != nil {
+		if err := testingutils.EnsurePostgresDbExists(config.Db); err != nil {
 			panic(err)
 		}
 	}
@@ -41,13 +42,13 @@ func init() {
 	masterGormDb = mainDb
 	readonlyGormDb = masterGormDb
 
-	//migrations := GetMigrations()
-	//if len(migrations) > 0 {
-	//	log.Info().Msg("[Db] start migrations")
-	//	if err = gormigrate.New(mainDb, gormigrate.DefaultOptions, migrations).Migrate(); err != nil {
-	//		panic(err)
-	//	}
-	//}
+	migrations := getMigrations()
+	if len(migrations) > 0 {
+		log.Info().Msg("[Db] start migrations")
+		if err = gormigrate.New(mainDb, gormigrate.DefaultOptions, migrations).Migrate(); err != nil {
+			panic(err)
+		}
+	}
 }
 
 func GetDb(t DbType) *gorm.DB {

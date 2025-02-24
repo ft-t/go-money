@@ -1,10 +1,10 @@
 package boilerplate
 
 type DbConfig struct {
-	Host                     string `env:"HOST"`
+	Host                     string `env:"HOST, default=localhost"`
 	Port                     int    `env:"PORT, default=5432"`
-	Db                       string `env:"DB"`
-	User                     string `env:"USER"`
+	Db                       string `env:"DB, default=money"`
+	User                     string `env:"USER, default=money"`
 	Password                 string `env:"PASSWORD"`
 	MaxIdleConnections       int    `env:"MAX_IDLE_CONNECTIONS"`
 	MaxConnectionLifetimeSec int    `env:"MAX_CONNECTION_LIFETIME_SEC"`
