@@ -23,7 +23,7 @@ func TestJwtToken(t *testing.T) {
 		assert.NotEmpty(t, resp)
 	})
 
-	t.Run("invalid preivate key", func(t *testing.T) {
+	t.Run("invalid private key", func(t *testing.T) {
 		jwtGenerator, err := users.NewJwtGenerator("not-a-key")
 		assert.ErrorContains(t, err, "failed to decode PEM block")
 		assert.Nil(t, jwtGenerator)
