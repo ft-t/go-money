@@ -88,6 +88,7 @@ func (s *Service) UpdateCurrency(
 
 	currency.Rate = rate
 	currency.IsActive = req.Currency.IsActive
+	currency.DecimalPlaces = req.Currency.DecimalPlaces
 	currency.UpdatedAt = time.Now().UTC()
 	currency.DeletedAt = gorm.DeletedAt{
 		Valid: false,
