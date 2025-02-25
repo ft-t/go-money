@@ -25,3 +25,7 @@ go.work.sum
 .env
 
 .idea/
+**/*_mocks_test.go
+**/*_mock_test.go
+**/*_mock.go
+**/*_mocks.go

@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/appcfg"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
+	"github.com/ft-t/go-money/pkg/currency"
 	"github.com/ft-t/go-money/pkg/jwt"
+	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
 	"os"
@@ -52,6 +55,19 @@ func main() {
 	}))
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
+	}
+
+	decimalSvc := currency.NewDecimalService()
+
+	mapper := mappers.NewMapper(&mappers.MapperConfig{
+		DecimalSvc: decimalSvc,
+	})
+
+	_, err = NewAccountsApi(grpcServer, accounts.NewService(&accounts.ServiceConfig{
+		MapperSvc: mapper,
+	}))
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create accounts handler")
 	}
 
 	go func() {

@@ -14,6 +14,11 @@ type Service struct {
 	cfg *ServiceConfig
 }
 
+func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type ServiceConfig struct {
 	MapperSvc MapperSvc
 }
@@ -40,6 +45,16 @@ func (s *Service) Create(
 		CreatedAt:      time.Now().UTC(),
 		DeletedAt:      gorm.DeletedAt{},
 		Type:           req.Account.Type,
+		Note:           req.Account.Note,
+	}
+
+	if req.Account.CurrencyBalance != "" {
+		cb, err := decimal.NewFromString(req.Account.CurrencyBalance)
+		if err != nil {
+			return nil, err
+		}
+
+		account.CurrentBalance = cb
 	}
 
 	if err := database.GetDbWithContext(ctx, database.DbTypeMaster).Create(account).Error; err != nil {
@@ -70,6 +85,11 @@ func (s *Service) Update(
 	account.Type = req.Type
 	account.Extra = req.Extra
 	account.LastUpdatedAt = time.Now().UTC()
+	account.Note = req.Note
+
+	if account.Extra == nil {
+		account.Extra = map[string]string{}
+	}
 
 	if err := tx.Save(&account).Error; err != nil {
 		return nil, err

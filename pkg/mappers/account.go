@@ -31,6 +31,9 @@ func (m *Mapper) MapAccount(ctx context.Context, acc *database.Account) *v1.Acco
 		CurrencyBalance: m.cfg.DecimalSvc.ToString(ctx, acc.CurrentBalance, acc.Currency),
 		Extra:           acc.Extra,
 		UpdatedAt:       timestamppb.New(acc.LastUpdatedAt),
+		DeletedAt:       nil,
+		Type:            acc.Type,
+		Note:            acc.Note,
 	}
 
 	if acc.DeletedAt.Valid {

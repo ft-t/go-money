@@ -28,5 +28,27 @@ func getMigrations() []*gormigrate.Migration {
 				)
 			},
 		},
+		{
+			ID: "2025-02-25-InitialAccounts",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db, `create table accounts
+						(
+							id              serial             not null
+								constraint accounts_pk
+									primary key,
+							name            text,
+							current_balance decimal            not null,
+							currency        text               not null,
+							extra           jsonb default '{}' not null,
+							flags           bigint             not null,
+							last_updated_at timestamp          not null,
+							created_at      timestamp          not null,
+							deleted_at      timestamp,
+							type            int,
+							note            text               not null
+						);
+`)
+			},
+		},
 	}
 }
