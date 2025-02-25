@@ -41,7 +41,7 @@ func (s *Syncer) Sync(
 	defer tx.Rollback()
 
 	for currency, rate := range parsed.Rates {
-		if err = tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&database.ExchangeRate{
+		if err = tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&database.Currency{
 			ID:        currency,
 			Rate:      rate,
 			UpdatedAt: time.Now().UTC(),

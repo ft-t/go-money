@@ -3,6 +3,7 @@ package appcfg
 import (
 	"context"
 	configurationv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/configuration/v1"
+	"github.com/ft-t/go-money/pkg/configuration"
 )
 
 type Service struct {
@@ -32,5 +33,6 @@ func (s *Service) GetConfiguration(
 
 	return &configurationv1.GetConfigurationResponse{
 		ShouldCreateAdmin: shouldCreatedAdmin,
+		BaseCurrency:      configuration.BaseCurrency,
 	}, nil
 }

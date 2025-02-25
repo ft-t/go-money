@@ -59,6 +59,11 @@ func main() {
 
 	decimalSvc := currency.NewDecimalService()
 
+	_, err = NewCurrencyApi(grpcServer, currency.NewService(), currency.NewConverter(), decimalSvc)
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
+	}
+
 	mapper := mappers.NewMapper(&mappers.MapperConfig{
 		DecimalSvc: decimalSvc,
 	})

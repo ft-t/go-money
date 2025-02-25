@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
-	"time"
 )
 
 type Converter struct {
@@ -17,7 +16,7 @@ type Converter struct {
 
 func NewConverter() *Converter {
 	return &Converter{
-		cache: expirable.NewLRU[string, decimal.Decimal](100, nil, 30*time.Second),
+		cache: expirable.NewLRU[string, decimal.Decimal](100, nil, configuration.DefaultCacheTTL),
 	}
 }
 
@@ -74,7 +73,7 @@ func (c *Converter) fetchRates(
 
 	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly))
 
-	var rates []*database.ExchangeRate
+	var rates []*database.Currency
 	if err := db.Where("id IN ?", missing).Find(&rates).Error; err != nil {
 		return resp, nil
 	}

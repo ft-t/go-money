@@ -61,5 +61,24 @@ func getMigrations() []*gormigrate.Migration {
 				)
 			},
 		},
+		{
+			ID: "2025-02-25-AddCurrencyTable",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table currencies
+					(
+						id             text                  not null
+							constraint currencies_pk
+								primary key,
+						rate           decimal default 1     not null,
+						is_active      bool    default false not null,
+						decimal_places integer default 2     not null,
+						updated_at     timestamp             not null,
+						deleted_at     timestamp
+					);
+					`,
+				)
+			},
+		},
 	}
 }

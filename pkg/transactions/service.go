@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cockroachdb/errors"
 	transactionsv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/transactions/v1"
+	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/samber/lo"
@@ -17,7 +18,7 @@ type Service struct {
 
 func NewService() *Service {
 	return &Service{
-		accountCurrencyCache: expirable.NewLRU[int32, string](100, nil, 1*time.Minute),
+		accountCurrencyCache: expirable.NewLRU[int32, string](100, nil, configuration.DefaultCacheTTL),
 	}
 }
 
