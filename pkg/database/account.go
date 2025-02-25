@@ -28,4 +28,5 @@ type Account struct {
 	AccountNumber    string
 	Iban             string
 	LiabilityPercent decimal.NullDecimal
+	Position         int
 }

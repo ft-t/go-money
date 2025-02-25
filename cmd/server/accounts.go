@@ -13,8 +13,14 @@ type AccountsApi struct {
 }
 
 func (a *AccountsApi) DeleteAccount(ctx context.Context, c *connect.Request[accountsv1.DeleteAccountRequest]) (*connect.Response[accountsv1.DeleteAccountResponse], error) {
-	//TODO implement me
-	panic("implement me")
+	// todo auth
+
+	resp, err := a.accSvc.Delete(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(resp), nil
 }
 
 func (a *AccountsApi) CreateAccount(

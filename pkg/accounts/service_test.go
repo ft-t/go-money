@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 	"os"
 	"testing"
+	"time"
 )
 
 var gormDB *gorm.DB
@@ -25,6 +26,109 @@ func TestMain(m *testing.M) {
 	gormDB = database.GetDb(database.DbTypeMaster)
 
 	os.Exit(m.Run())
+}
+
+func TestDelete(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		acc := &database.Account{
+			Extra: map[string]string{},
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
+
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+		mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
+				assert.EqualValues(t, acc.ID, account.ID)
+
+				return &v1.Account{
+					Id: account.ID,
+				}
+			})
+
+		srv := accounts.NewService(&accounts.ServiceConfig{
+			MapperSvc: mapper,
+		})
+
+		resp, err := srv.Delete(context.TODO(), &accountsv1.DeleteAccountRequest{
+			Id: acc.ID,
+		})
+
+		assert.NoError(t, err)
+		assert.EqualValues(t, acc.ID, resp.Account.Id)
+
+		var rec database.Account
+		assert.NoError(t, gormDB.Unscoped().First(&rec).Error)
+
+		assert.True(t, rec.DeletedAt.Valid)
+		assert.NotEmpty(t, rec.DeletedAt.Time)
+	})
+
+	t.Run("acc not found", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		resp, err := srv.Delete(context.TODO(), &accountsv1.DeleteAccountRequest{
+			Id: 999,
+		})
+
+		assert.ErrorContains(t, err, "account not found")
+		assert.Nil(t, resp)
+	})
+}
+
+func TestList(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	acc := &database.Account{
+		Extra:    map[string]string{},
+		Position: 1,
+	}
+	assert.NoError(t, gormDB.Create(acc).Error)
+
+	accDeleted := &database.Account{
+		Extra: map[string]string{},
+		DeletedAt: gorm.DeletedAt{
+			Valid: true,
+			Time:  time.Now().UTC(),
+		},
+		Position: 999,
+	}
+	assert.NoError(t, gormDB.Create(accDeleted).Error)
+
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
+			assert.EqualValues(t, accDeleted.ID, account.ID)
+
+			return &v1.Account{
+				Id: account.ID,
+			}
+		})
+
+	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
+			assert.EqualValues(t, acc.ID, account.ID)
+
+			return &v1.Account{
+				Id: account.ID,
+			}
+		})
+
+	srv := accounts.NewService(&accounts.ServiceConfig{
+		MapperSvc: mapper,
+	})
+
+	resp, err := srv.List(context.TODO(), &accountsv1.ListAccountsRequest{})
+
+	assert.NoError(t, err)
+	assert.Len(t, resp.Accounts, 2)
+
+	assert.EqualValues(t, accDeleted.ID, resp.Accounts[0].Account.Id)
+	assert.EqualValues(t, acc.ID, resp.Accounts[1].Account.Id)
 }
 
 func TestCreateAccount(t *testing.T) {

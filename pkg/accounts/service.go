@@ -16,8 +16,44 @@ type Service struct {
 }
 
 func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	var accounts []database.Account
+
+	db := database.GetDbWithContext(ctx, database.DbTypeReadonly)
+
+	if err := db.Unscoped().Order("position desc").Find(&accounts).Error; err != nil {
+		return nil, err
+	}
+
+	var mapped []*accountsv1.ListAccountsResponse_AccountItem
+
+	for _, account := range accounts {
+		mapped = append(mapped,
+			&accountsv1.ListAccountsResponse_AccountItem{
+				Account: s.cfg.MapperSvc.MapAccount(ctx, &account),
+			})
+	}
+
+	return &accountsv1.ListAccountsResponse{
+		Accounts: mapped,
+	}, nil
+}
+
+func (s *Service) Delete(ctx context.Context, req *accountsv1.DeleteAccountRequest) (*accountsv1.DeleteAccountResponse, error) {
+	var account database.Account
+
+	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+
+	if err := db.Where("id = ?", req.Id).First(&account).Error; err != nil {
+		return nil, errors.Join(err, errors.New("account not found"))
+	}
+
+	if err := db.Delete(&account).Error; err != nil {
+		return nil, err
+	}
+
+	return &accountsv1.DeleteAccountResponse{
+		Account: s.cfg.MapperSvc.MapAccount(ctx, &account),
+	}, nil
 }
 
 type ServiceConfig struct {

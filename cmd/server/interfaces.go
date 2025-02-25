@@ -34,6 +34,11 @@ type AccountSvc interface {
 		ctx context.Context,
 		req *accountsv1.ListAccountsRequest,
 	) (*accountsv1.ListAccountsResponse, error)
+
+	Delete(
+		ctx context.Context,
+		req *accountsv1.DeleteAccountRequest,
+	) (*accountsv1.DeleteAccountResponse, error)
 }
 
 type ConfigSvc interface {
