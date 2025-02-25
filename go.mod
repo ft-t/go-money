@@ -7,7 +7,7 @@ require (
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/cockroachdb/errors v1.11.3
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/ft-t/go-money-pb v0.0.0-20250225123647-d3dc09777fc4
+	github.com/ft-t/go-money-pb v0.0.0-20250225190317-01b85e9aeaa8
 	github.com/go-gormigrate/gormigrate/v2 v2.1.3
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang/mock v1.6.0

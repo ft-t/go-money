@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -13,4 +14,9 @@ type Currency struct {
 
 	DecimalPlaces int32
 	UpdatedAt     time.Time
+	DeletedAt     gorm.DeletedAt
+}
+
+func (c *Currency) TableName() string {
+	return "currencies"
 }

@@ -19,10 +19,6 @@ func NewDecimalService() *DecimalService {
 }
 
 func (s *DecimalService) GetCurrencyDecimals(ctx context.Context, currency string) int32 {
-	if currency == "" {
-		return configuration.DefaultDecimalPlaces
-	}
-
 	if cached, ok := s.decimalCountCache.Get(currency); ok {
 		return cached
 	}

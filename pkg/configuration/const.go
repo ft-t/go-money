@@ -3,7 +3,7 @@ package configuration
 import "time"
 
 const (
-	BaseCurrency = "EUR"
+	BaseCurrency = "USD"
 
 	DefaultCacheTTL = 1 * time.Minute
 
