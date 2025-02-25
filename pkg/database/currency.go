@@ -5,9 +5,12 @@ import (
 	"time"
 )
 
-type ExchangeRate struct {
+type Currency struct {
 	ID   string // Currency ID
 	Rate decimal.Decimal
 
-	UpdatedAt time.Time
+	IsActive bool
+
+	DecimalPlaces int32
+	UpdatedAt     time.Time
 }
