@@ -37,7 +37,7 @@ func getMigrations() []*gormigrate.Migration {
 								constraint accounts_pk
 									primary key,
 							name            text,
-							current_balance decimal            not null
+							current_balance decimal            not null,
 							currency        text               not null,
 							extra           jsonb default '{}' not null,
 							flags           bigint             not null,
