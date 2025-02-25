@@ -47,7 +47,18 @@ func getMigrations() []*gormigrate.Migration {
 							type            int,
 							note            text               not null
 						);
-`)
+				`)
+			},
+		},
+		{
+			ID: "2025-02-25-MoreAccountFields",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table accounts add column if not exists account_number text not null;`,
+					`alter table accounts add column if not exists iban text not null;`,
+					`alter table accounts add column if not exists liability_percent decimal;`,
+					`alter table accounts add column if not exists position int;`,
+				)
 			},
 		},
 	}

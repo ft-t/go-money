@@ -12,6 +12,17 @@ type AccountsApi struct {
 	accSvc AccountSvc
 }
 
+func (a *AccountsApi) DeleteAccount(ctx context.Context, c *connect.Request[accountsv1.DeleteAccountRequest]) (*connect.Response[accountsv1.DeleteAccountResponse], error) {
+	// todo auth
+
+	resp, err := a.accSvc.Delete(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
 func (a *AccountsApi) CreateAccount(
 	ctx context.Context,
 	c *connect.Request[accountsv1.CreateAccountRequest],

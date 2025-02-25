@@ -10,9 +10,13 @@ lint-dev:
 generate:
 	go generate ./...
 
+.PHONY: update
+update: update-pb
+
+
 .PHONY: update-pb
 update-pb:
-	go get github.com/ft-t/go-money-pb@master
+	GOPRIVATE=github.com/ft-t/* go get github.com/ft-t/go-money-pb@master
 	go mod tidy
 
 .PHONY: test
