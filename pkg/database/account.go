@@ -22,7 +22,10 @@ type Account struct {
 	LastUpdatedAt time.Time
 	CreatedAt     time.Time
 
-	DeletedAt gorm.DeletedAt
-	Type      gomoneypbv1.AccountType
-	Note      string
+	DeletedAt        gorm.DeletedAt
+	Type             gomoneypbv1.AccountType
+	Note             string
+	AccountNumber    string
+	Iban             string
+	LiabilityPercent decimal.NullDecimal
 }

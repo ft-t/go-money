@@ -9,6 +9,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/golang/mock/gomock"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -46,16 +47,16 @@ func TestCreateAccount(t *testing.T) {
 			})
 
 		resp, err := srv.Create(context.TODO(), &accountsv1.CreateAccountRequest{
-			Account: &v1.Account{
-				Name:            "some-account",
-				Currency:        "USD",
-				CurrencyBalance: "100.001234122",
-				Extra: map[string]string{
-					"a": "b",
-				},
-				Type: v1.AccountType_ACCOUNT_TYPE_REGULAR,
-				Note: "some note",
+			Name:     "some-account",
+			Currency: "USD",
+			Extra: map[string]string{
+				"a": "b",
 			},
+			Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Note:             "some note",
+			LiabilityPercent: nil,
+			Iban:             "some-iban",
+			AccountNumber:    "some-account-number",
 		})
 
 		assert.NoError(t, err)
@@ -67,28 +68,26 @@ func TestCreateAccount(t *testing.T) {
 		assert.EqualValues(t, rec.ID, resp.Account.Id)
 		assert.EqualValues(t, "some-account", rec.Name)
 		assert.EqualValues(t, "USD", rec.Currency)
-		assert.EqualValues(t, "100.001234122000", rec.CurrentBalance.StringFixed(12))
+		assert.EqualValues(t, "0.000000000000", rec.CurrentBalance.StringFixed(12))
 		assert.EqualValues(t, map[string]string{"a": "b"}, rec.Extra)
 		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_REGULAR, rec.Type)
 		assert.EqualValues(t, "some note", rec.Note)
 	})
 
-	t.Run("invalid balance format", func(t *testing.T) {
+	t.Run("invalid liability format", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
 		srv := accounts.NewService(&accounts.ServiceConfig{})
 
 		resp, err := srv.Create(context.TODO(), &accountsv1.CreateAccountRequest{
-			Account: &v1.Account{
-				Name:            "some-account",
-				Currency:        "USD",
-				CurrencyBalance: "100-00",
-				Extra: map[string]string{
-					"a": "b",
-				},
-				Type: v1.AccountType_ACCOUNT_TYPE_REGULAR,
-				Note: "some note",
+			Name:             "some-account",
+			Currency:         "USD",
+			LiabilityPercent: lo.ToPtr("100-00"),
+			Extra: map[string]string{
+				"a": "b",
 			},
+			Type: v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Note: "some note",
 		})
 
 		assert.Nil(t, resp)
@@ -127,8 +126,11 @@ func TestUpdate(t *testing.T) {
 			Extra: map[string]string{
 				"updated": "b",
 			},
-			Type: v1.AccountType_ACCOUNT_TYPE_REGULAR,
-			Note: "updated note",
+			Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Note:             "updated note",
+			LiabilityPercent: lo.ToPtr("12"),
+			Iban:             "iban",
+			AccountNumber:    "num",
 		})
 
 		assert.NoError(t, err)
@@ -144,6 +146,9 @@ func TestUpdate(t *testing.T) {
 		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_REGULAR, rec.Type)
 		assert.EqualValues(t, "updated note", rec.Note)
 		assert.EqualValues(t, "111", rec.CurrentBalance.String())
+		assert.EqualValues(t, "12", rec.LiabilityPercent.Decimal.String())
+		assert.EqualValues(t, "iban", rec.Iban)
+		assert.EqualValues(t, "num", rec.AccountNumber)
 	})
 
 	t.Run("success empty extra", func(t *testing.T) {
@@ -194,5 +199,33 @@ func TestUpdate(t *testing.T) {
 		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_REGULAR, rec.Type)
 		assert.EqualValues(t, "updated note", rec.Note)
 		assert.EqualValues(t, "111", rec.CurrentBalance.String())
+	})
+
+	t.Run("invalid liability format", func(t *testing.T) {
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		acc := database.Account{
+			Currency:       "USD",
+			Name:           "xxx",
+			Extra:          map[string]string{},
+			CurrentBalance: decimal.RequireFromString("111"),
+		}
+		assert.NoError(t, gormDB.Create(&acc).Error)
+
+		resp, err := srv.Update(context.TODO(), &accountsv1.UpdateAccountRequest{
+			Id:   acc.ID,
+			Name: "yy",
+			Extra: map[string]string{
+				"updated": "b",
+			},
+			Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Note:             "updated note",
+			LiabilityPercent: lo.ToPtr("-1-2"),
+			Iban:             "iban",
+			AccountNumber:    "num",
+		})
+
+		assert.Nil(t, resp)
+		assert.ErrorContains(t, err, "can't convert -1-2 to decimal")
 	})
 }

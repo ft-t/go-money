@@ -2,6 +2,7 @@ package accounts
 
 import (
 	"context"
+	"github.com/cockroachdb/errors"
 	accountsv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/accounts/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
@@ -36,34 +37,46 @@ func (s *Service) Create(
 	req *accountsv1.CreateAccountRequest,
 ) (*accountsv1.CreateAccountResponse, error) {
 	account := &database.Account{
-		Name:           req.Account.Name,
-		Currency:       req.Account.Currency,
-		CurrentBalance: decimal.Decimal{},
-		Extra:          req.Account.Extra,
-		Flags:          0,
-		LastUpdatedAt:  time.Now().UTC(),
-		CreatedAt:      time.Now().UTC(),
-		DeletedAt:      gorm.DeletedAt{},
-		Type:           req.Account.Type,
-		Note:           req.Account.Note,
+		Name:          req.Name,
+		Currency:      req.Currency,
+		Extra:         req.Extra,
+		Flags:         0,
+		LastUpdatedAt: time.Now().UTC(),
+		CreatedAt:     time.Now().UTC(),
+		DeletedAt:     gorm.DeletedAt{},
+		Type:          req.Type,
+		Note:          req.Note,
+		Iban:          req.Iban,
+		AccountNumber: req.AccountNumber,
 	}
 
-	if req.Account.CurrencyBalance != "" {
-		cb, err := decimal.NewFromString(req.Account.CurrencyBalance)
-		if err != nil {
-			return nil, err
-		}
-
-		account.CurrentBalance = cb
+	liabilityPercent, err := s.parseLiabilityPercent(req.LiabilityPercent)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := database.GetDbWithContext(ctx, database.DbTypeMaster).Create(account).Error; err != nil {
+	account.LiabilityPercent = liabilityPercent
+
+	if err = database.GetDbWithContext(ctx, database.DbTypeMaster).Create(account).Error; err != nil {
 		return nil, err
 	}
 
 	return &accountsv1.CreateAccountResponse{
 		Account: s.cfg.MapperSvc.MapAccount(ctx, account),
 	}, nil
+}
+
+func (s *Service) parseLiabilityPercent(input *string) (decimal.NullDecimal, error) {
+	if input == nil {
+		return decimal.NullDecimal{}, nil
+	}
+
+	parsed, err := decimal.NewFromString(*input)
+	if err != nil {
+		return decimal.NullDecimal{}, errors.Join(err, errors.New("failed to parse liability percent"))
+	}
+
+	return decimal.NewNullDecimal(parsed), nil
 }
 
 func (s *Service) Update(
@@ -86,16 +99,25 @@ func (s *Service) Update(
 	account.Extra = req.Extra
 	account.LastUpdatedAt = time.Now().UTC()
 	account.Note = req.Note
+	account.AccountNumber = req.AccountNumber
+	account.Iban = req.Iban
+
+	liabilityPercent, err := s.parseLiabilityPercent(req.LiabilityPercent)
+	if err != nil {
+		return nil, err
+	}
+
+	account.LiabilityPercent = liabilityPercent
 
 	if account.Extra == nil {
 		account.Extra = map[string]string{}
 	}
 
-	if err := tx.Save(&account).Error; err != nil {
+	if err = tx.Save(&account).Error; err != nil {
 		return nil, err
 	}
 
-	if err := tx.Commit().Error; err != nil {
+	if err = tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
