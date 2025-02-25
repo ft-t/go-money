@@ -16,7 +16,7 @@ type Account struct {
 	Currency string // code
 
 	CurrentBalance decimal.Decimal
-	Extra          map[string]string `gorm:"type:jsonb"`
+	Extra          map[string]string `gorm:"serializer:json"`
 	Flags          WalletFlags
 
 	LastUpdatedAt time.Time
@@ -24,4 +24,5 @@ type Account struct {
 
 	DeletedAt gorm.DeletedAt
 	Type      gomoneypbv1.AccountType
+	Note      string
 }
