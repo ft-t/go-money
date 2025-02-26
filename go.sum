@@ -15,8 +15,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
-github.com/ft-t/go-money-pb v0.0.0-20250225190317-01b85e9aeaa8 h1:5PI1tx4EYjgZKWCHhdQbvEJXPg3PKKN2BI4ByVzBVMA=
-github.com/ft-t/go-money-pb v0.0.0-20250225190317-01b85e9aeaa8/go.mod h1:PI8ulxDJ0HamtFdQhvfOTJDla0blE6tJX9EuMw1IrzU=
+github.com/ft-t/go-money-pb v0.0.0-20250226173750-1f579486ce8b h1:wqW7BDc9ntoIS+ZQSfnlyAkr10+8wvn0kjoB2/1wOq4=
+github.com/ft-t/go-money-pb v0.0.0-20250226173750-1f579486ce8b/go.mod h1:PI8ulxDJ0HamtFdQhvfOTJDla0blE6tJX9EuMw1IrzU=
 github.com/getsentry/sentry-go v0.27.0 h1:Pv98CIbtB3LkMWmXi4Joa5OOcwbmnX88sF5qbK3r3Ps=
 github.com/getsentry/sentry-go v0.27.0/go.mod h1:lc76E2QywIyW8WuBnwl8Lc4bkmQH4+w1gwTf25trprY=
 github.com/go-errors/errors v1.4.2 h1:J6MZopCL4uSllY1OfXM374weqZFFItUbrImctkmUxIA=
