@@ -67,7 +67,13 @@ func (a *CurrencyApi) GetCurrencies(
 
 func (a *CurrencyApi) DeleteCurrency(ctx context.Context, c *connect.Request[currencyv1.DeleteCurrencyRequest]) (*connect.Response[currencyv1.DeleteCurrencyResponse], error) {
 	// todo auth
-	panic("implement me")
+
+	resp, err := a.currencySvc.DeleteCurrency(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(resp), nil
 }
 
 func (a *CurrencyApi) CreateCurrency(
