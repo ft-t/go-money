@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	defaultExchangeRatesURL = "https://localhost/latest.json" // todo
+	defaultExchangeRatesURL = "http://go-money-exchange-rates.s3-website.eu-north-1.amazonaws.com/latest.json"
 )
 
 func main() {
