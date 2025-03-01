@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"github.com/cockroachdb/errors"
 	gomoneypbv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
@@ -13,6 +14,9 @@ import (
 	"gorm.io/gorm/clause"
 	"time"
 )
+
+//go:embed scripts/daily_gap_detect.sql
+var dailyGapDetect string
 
 type StatService struct {
 	noGapTillTime *expirable.LRU[string, time.Time]
@@ -52,7 +56,7 @@ func (s *StatService) checkDailyGapForWallet(
 	accountID int32,
 	transactionTime time.Time,
 	firstAccountTransactionAt time.Time,
-) {
+) (gapMeta, error) {
 	key := fmt.Sprintf("daily_gap_%d", accountID)
 
 	dateNow := now.New(time.Now().UTC()).EndOfDay()
@@ -66,12 +70,37 @@ func (s *StatService) checkDailyGapForWallet(
 
 	if ok {
 		if time.Now().Before(cached) || targetTime.Equal(cached) { // we are good
-			return
+			return gapMeta{}, nil
 		}
+	}
+
+	var gap []struct {
+		Rec int32
+	}
+
+	if err := dbTx.Exec(dailyGapDetect,
+		firstAccountTransactionAt,
+		targetTime,
+		accountID,
+	).Find(&gap).Error; err != nil {
+		return gapMeta{}, err
+	}
+
+	if len(gap) == 0 {
+		return gapMeta{}, nil
 	}
 
 	// todo acquire lock
 
+	return gapMeta{
+		KeysToSet: map[string]time.Time{
+			key: targetTime,
+		},
+	}, nil
+}
+
+type gapMeta struct {
+	KeysToSet map[string]time.Time
 }
 
 func (s *StatService) handleDeposit(

@@ -63,30 +63,43 @@ func (s *Service) Create(
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
 	defer tx.Rollback()
 
+	var fillRes *fillResponse
+	var err error
+
 	switch v := req.GetTransaction().(type) {
 	case *transactionsv1.CreateTransactionRequest_TransferBetweenAccounts:
-		if err := s.fillTransferBetweenAccounts(ctx, tx, v.TransferBetweenAccounts, newTx); err != nil {
+		if fillRes, err = s.fillTransferBetweenAccounts(ctx, tx, v.TransferBetweenAccounts, newTx); err != nil {
 			return nil, err
 		}
 	case *transactionsv1.CreateTransactionRequest_Withdrawal:
-		if err := s.fillWithdrawal(ctx, tx, v.Withdrawal, newTx); err != nil {
+		if fillRes, err = s.fillWithdrawal(ctx, tx, v.Withdrawal, newTx); err != nil {
 			return nil, err
 		}
 	case *transactionsv1.CreateTransactionRequest_Deposit:
-		if err := s.fillDeposit(ctx, tx, v.Deposit, newTx); err != nil {
+		if fillRes, err = s.fillDeposit(ctx, tx, v.Deposit, newTx); err != nil {
 			return nil, err
+		}
+	default:
+		return nil, errors.New("invalid transaction type")
+	}
+
+	for _, acc := range fillRes.Accounts {
+		if acc.FirstTransactionAt == nil || acc.FirstTransactionAt.After(newTx.TransactionDateTime) {
+			acc.FirstTransactionAt = &newTx.TransactionDateTime
 		}
 	}
 
-	if err := s.cfg.StatsSvc.ProcessTransaction(ctx, tx, newTx); err != nil { // CALL BEFORE CREATE
+	// validate wallet transaction date
+
+	if err = s.cfg.StatsSvc.ProcessTransaction(ctx, tx, newTx); err != nil { // CALL BEFORE CREATE
 		return nil, err
 	}
 
-	if err := tx.Create(newTx).Error; err != nil {
+	if err = tx.Create(newTx).Error; err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	if err := tx.Commit().Error; err != nil {
+	if err = tx.Commit().Error; err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -98,25 +111,25 @@ func (s *Service) fillDeposit(
 	dbTx *gorm.DB,
 	req *transactionsv1.Deposit,
 	newTx *database.Transaction,
-) error {
+) (*fillResponse, error) {
 	if req.DestinationAccountId <= 0 {
-		return errors.New("destination account id is required")
+		return nil, errors.New("destination account id is required")
 	}
 
 	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
 	if err != nil {
-		return errors.Wrap(err, "invalid destination amount")
+		return nil, errors.Wrap(err, "invalid destination amount")
 	}
 
 	if destinationAmount.IsNegative() || destinationAmount.IsZero() {
-		return errors.New("destination amount must be positive")
+		return nil, errors.New("destination amount must be positive")
 	}
 
-	_, err = s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
+	accounts, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
 		req.DestinationAccountId: req.DestinationCurrency,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT
@@ -124,7 +137,9 @@ func (s *Service) fillDeposit(
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = &req.DestinationAccountId
 
-	return nil
+	return &fillResponse{
+		Accounts: accounts,
+	}, nil
 }
 
 func (s *Service) fillWithdrawal(
@@ -132,25 +147,25 @@ func (s *Service) fillWithdrawal(
 	dbTx *gorm.DB,
 	req *transactionsv1.Withdrawal,
 	newTx *database.Transaction,
-) error {
+) (*fillResponse, error) {
 	if req.SourceAccountId <= 0 {
-		return errors.New("source account id is required")
+		return nil, errors.New("source account id is required")
 	}
 
 	sourceAmount, err := decimal.NewFromString(req.SourceAmount)
 	if err != nil {
-		return errors.Wrap(err, "invalid source amount")
+		return nil, errors.Wrap(err, "invalid source amount")
 	}
 
 	if sourceAmount.IsPositive() || sourceAmount.IsZero() {
-		return errors.New("source amount must be negative")
+		return nil, errors.New("source amount must be negative")
 	}
 
-	_, err = s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
+	accounts, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
 		req.SourceAccountId: req.SourceCurrency,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	newTx.SourceAmount = sourceAmount
@@ -158,7 +173,9 @@ func (s *Service) fillWithdrawal(
 	newTx.SourceAccountID = &req.SourceAccountId
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL
 
-	return nil
+	return &fillResponse{
+		Accounts: accounts,
+	}, nil
 }
 
 func (s *Service) fillTransferBetweenAccounts(
@@ -166,39 +183,39 @@ func (s *Service) fillTransferBetweenAccounts(
 	dbTx *gorm.DB,
 	req *transactionsv1.TransferBetweenAccounts,
 	newTx *database.Transaction,
-) error {
+) (*fillResponse, error) {
 	if req.SourceAccountId <= 0 {
-		return errors.New("source account id is required")
+		return nil, errors.New("source account id is required")
 	}
 
 	if req.DestinationAccountId <= 0 {
-		return errors.New("destination account id is required")
+		return nil, errors.New("destination account id is required")
 	}
 
-	_, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
+	accounts, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
 		req.SourceAccountId:      req.SourceCurrency,
 		req.DestinationAccountId: req.DestinationCurrency,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sourceAmount, err := decimal.NewFromString(req.SourceAmount)
 	if err != nil {
-		return errors.Wrap(err, "invalid source amount")
+		return nil, errors.Wrap(err, "invalid source amount")
 	}
 
 	if sourceAmount.IsPositive() || sourceAmount.IsZero() {
-		return errors.New("source amount must be negative")
+		return nil, errors.New("source amount must be negative")
 	}
 
 	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
 	if err != nil {
-		return errors.Wrap(err, "invalid destination amount")
+		return nil, errors.Wrap(err, "invalid destination amount")
 	}
 
 	if destinationAmount.IsNegative() || destinationAmount.IsZero() {
-		return errors.New("destination amount must be positive")
+		return nil, errors.New("destination amount must be positive")
 	}
 
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS
@@ -212,7 +229,9 @@ func (s *Service) fillTransferBetweenAccounts(
 	newTx.SourceCurrency = req.SourceCurrency
 	newTx.DestinationCurrency = req.DestinationCurrency
 
-	return nil
+	return &fillResponse{
+		Accounts: accounts,
+	}, nil
 }
 
 func (s *Service) ensureAccountsExistAndCurrencyCorrect(
