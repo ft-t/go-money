@@ -112,6 +112,17 @@ func getMigrations() []*gormigrate.Migration {
 							
 								voided_by_transaction_id BIGINT
 							);`,
+					`create table if not exists daily_stat
+(
+    account_id int  not null,
+    date       date not null,
+    amount     decimal,
+    constraint daily_stat_pk
+        primary key (account_id, date)
+);`,
+					`
+create index if not exists daily_stat_account_id_index on public.daily_stat (account_id);
+`,
 				)
 			},
 		},

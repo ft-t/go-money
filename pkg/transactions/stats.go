@@ -2,33 +2,76 @@ package transactions
 
 import (
 	"context"
+	"fmt"
 	"github.com/cockroachdb/errors"
 	gomoneypbv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jinzhu/now"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"time"
 )
 
 type StatService struct {
+	noGapTillTime *expirable.LRU[string, time.Time]
 }
 
 func NewStatService() *StatService {
-	return &StatService{}
+	return &StatService{
+		noGapTillTime: expirable.NewLRU[string, time.Time](1000, nil, 10*time.Minute),
+	}
 }
 
 func (s *StatService) HandleTransaction(
 	ctx context.Context,
 	dbTx *gorm.DB,
-	newTX *database.Transaction,
+	newTx *database.Transaction,
+	impactedAccounts map[int32]*database.Account,
 ) error {
-	switch newTX.TransactionType {
+	switch newTx.TransactionType {
 	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT:
-		return s.handleDeposit(ctx, dbTx, newTX)
+		return s.handleDeposit(ctx, dbTx, newTx)
 	default:
-		return errors.Newf("unsupported transaction type: %s", newTX.TransactionType)
+		return errors.Newf("unsupported transaction type: %s", newTx.TransactionType)
 	}
+}
+
+func (s *StatService) ensureNoGapDaily(
+	dbTx *gorm.DB,
+	newTx *database.Transaction,
+) {
+	if newTx.SourceAccountID != nil {
+
+	}
+}
+
+func (s *StatService) checkDailyGapForWallet(
+	dbTx *gorm.DB,
+	accountID int32,
+	transactionTime time.Time,
+	firstAccountTransactionAt time.Time,
+) {
+	key := fmt.Sprintf("daily_gap_%d", accountID)
+
+	dateNow := now.New(time.Now().UTC()).EndOfDay()
+	targetTime := now.New(transactionTime).EndOfDay()
+
+	if dateNow.After(targetTime) {
+		targetTime = dateNow
+	}
+
+	cached, ok := s.noGapTillTime.Get(key)
+
+	if ok {
+		if time.Now().Before(cached) || targetTime.Equal(cached) { // we are good
+			return
+		}
+	}
+
+	// todo acquire lock
+
 }
 
 func (s *StatService) handleDeposit(
