@@ -1,0 +1,92 @@
+<div class="card">
+  <div class="font-semibold text-xl mb-4">Filtering</div>
+  <p-table
+    #dt1
+    [value]="(customers1$ | async)"
+    dataKey="id"
+    [rows]="10"
+    [loading]="loading"
+    [rowHover]="true"
+    [showGridlines]="true"
+    [paginator]="true"
+    [globalFilterFields]="['name', 'country.name', 'representative.name', 'status']"
+    responsiveLayout="scroll"
+  >
+    <ng-template #caption>
+      <div class="flex justify-between items-center flex-column sm:flex-row">
+        <button pButton label="Clear" class="p-button-outlined mb-2" icon="pi pi-filter-slash"
+                (click)="clear(dt1)"></button>
+        <button pButton label="Create" class="p-button-outlined mb-2"
+                [routerLink]="['/account', 'new']"></button>
+        <p-iconfield iconPosition="left" class="ml-auto">
+          <p-inputicon>
+            <i class="pi pi-search"></i>
+          </p-inputicon>
+          <input pInputText type="text" (input)="onGlobalFilter(dt1, $event)" placeholder="Search keyword" />
+        </p-iconfield>
+      </div>
+    </ng-template>
+    <ng-template #header>
+      <tr>
+        <th style="min-width: 12rem">
+          <div class="flex justify-between items-center">
+            ID
+            <p-columnFilter type="text" field="id" display="menu" placeholder="Search by ID"></p-columnFilter>
+          </div>
+        </th>
+        <th style="min-width: 12rem">
+          <div class="flex justify-between items-center">
+            Name
+            <p-columnFilter type="text" field="name" display="menu" placeholder="Search by name"></p-columnFilter>
+          </div>
+        </th>
+        <th style="min-width: 12rem">
+          <div class="flex justify-between items-center">
+            Currency
+          </div>
+        </th>
+        <th style="min-width: 10rem">
+          <div class="flex justify-between items-center">
+            Balance
+            <p-columnFilter type="numeric" field="balance" display="menu" currency="USD"></p-columnFilter>
+          </div>
+        </th>
+        <th style="min-width: 10rem">
+          <div class="flex justify-between items-center">
+            Update date
+            <p-columnFilter type="date" field="date" display="menu" placeholder="mm/dd/yyyy"></p-columnFilter>
+          </div>
+        </th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-customer>
+      <tr [routerLink]="['/account', 'new']">
+        <td>
+          0ae846a6-21ba-4772-866d-f0192ce04458
+        </td>
+        <td>
+          {{ customer.name }}
+        </td>
+        <td>
+          USD
+        </td>
+        <td>
+          {{ customer.balance | currency: 'USD' : 'symbol' }}
+        </td>
+        <td>
+          {{ customer.date | date: 'MM/dd/yyyy' }}
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="8">No customers found.</td>
+      </tr>
+    </ng-template>
+    <ng-template #loadingbody>
+      <tr>
+        <td colspan="8">Loading customers data. Please wait.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
