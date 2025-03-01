@@ -80,5 +80,40 @@ func getMigrations() []*gormigrate.Migration {
 				)
 			},
 		},
+		{
+			ID: "2025-03-01-AddTransactionTable",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`CREATE TABLE IF NOT EXISTS transactions (
+								id BIGSERIAL PRIMARY KEY,
+								
+								source_amount DECIMAL NOT NULL,
+								source_currency TEXT NOT NULL,
+							
+								destination_amount DECIMAL NOT NULL,
+								destination_currency TEXT NOT NULL,
+							
+								source_account_id INT,
+								destination_account_id INT,
+							
+								label_ids INTEGER[],
+							
+								created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+								updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+							
+								notes TEXT,
+								extra JSONB default '{}' not null,
+							
+								transaction_date_time TIMESTAMP NOT NULL,
+								transaction_date_only DATE NOT NULL,
+							
+								transaction_type INT NOT NULL,
+								flags BIGINT NOT NULL,
+							
+								voided_by_transaction_id BIGINT
+							);`,
+				)
+			},
+		},
 	}
 }

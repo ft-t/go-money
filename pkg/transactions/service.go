@@ -41,7 +41,12 @@ func (s *Service) Create(
 		CreatedAt:            time.Now().UTC(),
 		Notes:                req.Notes,
 		Extra:                req.Extra,
-		TransactionDate:      req.TransactionDate.AsTime(),
+		TransactionDateTime:  req.TransactionDate.AsTime(),
+		TransactionDateOnly:  req.TransactionDate.AsTime(),
+	}
+
+	if newTx.Extra == nil {
+		newTx.Extra = map[string]string{}
 	}
 
 	switch v := req.GetTransaction().(type) {
@@ -61,6 +66,14 @@ func (s *Service) Create(
 
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
 	defer tx.Rollback()
+
+	if err := tx.Create(newTx).Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
 
 	return &transactionsv1.CreateTransactionResponse{}, nil
 }

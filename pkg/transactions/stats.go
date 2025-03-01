@@ -48,7 +48,7 @@ func (s *StatService) handleDeposit(
 		return errors.New("amount must be greater than zero")
 	}
 
-	txDate := now.New(newTX.TransactionDate)
+	txDate := now.New(newTX.TransactionDateTime)
 
 	txDay := txDate.BeginningOfDay()
 
