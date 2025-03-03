@@ -65,6 +65,11 @@ type CurrencySvc interface {
 		ctx context.Context,
 		req *currencyv1.UpdateCurrencyRequest,
 	) (*currencyv1.UpdateCurrencyResponse, error)
+
+	DeleteCurrency(
+		ctx context.Context,
+		req *currencyv1.DeleteCurrencyRequest,
+	) (*currencyv1.DeleteCurrencyResponse, error)
 }
 
 type DecimalSvc interface {

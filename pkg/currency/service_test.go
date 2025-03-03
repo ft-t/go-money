@@ -147,12 +147,10 @@ func TestUpdateCurrency(t *testing.T) {
 
 		srv := currency.NewService()
 		resp, err := srv.UpdateCurrency(context.TODO(), &currencyv1.UpdateCurrencyRequest{
-			Currency: &v1.Currency{
-				Id:            "USD",
-				Rate:          "5.21",
-				IsActive:      false,
-				DecimalPlaces: 2,
-			},
+			Id:            "USD",
+			Rate:          "5.21",
+			IsActive:      false,
+			DecimalPlaces: 2,
 		})
 
 		assert.NoError(t, err)
@@ -172,12 +170,10 @@ func TestUpdateCurrency(t *testing.T) {
 
 		srv := currency.NewService()
 		resp, err := srv.UpdateCurrency(context.TODO(), &currencyv1.UpdateCurrencyRequest{
-			Currency: &v1.Currency{
-				Id:            "USD",
-				Rate:          "5.21",
-				IsActive:      false,
-				DecimalPlaces: 2,
-			},
+			Id:            "USD",
+			Rate:          "5.21",
+			IsActive:      false,
+			DecimalPlaces: 2,
 		})
 
 		assert.ErrorContains(t, err, "record not found")
@@ -198,15 +194,64 @@ func TestUpdateCurrency(t *testing.T) {
 
 		srv := currency.NewService()
 		resp, err := srv.UpdateCurrency(context.TODO(), &currencyv1.UpdateCurrencyRequest{
-			Currency: &v1.Currency{
-				Id:            "USD",
-				Rate:          "x5.21",
-				IsActive:      false,
-				DecimalPlaces: 2,
-			},
+			Id:            "USD",
+			Rate:          "x5.21",
+			IsActive:      false,
+			DecimalPlaces: 2,
 		})
 
 		assert.ErrorContains(t, err, "can't convert x5.21 to decimal")
+		assert.Nil(t, resp)
+	})
+}
+
+func TestDeleteCurrency(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		cur := &database.Currency{
+			ID:            "USD",
+			Rate:          decimal.NewFromInt(2),
+			IsActive:      true,
+			DecimalPlaces: 4,
+		}
+		assert.NoError(t, gormDB.Create(cur).Error)
+
+		srv := currency.NewService()
+
+		resp, err := srv.DeleteCurrency(context.TODO(), &currencyv1.DeleteCurrencyRequest{
+			Id: "USD",
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		var cur2 database.Currency
+		assert.NoError(t, gormDB.Unscoped().Where("id = ?", "USD").First(&cur2).Error)
+
+		assert.True(t, cur2.DeletedAt.Valid)
+	})
+
+	t.Run("already deleted", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		cur := &database.Currency{
+			ID:            "USD",
+			Rate:          decimal.NewFromInt(2),
+			IsActive:      true,
+			DecimalPlaces: 4,
+			DeletedAt: gorm.DeletedAt{
+				Time:  time.Now(),
+				Valid: true,
+			},
+		}
+		assert.NoError(t, gormDB.Create(cur).Error)
+
+		srv := currency.NewService()
+
+		resp, err := srv.DeleteCurrency(context.TODO(), &currencyv1.DeleteCurrencyRequest{
+			Id: "USD",
+		})
+		assert.ErrorContains(t, err, "record not found")
 		assert.Nil(t, resp)
 	})
 }

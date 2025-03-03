@@ -3,6 +3,7 @@ package currency
 import (
 	"context"
 	"encoding/json"
+	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"gorm.io/gorm/clause"
 	"net/http"
@@ -10,10 +11,10 @@ import (
 )
 
 type Syncer struct {
-	cl *http.Client
+	cl httpClient
 }
 
-func NewSyncer(cl *http.Client) *Syncer {
+func NewSyncer(cl httpClient) *Syncer {
 	return &Syncer{cl: cl}
 }
 
@@ -21,7 +22,12 @@ func (s *Syncer) Sync(
 	ctx context.Context,
 	remoteURL string,
 ) error {
-	resp, err := s.cl.Get(remoteURL)
+	httpReq, httpReqErr := http.NewRequestWithContext(ctx, "GET", remoteURL, nil)
+	if httpReqErr != nil {
+		return httpReqErr
+	}
+
+	resp, err := s.cl.Do(httpReq)
 	if err != nil {
 		return err
 	}
@@ -41,10 +47,18 @@ func (s *Syncer) Sync(
 	defer tx.Rollback()
 
 	for currency, rate := range parsed.Rates {
-		if err = tx.Clauses(clause.OnConflict{UpdateAll: true}).Create(&database.Currency{
-			ID:        currency,
-			Rate:      rate,
-			UpdatedAt: time.Now().UTC(),
+		if err = tx.Clauses(clause.OnConflict{
+			OnConstraint: "currencies_pk",
+			DoUpdates: clause.Set{
+				{Column: clause.Column{
+					Name: "rate",
+				}, Value: rate},
+			},
+		}).Create(&database.Currency{
+			ID:            currency,
+			Rate:          rate,
+			DecimalPlaces: configuration.DefaultDecimalPlaces,
+			UpdatedAt:     time.Now().UTC(),
 		}).Error; err != nil {
 			return err
 		}
