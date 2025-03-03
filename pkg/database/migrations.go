@@ -126,5 +126,13 @@ create index if not exists daily_stat_account_id_index on public.daily_stat (acc
 				)
 			},
 		},
+		{
+			ID: "2025-03-03-FirstTransactionAt",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table accounts add column if not exists first_transaction_at timestamp;`,
+				)
+			},
+		},
 	}
 }
