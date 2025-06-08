@@ -1,6 +1,6 @@
 WITH date_series AS (SELECT generate_series(
-                                    ?::date, -- source
-                                    ?::DATE, -- to
+                                    ?::date,
+                                    ?::DATE,
                                     '1 day'::INTERVAL
                             ) ::DATE AS date)
 select 1 as rec

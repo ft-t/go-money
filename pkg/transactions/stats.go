@@ -42,25 +42,31 @@ func (s *StatService) HandleTransaction(
 	}
 }
 
-func (s *StatService) ensureNoGapDaily(
+func (s *StatService) EnsureNoGapDaily(
 	dbTx *gorm.DB,
 	newTx *database.Transaction,
-) {
-	if newTx.SourceAccountID != nil {
+	accounts map[int32]*database.Account,
+) error {
+	//if newTx.SourceAccountID != nil {
+	//	if err := s.CheckDailyGapForAccount(dbTx, *newTx.SourceAccountID,
+	//		newTx.TransactionDateOnly, *accounts[*newTx.SourceAccountID].FirstTransactionAt); err != nil { // todo
+	//
+	//	}
+	//}
 
-	}
+	return nil
 }
 
-func (s *StatService) checkDailyGapForWallet(
+func (s *StatService) CheckDailyGapForAccount(
 	dbTx *gorm.DB,
 	accountID int32,
 	transactionTime time.Time,
 	firstAccountTransactionAt time.Time,
-) (gapMeta, error) {
+) (GapMeta, error) {
 	key := fmt.Sprintf("daily_gap_%d", accountID)
 
-	dateNow := now.New(time.Now().UTC()).EndOfDay()
-	targetTime := now.New(transactionTime).EndOfDay()
+	dateNow := now.New(time.Now().UTC()).EndOfDay()   // 05.11.2025
+	targetTime := now.New(transactionTime).EndOfDay() // 05.11.2020
 
 	if dateNow.After(targetTime) {
 		targetTime = dateNow
@@ -70,7 +76,9 @@ func (s *StatService) checkDailyGapForWallet(
 
 	if ok {
 		if time.Now().Before(cached) || targetTime.Equal(cached) { // we are good
-			return gapMeta{}, nil
+			return GapMeta{
+				FromCache: true,
+			}, nil
 		}
 	}
 
@@ -78,29 +86,37 @@ func (s *StatService) checkDailyGapForWallet(
 		Rec int32
 	}
 
-	if err := dbTx.Exec(dailyGapDetect,
+	if err := dbTx.Debug().Raw(dailyGapDetect,
 		firstAccountTransactionAt,
 		targetTime,
 		accountID,
 	).Find(&gap).Error; err != nil {
-		return gapMeta{}, err
+		return GapMeta{}, err
 	}
 
 	if len(gap) == 0 {
-		return gapMeta{}, nil
+		return GapMeta{}, nil
+	}
+
+	fromCache := true
+	if targetTime.After(cached) {
+		cached = targetTime
+		fromCache = false
 	}
 
 	// todo acquire lock
 
-	return gapMeta{
+	return GapMeta{
 		KeysToSet: map[string]time.Time{
-			key: targetTime,
+			key: cached,
 		},
+		FromCache: fromCache,
 	}, nil
 }
 
-type gapMeta struct {
+type GapMeta struct {
 	KeysToSet map[string]time.Time
+	FromCache bool
 }
 
 func (s *StatService) handleDeposit(
