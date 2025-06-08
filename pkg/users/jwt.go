@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"github.com/cockroachdb/errors"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
 	jwt2 "github.com/golang-jwt/jwt/v5"
@@ -44,7 +43,7 @@ func (j *JwtGenerator) GenerateToken(
 		UserID: user.ID,
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	token := jwt2.NewWithClaims(jwt2.SigningMethodRS256, claims)
 	a, err := token.SignedString(j.privateKey)
 	if err != nil {
 		return "", err
