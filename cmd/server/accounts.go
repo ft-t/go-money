@@ -12,6 +12,11 @@ type AccountsApi struct {
 	accSvc AccountSvc
 }
 
+func (a *AccountsApi) ReorderAccounts(ctx context.Context, c *connect.Request[accountsv1.ReorderAccountsRequest]) (*connect.Response[accountsv1.ReorderAccountsResponse], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (a *AccountsApi) DeleteAccount(ctx context.Context, c *connect.Request[accountsv1.DeleteAccountRequest]) (*connect.Response[accountsv1.DeleteAccountResponse], error) {
 	// todo auth
 

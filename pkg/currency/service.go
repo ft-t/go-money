@@ -18,6 +18,26 @@ func NewService() *Service {
 	return &Service{}
 }
 
+func (s *Service) DeleteCurrency(
+	ctx context.Context,
+	req *currencyv1.DeleteCurrencyRequest,
+) (*currencyv1.DeleteCurrencyResponse, error) {
+	db := database.FromContext(ctx, database.GetDb(database.DbTypeMaster))
+
+	var currency database.Currency
+	if err := db.Where("id = ?", req.Id).First(&currency).Error; err != nil {
+		return nil, err
+	}
+
+	if err := db.Delete(&currency).Error; err != nil {
+		return nil, err
+	}
+
+	return &currencyv1.DeleteCurrencyResponse{
+		Currency: s.mapCurrency(&currency),
+	}, nil
+}
+
 func (s *Service) GetCurrencies(
 	ctx context.Context,
 	_ *currencyv1.GetCurrenciesRequest,
@@ -77,18 +97,18 @@ func (s *Service) UpdateCurrency(
 	db := database.FromContext(ctx, database.GetDb(database.DbTypeMaster))
 
 	var currency database.Currency
-	if err := db.Where("id = ?", req.Currency.Id).First(&currency).Error; err != nil {
+	if err := db.Where("id = ?", req.Id).First(&currency).Error; err != nil {
 		return nil, err
 	}
 
-	rate, err := decimal.NewFromString(req.Currency.Rate)
+	rate, err := decimal.NewFromString(req.Rate)
 	if err != nil {
 		return nil, err
 	}
 
 	currency.Rate = rate
-	currency.IsActive = req.Currency.IsActive
-	currency.DecimalPlaces = req.Currency.DecimalPlaces
+	currency.IsActive = req.IsActive
+	currency.DecimalPlaces = req.DecimalPlaces
 	currency.UpdatedAt = time.Now().UTC()
 	currency.DeletedAt = gorm.DeletedAt{
 		Valid: false,
