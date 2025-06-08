@@ -1,0 +1,63 @@
+<p-fluid>
+  <div class="flex flex-col md:flex-row gap-8">
+    <div class="md:w-1/2">
+      <div class="card flex flex-col gap-4">
+        <div class="font-semibold text-xl">Vertical</div>
+        <div class="flex flex-col gap-2">
+          <label for="accountName">Name</label>
+          <input pInputText id="accountName" type="text" />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="accountNumber">Account Number</label>
+          <input pInputText id="accountNumber" type="text" />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="currency">Currency</label>
+          <input pInputText id="currency" type="text" />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="type">Type</label>
+          <input pInputText id="type" type="text" />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="liability">Liability (percent)</label>
+          <input pInputText id="liability" type="text" />
+        </div>
+      </div>
+    </div>
+    <div class="md:w-1/2">
+      <div class="card flex flex-col gap-4">
+        <div class="font-semibold text-xl">Other</div>
+        <div class="flex flex-wrap gap-2">
+          <label for="iban">IBAN</label>
+          <input pInputText id="iban" type="text" />
+          <small>Enter your IBAN account</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="flex mt-8">
+    <div class="card flex flex-col gap-6 w-full">
+      <div class="font-semibold text-xl">Advanced</div>
+      <div class="flex flex-wrap">
+        <label for="extra">Extra</label>
+        <textarea pTextarea id="extra" rows="4"></textarea>
+      </div>
+      <div class="flex flex-wrap">
+        <label for="note">Note</label>
+        <textarea pTextarea id="note" rows="4"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex mt-8">
+    <div class="card flex flex-col gap-6 w-full">
+      <div class="card flex flex-col gap-4">
+        <div class="font-semibold text-xl">Actions</div>
+        <div class="flex flex-wrap items-start gap-6">
+          <p-button label="Save" [fluid]="false"></p-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</p-fluid>
