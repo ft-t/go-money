@@ -91,12 +91,12 @@ func (s *Service) Create(
 
 	// validate wallet transaction date
 
-	if err = s.cfg.StatsSvc.ProcessTransaction(ctx, tx, newTx); err != nil { // CALL BEFORE CREATE
-		return nil, err
-	}
-
 	if err = tx.Create(newTx).Error; err != nil {
 		return nil, errors.WithStack(err)
+	}
+
+	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, []*database.Transaction{newTx}); err != nil { // CALL BEFORE CREATE
+		return nil, err
 	}
 
 	if err = tx.Commit().Error; err != nil {

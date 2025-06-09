@@ -2,10 +2,10 @@ package transactions
 
 import (
 	"context"
+	"database/sql"
 	_ "embed"
 	"fmt"
 	"github.com/cockroachdb/errors"
-	gomoneypbv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jinzhu/now"
@@ -18,6 +18,9 @@ import (
 //go:embed scripts/daily_gap_detect.sql
 var dailyGapDetect string
 
+//go:embed scripts/daily_recalculate.sql
+var dailyRecalculate string
+
 type StatService struct {
 	noGapTillTime *expirable.LRU[string, time.Time]
 }
@@ -28,18 +31,94 @@ func NewStatService() *StatService {
 	}
 }
 
-func (s *StatService) HandleTransaction(
+func (s *StatService) getAccountsForTx(tx *database.Transaction) []int32 {
+	var accounts []int32
+
+	if tx.SourceAccountID != nil {
+		accounts = append(accounts, *tx.SourceAccountID)
+	}
+	if tx.DestinationAccountID != nil {
+		accounts = append(accounts, *tx.DestinationAccountID)
+	}
+
+	return accounts
+}
+
+func (s *StatService) HandleTransactions(
 	ctx context.Context,
 	dbTx *gorm.DB,
-	newTx *database.Transaction,
-	impactedAccounts map[int32]*database.Account,
+	newTxs []*database.Transaction,
 ) error {
-	switch newTx.TransactionType {
-	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT:
-		return s.handleDeposit(ctx, dbTx, newTx)
-	default:
-		return errors.Newf("unsupported transaction type: %s", newTx.TransactionType)
+	impactedAccounts := map[int32]time.Time{} // tx with lowest date
+
+	for _, newTx := range newTxs {
+		for _, accountID := range s.getAccountsForTx(newTx) {
+			if rec, ok := impactedAccounts[accountID]; !ok {
+				impactedAccounts[accountID] = newTx.TransactionDateTime
+			} else {
+				if rec.After(newTx.TransactionDateTime) {
+					impactedAccounts[accountID] = newTx.TransactionDateTime
+				}
+			}
+		}
 	}
+
+	if len(impactedAccounts) == 0 {
+		return nil // nothing to do
+	}
+
+	lowestDate := newTxs[0].TransactionDateTime
+
+	for _, newTx := range newTxs {
+		txDate := now.New(newTx.TransactionDateTime)
+		txDay := txDate.BeginningOfDay()
+		//txMonth := txDate.BeginningOfMonth()
+
+		if txDay.Before(lowestDate) {
+			lowestDate = txDay
+		}
+
+		accountsForTx := s.getAccountsForTx(newTx)
+
+		for _, accountID := range accountsForTx {
+			dailyStat := &database.DailyStat{
+				AccountID: accountID,
+				Date:      txDay,
+				Balance:   decimal.Decimal{},
+			}
+
+			fmt.Println(dailyStat)
+
+			//if err := dbTx.Clauses(clause.OnConflict{
+			//	DoNothing: true,
+			//}).Create(dailyStat).Error; err != nil {
+			//	return err
+			//}
+
+			//monthStat := &database.MonthlyStat{
+			//	AccountID: accountID,
+			//	Date:      txMonth,
+			//	Balance:   decimal.Decimal{},
+			//}
+
+			//if err := dbTx.Clauses(clause.OnConflict{
+			//	DoNothing: true,
+			//}).Create(monthStat).Error; err != nil {
+			//	return err
+			//}
+		}
+	}
+
+	for accountID, txTime := range impactedAccounts {
+		if err := dbTx.Debug().Exec(dailyRecalculate,
+			sql.Named("startDate", txTime),
+			sql.Named("accountID", accountID),
+		).Error; err != nil {
+			return errors.Wrap(err, "failed to recalculate")
+		}
+	}
+	
+	return nil
 }
 
 func (s *StatService) EnsureNoGapDaily(
@@ -133,6 +212,7 @@ func (s *StatService) handleDeposit(
 	}
 
 	if newTX.DestinationAmount.LessThan(decimal.Zero) {
+
 		return errors.New("amount must be greater than zero")
 	}
 

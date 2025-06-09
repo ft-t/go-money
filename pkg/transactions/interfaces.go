@@ -9,10 +9,10 @@ import (
 //go:generate mockgen -destination interfaces_mocks_test.go -package transactions_test -source=interfaces.go
 
 type StatsSvc interface {
-	ProcessTransaction(
+	HandleTransactions(
 		ctx context.Context,
 		dbTx *gorm.DB,
-		transaction *database.Transaction,
+		newTxs []*database.Transaction,
 	) error
 }
 
