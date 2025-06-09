@@ -1,14 +1,18 @@
 WITH date_series AS (SELECT generate_series(
                                     @startDate,
-                                    NOW()::DATE,
+                                    GREATEST(NOW()::DATE, (select max(transaction_date_only)
+                                                           from transactions
+                                                           where source_account_id = @accountID
+                                                              or destination_account_id = @accountID)),
                                     '1 day'::INTERVAL
                             ) ::DATE AS date),
      daily_sums as (select coalesce(sum(coalesce(
              case when source_account_id = @accountID then source_amount else destination_amount end, 0)), 0) as amount,
                            transaction_date_only                                                              as tx_date
                     from transactions
-                    where source_account_id = @accountID
-                       or destination_account_id = @accountID
+                    where (source_account_id = @accountID
+                        or destination_account_id = @accountID)
+                      and transaction_date_only in (select * from date_series)
                     group by transaction_date_only),
      lastestValue as (select st2.amount
                       from daily_stat st2
@@ -27,6 +31,6 @@ WITH date_series AS (SELECT generate_series(
                  order by d.date asc)
 insert
 into daily_stat(account_id, date, amount)
-select @accountID, date, coalesce(coalesce((select * from lastestValue),0) + amount,0)
+select @accountID, date, coalesce(coalesce((select * from lastestValue), 0) + amount, 0)
 from running
 on conflict ON CONSTRAINT daily_stat_pk do update set amount = excluded.amount
