@@ -21,7 +21,7 @@ import { tap } from 'rxjs/operators';
   selector: 'app-account-list',
   standalone: false,
   templateUrl: 'account-list.component.html',
-  styleUrls: ['account-list.component.scss'],
+  // styleUrls: ['account-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AccountListComponent extends BaseAutoUnsubscribeClass implements OnInit, OnDestroy {
