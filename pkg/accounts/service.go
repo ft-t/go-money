@@ -1,9 +1,9 @@
 package accounts
 
 import (
+	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	"context"
 	"github.com/cockroachdb/errors"
-	accountsv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/accounts/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/users/v1/usersv1connect"
+	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	"connectrpc.com/connect"
 	"context"
-	usersv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/users/v1"
-	"github.com/ft-t/go-money-pb/gen/gomoneypb/users/v1/usersv1connect"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 )
 

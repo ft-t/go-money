@@ -1,7 +1,7 @@
 package database
 
 import (
-	gomoneypbv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"time"
@@ -32,7 +32,7 @@ type Transaction struct {
 
 	TransactionType gomoneypbv1.TransactionType `gorm:"type:int"`
 	Flags           TransactionFlags            `gorm:"type:bigint"`
-	
+
 	VoidedByTransactionID *int64
 }
 

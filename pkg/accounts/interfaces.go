@@ -1,8 +1,8 @@
 package accounts
 
 import (
+	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
-	v1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 )
 

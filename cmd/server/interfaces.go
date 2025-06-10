@@ -1,11 +1,11 @@
 package main
 
 import (
+	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
+	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
+	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
+	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	"context"
-	accountsv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/accounts/v1"
-	configurationv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/configuration/v1"
-	currencyv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/currency/v1"
-	usersv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/users/v1"
 	"github.com/shopspring/decimal"
 )
 

@@ -1,9 +1,0 @@
-{
-  "protoFiles": [
-    "./node_modules/go-money-pb/proto/money.proto"
-  ],
-  "outputDir": "./src/generated",
-  "options": {
-    "ts-proto": true
-  }
-}

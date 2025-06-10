@@ -1,9 +1,9 @@
 package currency
 
 import (
+	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
+	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
-	currencyv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/currency/v1"
-	v1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"

@@ -1,8 +1,8 @@
 package transactions_test
 
 import (
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	"context"
-	transactionsv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/transactions/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"

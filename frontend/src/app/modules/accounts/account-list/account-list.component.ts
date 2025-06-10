@@ -12,10 +12,6 @@ import { Product, ProductService } from '../../../pages/service/product.service'
 import { Table } from 'primeng/table';
 import { BehaviorSubject } from 'rxjs';
 import { AccountsGrpcService } from '../../../services/accounts/accounts-grpc.service';
-import {
-  ListAccountsResponse
-} from '../../../../../gen/gomoneypb/accounts/v1/accounts_pb';
-import { tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-account-list',
@@ -129,13 +125,13 @@ export class AccountListComponent extends BaseAutoUnsubscribeClass implements On
 
     this.isLoading$.next(true);
 
-    this.accountsService.listAccounts()
-      .pipe(
-        tap((response: ListAccountsResponse) => {
-          console.log(response);
-          // this.customers1$.next(response.accounts);
-        }),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.accountsService.listAccounts()
+    //   .pipe(
+    //     tap((response: ListAccountsResponse) => {
+    //       console.log(response);
+    //       // this.customers1$.next(response.accounts);
+    //     }),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 }

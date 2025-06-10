@@ -1,8 +1,8 @@
 package appcfg
 
 import (
+	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	"context"
-	configurationv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/configuration/v1"
 	"github.com/ft-t/go-money/pkg/configuration"
 )
 

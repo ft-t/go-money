@@ -1,9 +1,9 @@
 package users
 
 import (
+	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	"context"
 	"errors"
-	usersv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/users/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"

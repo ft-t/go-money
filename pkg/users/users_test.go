@@ -1,9 +1,9 @@
 package users_test
 
 import (
+	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	"context"
 	"github.com/cockroachdb/errors"
-	usersv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/users/v1"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"

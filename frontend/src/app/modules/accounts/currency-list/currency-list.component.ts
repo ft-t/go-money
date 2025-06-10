@@ -10,7 +10,6 @@ import { BaseAutoUnsubscribeClass } from '../../../objects/auto-unsubscribe/base
 import { BehaviorSubject, finalize } from 'rxjs';
 import { CurrenciesGrpcService } from '../../../services/currencies/currencies-grpc.service';
 import { tap } from 'rxjs/operators';
-import { DeleteCurrencyRequest, GetCurrenciesResponse } from '../../../../../gen/gomoneypb/currency/v1/currency_pb';
 
 @Component({
   selector: 'app-currency-list',
@@ -44,15 +43,15 @@ export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements O
     const request = {
     }
 
-    this.currenciesService.getCurrencies(request)
-      .pipe(
-        tap((response: GetCurrenciesResponse | any) => {
-          console.log(response);
-          this.currencies$.next(response.data);
-        }),
-        finalize(() => this.isLoading$.next(false)),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.currenciesService.getCurrencies(request)
+    //   .pipe(
+    //     tap((response: GetCurrenciesResponse | any) => {
+    //       console.log(response);
+    //       this.currencies$.next(response.data);
+    //     }),
+    //     finalize(() => this.isLoading$.next(false)),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 
   createCurrency() {
@@ -77,12 +76,12 @@ export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements O
 
     }
 
-    this.currenciesService.updateCurrency(request)
-      .pipe(
-        tap(),
-        finalize(() => this.isLoading$.next(false)),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.currenciesService.updateCurrency(request)
+    //   .pipe(
+    //     tap(),
+    //     finalize(() => this.isLoading$.next(false)),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 
   deleteCurrency(currency: any) {
@@ -92,13 +91,13 @@ export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements O
 
     }
 
-    this.currenciesService.deleteCurrency(new DeleteCurrencyRequest({
-        id: currency.id
-    }))
-      .pipe(
-        tap(),
-        finalize(() => this.isLoading$.next(false)),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.currenciesService.deleteCurrency(new DeleteCurrencyRequest({
+    //     id: currency.id
+    // }))
+    //   .pipe(
+    //     tap(),
+    //     finalize(() => this.isLoading$.next(false)),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 }
