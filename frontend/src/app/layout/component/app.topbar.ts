@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { MenuItem } from 'primeng/api';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { StyleClassModule } from 'primeng/styleclass';
 import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
-import { UsersGrpcService } from '../../services/auth/users-grpc.service';
+import { CookieService } from '../../services/cookie.service';
+import { CookieInstances } from '../../objects/cookie-instances';
 
 @Component({
     selector: 'app-topbar',
@@ -37,8 +38,6 @@ import { UsersGrpcService } from '../../services/auth/users-grpc.service';
                 <span>SAKAI</span>
             </a>
         </div>
-        
-        <div (click)="this.usersService.logout()">Log out</div>
 
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
@@ -67,15 +66,15 @@ import { UsersGrpcService } from '../../services/auth/users-grpc.service';
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
+<!--                    <button type="button" class="layout-topbar-action">-->
+<!--                        <i class="pi pi-calendar"></i>-->
+<!--                        <span>Calendar</span>-->
+<!--                    </button>-->
+<!--                    <button type="button" class="layout-topbar-action">-->
+<!--                        <i class="pi pi-inbox"></i>-->
+<!--                        <span>Messages</span>-->
+<!--                    </button>-->
+                    <button (click)="logout()" type="button" class="layout-topbar-action">
                         <i class="pi pi-user"></i>
                         <span>Profile</span>
                     </button>
@@ -87,10 +86,18 @@ import { UsersGrpcService } from '../../services/auth/users-grpc.service';
 export class AppTopbar {
     items!: MenuItem[];
 
-    constructor(public layoutService: LayoutService,
-                public usersService: UsersGrpcService) {}
+    constructor(
+        public layoutService: LayoutService,
+        private cookieService: CookieService,
+        private router: Router,
+    ) {}
 
     toggleDarkMode() {
         this.layoutService.layoutConfig.update((state) => ({ ...state, darkTheme: !state.darkTheme }));
+    }
+
+    logout() {
+        this.cookieService.delete(CookieInstances.Jwt)
+        return this.router.navigate(['/', 'login']);
     }
 }

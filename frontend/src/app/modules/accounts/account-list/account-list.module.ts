@@ -8,7 +8,6 @@ import { NgModule } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { AccountListComponent } from './account-list.component';
 import { AccountListRoutingModule } from './account-list-routing.module';
-import { UsersGrpcService } from '../../../services/auth/users-grpc.service';
 import { TableModule } from 'primeng/table';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
@@ -50,7 +49,6 @@ import { ProductService } from '../../../pages/service/product.service';
     AccountListComponent
   ],
   providers: [
-    UsersGrpcService,
     CustomerService,
     ProductService
   ]

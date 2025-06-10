@@ -1,8 +1,5 @@
 import { ChangeDetectionStrategy, Component, Inject, OnDestroy, OnInit } from '@angular/core';
-import { BaseAutoUnsubscribeClass } from '../../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
-import { UsersGrpcService } from '../../../services/auth/users-grpc.service';
-import { createConnectTransport } from '@connectrpc/connect-web';
-import { createClient, Transport } from '@connectrpc/connect';
+import { ConnectError, createClient, Transport } from '@connectrpc/connect';
 
 import { Router } from '@angular/router';
 import { CookieService } from '../../../services/cookie.service';
@@ -16,16 +13,15 @@ import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { NgIf } from '@angular/common';
 import { UsersService, CreateRequest, CreateRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/users/v1/users_pb';
 import { CreateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-
-export enum AuthTypeEnum {
-    Login = 0,
-    Register = 1
-}
+import { CookieInstances } from '../../../objects/cookie-instances';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { ErrorHelper } from '../../../helpers/error.helper';
 
 @Component({
     selector: 'app-login',
     templateUrl: 'login.component.html',
-    imports: [FormsModule, Password, Button, AppFloatingConfigurator, InputText, NgIf]
+    imports: [FormsModule, Password, Button, AppFloatingConfigurator, InputText, NgIf, ToastModule]
 })
 export class LoginComponent implements OnInit {
     email: string = '';
@@ -33,17 +29,14 @@ export class LoginComponent implements OnInit {
 
     isRegisterFlow: boolean = false;
 
-    authType = AuthTypeEnum.Login;
-
     private configService;
     private usersService;
-
-    protected readonly AuthTypeEnum = AuthTypeEnum;
 
     constructor(
         private cookieService: CookieService,
         private router: Router,
-        @Inject(TRANSPORT_TOKEN) private transport: Transport
+        @Inject(TRANSPORT_TOKEN) private transport: Transport,
+        private messageService: MessageService,
     ) {
         this.configService = createClient(ConfigurationService, this.transport);
         this.usersService = createClient(UsersService, this.transport);
@@ -55,20 +48,30 @@ export class LoginComponent implements OnInit {
         this.isRegisterFlow = val.shouldCreateAdmin;
     }
 
-    changeAuthType(type: AuthTypeEnum) {
-        this.authType = type;
-    }
-
     async login() {
-        let val = await this.configService.getConfiguration({});
+        try {
+            let resp = await this.usersService.login({
+                login: this.email,
+                password: this.password
+            });
+
+            this.cookieService.set(CookieInstances.Jwt, resp.token);
+
+            await this.router.navigate(['/', 'accounts']);
+        } catch (e: any) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.GetMessage(e) });
+            return;
+        }
     }
 
     async register() {
-        let xx = CreateRequestSchema;
-
         await this.usersService.create({
             login: this.email,
             password: this.password
         });
+
+        this.isRegisterFlow = false;
+
+        this.messageService.add({ severity: 'info', detail: 'User created successfully. You can now login.' });
     }
 }

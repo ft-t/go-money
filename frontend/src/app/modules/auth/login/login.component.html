@@ -6,8 +6,7 @@
                 <div class="text-center mb-8">
                     <img class="mb-8 w-40 shrink-0 mx-auto" src="/logo.png" alt="logo" />
                     <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Welcome to Go Money!</div>
-                    <span class="text-muted-color font-medium" *ngIf="!isRegisterFlow">Sign in to continue</span>
-                    <span class="text-muted-color font-medium" *ngIf="isRegisterFlow">Register to continue</span>
+                    <span class="text-muted-color font-medium">{{ isRegisterFlow ? "Register to continue" : "Sign in to continue" }}</span>
                 </div>
 
                 <div>
@@ -20,9 +19,6 @@
                     <p-password id="password1" [(ngModel)]="password" placeholder="Password" [toggleMask]="true"
                                 styleClass="mb-4" [fluid]="true" [feedback]="false"></p-password>
 
-<!--                    <div class="flex items-center justify-between mt-2 mb-8 gap-8">-->
-<!--                        <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</span>-->
-<!--                    </div>-->
                     <p-button label="Sign In" styleClass="w-full" *ngIf="!isRegisterFlow" (click)="login()"></p-button>
                     <p-button label="Register" styleClass="w-full" *ngIf="isRegisterFlow" (click)="register()"></p-button>
                 </div>
@@ -30,3 +26,4 @@
         </div>
     </div>
 </div>
+<p-toast />

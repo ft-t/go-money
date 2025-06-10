@@ -10,6 +10,8 @@ import { InitialConfiguration } from './app/objects/configuration/сonfiguration
 import { BroadcastService } from './app/services/broadcast.service';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import { TRANSPORT_TOKEN } from './app/consts/transport';
+import { authInterceptor } from './interceptors/auth';
+import { MessageService } from 'primeng/api';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -23,12 +25,16 @@ export const appConfig: ApplicationConfig = {
         ),
         provideHttpClient(withFetch()),
         provideAnimationsAsync(),
+        MessageService  ,
         providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } }),
         {
             provide: TRANSPORT_TOKEN,
             useFactory: () => {
                 return createConnectTransport({
-                    baseUrl: 'http://localhost:52055'
+                    baseUrl: 'http://localhost:52055',
+                    interceptors: [
+                        authInterceptor()
+                    ]
                 });
             }
         },

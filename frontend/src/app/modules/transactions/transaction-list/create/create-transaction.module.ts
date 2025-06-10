@@ -1,7 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CurrencyListComponent } from './currency-list.component';
 import { CurrencyListRoutingModule } from './currency-list-routing.module';
-import { UsersGrpcService } from '../../../services/auth/users-grpc.service';
 import { CommonModule } from '@angular/common';
 import { CustomerService } from '../../../pages/service/customer.service';
 import { ProductService } from '../../../pages/service/product.service';
@@ -31,7 +30,6 @@ import { ReactiveComponentModule } from '../../common/reactive-component';
     CurrencyListComponent
   ],
   providers: [
-    UsersGrpcService,
     CustomerService,
     ProductService
   ]
