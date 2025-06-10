@@ -5,8 +5,6 @@ import {
   OnInit,
 } from '@angular/core';
 import { BaseAutoUnsubscribeClass } from '../../../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
-import { tap } from 'rxjs/operators';
-import { AccountsGrpcService } from '../../../../services/accounts/accounts-grpc.service';
 
 @Component({
   selector: 'app-account-upsert',
@@ -16,7 +14,7 @@ import { AccountsGrpcService } from '../../../../services/accounts/accounts-grpc
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AccountUpsertComponent extends BaseAutoUnsubscribeClass implements OnInit, OnDestroy {
-  constructor(private accountsService: AccountsGrpcService) {
+  constructor() {
     super();
   }
 

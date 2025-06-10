@@ -1,137 +1,61 @@
+import { ChangeDetectionStrategy, Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
+import { Table, TableModule } from 'primeng/table';
+import { FormsModule } from '@angular/forms';
+import { InputText } from 'primeng/inputtext';
+import { ToastModule } from 'primeng/toast';
+import { InputIcon } from 'primeng/inputicon';
+import { IconField } from 'primeng/iconfield';
+import { TRANSPORT_TOKEN } from '../../../consts/transport';
+import { Transport, createClient } from '@connectrpc/connect';
 import {
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  OnDestroy,
-  OnInit,
-  ViewChild
-} from '@angular/core';
-import { BaseAutoUnsubscribeClass } from '../../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
-import { Customer, CustomerService, Representative } from '../../../pages/service/customer.service';
-import { Product, ProductService } from '../../../pages/service/product.service';
-import { Table } from 'primeng/table';
-import { BehaviorSubject } from 'rxjs';
-import { AccountsGrpcService } from '../../../services/accounts/accounts-grpc.service';
+    AccountsService,
+    ListAccountsResponse_AccountItem
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
+import { ErrorHelper } from '../../../helpers/error.helper';
+import { MessageService } from 'primeng/api';
 
 @Component({
-  selector: 'app-account-list',
-  standalone: false,
-  templateUrl: 'account-list.component.html',
-  // styleUrls: ['account-list.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-account-list',
+    templateUrl: 'account-list.component.html',
+    imports: [FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField]
 })
-export class AccountListComponent extends BaseAutoUnsubscribeClass implements OnInit, OnDestroy {
-  customers1$ = new BehaviorSubject<Customer[] | any>([])
-  customers2: Customer[] = [];
-  customers3: Customer[] = [];
-  representatives: Representative[] = [];
-  statuses: any[] = [];
-  products: Product[] = [];
-  activityValues: number[] = [0, 100];
-  loading: boolean = false;
+export class AccountListComponent implements OnInit {
+    statuses: any[] = [];
 
-  @ViewChild('filter') filter!: ElementRef;
+    loading: boolean = false;
 
-  constructor(private customerService: CustomerService,
-              private accountsService: AccountsGrpcService,
-              private productService: ProductService) {
-    super();
-  }
+    public accounts: ListAccountsResponse_AccountItem[] = [];
+    private accountService;
 
-  override ngOnInit() {
-    super.ngOnInit();
+    @ViewChild('filter') filter!: ElementRef;
 
-    this.customerService.getCustomersLarge().then((customers) => {
-      this.customers1$.next(customers);
-      this.loading = false;
-
-      console.log(this.customers1$);
-
-      // @ts-ignore
-      this.customers1$.forEach((customer) => (customer.date = new Date(customer.date)));
-    });
-    this.customerService.getCustomersMedium().then((customers) => (this.customers2 = customers));
-    this.customerService.getCustomersLarge().then((customers) => (this.customers3 = customers));
-    this.productService.getProductsWithOrdersSmall().then((data) => (this.products = data));
-
-    this.representatives = [
-      {name: 'Amy Elsner', image: 'amyelsner.png'},
-      {name: 'Anna Fali', image: 'annafali.png'},
-      {name: 'Asiya Javayant', image: 'asiyajavayant.png'},
-      {name: 'Bernardo Dominic', image: 'bernardodominic.png'},
-      {name: 'Elwin Sharvill', image: 'elwinsharvill.png'},
-      {name: 'Ioni Bowcher', image: 'ionibowcher.png'},
-      {name: 'Ivan Magalhaes', image: 'ivanmagalhaes.png'},
-      {name: 'Onyama Limba', image: 'onyamalimba.png'},
-      {name: 'Stephen Shaw', image: 'stephenshaw.png'},
-      {name: 'XuXue Feng', image: 'xuxuefeng.png'}
-    ];
-
-    this.statuses = [
-      {label: 'Unqualified', value: 'unqualified'},
-      {label: 'Qualified', value: 'qualified'},
-      {label: 'New', value: 'new'},
-      {label: 'Negotiation', value: 'negotiation'},
-      {label: 'Renewal', value: 'renewal'},
-      {label: 'Proposal', value: 'proposal'}
-    ];
-  }
-
-  override ngOnDestroy() {
-    super.ngOnDestroy();
-  }
-
-  getSeverity(status: string) {
-    switch (status) {
-      case 'qualified':
-      case 'instock':
-      case 'INSTOCK':
-      case 'DELIVERED':
-      case 'delivered':
-        return 'success';
-
-      case 'negotiation':
-      case 'lowstock':
-      case 'LOWSTOCK':
-      case 'PENDING':
-      case 'pending':
-        return 'warn';
-
-      case 'unqualified':
-      case 'outofstock':
-      case 'OUTOFSTOCK':
-      case 'CANCELLED':
-      case 'cancelled':
-        return 'danger';
-
-      default:
-        return 'info';
-    }
-  }
-
-  onGlobalFilter(table: Table, event: Event) {
-    table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
-  }
-
-  clear(table: Table) {
-    table.clear();
-    this.filter.nativeElement.value = '';
-  }
-
-  getClientsList() {
-    if (this.isLoading$.value) {
-      return;
+    constructor(
+        @Inject(TRANSPORT_TOKEN) private transport: Transport,
+        private messageService: MessageService,
+    ) {
+        this.accountService = createClient(AccountsService, this.transport);
     }
 
-    this.isLoading$.next(true);
+    async ngOnInit() {
+        this.loading = true;
 
-    // this.accountsService.listAccounts()
-    //   .pipe(
-    //     tap((response: ListAccountsResponse) => {
-    //       console.log(response);
-    //       // this.customers1$.next(response.accounts);
-    //     }),
-    //     this.takeUntilDestroy
-    //   ).subscribe();
-  }
+        try {
+            let resp = await this.accountService.listAccounts({});
+            this.accounts = resp.accounts || [];
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.GetMessage(e) });
+        } finally {
+            this.loading = false;
+        }
+    }
+
+    onGlobalFilter(table: Table, event: Event) {
+        table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
+    }
+
+    clear(table: Table) {
+        table.clear();
+        this.filter.nativeElement.value = '';
+    }
 }

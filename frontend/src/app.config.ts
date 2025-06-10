@@ -25,16 +25,14 @@ export const appConfig: ApplicationConfig = {
         ),
         provideHttpClient(withFetch()),
         provideAnimationsAsync(),
-        MessageService  ,
+        MessageService,
         providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } }),
         {
             provide: TRANSPORT_TOKEN,
             useFactory: () => {
                 return createConnectTransport({
                     baseUrl: 'http://localhost:52055',
-                    interceptors: [
-                        authInterceptor()
-                    ]
+                    interceptors: [authInterceptor()]
                 });
             }
         },

@@ -3,6 +3,7 @@ import { AppLayout } from './app/layout/component/app.layout';
 import { Notfound } from './app/pages/notfound/notfound';
 import { authGuard } from './app/services/guards/auth.guard';
 import { LoginComponent } from './app/modules/auth/login/login.component';
+import { AccountListComponent } from './app/modules/accounts/account-list/account-list.component';
 
 export const appRoutes: Routes = [
     {
@@ -16,7 +17,7 @@ export const appRoutes: Routes = [
         children: [
             {
                 path: 'accounts',
-                loadChildren: () => import('./app/modules/accounts/account-list/account-list.module').then((m) => m.AccountListModule)
+                component: AccountListComponent
             },
             {
                 path: 'account/:id',

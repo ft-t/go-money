@@ -36,12 +36,12 @@ export class AppMenu {
             items: [
                 {
                     label: 'Assets',
-                    icon: 'pi pi-fw pi-table',
+                    icon: 'pi pi-fw pi-wallet',
                     routerLink: ['/accounts']
                 },
                 {
                     label: 'Liabilities',
-                    icon: 'pi pi-fw pi-table',
+                    icon: 'pi pi-fw pi-credit-card',
                     routerLink: ['/accounts']
                 }
             ]

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, Inject, OnDestroy, OnInit } from '@angular/core';
-import { ConnectError, createClient, Transport } from '@connectrpc/connect';
+import { Component, Inject, OnInit } from '@angular/core';
+import { createClient, Transport } from '@connectrpc/connect';
 
 import { Router } from '@angular/router';
 import { CookieService } from '../../../services/cookie.service';
@@ -11,8 +11,7 @@ import { AppFloatingConfigurator } from '../../../layout/component/app.floatingc
 import { InputText } from 'primeng/inputtext';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { NgIf } from '@angular/common';
-import { UsersService, CreateRequest, CreateRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/users/v1/users_pb';
-import { CreateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { UsersService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/users/v1/users_pb';
 import { CookieInstances } from '../../../objects/cookie-instances';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
