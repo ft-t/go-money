@@ -6,11 +6,8 @@ import {
   OnInit,
   ViewChild
 } from '@angular/core';
-import { BaseAutoUnsubscribeClass } from '../../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
 import { BehaviorSubject, finalize } from 'rxjs';
-import { CurrenciesGrpcService } from '../../../services/currencies/currencies-grpc.service';
 import { tap } from 'rxjs/operators';
-import { GetCurrenciesResponse } from '../../../../../gen/gomoneypb/currency/v1/currency_pb';
 
 @Component({
   selector: 'app-currency-list',
@@ -18,24 +15,19 @@ import { GetCurrenciesResponse } from '../../../../../gen/gomoneypb/currency/v1/
   templateUrl: 'currency-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements OnInit, OnDestroy {
+export class CurrencyListComponent implements OnInit {
   public currencies$ = new BehaviorSubject<any[] | any>([]);
 
-  public override isLoading$ = new BehaviorSubject<boolean>(false);
+  public isLoading$ = new BehaviorSubject<boolean>(false);
 
   @ViewChild('filter') filter!: ElementRef;
 
-  constructor(private currenciesService: CurrenciesGrpcService) {
-    super();
+  constructor() {
   }
 
-  override ngOnInit() {
-    super.ngOnInit();
+  ngOnInit() {
   }
 
-  override ngOnDestroy() {
-    super.ngOnDestroy();
-  }
 
   getCurrencies() {
 
@@ -44,15 +36,15 @@ export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements O
     const request = {
     }
 
-    this.currenciesService.getCurrencies(request)
-      .pipe(
-        tap((response: GetCurrenciesResponse | any) => {
-          console.log(response);
-          this.currencies$.next(response.data);
-        }),
-        finalize(() => this.isLoading$.next(false)),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.currenciesService.getCurrencies(request)
+    //   .pipe(
+    //     tap((response: GetCurrenciesResponse | any) => {
+    //       console.log(response);
+    //       this.currencies$.next(response.data);
+    //     }),
+    //     finalize(() => this.isLoading$.next(false)),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 
   createCurrency() {
@@ -62,12 +54,12 @@ export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements O
 
     }
 
-    this.currenciesService.createCurrency(request)
-      .pipe(
-        tap(),
-        finalize(() => this.isLoading$.next(false)),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.currenciesService.createCurrency(request)
+    //   .pipe(
+    //     tap(),
+    //     finalize(() => this.isLoading$.next(false)),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 
   updateCurrency() {
@@ -77,12 +69,12 @@ export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements O
 
     }
 
-    this.currenciesService.updateCurrency(request)
-      .pipe(
-        tap(),
-        finalize(() => this.isLoading$.next(false)),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.currenciesService.updateCurrency(request)
+    //   .pipe(
+    //     tap(),
+    //     finalize(() => this.isLoading$.next(false)),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 
   deleteCurrency(currency: any) {
@@ -92,11 +84,11 @@ export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements O
 
     }
 
-    this.currenciesService.deleteCurrency(request)
-      .pipe(
-        tap(),
-        finalize(() => this.isLoading$.next(false)),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.currenciesService.deleteCurrency(request)
+    //   .pipe(
+    //     tap(),
+    //     finalize(() => this.isLoading$.next(false)),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 }

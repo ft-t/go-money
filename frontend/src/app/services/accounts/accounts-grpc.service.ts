@@ -3,18 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { ConfigService } from '../config.service';
 import { CookieService } from '../cookie.service';
-import { AccountsService } from '../../../../gen/gomoneypb/accounts/v1/accounts_connect';
-import {
-  CreateAccountRequest,
-  CreateAccountResponse,
-  DeleteAccountRequest,
-  DeleteAccountResponse,
-  ListAccountsResponse,
-  ReorderAccountsRequest, ReorderAccountsResponse,
-  UpdateAccountRequest,
-  UpdateAccountResponse
-} from '../../../../gen/gomoneypb/accounts/v1/accounts_pb';
-import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'

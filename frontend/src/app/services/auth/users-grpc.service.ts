@@ -6,7 +6,6 @@ import { CookieService } from '../cookie.service';
 // import { GrpcClientFactoryService } from '../../modules/common/grpc/grpc-client-factory.service';
 // import { BaseGrpcConnectService } from '../../modules/common/grpc/common/base-grpc-connect.service';
 import { Observable } from 'rxjs';
-import { UsersService } from '../../../../gen/gomoneypb/users/v1/users_connect';
 import { CreateRequest, CreateResponse, LoginRequest, LoginResponse } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/users/v1/users_pb';
 import { CookieInstances } from '../../objects/cookie-instances';
 

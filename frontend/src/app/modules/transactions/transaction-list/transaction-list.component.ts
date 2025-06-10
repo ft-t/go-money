@@ -10,7 +10,6 @@ import { BaseAutoUnsubscribeClass } from '../../../objects/auto-unsubscribe/base
 import { BehaviorSubject, finalize } from 'rxjs';
 import { CurrenciesGrpcService } from '../../../services/currencies/currencies-grpc.service';
 import { tap } from 'rxjs/operators';
-import { GetCurrenciesResponse } from '../../../../../gen/gomoneypb/currency/v1/currency_pb';
 
 @Component({
   selector: 'app-currency-list',

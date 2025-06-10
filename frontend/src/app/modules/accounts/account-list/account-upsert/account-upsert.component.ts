@@ -5,13 +5,7 @@ import {
   OnInit,
 } from '@angular/core';
 import { BaseAutoUnsubscribeClass } from '../../../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
-import {
-  DeleteAccountRequest,
-  DeleteAccountResponse,
-  UpdateAccountRequest, UpdateAccountResponse
-} from '../../../../../../gen/gomoneypb/accounts/v1/accounts_pb';
 import { tap } from 'rxjs/operators';
-import { AccountType } from '../../../../../../gen/gomoneypb/v1/account_pb';
 import { AccountsGrpcService } from '../../../../services/accounts/accounts-grpc.service';
 
 @Component({
@@ -35,11 +29,11 @@ export class AccountUpsertComponent extends BaseAutoUnsubscribeClass implements 
   }
 
   deleteAccount() {
-    const request = new DeleteAccountRequest(
-      {
-        id: 12345
-      }
-    );
+    // const request = new DeleteAccountRequest(
+    //   {
+    //     id: 12345
+    //   }
+    // );
 
     // this.accountsService.deleteAccount(request)
     //   .pipe(
@@ -51,18 +45,18 @@ export class AccountUpsertComponent extends BaseAutoUnsubscribeClass implements 
   }
 
   updateAccount() {
-    const request = new UpdateAccountRequest(
-      {
-        id: 12345,
-        name: '',
-        extra: {},
-        type: AccountType.UNSPECIFIED,
-        note: '',
-        liabilityPercent: '',
-        iban: '',
-        accountNumber: ''
-      }
-    );
+    // const request = new UpdateAccountRequest(
+    //   {
+    //     id: 12345,
+    //     name: '',
+    //     extra: {},
+    //     type: AccountType.UNSPECIFIED,
+    //     note: '',
+    //     liabilityPercent: '',
+    //     iban: '',
+    //     accountNumber: ''
+    //   }
+    // );
 
     // this.accountsService.updateAccount(request)
     //   .pipe(
