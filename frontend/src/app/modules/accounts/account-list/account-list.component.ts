@@ -129,13 +129,13 @@ export class AccountListComponent extends BaseAutoUnsubscribeClass implements On
 
     this.isLoading$.next(true);
 
-    this.accountsService.listAccounts()
-      .pipe(
-        tap((response: ListAccountsResponse) => {
-          console.log(response);
-          // this.customers1$.next(response.accounts);
-        }),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.accountsService.listAccounts()
+    //   .pipe(
+    //     tap((response: ListAccountsResponse) => {
+    //       console.log(response);
+    //       // this.customers1$.next(response.accounts);
+    //     }),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 }

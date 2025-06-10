@@ -1,95 +1,90 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
 import { BaseAutoUnsubscribeClass } from '../../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
 import { UsersGrpcService } from '../../../services/auth/users-grpc.service';
-import { tap } from 'rxjs/operators';
-import {
-  CreateRequest,
-  CreateResponse,
-  LoginRequest,
-  LoginResponse
-} from '../../../../../gen/gomoneypb/users/v1/users_pb';
+import { createConnectTransport } from '@connectrpc/connect-web';
+import { createClient } from '@connectrpc/connect';
+
+import { CreateRequest, CreateResponse, LoginRequest, LoginResponse } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/users/v1/users_pb';
 import { Router } from '@angular/router';
 import { CookieService } from '../../../services/cookie.service';
-import { CookieInstances } from '../../../objects/cookie-instances';
+import { ConfigurationService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
 
 export enum AuthTypeEnum {
-  Login = 0,
-  Register = 1
+    Login = 0,
+    Register = 1
 }
 
 @Component({
-  selector: 'app-login',
-  standalone: false,
-  templateUrl: 'login.component.html',
-  styleUrls: ['login.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-login',
+    standalone: false,
+    templateUrl: 'login.component.html',
+    styleUrls: ['login.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LoginComponent extends BaseAutoUnsubscribeClass implements OnInit, OnDestroy {
-  email: string = '';
-  password: string = '';
-  checked: boolean = false;
+export class LoginComponent implements OnInit {
+    email: string = '';
+    password: string = '';
 
-  authType = AuthTypeEnum.Login
+    authType = AuthTypeEnum.Login;
 
-  protected readonly AuthTypeEnum = AuthTypeEnum;
+    protected readonly AuthTypeEnum = AuthTypeEnum;
 
-  constructor(private usersService: UsersGrpcService,
-              private cookieService: CookieService,
-              private router: Router) {
-    super();
-  }
+    constructor(
+        private usersService: UsersGrpcService,
+        private cookieService: CookieService,
+        private router: Router
+    ) {}
 
-  override ngOnInit() {
-    super.ngOnInit();
-  }
+    async ngOnInit() {
 
-  override ngOnDestroy() {
-    super.ngOnDestroy();
-  }
+    }
 
-  changeAuthType(type: AuthTypeEnum) {
-    this.authType = type;
-  }
+    changeAuthType(type: AuthTypeEnum) {
+        this.authType = type;
+    }
 
-  login() {
-    const request = new LoginRequest(
-      {
-        login: this.email,
-        password: this.password
-      }
-    );
+    async login() {
+        let transport = createConnectTransport({
+            baseUrl: 'http://localhost:8080',
+        });
 
-    this.usersService.loginMethod(request)
-      .pipe(
-        tap((response: LoginResponse) => {
-          console.log(response);
+        const client = createClient(ConfigurationService, transport);
+        let val = await client.getConfiguration({});
 
-          this.cookieService.set(CookieInstances.Jwt, '12345', new Date(2099, 1, 1), '/');
+        // const request = new LoginRequest({
+        //     login: this.email,
+        //     password: this.password
+        // });
 
-          this.router.navigate(['/']);
-        }),
-        this.takeUntilDestroy
-      ).subscribe();
-  }
+        // this.usersService.loginMethod(request)
+        //   .pipe(
+        //     tap((response: LoginResponse) => {
+        //       console.log(response);
+        //
+        //       this.cookieService.set(CookieInstances.Jwt, '12345', new Date(2099, 1, 1), '/');
+        //
+        //       this.router.navigate(['/']);
+        //     }),
+        //     this.takeUntilDestroy
+        //   ).subscribe();
+    }
 
-  register() {
-    const request = new CreateRequest(
-      {
-        login: this.email,
-        password: this.password
-      }
-    );
+    register() {
+        // const request = new CreateRequest({
+        //     login: this.email,
+        //     password: this.password
+        // });
 
-    this.usersService.register(request)
-      .pipe(
-        tap((response: CreateResponse) => {
-          console.log(response);
-
-          this.cookieService.set(CookieInstances.Jwt, '12345', new Date(2099, 1, 1), '/');
-
-          this.router.navigate(['/']);
-        }),
-        this.takeUntilDestroy
-      ).subscribe();
-  }
+        // this.usersService.register(request)
+        //   .pipe(
+        //     tap((response: CreateResponse) => {
+        //       console.log(response);
+        //
+        //       this.cookieService.set(CookieInstances.Jwt, '12345', new Date(2099, 1, 1), '/');
+        //
+        //       this.router.navigate(['/']);
+        //     }),
+        //     this.takeUntilDestroy
+        //   ).subscribe();
+    }
 }

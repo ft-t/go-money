@@ -7,6 +7,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RippleModule } from 'primeng/ripple';
 import { AppFloatingConfigurator } from '../../layout/component/app.floatingconfigurator';
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { createClient } from '@connectrpc/connect';
+import { ConfigurationService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
+import { LoginRequest, LoginRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/users/v1/users_pb';
 
 @Component({
   selector: 'app-login',
@@ -41,7 +45,7 @@ import { AppFloatingConfigurator } from '../../layout/component/app.floatingconf
                 </div>
                 <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</span>
               </div>
-              <p-button label="Sign In" styleClass="w-full" routerLink="/"></p-button>
+              <p-button label="Sign In" styleClass="w-full" (click)="login()"></p-button>
             </div>
           </div>
         </div>
@@ -55,4 +59,18 @@ export class Login {
   password: string = '';
 
   checked: boolean = false;
+
+  async login() {
+      let transport = createConnectTransport({
+          baseUrl: 'http://localhost:8080',
+      });
+
+      const client = createClient(ConfigurationService, transport);
+      let val = await client.getConfiguration({});
+
+      // const request = LoginRequestSchema({
+      //     login: this.email,
+      //     password: this.password
+      // });
+  }
 }

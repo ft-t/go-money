@@ -41,13 +41,13 @@ export class AccountUpsertComponent extends BaseAutoUnsubscribeClass implements 
       }
     );
 
-    this.accountsService.deleteAccount(request)
-      .pipe(
-        tap((response: DeleteAccountResponse) => {
-          console.log(response);
-        }),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.accountsService.deleteAccount(request)
+    //   .pipe(
+    //     tap((response: DeleteAccountResponse) => {
+    //       console.log(response);
+    //     }),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 
   updateAccount() {
@@ -64,13 +64,13 @@ export class AccountUpsertComponent extends BaseAutoUnsubscribeClass implements 
       }
     );
 
-    this.accountsService.updateAccount(request)
-      .pipe(
-        tap((response: UpdateAccountResponse) => {
-          console.log(response);
-          // this.customers1$.next(response.accounts);
-        }),
-        this.takeUntilDestroy
-      ).subscribe();
+    // this.accountsService.updateAccount(request)
+    //   .pipe(
+    //     tap((response: UpdateAccountResponse) => {
+    //       console.log(response);
+    //       // this.customers1$.next(response.accounts);
+    //     }),
+    //     this.takeUntilDestroy
+    //   ).subscribe();
   }
 }

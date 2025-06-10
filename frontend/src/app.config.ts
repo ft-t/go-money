@@ -8,7 +8,6 @@ import { appRoutes } from './app.routes';
 import { ConfigService } from './app/services/config.service';
 import { InitialConfiguration } from './app/objects/configuration/сonfiguration';
 import { BroadcastService } from './app/services/broadcast.service';
-import { GrpcClientFactoryService } from './app/modules/common/grpc/grpc-client-factory.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -37,9 +36,5 @@ export const appConfig: ApplicationConfig = {
       deps: []
     },
     BroadcastService,
-    {
-      provide: GrpcClientFactoryService,
-      useClass: GrpcClientFactoryService
-    },
   ]
 };
