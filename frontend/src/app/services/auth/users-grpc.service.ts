@@ -6,14 +6,15 @@ import { CookieService } from '../cookie.service';
 import { GrpcClientFactoryService } from '../../modules/common/grpc/grpc-client-factory.service';
 import { BaseGrpcConnectService } from '../../modules/common/grpc/common/base-grpc-connect.service';
 import { Observable } from 'rxjs';
-import { UsersService } from '../../../../gen/gomoneypb/users/v1/users_connect';
-import {
-  CreateRequest,
-  CreateResponse,
-  LoginRequest,
-  LoginResponse
-} from '../../../../gen/gomoneypb/users/v1/users_pb';
+// import { UsersService } from '../../../../gen/gomoneypb/users/v1/users_connect';
+// import {
+//   CreateRequest,
+//   CreateResponse,
+//   LoginRequest,
+//   LoginResponse
+// } from '../../../../gen/gomoneypb/users/v1/users_pb';
 import { CookieInstances } from '../../objects/cookie-instances';
+import { LoginRequest } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/users/v1/users_pb';
 
 @Injectable({
   providedIn: 'root'
@@ -25,7 +26,7 @@ export class UsersGrpcService extends BaseGrpcConnectService {
               private cookieService: CookieService,
               private httpClient: HttpClient,
               grpcClientFactoryService: GrpcClientFactoryService) {
-    super(grpcClientFactoryService, configurationService.getConfig().UsersService, UsersService);
+    super(grpcClientFactoryService, configurationService.getConfig().UsersService, UsersGrpcService);
   }
 
   public loginMethod(request: LoginRequest): Observable<LoginResponse> {

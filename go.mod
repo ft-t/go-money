@@ -30,6 +30,7 @@ require (
 )
 
 require (
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250610095726-b3abb2bf7929.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20241215232642-bb51bb14a506 // indirect
 	github.com/cockroachdb/redact v1.1.6 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
