@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/ft-t/go-money/go-money-backend:${TAG}
+    image: ${REPO}:${TAG}
     hostname: app
     container_name: app
     restart: always
