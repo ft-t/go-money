@@ -1,10 +1,10 @@
 package main
 
 import (
+	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/configuration/v1/configurationv1connect"
+	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	"connectrpc.com/connect"
 	"context"
-	configurationv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/configuration/v1"
-	"github.com/ft-t/go-money-pb/gen/gomoneypb/configuration/v1/accountsv1connect"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 )
 
@@ -21,7 +21,7 @@ func NewConfigApi(
 	}
 
 	mux.GetMux().Handle(
-		accountsv1connect.NewConfigurationServiceHandler(res, mux.GetDefaultHandlerOptions()...),
+		configurationv1connect.NewConfigurationServiceHandler(res, mux.GetDefaultHandlerOptions()...),
 	)
 
 	return res, nil

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/currency/v1/currencyv1connect"
+	"buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
 	"connectrpc.com/connect"
 	"context"
-	"github.com/ft-t/go-money-pb/gen/gomoneypb/currency/v1"
-	"github.com/ft-t/go-money-pb/gen/gomoneypb/currency/v1/currencyv1connect"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/shopspring/decimal"
 )

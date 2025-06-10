@@ -1,7 +1,7 @@
-buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250610094309-48e5dcb9aa9f.1 h1:RqGcsjwjWHBE/iu4u0o+96p8wHEJBTwDX3zRwd8o0dY=
-buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250610094309-48e5dcb9aa9f.1/go.mod h1:3BWcN+x+wIj2zbmVHSTrpzTObT8e3V/w0Pu1EgSnxvI=
-buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250610095726-b3abb2bf7929.1 h1:+JGfL9Kx84Rt/rmfAXyyk5lYSWkhngpZnQZIlqvB/KA=
-buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250610095726-b3abb2bf7929.1/go.mod h1:3eoRFVZNoLEpvSnBfHfBVBaWhc/NLi1Pm/9WVQ3MNrE=
+buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-00000000000000-cc0661872628.1 h1:GwTrXBiaCvKJRcVoZCXdUeCkSzsf2N2i3NH9arQki6M=
+buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-00000000000000-cc0661872628.1/go.mod h1:KxI+5OmXczXeLYgNKXcA3sNAKAucnxJ3fQ57kkSKnwE=
+buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.2-00000000000000-cc0661872628.1 h1:ywvc0XQr9J6zsF7bmVQxOYaqvGlNhboNvBsu2mUCCtE=
+buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.2-00000000000000-cc0661872628.1/go.mod h1:EuaE2xHSa3B0YhGhPsbfC9nTXrg7M6qplPtLD7+uiz4=
 connectrpc.com/connect v1.18.1 h1:PAg7CjSAGvscaf6YZKUefjoih5Z/qYkyaTrBW8xvYPw=
 connectrpc.com/connect v1.18.1/go.mod h1:0292hj1rnx8oFrStN7cB4jjVBeqs+Yx5yDIC2prWDO8=
 connectrpc.com/grpcreflect v1.3.0 h1:Y4V+ACf8/vOb1XOc251Qun7jMB75gCUNw6llvB9csXc=
@@ -17,8 +17,6 @@ github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ3
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/ft-t/go-money-pb v0.0.0-20250226192742-2d581369cdcd h1:7CP1IMhV5hpOnAkxwQjlNeulsM+4yEEzq/PrIboqhQA=
-github.com/ft-t/go-money-pb v0.0.0-20250226192742-2d581369cdcd/go.mod h1:PI8ulxDJ0HamtFdQhvfOTJDla0blE6tJX9EuMw1IrzU=
 github.com/getsentry/sentry-go v0.33.0 h1:YWyDii0KGVov3xOaamOnF0mjOrqSjBqwv48UEzn7QFg=
 github.com/getsentry/sentry-go v0.33.0/go.mod h1:C55omcY9ChRQIUcVcGcs+Zdy4ZpQGvNJ7JYHIoSWOtE=
 github.com/go-errors/errors v1.4.2 h1:J6MZopCL4uSllY1OfXM374weqZFFItUbrImctkmUxIA=

@@ -1,10 +1,10 @@
 package transactions
 
 import (
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/cockroachdb/errors"
-	transactionsv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/transactions/v1"
-	gomoneypbv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/hashicorp/golang-lru/v2/expirable"
