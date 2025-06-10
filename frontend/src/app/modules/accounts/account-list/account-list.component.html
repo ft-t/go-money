@@ -3,25 +3,26 @@
     <p-table #dt1
              dataKey="id"
              [value]="accounts"
-             [rows]="10"
+             [rows]="1000"
              [loading]="loading"
              [rowHover]="true"
              [showGridlines]="true"
-             [paginator]="true"
-             [globalFilterFields]="['name', 'country.name', 'representative.name', 'status']"
+             [paginator]="false"
+             [globalFilterFields]="['account.name', 'account.number', 'account.currency']"
              responsiveLayout="scroll">
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row">
-                <button pButton pButtonLabel="Clear" class="p-button-outlined mb-2" pButtonIcon="pi pi-filter-slash"
-                        (click)="clear(dt1)"></button>
-                <!--        <button pButton pButtonLabel="Create" class="p-button-outlined mb-2"-->
-                <!--                [routerLink]="['/account', 'new']"></button>-->
                 <p-iconfield iconPosition="left" class="ml-auto">
                     <p-inputicon>
                         <i class="pi pi-search"></i>
                     </p-inputicon>
                     <input pInputText type="text" (input)="onGlobalFilter(dt1, $event)" placeholder="Search keyword" />
+                    <p-button class="p-button-outlined mb-2" icon="pi pi-filter-slash"
+                              (click)="clear(dt1)"></p-button>
                 </p-iconfield>
+
+                <p-button label="Create new account" class="p-button-link"
+                          (click)="this.router.navigate(['/account', 'new'])" />
             </div>
         </ng-template>
         <ng-template #header>
@@ -29,11 +30,11 @@
                 <th style="min-width: 12rem">
                     <div class="flex justify-between items-center">
                         Name
-                        <p-columnFilter type="text" field="name" display="menu"
+                        <p-columnFilter type="text" field="account.name" display="menu"
                                         placeholder="Search by name"></p-columnFilter>
                     </div>
                 </th>
-                <th style="min-width: 12rem">
+                <th style="min-width: 5rem">
                     <div class="flex justify-between items-center">
                         Type
                     </div>
@@ -41,48 +42,54 @@
                 <th style="min-width: 12rem">
                     <div class="flex justify-between items-center">
                         Account number
+                        <p-columnFilter type="text" field="account.accountNumber" display="menu"
+                                        placeholder="Search by account number"></p-columnFilter>
                     </div>
                 </th>
-                <th style="min-width: 12rem">
+                <th style="min-width: 3rem">
                     <div class="flex justify-between items-center">
                         Currency
+                        <p-columnFilter type="text" field="account.currency" display="menu"
+                                        placeholder="Search by currency"></p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 10rem">
                     <div class="flex justify-between items-center">
                         Current Balance
-                        <p-columnFilter type="numeric" field="balance" display="menu" currency="USD"></p-columnFilter>
+                        <p-columnFilter type="numeric" field="account.currentBalance" display="menu"
+                                        currency="USD"></p-columnFilter>
                     </div>
                 </th>
-                <th style="min-width: 10rem">
+                <th style="min-width: 5rem">
                     <div class="flex justify-between items-center">
-                        Update date
-                        <p-columnFilter type="date" field="date" display="menu"
-                                        placeholder="mm/dd/yyyy"></p-columnFilter>
-                    </div>
-                </th>
-                <th style="min-width: 10rem">
-                    <div class="flex justify-between items-center">
-                        Update date
+                        Updated date
                         <p-columnFilter type="date" field="date" display="menu"
                                         placeholder="mm/dd/yyyy"></p-columnFilter>
                     </div>
                 </th>
             </tr>
         </ng-template>
-        <ng-template #body let-customer>
+        <ng-template #body let-accountItem>
             <tr>
                 <td>
-                    {{ customer.name }}
+                    {{ accountItem.account.name }}
                 </td>
                 <td>
-                    USD
+                    {{ accountItem.account.type }}
                 </td>
                 <td>
+                    {{ accountItem.account.accountNumber }}
                     <!--          {{ customer.balance | currency: 'USD' : 'symbol' }}-->
                 </td>
                 <td>
+                    {{ accountItem.account.currency }}
                     <!--          {{ customer.date | date: 'MM/dd/yyyy' }}-->
+                </td>
+                <td>
+                    {{ accountItem.account.currentBalance }}
+                </td>
+                <td>
+                    {{ TimestampHelper.timestampToDate(accountItem.account.updatedAt) | date: 'MM/dd/yyyy' }}
                 </td>
             </tr>
         </ng-template>

@@ -1,7 +1,7 @@
 import { ConnectError } from '@connectrpc/connect';
 
 export class ErrorHelper {
-    static GetMessage(error: any): string {
+    static getMessage(error: any): string {
         if (error instanceof ConnectError) {
             return error.rawMessage;
         }

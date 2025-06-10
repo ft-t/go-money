@@ -14,11 +14,15 @@ import {
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { ErrorHelper } from '../../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
+import { DatePipe } from '@angular/common';
+import { TimestampHelper } from '../../../helpers/timestamp.helper';
+import { Router } from '@angular/router';
+import { Button } from 'primeng/button';
 
 @Component({
     selector: 'app-account-list',
     templateUrl: 'account-list.component.html',
-    imports: [FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField]
+    imports: [FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button]
 })
 export class AccountListComponent implements OnInit {
     statuses: any[] = [];
@@ -33,6 +37,7 @@ export class AccountListComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
+        public router: Router
     ) {
         this.accountService = createClient(AccountsService, this.transport);
     }
@@ -43,8 +48,9 @@ export class AccountListComponent implements OnInit {
         try {
             let resp = await this.accountService.listAccounts({});
             this.accounts = resp.accounts || [];
+            console.log(this.accounts);
         } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.GetMessage(e) });
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {
             this.loading = false;
         }
@@ -58,4 +64,6 @@ export class AccountListComponent implements OnInit {
         table.clear();
         this.filter.nativeElement.value = '';
     }
+
+    protected readonly TimestampHelper = TimestampHelper;
 }

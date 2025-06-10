@@ -58,7 +58,7 @@ export class LoginComponent implements OnInit {
 
             await this.router.navigate(['/', 'accounts']);
         } catch (e: any) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.GetMessage(e) });
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
         }
     }
