@@ -11,6 +11,7 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -74,6 +75,16 @@ func main() {
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create accounts handler")
 	}
+
+	go func() {
+		if len(config.ExchangeRatesUrl) > 0 {
+			sync := currency.NewSyncer(http.DefaultClient)
+
+			if currencyErr := sync.Sync(context.TODO(), config.ExchangeRatesUrl); currencyErr != nil {
+				logger.Err(err).Msg("cannot sync exchange rates")
+			}
+		}
+	}()
 
 	go func() {
 		grpcServer.ServeAsync(config.GrpcPort)

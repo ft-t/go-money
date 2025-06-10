@@ -4,21 +4,32 @@ import (
 	"context"
 	"github.com/cockroachdb/errors"
 	transactionsv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/transactions/v1"
+	gomoneypbv1 "github.com/ft-t/go-money-pb/gen/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"time"
 )
 
 type Service struct {
 	accountCurrencyCache *expirable.LRU[int32, string]
+	cfg                  *ServiceConfig
 }
 
-func NewService() *Service {
+type ServiceConfig struct {
+	StatsSvc StatsSvc
+}
+
+func NewService(
+	cfg *ServiceConfig,
+) *Service {
 	return &Service{
 		accountCurrencyCache: expirable.NewLRU[int32, string](100, nil, configuration.DefaultCacheTTL),
+		cfg:                  cfg,
 	}
 }
 
@@ -41,129 +52,173 @@ func (s *Service) Create(
 		CreatedAt:            time.Now().UTC(),
 		Notes:                req.Notes,
 		Extra:                req.Extra,
-		TransactionDate:      req.TransactionDate.AsTime(),
+		TransactionDateTime:  req.TransactionDate.AsTime(),
+		TransactionDateOnly:  req.TransactionDate.AsTime(),
 	}
 
-	switch v := req.GetTransaction().(type) {
-	case *transactionsv1.CreateTransactionRequest_TransferBetweenAccounts:
-		if err := s.fillTransferBetweenAccounts(ctx, v.TransferBetweenAccounts, newTx); err != nil {
-			return nil, err
-		}
-	case *transactionsv1.CreateTransactionRequest_Withdrawal:
-		if err := s.fillWithdrawal(ctx, v.Withdrawal, newTx); err != nil {
-			return nil, err
-		}
-	case *transactionsv1.CreateTransactionRequest_Deposit:
-		if err := s.fillDeposit(ctx, v.Deposit, newTx); err != nil {
-			return nil, err
-		}
+	if newTx.Extra == nil {
+		newTx.Extra = map[string]string{}
 	}
 
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
 	defer tx.Rollback()
+
+	var fillRes *fillResponse
+	var err error
+
+	switch v := req.GetTransaction().(type) {
+	case *transactionsv1.CreateTransactionRequest_TransferBetweenAccounts:
+		if fillRes, err = s.fillTransferBetweenAccounts(ctx, tx, v.TransferBetweenAccounts, newTx); err != nil {
+			return nil, err
+		}
+	case *transactionsv1.CreateTransactionRequest_Withdrawal:
+		if fillRes, err = s.fillWithdrawal(ctx, tx, v.Withdrawal, newTx); err != nil {
+			return nil, err
+		}
+	case *transactionsv1.CreateTransactionRequest_Deposit:
+		if fillRes, err = s.fillDeposit(ctx, tx, v.Deposit, newTx); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("invalid transaction type")
+	}
+
+	for _, acc := range fillRes.Accounts {
+		if acc.FirstTransactionAt == nil || acc.FirstTransactionAt.After(newTx.TransactionDateTime) {
+			acc.FirstTransactionAt = &newTx.TransactionDateTime
+		}
+	}
+
+	// validate wallet transaction date
+
+	if err = tx.Create(newTx).Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, []*database.Transaction{newTx}); err != nil { // CALL BEFORE CREATE
+		return nil, err
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
 
 	return &transactionsv1.CreateTransactionResponse{}, nil
 }
 
 func (s *Service) fillDeposit(
 	ctx context.Context,
+	dbTx *gorm.DB,
 	req *transactionsv1.Deposit,
 	newTx *database.Transaction,
-) error {
+) (*fillResponse, error) {
 	if req.DestinationAccountId <= 0 {
-		return errors.New("destination account id is required")
+		return nil, errors.New("destination account id is required")
 	}
 
 	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
 	if err != nil {
-		return errors.Wrap(err, "invalid destination amount")
+		return nil, errors.Wrap(err, "invalid destination amount")
 	}
 
 	if destinationAmount.IsNegative() || destinationAmount.IsZero() {
-		return errors.New("destination amount must be positive")
+		return nil, errors.New("destination amount must be positive")
 	}
 
-	if err = s.ensureAccountsExistAndCurrencyCorrect(ctx, map[int32]string{
+	accounts, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
 		req.DestinationAccountId: req.DestinationCurrency,
-	}); err != nil {
-		return err
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT
 	newTx.DestinationAmount = destinationAmount
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = &req.DestinationAccountId
 
-	return nil
+	return &fillResponse{
+		Accounts: accounts,
+	}, nil
 }
 
 func (s *Service) fillWithdrawal(
 	ctx context.Context,
+	dbTx *gorm.DB,
 	req *transactionsv1.Withdrawal,
 	newTx *database.Transaction,
-) error {
+) (*fillResponse, error) {
 	if req.SourceAccountId <= 0 {
-		return errors.New("source account id is required")
+		return nil, errors.New("source account id is required")
 	}
 
 	sourceAmount, err := decimal.NewFromString(req.SourceAmount)
 	if err != nil {
-		return errors.Wrap(err, "invalid source amount")
+		return nil, errors.Wrap(err, "invalid source amount")
 	}
 
 	if sourceAmount.IsPositive() || sourceAmount.IsZero() {
-		return errors.New("source amount must be negative")
+		return nil, errors.New("source amount must be negative")
 	}
 
-	if err = s.ensureAccountsExistAndCurrencyCorrect(ctx, map[int32]string{
+	accounts, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
 		req.SourceAccountId: req.SourceCurrency,
-	}); err != nil {
-		return err
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	newTx.SourceAmount = sourceAmount
 	newTx.SourceCurrency = req.SourceCurrency
 	newTx.SourceAccountID = &req.SourceAccountId
+	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL
 
-	return nil
+	return &fillResponse{
+		Accounts: accounts,
+	}, nil
 }
 
 func (s *Service) fillTransferBetweenAccounts(
 	ctx context.Context,
+	dbTx *gorm.DB,
 	req *transactionsv1.TransferBetweenAccounts,
 	newTx *database.Transaction,
-) error {
+) (*fillResponse, error) {
 	if req.SourceAccountId <= 0 {
-		return errors.New("source account id is required")
+		return nil, errors.New("source account id is required")
 	}
 
 	if req.DestinationAccountId <= 0 {
-		return errors.New("destination account id is required")
+		return nil, errors.New("destination account id is required")
 	}
 
-	if err := s.ensureAccountsExistAndCurrencyCorrect(ctx, map[int32]string{
+	accounts, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
 		req.SourceAccountId:      req.SourceCurrency,
 		req.DestinationAccountId: req.DestinationCurrency,
-	}); err != nil {
-		return err
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	sourceAmount, err := decimal.NewFromString(req.SourceAmount)
 	if err != nil {
-		return errors.Wrap(err, "invalid source amount")
+		return nil, errors.Wrap(err, "invalid source amount")
 	}
 
 	if sourceAmount.IsPositive() || sourceAmount.IsZero() {
-		return errors.New("source amount must be negative")
+		return nil, errors.New("source amount must be negative")
 	}
 
 	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
 	if err != nil {
-		return errors.Wrap(err, "invalid destination amount")
+		return nil, errors.Wrap(err, "invalid destination amount")
 	}
 
 	if destinationAmount.IsNegative() || destinationAmount.IsZero() {
-		return errors.New("destination amount must be positive")
+		return nil, errors.New("destination amount must be positive")
 	}
+
+	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS
 
 	newTx.SourceAmount = sourceAmount
 	newTx.DestinationAmount = destinationAmount
@@ -174,37 +229,43 @@ func (s *Service) fillTransferBetweenAccounts(
 	newTx.SourceCurrency = req.SourceCurrency
 	newTx.DestinationCurrency = req.DestinationCurrency
 
-	return nil
+	return &fillResponse{
+		Accounts: accounts,
+	}, nil
 }
 
 func (s *Service) ensureAccountsExistAndCurrencyCorrect(
-	ctx context.Context,
+	_ context.Context,
+	dbTx *gorm.DB,
 	expectedAccounts map[int32]string,
-) error {
+) (map[int32]*database.Account, error) {
 	var accounts []*database.Account
 
-	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
-		Model(&database.Account{}).Where("id IN ?", lo.Keys(expectedAccounts)).
-		Select("id, currency").Find(&accounts).Error; err != nil {
-		return errors.WithStack(err)
+	if err := dbTx.
+		Where("id IN ?", lo.Keys(expectedAccounts)).
+		Clauses(&clause.Locking{Strength: "UPDATE"}).
+		Find(&accounts).Error; err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	existing := map[int32]string{}
+	accCurrencies := map[int32]string{}
+	accMap := map[int32]*database.Account{}
 	for _, acc := range accounts {
-		existing[acc.ID] = acc.Currency
+		accMap[acc.ID] = acc
+		accCurrencies[acc.ID] = acc.Currency
 	}
 
 	for id, expectedCurrency := range expectedAccounts {
-		existingCurrency, ok := existing[id]
+		existingCurrency, ok := accCurrencies[id]
 
 		if !ok {
-			return errors.Newf("account with id %d not found", id)
+			return nil, errors.Newf("account with id %d not found", id)
 		}
 
 		if existingCurrency != expectedCurrency {
-			return errors.Newf("account with id %d has currency %s, expected %s", id, existingCurrency, expectedCurrency)
+			return nil, errors.Newf("account with id %d has currency %s, expected %s", id, existingCurrency, expectedCurrency)
 		}
 	}
 
-	return nil
+	return accMap, nil
 }
