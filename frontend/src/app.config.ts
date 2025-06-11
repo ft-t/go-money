@@ -12,6 +12,7 @@ import { createConnectTransport } from '@connectrpc/connect-web';
 import { TRANSPORT_TOKEN } from './app/consts/transport';
 import { authInterceptor } from './interceptors/auth';
 import { MessageService } from 'primeng/api';
+import { EnumService } from './app/services/enum.service';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -26,6 +27,7 @@ export const appConfig: ApplicationConfig = {
         provideHttpClient(withFetch()),
         provideAnimationsAsync(),
         MessageService,
+        EnumService,
         providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } }),
         {
             provide: TRANSPORT_TOKEN,

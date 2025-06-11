@@ -7,10 +7,7 @@ import { InputIcon } from 'primeng/inputicon';
 import { IconField } from 'primeng/iconfield';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
-import {
-    AccountsService,
-    ListAccountsResponse_AccountItem
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { ErrorHelper } from '../../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
@@ -18,6 +15,7 @@ import { DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../../helpers/timestamp.helper';
 import { Router } from '@angular/router';
 import { Button } from 'primeng/button';
+import { EnumService, AccountTypeEnum } from '../../../services/enum.service';
 
 @Component({
     selector: 'app-account-list',
@@ -29,8 +27,11 @@ export class AccountListComponent implements OnInit {
 
     loading: boolean = false;
 
+    public accountTypesMap: { [id: string]: AccountTypeEnum } = {};
+
     public accounts: ListAccountsResponse_AccountItem[] = [];
     private accountService;
+    public accountTypes = EnumService.getAccountTypes();
 
     @ViewChild('filter') filter!: ElementRef;
 
@@ -44,6 +45,10 @@ export class AccountListComponent implements OnInit {
 
     async ngOnInit() {
         this.loading = true;
+
+        for (let type of this.accountTypes) {
+            this.accountTypesMap[type.value] = type;
+        }
 
         try {
             let resp = await this.accountService.listAccounts({});

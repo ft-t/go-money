@@ -75,7 +75,7 @@
                     {{ accountItem.account.name }}
                 </td>
                 <td>
-                    {{ accountItem.account.type }}
+                    {{ this.accountTypesMap[accountItem.account.type].name }}
                 </td>
                 <td>
                     {{ accountItem.account.accountNumber }}
