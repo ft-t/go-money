@@ -8,7 +8,7 @@ import { IconField } from 'primeng/iconfield';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
+import { Account, AccountSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { ErrorHelper } from '../../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
 import { DatePipe } from '@angular/common';
@@ -16,6 +16,7 @@ import { TimestampHelper } from '../../../helpers/timestamp.helper';
 import { Router } from '@angular/router';
 import { Button } from 'primeng/button';
 import { EnumService, AccountTypeEnum } from '../../../services/enum.service';
+import { create } from '@bufbuild/protobuf';
 
 @Component({
     selector: 'app-account-list',

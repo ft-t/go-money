@@ -13,15 +13,21 @@ import { FormsModule } from '@angular/forms';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { create } from '@bufbuild/protobuf';
 import { EnumService } from '../../../../services/enum.service';
+import { NgIf } from '@angular/common';
+import { Textarea } from 'primeng/textarea';
+import { AccountsService, CreateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { Router } from '@angular/router';
 
 @Component({
     selector: 'app-account-upsert',
     templateUrl: 'account-upsert.component.html',
     styleUrls: ['account-upsert.component.scss'],
-    imports: [Button, InputText, Fluid, DropdownModule, FormsModule]
+    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea]
 })
 export class AccountUpsertComponent implements OnInit {
     private currencyService;
+    private accountsService;
+
     public currencies: Currency[] = [];
 
     public account: Account = create(AccountSchema, {});
@@ -30,9 +36,10 @@ export class AccountUpsertComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        private enumService: EnumService,
+        private router: Router,
     ) {
         this.currencyService = createClient(CurrencyService, this.transport);
+        this.accountsService = createClient(AccountsService, this.transport);
     }
 
     async ngOnInit() {
@@ -47,43 +54,30 @@ export class AccountUpsertComponent implements OnInit {
         }
     }
 
-    ngOnDestroy() {}
+    async create() {
+        try {
+            let response = await this.accountsService.createAccount(
+                create(CreateAccountRequestSchema, {
+                    type: this.account.type,
+                    name: this.account.name,
+                    currency: this.account.currency,
+                    accountNumber: this.account.accountNumber,
+                    iban: this.account.iban,
+                    note: this.account.note,
+                    liabilityPercent: this.account.liabilityPercent,
+                    extra: {
+                        created_by: 'web'
+                    } // todo
+                })
+            );
 
-    deleteAccount() {
-        // const request = new DeleteAccountRequest(
-        //   {
-        //     id: 12345
-        //   }
-        // );
-        // this.accountsService.deleteAccount(request)
-        //   .pipe(
-        //     tap((response: DeleteAccountResponse) => {
-        //       console.log(response);
-        //     }),
-        //     this.takeUntilDestroy
-        //   ).subscribe();
+            this.messageService.add({ severity: 'info', detail: "New account created" });
+            await this.router.navigate(['/', 'accounts', response.account!.id.toString()]);
+        } catch (e: any) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            return;
+        }
     }
 
-    updateAccount() {
-        // const request = new UpdateAccountRequest(
-        //   {
-        //     id: 12345,
-        //     name: '',
-        //     extra: {},
-        //     type: AccountType.UNSPECIFIED,
-        //     note: '',
-        //     liabilityPercent: '',
-        //     iban: '',
-        //     accountNumber: ''
-        //   }
-        // );
-        // this.accountsService.updateAccount(request)
-        //   .pipe(
-        //     tap((response: UpdateAccountResponse) => {
-        //       console.log(response);
-        //       // this.customers1$.next(response.accounts);
-        //     }),
-        //     this.takeUntilDestroy
-        //   ).subscribe();
-    }
+    protected readonly AccountType = AccountType;
 }
