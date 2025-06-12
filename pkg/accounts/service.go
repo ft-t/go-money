@@ -16,11 +16,19 @@ type Service struct {
 }
 
 func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
-	var accounts []database.Account
+	var accounts []*database.Account
 
-	db := database.GetDbWithContext(ctx, database.DbTypeReadonly)
+	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Order("position desc")
 
-	if err := db.Unscoped().Order("position desc").Find(&accounts).Error; err != nil {
+	if len(req.Ids) > 0 {
+		query = query.Where("id in ?", req.Ids)
+	}
+
+	if req.IncludeDeleted {
+		query = query.Unscoped()
+	}
+
+	if err := query.Find(&accounts).Error; err != nil {
 		return nil, err
 	}
 
@@ -29,7 +37,7 @@ func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest)
 	for _, account := range accounts {
 		mapped = append(mapped,
 			&accountsv1.ListAccountsResponse_AccountItem{
-				Account: s.cfg.MapperSvc.MapAccount(ctx, &account),
+				Account: s.cfg.MapperSvc.MapAccount(ctx, account),
 			})
 	}
 
