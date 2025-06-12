@@ -42,7 +42,7 @@ export class AppMenu {
                 {
                     label: 'Liabilities',
                     icon: 'pi pi-fw pi-credit-card',
-                    routerLink: ['/accounts']
+                    routerLink: ['/accounts/liabilities']
                 }
             ]
         },

@@ -10,18 +10,22 @@ import { Transport, createClient } from '@connectrpc/connect';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { Account, AccountSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { ErrorHelper } from '../../../helpers/error.helper';
-import { MessageService } from 'primeng/api';
-import { DatePipe } from '@angular/common';
+import { MessageService, OverlayOptions } from 'primeng/api';
+import { CommonModule, DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../../helpers/timestamp.helper';
 import { Router } from '@angular/router';
 import { Button } from 'primeng/button';
 import { EnumService, AccountTypeEnum } from '../../../services/enum.service';
 import { create } from '@bufbuild/protobuf';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { SelectModule } from 'primeng/select';
+import { OverlayModule } from 'primeng/overlay';
 
 @Component({
     selector: 'app-account-list',
     templateUrl: 'account-list.component.html',
-    imports: [FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button]
+    imports: [OverlayModule ,FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule],
+    styles: ['.p-multiselect-overlay {z-index: 1000 !important;}']
 })
 export class AccountListComponent implements OnInit {
     statuses: any[] = [];

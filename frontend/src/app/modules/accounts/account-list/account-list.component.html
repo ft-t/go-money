@@ -37,6 +37,20 @@
                 <th style="min-width: 5rem">
                     <div class="flex justify-between items-center">
                         Type
+                        <p-columnFilter matchMode="in" field="account.type" display="row" [showMatchModes]="false"
+                                        [showOperator]="false" [showAddButton]="false" [showButtons]="false"
+                                        [showApplyButton]="false" [showClearButton]="true">
+                            <ng-template #filter let-value let-filter="filterCallback">
+                                <p-multiselect [(ngModel)]="value" [options]="accountTypes" placeholder="Any" appendTo="body"
+                                               (onChange)="filter($event.value)" optionLabel="name" optionValue="value">
+                                    <ng-template let-option #item>
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ option.name }}</span>
+                                        </div>
+                                    </ng-template>
+                                </p-multiselect>
+                            </ng-template>
+                        </p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 3rem">
@@ -91,7 +105,9 @@
                     {{ accountItem.account.accountNumber }}
                 </td>
                 <td>
-                    <p-button icon="pi pi-pencil" (onClick)="this.router.navigate(['/', 'accounts', 'edit', accountItem.account.id])" severity="secondary" rounded />
+                    <p-button icon="pi pi-pencil"
+                              (onClick)="this.router.navigate(['/', 'accounts', 'edit', accountItem.account.id])"
+                              severity="secondary" rounded />
                 </td>
             </tr>
         </ng-template>
