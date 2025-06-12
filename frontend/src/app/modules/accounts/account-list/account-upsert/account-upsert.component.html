@@ -64,7 +64,8 @@
 
     <div class="flex mt-8">
         <div class="card flex flex-wrap gap-6 w-full justify-end">
-            <p-button label="Create" [fluid]="false" (click)="create()"></p-button>
+            <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
+            <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
         </div>
     </div>
 </p-fluid>

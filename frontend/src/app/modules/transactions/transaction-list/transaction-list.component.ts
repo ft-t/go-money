@@ -17,23 +17,15 @@ import { tap } from 'rxjs/operators';
   templateUrl: 'currency-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CurrencyListComponent extends BaseAutoUnsubscribeClass implements OnInit, OnDestroy {
-  public currencies$ = new BehaviorSubject<any[] | any>([]);
-
-  public override isLoading$ = new BehaviorSubject<boolean>(false);
+export class CurrencyListComponent implements OnInit {
 
   @ViewChild('filter') filter!: ElementRef;
 
   constructor(private currenciesService: CurrenciesGrpcService) {
-    super();
   }
 
-  override ngOnInit() {
-    super.ngOnInit();
-  }
-
-  override ngOnDestroy() {
-    super.ngOnDestroy();
+  ngOnInit() {
+    ngOnInit();
   }
 
   // getCurrencies() {

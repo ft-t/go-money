@@ -22,11 +22,17 @@ export const appRoutes: Routes = [
             },
             {
                 path: 'accounts/new',
-                component: AccountListComponent
+                component: AccountListComponent,
+                data: {
+                    isEdit: false
+                }
             },
             {
                 path: 'accounts/edit/:id',
-                component: AccountListComponent
+                component: AccountUpsertComponent,
+                data: {
+                    isEdit: true
+                }
             },
             {
                 path: 'account/:id',

@@ -39,13 +39,6 @@
                         Type
                     </div>
                 </th>
-                <th style="min-width: 12rem">
-                    <div class="flex justify-between items-center">
-                        Account number
-                        <p-columnFilter type="text" field="account.accountNumber" display="menu"
-                                        placeholder="Search by account number"></p-columnFilter>
-                    </div>
-                </th>
                 <th style="min-width: 3rem">
                     <div class="flex justify-between items-center">
                         Currency
@@ -67,6 +60,14 @@
                                         placeholder="mm/dd/yyyy"></p-columnFilter>
                     </div>
                 </th>
+                <th style="min-width: 3rem">
+                    <div class="flex justify-between items-center">
+                        Account number
+                        <p-columnFilter type="text" field="account.accountNumber" display="menu"
+                                        placeholder="Search by account number"></p-columnFilter>
+                    </div>
+                </th>
+                <th style="width: 5rem"></th>
             </tr>
         </ng-template>
         <ng-template #body let-accountItem>
@@ -78,9 +79,6 @@
                     {{ this.accountTypesMap[accountItem.account.type].name }}
                 </td>
                 <td>
-                    {{ accountItem.account.accountNumber }}
-                </td>
-                <td>
                     {{ accountItem.account.currency }}
                 </td>
                 <td>
@@ -88,6 +86,12 @@
                 </td>
                 <td>
                     {{ TimestampHelper.timestampToDate(accountItem.account.updatedAt) | date: 'MM/dd/yyyy' }}
+                </td>
+                <td>
+                    {{ accountItem.account.accountNumber }}
+                </td>
+                <td>
+                    <p-button icon="pi pi-pencil" (onClick)="this.router.navigate(['/', 'accounts', 'edit', accountItem.account.id])" severity="secondary" rounded />
                 </td>
             </tr>
         </ng-template>
