@@ -1,88 +1,126 @@
 <div class="card">
-  <div class="font-semibold text-xl mb-4">Currency list</div>
-  <p-table #dt1
-           [value]="(currencies$ | ngrxPush)"
-           dataKey="id"
-           [rows]="10"
-           [loading]="isLoading$ | ngrxPush"
-           [rowHover]="true"
-           [showGridlines]="true"
-           [paginator]="true"
-           [globalFilterFields]="['name', 'country.name', 'representative.name', 'status']"
-           responsiveLayout="scroll">
-    <ng-template #caption>
-      <div class="flex justify-between items-center flex-column sm:flex-row">
-        <button pButton pButtonLabel="Create" class="p-button-outlined mb-2"
-                [routerLink]="['/account', 'new']"></button>
-        <p-iconfield iconPosition="left" class="ml-auto">
-          <p-inputicon>
-            <i class="pi pi-search"></i>
-          </p-inputicon>
-          <input pInputText type="text" placeholder="Search by ..." />
-        </p-iconfield>
-      </div>
-    </ng-template>
-    <ng-template #header>
-      <tr>
-        <th>
-          <div class="flex justify-between items-center">
-            ID
-            <p-columnFilter type="text" field="id" display="menu" placeholder="Search by ID"></p-columnFilter>
-          </div>
-        </th>
-        <th>
-          <div class="flex justify-between items-center">
-            Name
-            <p-columnFilter type="text" field="name" display="menu" placeholder="Search by name"></p-columnFilter>
-          </div>
-        </th>
-        <th>
-          <div class="flex justify-between items-center">
-            Currency
-          </div>
-        </th>
-        <th>
-          <div class="flex justify-between items-center">
-            Balance
-            <p-columnFilter type="numeric" field="balance" display="menu" currency="USD"></p-columnFilter>
-          </div>
-        </th>
-        <th>
-          <div class="flex justify-between items-center">
-            Update date
-            <p-columnFilter type="date" field="date" display="menu" placeholder="mm/dd/yyyy"></p-columnFilter>
-          </div>
-        </th>
-      </tr>
-    </ng-template>
-    <ng-template #body let-customer>
-      <tr>
-        <td>
-          0ae846a6-21ba-4772-866d-f0192ce04458
-        </td>
-        <td>
-          {{ customer.name }}
-        </td>
-        <td>
-          USD
-        </td>
-        <td>
-          {{ customer.balance | currency: 'USD' : 'symbol' }}
-        </td>
-        <td>
-          {{ customer.date | date: 'MM/dd/yyyy' }}
-        </td>
-      </tr>
-    </ng-template>
-    <ng-template #emptymessage>
-      <tr>
-        <td colspan="8">No customers found.</td>
-      </tr>
-    </ng-template>
-    <ng-template #loadingbody>
-      <tr>
-        <td colspan="8">Loading... Please wait.</td>
-      </tr>
-    </ng-template>
-  </p-table>
+    <div class="font-semibold text-xl mb-4">Transaction List</div>
+    <p-table #dt1
+             dataKey="id"
+             [value]="transactions"
+             [rows]="1000"
+             [loading]="loading"
+             [rowHover]="true"
+             [showGridlines]="true"
+<!--             [filters]="filters"-->
+             [paginator]="false"
+             [globalFilterFields]="['account.name', 'account.number', 'account.currency']"
+             responsiveLayout="scroll">
+        <ng-template #caption>
+            <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
+                <p-iconfield iconPosition="left" class="ml-auto">
+                    <p-inputicon>
+                        <i class="pi pi-search"></i>
+                    </p-inputicon>
+                    <input pInputText type="text" (input)="onGlobalFilter(dt1, $event)" placeholder="Search keyword" />
+                    <p-button class="p-button-outlined mb-2 " icon="pi pi-filter-slash"
+                              (click)="clear(dt1)"></p-button>
+                </p-iconfield>
+
+                <p-button label="Create new account" class="p-button-link"
+                          (click)="this.router.navigate(['/account', 'new'])" />
+            </div>
+        </ng-template>
+        <ng-template #header>
+            <tr>
+                <th style="min-width: 12rem">
+                    <div class="flex justify-between items-center">
+                        Name
+                        <p-columnFilter type="text" field="account.name" display="menu"
+                                        placeholder="Search by name"></p-columnFilter>
+                    </div>
+                </th>
+                <th style="min-width: 5rem">
+                    <div class="flex justify-between items-center">
+                        Type
+                        <p-columnFilter matchMode="in" field="account.type" display="row" [showMatchModes]="false"
+                                        [showOperator]="false" [showAddButton]="false" [showButtons]="false"
+                                        [showApplyButton]="false" [showClearButton]="true">
+                            <ng-template #filter let-value let-filter="filterCallback">
+                                <p-multiselect [(ngModel)]="value" [options]="accountTypes" placeholder="Any" appendTo="body"
+                                               (onChange)="filter($event.value)" optionLabel="name" optionValue="value">
+                                    <ng-template let-option #item>
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ option.name }}</span>
+                                        </div>
+                                    </ng-template>
+                                </p-multiselect>
+                            </ng-template>
+                        </p-columnFilter>
+                    </div>
+                </th>
+                <th style="min-width: 3rem">
+                    <div class="flex justify-between items-center">
+                        Currency
+                        <p-columnFilter type="text" field="account.currency" display="menu"
+                                        placeholder="Search by currency"></p-columnFilter>
+                    </div>
+                </th>
+                <th style="min-width: 10rem">
+                    <div class="flex justify-between items-center">
+                        Current Balance
+                        <p-columnFilter type="numeric" field="account.currentBalance" display="menu"
+                                        currency="USD"></p-columnFilter>
+                    </div>
+                </th>
+                <th style="min-width: 5rem">
+                    <div class="flex justify-between items-center">
+                        Updated date
+                        <p-columnFilter type="date" field="date" display="menu"
+                                        placeholder="mm/dd/yyyy"></p-columnFilter>
+                    </div>
+                </th>
+                <th style="min-width: 3rem">
+                    <div class="flex justify-between items-center">
+                        Account number
+                        <p-columnFilter type="text" field="account.accountNumber" display="menu"
+                                        placeholder="Search by account number"></p-columnFilter>
+                    </div>
+                </th>
+                <th style="width: 5rem"></th>
+            </tr>
+        </ng-template>
+        <ng-template #body let-accountItem>
+            <tr>
+                <td>
+                    {{ accountItem.account.name }}
+                </td>
+                <td>
+                    {{ this.accountTypesMap[accountItem.account.type].name }}
+                </td>
+                <td>
+                    {{ accountItem.account.currency }}
+                </td>
+                <td>
+                    {{ accountItem.account.currentBalance }}
+                </td>
+                <td>
+                    {{ TimestampHelper.timestampToDate(accountItem.account.updatedAt) | date: 'MM/dd/yyyy' }}
+                </td>
+                <td>
+                    {{ accountItem.account.accountNumber }}
+                </td>
+                <td>
+                    <p-button icon="pi pi-pencil"
+                              (onClick)="this.router.navigate(['/', 'accounts', 'edit', accountItem.account.id])"
+                              severity="secondary" rounded />
+                </td>
+            </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+            <tr>
+                <td colspan="8">No transactions found.</td>
+            </tr>
+        </ng-template>
+        <ng-template #loadingbody>
+            <tr>
+                <td colspan="8">Loading Transaction data. Please wait.</td>
+            </tr>
+        </ng-template>
+    </p-table>
 </div>

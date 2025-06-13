@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
 import { Table, TableModule } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
 import { InputText } from 'primeng/inputtext';
@@ -8,15 +8,13 @@ import { IconField } from 'primeng/iconfield';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-import { Account, AccountSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { ErrorHelper } from '../../../helpers/error.helper';
-import { MessageService, OverlayOptions } from 'primeng/api';
+import { FilterMetadata, MessageService } from 'primeng/api';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../../helpers/timestamp.helper';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Button } from 'primeng/button';
 import { EnumService, AccountTypeEnum } from '../../../services/enum.service';
-import { create } from '@bufbuild/protobuf';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
@@ -24,8 +22,7 @@ import { OverlayModule } from 'primeng/overlay';
 @Component({
     selector: 'app-account-list',
     templateUrl: 'account-list.component.html',
-    imports: [OverlayModule ,FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule],
-    styles: ['.p-multiselect-overlay {z-index: 1000 !important;}']
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule]
 })
 export class AccountListComponent implements OnInit {
     statuses: any[] = [];
@@ -37,15 +34,25 @@ export class AccountListComponent implements OnInit {
     public accounts: ListAccountsResponse_AccountItem[] = [];
     private accountService;
     public accountTypes = EnumService.getAccountTypes();
+    public filters: { [s: string]: FilterMetadata } = {};
 
     @ViewChild('filter') filter!: ElementRef;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        public router: Router
+        public router: Router,
+        route: ActivatedRoute
     ) {
         this.accountService = createClient(AccountsService, this.transport);
+
+        if (route.snapshot.data['filters']) {
+            for (let ob of route.snapshot.data['filters']) {
+                for (let [key, value] of Object.entries(ob)) {
+                    this.filters[key] = value as FilterMetadata;
+                }
+            }
+        }
     }
 
     async ngOnInit() {

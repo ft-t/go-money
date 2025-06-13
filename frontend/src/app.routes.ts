@@ -5,6 +5,7 @@ import { authGuard } from './app/services/guards/auth.guard';
 import { LoginComponent } from './app/modules/auth/login/login.component';
 import { AccountListComponent } from './app/modules/accounts/account-list/account-list.component';
 import { AccountUpsertComponent } from './app/modules/accounts/account-list/account-upsert/account-upsert.component';
+import { TransactionListComponent } from './app/modules/transactions/transaction-list/transaction-list.component';
 
 export const appRoutes: Routes = [
     {
@@ -18,11 +19,35 @@ export const appRoutes: Routes = [
         children: [
             {
                 path: 'accounts',
-                component: AccountListComponent
+                component: AccountListComponent,
+                data: {
+                    filters: [
+                        {
+                            'account.type': {
+                                matchMode: 'in',
+                                value: [1, 2, 3]
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                path: 'accounts/liabilities',
+                component: AccountListComponent,
+                data: {
+                    filters: [
+                        {
+                            'account.type': {
+                                matchMode: 'in',
+                                value: [4]
+                            }
+                        }
+                    ]
+                }
             },
             {
                 path: 'accounts/new',
-                component: AccountListComponent,
+                component: AccountUpsertComponent,
                 data: {
                     isEdit: false
                 }
@@ -35,9 +60,11 @@ export const appRoutes: Routes = [
                 }
             },
             {
-                path: 'account/:id',
-                component: AccountUpsertComponent
-            }
+                path: 'transactions',
+                component: TransactionListComponent,
+                data: {
+                }
+            },
         ]
     },
 

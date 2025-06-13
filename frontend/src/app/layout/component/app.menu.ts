@@ -52,7 +52,7 @@ export class AppMenu {
                 {
                     label: 'Deposits',
                     icon: 'pi pi-fw pi-table',
-                    routerLink: ['/accounts']
+                    routerLink: ['/transactions']
                 },
                 {
                     label: 'Withdrawals',
