@@ -1,88 +1,114 @@
-<div class="card">
-  <div class="font-semibold text-xl mb-4">Currency list</div>
-  <p-table #dt1
-           [value]="(currencies$ | ngrxPush)"
-           dataKey="id"
-           [rows]="10"
-           [loading]="isLoading$ | ngrxPush"
-           [rowHover]="true"
-           [showGridlines]="true"
-           [paginator]="true"
-           [globalFilterFields]="['name', 'country.name', 'representative.name', 'status']"
-           responsiveLayout="scroll">
-    <ng-template #caption>
-      <div class="flex justify-between items-center flex-column sm:flex-row">
-        <button pButton pButtonLabel="Create" class="p-button-outlined mb-2"
-                [routerLink]="['/account', 'new']"></button>
-        <p-iconfield iconPosition="left" class="ml-auto">
-          <p-inputicon>
-            <i class="pi pi-search"></i>
-          </p-inputicon>
-          <input pInputText type="text" placeholder="Search by ..." />
-        </p-iconfield>
-      </div>
-    </ng-template>
-    <ng-template #header>
-      <tr>
-        <th>
-          <div class="flex justify-between items-center">
-            ID
-            <p-columnFilter type="text" field="id" display="menu" placeholder="Search by ID"></p-columnFilter>
-          </div>
-        </th>
-        <th>
-          <div class="flex justify-between items-center">
-            Name
-            <p-columnFilter type="text" field="name" display="menu" placeholder="Search by name"></p-columnFilter>
-          </div>
-        </th>
-        <th>
-          <div class="flex justify-between items-center">
-            Currency
-          </div>
-        </th>
-        <th>
-          <div class="flex justify-between items-center">
-            Balance
-            <p-columnFilter type="numeric" field="balance" display="menu" currency="USD"></p-columnFilter>
-          </div>
-        </th>
-        <th>
-          <div class="flex justify-between items-center">
-            Update date
-            <p-columnFilter type="date" field="date" display="menu" placeholder="mm/dd/yyyy"></p-columnFilter>
-          </div>
-        </th>
-      </tr>
-    </ng-template>
-    <ng-template #body let-customer>
-      <tr>
-        <td>
-          0ae846a6-21ba-4772-866d-f0192ce04458
-        </td>
-        <td>
-          {{ customer.name }}
-        </td>
-        <td>
-          USD
-        </td>
-        <td>
-          {{ customer.balance | currency: 'USD' : 'symbol' }}
-        </td>
-        <td>
-          {{ customer.date | date: 'MM/dd/yyyy' }}
-        </td>
-      </tr>
-    </ng-template>
-    <ng-template #emptymessage>
-      <tr>
-        <td colspan="8">No customers found.</td>
-      </tr>
-    </ng-template>
-    <ng-template #loadingbody>
-      <tr>
-        <td colspan="8">Loading... Please wait.</td>
-      </tr>
-    </ng-template>
-  </p-table>
-</div>
+<!--suppress TypeScriptValidateTypes -->
+<p-fluid>
+    <div class="flex flex-col md:flex-row gap-8">
+        <div class="md:w-1/2">
+            <div class="card flex flex-col gap-4">
+                <div class="font-semibold text-xl">Base fields</div>
+                <div class="flex flex-col gap-2">
+                    <label for="accountName">Description</label>
+                    <input pInputText id="accountName" type="text" [(ngModel)]="transaction.title" />
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label for="currency">Type</label>
+                    <p-dropdown
+                        [options]="transactionTypes"
+                        [(ngModel)]="transaction.type"
+                        [filter]="true"
+                        (onChange)="onTransactionTypeChange($event)"
+                        filterBy="name"
+                        optionLabel="name"
+                        optionValue="value"
+                        placeholder="Select transaction type" />
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label for="currency">Source Account</label>
+                    <p-dropdown
+                        [options]="accounts"
+                        [(ngModel)]="transaction.sourceAccountId"
+                        [filter]="true"
+                        [disabled]="!isSourceAccountActive()"
+                        (onChange)="onSourceAccountChange($event)"
+                        filterBy="account.name"
+                        optionLabel="account.name"
+                        optionValue="account.id"
+                        placeholder="Select source account" />
+
+                        <p-iftalabel>
+                            <input pInputText id="destValue" [(ngModel)]="transaction.sourceAmount" autocomplete="off" />
+                            <label for="destValue">{{transaction.sourceCurrency}}</label>
+                        </p-iftalabel>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label for="currency">Destination Account</label>
+                    <p-dropdown
+                        [options]="accounts"
+                        [(ngModel)]="transaction.destinationAccountId"
+                        [filter]="true"
+                        [disabled]="!isDestinationAccountActive()"
+                        (onChange)="onDestinationAccountChange($event)"
+                        filterBy="account.name"
+                        optionLabel="account.name"
+                        optionValue="account.id"
+                        placeholder="Select destination account" />
+
+                    <p-iftalabel>
+                        <input pInputText id="destValue" [(ngModel)]="transaction.destinationAmount" autocomplete="off" />
+                        <label for="destValue">{{transaction.destinationCurrency}}</label>
+                    </p-iftalabel>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label>Date</label>
+                    <p-datepicker [(ngModel)]="transaction.transactionDate" [hourFormat]="'24'" [showTime]="true"></p-datepicker>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label>Notes</label>
+                    <textarea rows="5" cols="30" [(ngModel)]="transaction.notes" pTextarea [autoResize]="true"></textarea>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label>Labels</label>
+                    <p-multiselect [options]="labels" [(ngModel)]="transaction.labelIds" placeholder="Select Tags" optionLabel="name" optionValue="value" display="chip" styleClass="w-full md:w-80"></p-multiselect>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--        <div class="md:w-1/2">-->
+    <!--            <div class="card flex flex-col gap-4">-->
+    <!--                <div class="font-semibold text-xl">Other</div>-->
+    <!--                <div class="flex flex-wrap gap-2">-->
+    <!--                    <label for="iban">IBAN</label>-->
+    <!--                    <input pInputText [(ngModel)]="account.iban" id="iban" type="text" />-->
+    <!--                </div>-->
+    <!--                <div class="flex flex-wrap gap-2">-->
+    <!--                    <label for="iban">Account Number</label>-->
+    <!--                    <input pInputText [(ngModel)]="account.accountNumber" id="iban" type="text" />-->
+    <!--                </div>-->
+    <!--                <div class="flex flex-col gap-2" *ngIf="account.type == AccountType.LIABILITY">-->
+    <!--                    <label for="liability">Liability (percent)</label>-->
+    <!--                    <input pInputText [(ngModel)]="account.liabilityPercent" id="liability" type="number" />-->
+    <!--                </div>-->
+    <!--            </div>-->
+
+    <!--        </div>-->
+    <!--    </div>-->
+    <!--    <div class="flex mt-8">-->
+    <!--        <div class="card flex flex-col gap-6 w-full">-->
+    <!--            <div class="font-semibold text-xl">Advanced</div>-->
+    <!--            <div class="flex flex-wrap">-->
+    <!--                <label for="note">Note</label>-->
+    <!--                <textarea pTextarea [(ngModel)]="account.note" id="note" type="text"></textarea>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <div class="flex mt-8">
+                <div class="card flex flex-wrap gap-6 w-full justify-end">
+                    <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
+                    <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
+                </div>
+    </div>
+</p-fluid>
+<p-toast />

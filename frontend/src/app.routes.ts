@@ -6,6 +6,9 @@ import { LoginComponent } from './app/modules/auth/login/login.component';
 import { AccountListComponent } from './app/modules/accounts/account-list/account-list.component';
 import { AccountUpsertComponent } from './app/modules/accounts/account-list/account-upsert/account-upsert.component';
 import { TransactionListComponent } from './app/modules/transactions/transaction-list/transaction-list.component';
+import {
+    TransactionUpsertComponent
+} from './app/modules/transactions/transaction-list/create/create-transaction.component';
 
 export const appRoutes: Routes = [
     {
@@ -62,6 +65,12 @@ export const appRoutes: Routes = [
             {
                 path: 'transactions',
                 component: TransactionListComponent,
+                data: {
+                }
+            },
+            {
+                path: 'transactions/create',
+                component: TransactionUpsertComponent,
                 data: {
                 }
             },

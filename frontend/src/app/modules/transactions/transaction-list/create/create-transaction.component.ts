@@ -1,94 +1,128 @@
+import { Component, Inject, OnInit } from '@angular/core';
+import { DropdownChangeEvent, DropdownModule } from 'primeng/dropdown';
+import { Fluid } from 'primeng/fluid';
+import { InputText } from 'primeng/inputtext';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  OnDestroy,
-  OnInit,
-  ViewChild
-} from '@angular/core';
-import { BehaviorSubject, finalize } from 'rxjs';
-import { tap } from 'rxjs/operators';
+    Transaction,
+    TransactionSchema,
+    TransactionType
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { create } from '@bufbuild/protobuf';
+import { AccountTypeEnum, EnumService } from '../../../../services/enum.service';
+import { TRANSPORT_TOKEN } from '../../../../consts/transport';
+import { createClient, Transport } from '@connectrpc/connect';
+import { ErrorHelper } from '../../../../helpers/error.helper';
+import {
+    AccountsService,
+    ListAccountsResponse_AccountItem
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { MessageService } from 'primeng/api';
+import { Toast } from 'primeng/toast';
+import { DatePicker } from 'primeng/datepicker';
+import { IftaLabel } from 'primeng/iftalabel';
+import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
+import { NgIf } from '@angular/common';
+import { Textarea } from 'primeng/textarea';
+import { Button } from 'primeng/button';
+import { MultiSelect } from 'primeng/multiselect';
 
 @Component({
-  selector: 'app-currency-list',
-  standalone: false,
-  templateUrl: 'currency-list.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'transaction-upsert',
+    templateUrl: 'create-transaction.component.html',
+    imports: [DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect]
 })
-export class CurrencyListComponent implements OnInit {
-  public currencies$ = new BehaviorSubject<any[] | any>([]);
+export class TransactionUpsertComponent implements OnInit {
+    public isEdit: boolean = false;
 
-  public isLoading$ = new BehaviorSubject<boolean>(false);
+    public transaction: Transaction;
+    public transactionTypes: AccountTypeEnum[];
+    public labels: AccountTypeEnum[];
 
-  @ViewChild('filter') filter!: ElementRef;
+    private accountService;
+    public accounts: ListAccountsResponse_AccountItem[] = [];
 
-  constructor() {
-  }
-
-  ngOnInit() {
-  }
-
-
-  getCurrencies() {
-
-    this.isLoading$.next(true);
-
-    const request = {
+    constructor(
+        @Inject(TRANSPORT_TOKEN) private transport: Transport,
+        private messageService: MessageService
+    ) {
+        this.transaction = create(TransactionSchema, {});
+        this.transactionTypes = EnumService.getBaseTransactionTypes();
+        this.accountService = createClient(AccountsService, this.transport);
+        this.labels = [
+            {
+                name: 'tag1',
+                value: 1
+            },
+            {
+                name: 'tag2',
+                value: 2
+            }
+        ];
     }
 
-    // this.currenciesService.getCurrencies(request)
-    //   .pipe(
-    //     tap((response: GetCurrenciesResponse | any) => {
-    //       console.log(response);
-    //       this.currencies$.next(response.data);
-    //     }),
-    //     finalize(() => this.isLoading$.next(false)),
-    //     this.takeUntilDestroy
-    //   ).subscribe();
-  }
-
-  createCurrency() {
-    this.isLoading$.next(true);
-
-    const request = {
-
+    async ngOnInit() {
+        await this.fetchAccounts();
     }
 
-    // this.currenciesService.createCurrency(request)
-    //   .pipe(
-    //     tap(),
-    //     finalize(() => this.isLoading$.next(false)),
-    //     this.takeUntilDestroy
-    //   ).subscribe();
-  }
+    isSourceAccountActive(): boolean {
+        if (this.transaction.type == TransactionType.WITHDRAWAL) return true;
 
-  updateCurrency() {
-    this.isLoading$.next(true);
+        if (this.transaction.type == TransactionType.TRANSFER_BETWEEN_ACCOUNTS) return true;
 
-    const request = {
-
+        return false;
     }
 
-    // this.currenciesService.updateCurrency(request)
-    //   .pipe(
-    //     tap(),
-    //     finalize(() => this.isLoading$.next(false)),
-    //     this.takeUntilDestroy
-    //   ).subscribe();
-  }
+    onTransactionTypeChange(event: DropdownChangeEvent) {
+        if (!this.isDestinationAccountActive()) {
+            this.transaction.destinationAccountId = 0;
+            this.transaction.destinationCurrency = '';
+            this.transaction.destinationAmount = '';
+        }
 
-  deleteCurrency(currency: any) {
-    this.isLoading$.next(true);
-
-    const request = {
-
+        if (!this.isSourceAccountActive()) {
+            this.transaction.sourceAccountId = 0;
+            this.transaction.sourceCurrency = '';
+            this.transaction.sourceAmount = '';
+        }
     }
 
-    // this.currenciesService.deleteCurrency(request)
-    //   .pipe(
-    //     tap(),
-    //     finalize(() => this.isLoading$.next(false)),
-    //     this.takeUntilDestroy
-    //   ).subscribe();
-  }
+    onSourceAccountChange(event: DropdownChangeEvent) {
+        this.transaction.sourceCurrency = this.accountById(this.transaction.sourceAccountId)?.currency ?? '';
+    }
+
+    onDestinationAccountChange(event: DropdownChangeEvent) {
+        this.transaction.destinationCurrency = this.accountById(this.transaction.destinationAccountId)?.currency ?? '';
+    }
+
+    accountById(id: number | undefined): Account | null {
+        if (!id) return null;
+
+        for (let account of this.accounts) {
+            if (account.account?.id == id) return account.account;
+        }
+
+        return null;
+    }
+
+    isDestinationAccountActive(): boolean {
+        if (this.transaction.type == TransactionType.DEPOSIT) return true;
+
+        if (this.transaction.type == TransactionType.TRANSFER_BETWEEN_ACCOUNTS) return true;
+
+        return false;
+    }
+
+    async fetchAccounts() {
+        try {
+            let resp = await this.accountService.listAccounts({});
+            this.accounts = resp.accounts || [];
+            console.log(this.accounts);
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async create() {}
+    async update() {}
 }
