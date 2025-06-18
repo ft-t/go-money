@@ -21,7 +21,8 @@ type Service struct {
 }
 
 type ServiceConfig struct {
-	StatsSvc StatsSvc
+	StatsSvc  StatsSvc
+	MapperSvc MapperSvc
 }
 
 func NewService(
@@ -33,6 +34,79 @@ func NewService(
 	}
 }
 
+func (s *Service) List(
+	ctx context.Context,
+	req *transactionsv1.ListTransactionsRequest,
+) (*transactionsv1.ListTransactionsResponse, error) {
+	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Limit(int(req.Limit))
+
+	if req.AmountFrom != nil {
+		amountFrom, err := decimal.NewFromString(*req.AmountFrom)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid amount_from")
+		}
+
+		query = query.Where("(source_account_id is not null and source_amount >= ?) OR (destination_account_id is not null and destination_amount >= ?)",
+			amountFrom, amountFrom)
+	}
+
+	if req.AmountTo != nil {
+		amountTo, err := decimal.NewFromString(*req.AmountTo)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid amount_to")
+		}
+
+		query = query.Where("(source_account_id is not null and source_amount <= ?) OR (destination_account_id is not null and destination_amount <= ?)",
+			amountTo, amountTo)
+	}
+
+	if req.FromDate != nil {
+		query = query.Where("transaction_date_time >= ?", req.FromDate.AsTime())
+	}
+
+	if req.ToDate != nil {
+		query = query.Where("transaction_date_time <= ?", req.ToDate.AsTime())
+	}
+
+	if req.TextQuery != nil {
+		query = query.Where("title LIKE ?", "%"+*req.TextQuery+"%")
+	}
+
+	if len(req.DestinationAccountIds) > 0 {
+		query = query.Where("destination_account_id IN ?", req.DestinationAccountIds)
+	}
+
+	if len(req.SourceAccountIds) > 0 {
+		query = query.Where("source_account_id IN ?", req.SourceAccountIds)
+	}
+
+	if len(req.AnyAccountIds) > 0 {
+		query = query.Where("source_account_id IN ? OR destination_account_id IN ?", req.AnyAccountIds, req.AnyAccountIds)
+	}
+
+	var transactions []*database.Transaction
+
+	var count int64
+	if err := query.Model(transactions).Count(&count).Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err := query.Limit(int(req.Limit)).Offset(int(req.Skip)).Find(&transactions).Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	resp := &transactionsv1.ListTransactionsResponse{
+		Transactions: nil,
+		TotalCount:   count,
+	}
+
+	for _, tx := range transactions {
+		resp.Transactions = append(resp.Transactions, s.cfg.MapperSvc.MapTransaction(ctx, tx))
+	}
+
+	return resp, nil
+}
+
 func (s *Service) Create(
 	ctx context.Context,
 	req *transactionsv1.CreateTransactionRequest,
@@ -42,9 +116,9 @@ func (s *Service) Create(
 	}
 
 	newTx := &database.Transaction{
-		SourceAmount:         decimal.Decimal{},
+		SourceAmount:         decimal.NullDecimal{},
 		SourceCurrency:       "",
-		DestinationAmount:    decimal.Decimal{},
+		DestinationAmount:    decimal.NullDecimal{},
 		DestinationCurrency:  "",
 		SourceAccountID:      nil,
 		DestinationAccountID: nil,
@@ -54,6 +128,7 @@ func (s *Service) Create(
 		Extra:                req.Extra,
 		TransactionDateTime:  req.TransactionDate.AsTime(),
 		TransactionDateOnly:  req.TransactionDate.AsTime(),
+		Title:                req.Title,
 	}
 
 	if newTx.Extra == nil {
@@ -133,7 +208,7 @@ func (s *Service) fillDeposit(
 	}
 
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT
-	newTx.DestinationAmount = destinationAmount
+	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = &req.DestinationAccountId
 
@@ -168,10 +243,35 @@ func (s *Service) fillWithdrawal(
 		return nil, err
 	}
 
-	newTx.SourceAmount = sourceAmount
+	newTx.SourceAmount = decimal.NewNullDecimal(sourceAmount)
 	newTx.SourceCurrency = req.SourceCurrency
 	newTx.SourceAccountID = &req.SourceAccountId
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL
+
+	if req.ForeignCurrency != nil {
+		if err = s.ensureCurrencyExists(ctx, *req.ForeignCurrency); err != nil {
+			return nil, errors.Wrap(err, "foreign currency does not exist")
+		}
+
+		newTx.DestinationCurrency = *req.ForeignCurrency
+	}
+
+	if req.ForeignAmount != nil {
+		destinationAmount, destinationErr := decimal.NewFromString(*req.ForeignAmount)
+		if destinationErr != nil {
+			return nil, errors.Wrap(destinationErr, "invalid foreign amount")
+		}
+
+		if destinationAmount.IsPositive() || destinationAmount.IsZero() {
+			return nil, errors.New("foreign amount must be begative")
+		}
+
+		newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
+
+		if newTx.DestinationCurrency == "" {
+			return nil, errors.New("foreign currency is required when foreign amount is provided")
+		}
+	}
 
 	return &fillResponse{
 		Accounts: accounts,
@@ -220,8 +320,8 @@ func (s *Service) fillTransferBetweenAccounts(
 
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS
 
-	newTx.SourceAmount = sourceAmount
-	newTx.DestinationAmount = destinationAmount
+	newTx.SourceAmount = decimal.NewNullDecimal(sourceAmount)
+	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 
 	newTx.SourceAccountID = &req.SourceAccountId
 	newTx.DestinationAccountID = &req.DestinationAccountId
@@ -232,6 +332,13 @@ func (s *Service) fillTransferBetweenAccounts(
 	return &fillResponse{
 		Accounts: accounts,
 	}, nil
+}
+
+func (s *Service) ensureCurrencyExists(
+	ctx context.Context,
+	currency string,
+) error {
+	return nil // todo
 }
 
 func (s *Service) ensureAccountsExistAndCurrencyCorrect(

@@ -19,7 +19,7 @@
     "@angular/platform-browser": "^19.0.0",
     "@angular/platform-browser-dynamic": "^19.0.0",
     "@angular/router": "^19.0.0",
-    "@buf/xskydev_go-money-pb.bufbuild_es": "^2.5.2-20250617191900-87d166c4c3b2.1",
+    "@buf/xskydev_go-money-pb.bufbuild_es": "^2.5.2-20250618200518-539a698df79e.1",
     "@bufbuild/buf": "^1.54.0",
     "@bufbuild/protobuf": "^2.5.2",
     "@bufbuild/protoc-gen-es": "^2.5.2",

@@ -69,11 +69,12 @@ export const appRoutes: Routes = [
                 }
             },
             {
-                path: 'transactions/create',
+                path: 'transactions/new',
                 component: TransactionUpsertComponent,
                 data: {
                 }
             },
+
         ]
     },
 

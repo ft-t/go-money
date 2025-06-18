@@ -9,6 +9,7 @@ import (
 	"github.com/ft-t/go-money/pkg/currency"
 	"github.com/ft-t/go-money/pkg/jwt"
 	"github.com/ft-t/go-money/pkg/mappers"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -75,6 +76,13 @@ func main() {
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create accounts handler")
 	}
+
+	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:  transactions.NewStatService(),
+		MapperSvc: mapper,
+	})
+
+	_ = NewTransactionApi(grpcServer, transactionSvc)
 
 	go func() {
 		if len(config.ExchangeRatesUrl) > 0 {

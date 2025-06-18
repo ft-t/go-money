@@ -26,6 +26,13 @@ import { NgIf } from '@angular/common';
 import { Textarea } from 'primeng/textarea';
 import { Button } from 'primeng/button';
 import { MultiSelect } from 'primeng/multiselect';
+import {
+    CreateTransactionRequestSchema,
+    DepositSchema,
+    TransactionsService, WithdrawalSchema
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
+import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 
 @Component({
     selector: 'transaction-upsert',
@@ -38,9 +45,14 @@ export class TransactionUpsertComponent implements OnInit {
     public transaction: Transaction;
     public transactionTypes: AccountTypeEnum[];
     public labels: AccountTypeEnum[];
+    public currencies: Currency[] = [];
 
     private accountService;
     public accounts: ListAccountsResponse_AccountItem[] = [];
+
+    private transactionService;
+
+    private currencyService;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -49,6 +61,9 @@ export class TransactionUpsertComponent implements OnInit {
         this.transaction = create(TransactionSchema, {});
         this.transactionTypes = EnumService.getBaseTransactionTypes();
         this.accountService = createClient(AccountsService, this.transport);
+        this.transactionService = createClient(TransactionsService, this.transport);
+        this.currencyService = createClient(CurrencyService, this.transport);
+
         this.labels = [
             {
                 name: 'tag1',
@@ -63,6 +78,25 @@ export class TransactionUpsertComponent implements OnInit {
 
     async ngOnInit() {
         await this.fetchAccounts();
+        await this.fetchCurrencies();
+    }
+
+    async fetchCurrencies() {
+        try {
+            let resp = await         this.currencyService.getCurrencies({})
+            this.currencies = resp.currencies || [];
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async fetchAccounts() {
+        try {
+            let resp = await this.accountService.listAccounts({});
+            this.accounts = resp.accounts || [];
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
     }
 
     isSourceAccountActive(): boolean {
@@ -113,16 +147,41 @@ export class TransactionUpsertComponent implements OnInit {
         return false;
     }
 
-    async fetchAccounts() {
+    async create() {
+        let req = create(CreateTransactionRequestSchema, {
+            notes: this.transaction.notes,
+            extra: {}, // todo
+            labelIds: this.transaction.labelIds,
+            transactionDate: this.transaction.transactionDate,
+            title: this.transaction.title,
+        })
+
+        switch (this.transaction.type) {
+            case TransactionType.DEPOSIT:
+                req.transaction.value = create(DepositSchema, {
+                    destinationAccountId: this.transaction.destinationAccountId,
+                    destinationAmount: this.transaction.destinationAmount,
+                    destinationCurrency: this.transaction.destinationCurrency
+                });
+                req.transaction.case = "deposit"
+                break;
+            case TransactionType.WITHDRAWAL:
+                req.transaction.value = create(WithdrawalSchema, {
+                    sourceAmount:  this.transaction.sourceAmount,
+                    sourceCurrency: this.transaction.sourceCurrency,
+                    sourceAccountId: this.transaction.sourceAccountId
+                });
+                req.transaction.case = "withdrawal"
+                break;
+        }
+
         try {
-            let resp = await this.accountService.listAccounts({});
-            this.accounts = resp.accounts || [];
-            console.log(this.accounts);
+            await this.transactionService.createTransaction(req)
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
     }
-
-    async create() {}
     async update() {}
+
+    protected readonly TransactionType = TransactionType;
 }

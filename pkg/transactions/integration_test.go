@@ -6,11 +6,48 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/rs/zerolog"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"testing"
 	"time"
 )
+
+func TestBasicExpenseWithMultiCurrency(t *testing.T) {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	statsSvc := transactions.NewStatService()
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc: statsSvc,
+	})
+
+	accounts := []*database.Account{
+		{
+			Name:     "Private [UAH]",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
+	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
+		TransactionDate: timestamppb.New(expenseDate),
+		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
+			Withdrawal: &transactionsv1.Withdrawal{
+				SourceAmount:    "-765.76",
+				SourceCurrency:  "UAH",
+				SourceAccountId: accounts[0].ID,
+				ForeignAmount:   lo.ToPtr("-67.54"),
+				ForeignCurrency: lo.ToPtr("PLN"),
+			},
+		},
+	})
+	assert.NoError(t, err)
+}
 
 func TestBasicCalc(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
