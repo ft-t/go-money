@@ -36,13 +36,14 @@
                         optionValue="account.id"
                         placeholder="Select source account" />
 
-                        <p-iftalabel>
-                            <input pInputText id="destValue" [(ngModel)]="transaction.sourceAmount" autocomplete="off" />
-                            <label for="destValue">{{transaction.sourceCurrency}}</label>
-                        </p-iftalabel>
+                    <p-inputgroup>
+                        <p-inputgroup-addon>-</p-inputgroup-addon>
+                        <p-inputnumber [(ngModel)]="transaction.sourceAmount" placeholder="Price"/>
+                        <p-inputgroup-addon>{{transaction.sourceCurrency}}</p-inputgroup-addon>
+                    </p-inputgroup>
                 </div>
 
-                <div class="flex flex-col gap-2" *ngIf="transaction.type == TransactionType.WITHDRAWAL">
+                <div class="flex flex-col gap-2" *ngIf="isForeignCurrencyActive()">
                     <label for="currency">Foreign Currency</label>
                     <p-dropdown
                         [options]="currencies"
@@ -52,11 +53,11 @@
                         optionLabel="id"
                         optionValue="id"
                         placeholder="Select foreign currency" />
-
-                    <p-iftalabel>
-                        <input pInputText id="destValue" [(ngModel)]="transaction.destinationAmount" autocomplete="off" />
-                        <label for="destValue">{{transaction.destinationCurrency}}</label>
-                    </p-iftalabel>
+                    <p-inputgroup>
+                        <p-inputgroup-addon>-</p-inputgroup-addon>
+                        <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount"/>
+                        <p-inputgroup-addon>{{transaction.destinationCurrency}}</p-inputgroup-addon>
+                    </p-inputgroup>
                 </div>
 
                 <div class="flex flex-col gap-2" *ngIf="isDestinationAccountActive()">

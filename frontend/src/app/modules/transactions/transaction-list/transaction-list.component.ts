@@ -89,7 +89,7 @@ export class TransactionListComponent implements OnInit {
         }
 
         if (transaction.destinationAmount) {
-            val += `(${transaction.destinationAmount} ${transaction.destinationCurrency ?? ''})`;
+            val += ` (${transaction.destinationAmount} ${transaction.destinationCurrency ?? ''})`;
         }
 
         return val.trim();

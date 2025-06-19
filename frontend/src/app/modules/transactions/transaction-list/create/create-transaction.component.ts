@@ -33,11 +33,14 @@ import {
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
+import { InputGroup } from 'primeng/inputgroup';
+import { InputGroupAddon } from 'primeng/inputgroupaddon';
+import { InputNumber } from 'primeng/inputnumber';
 
 @Component({
     selector: 'transaction-upsert',
     templateUrl: 'create-transaction.component.html',
-    imports: [DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect]
+    imports: [DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber]
 })
 export class TransactionUpsertComponent implements OnInit {
     public isEdit: boolean = false;
@@ -83,7 +86,7 @@ export class TransactionUpsertComponent implements OnInit {
 
     async fetchCurrencies() {
         try {
-            let resp = await         this.currencyService.getCurrencies({})
+            let resp = await this.currencyService.getCurrencies({});
             this.currencies = resp.currencies || [];
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
@@ -119,6 +122,11 @@ export class TransactionUpsertComponent implements OnInit {
             this.transaction.sourceCurrency = '';
             this.transaction.sourceAmount = '';
         }
+
+        if (!this.isForeignCurrencyActive()) {
+            this.transaction.destinationCurrency = '';
+            this.transaction.destinationAmount = '';
+        }
     }
 
     onSourceAccountChange(event: DropdownChangeEvent) {
@@ -147,14 +155,20 @@ export class TransactionUpsertComponent implements OnInit {
         return false;
     }
 
+    isForeignCurrencyActive(): boolean {
+        if (this.transaction.type == TransactionType.WITHDRAWAL) return true;
+
+        return false;
+    }
+
     async create() {
         let req = create(CreateTransactionRequestSchema, {
             notes: this.transaction.notes,
             extra: {}, // todo
             labelIds: this.transaction.labelIds,
             transactionDate: this.transaction.transactionDate,
-            title: this.transaction.title,
-        })
+            title: this.transaction.title
+        });
 
         switch (this.transaction.type) {
             case TransactionType.DEPOSIT:
@@ -163,25 +177,37 @@ export class TransactionUpsertComponent implements OnInit {
                     destinationAmount: this.transaction.destinationAmount,
                     destinationCurrency: this.transaction.destinationCurrency
                 });
-                req.transaction.case = "deposit"
+                req.transaction.case = 'deposit';
                 break;
             case TransactionType.WITHDRAWAL:
                 req.transaction.value = create(WithdrawalSchema, {
-                    sourceAmount:  this.transaction.sourceAmount,
+                    sourceAmount: this.toNegativeNumber(this.transaction.sourceAmount),
                     sourceCurrency: this.transaction.sourceCurrency,
-                    sourceAccountId: this.transaction.sourceAccountId
+                    sourceAccountId: this.transaction.sourceAccountId,
+                    foreignAmount: this.toNegativeNumber(this.transaction.destinationAmount),
+                    foreignCurrency: this.transaction.destinationCurrency
                 });
-                req.transaction.case = "withdrawal"
+                req.transaction.case = 'withdrawal';
+
                 break;
         }
 
         try {
-            await this.transactionService.createTransaction(req)
+            await this.transactionService.createTransaction(req);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
     }
     async update() {}
+
+    toNegativeNumber(value: string | undefined): string | undefined {
+        if (!value) return value;
+
+        let num = parseFloat(value);
+        if (!num) return value;
+
+        return (-Math.abs(num)).toString();
+    }
 
     protected readonly TransactionType = TransactionType;
 }
