@@ -7,11 +7,12 @@ import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
 import { CookieService } from '../../services/cookie.service';
 import { CookieInstances } from '../../objects/cookie-instances';
+import { SelectedDateComponent } from '../../shared/components/selected-date/selected-date.component';
 
 @Component({
     selector: 'app-topbar',
     standalone: true,
-    imports: [RouterModule, CommonModule, StyleClassModule, AppConfigurator],
+    imports: [RouterModule, CommonModule, StyleClassModule, AppConfigurator, SelectedDateComponent],
     template: ` <div class="layout-topbar">
         <div class="layout-topbar-logo-container">
             <button class="layout-menu-button layout-topbar-action" (click)="layoutService.onMenuToggle()">
@@ -19,7 +20,7 @@ import { CookieInstances } from '../../objects/cookie-instances';
             </button>
             <a class="layout-topbar-logo" routerLink="/">
                 <img class="w-24 shrink-0 mx-auto" src="/logo.png" alt="logo" />
-<!--                <span>Go Money</span>-->
+                <!--                <span>Go Money</span>-->
             </a>
         </div>
 
@@ -47,17 +48,10 @@ import { CookieInstances } from '../../objects/cookie-instances';
             <button class="layout-topbar-menu-button layout-topbar-action" pStyleClass="@next" enterFromClass="hidden" enterActiveClass="animate-scalein" leaveToClass="hidden" leaveActiveClass="animate-fadeout" [hideOnOutsideClick]="true">
                 <i class="pi pi-ellipsis-v"></i>
             </button>
+            <selected-date />
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-<!--                    <button type="button" class="layout-topbar-action">-->
-<!--                        <i class="pi pi-calendar"></i>-->
-<!--                        <span>Calendar</span>-->
-<!--                    </button>-->
-<!--                    <button type="button" class="layout-topbar-action">-->
-<!--                        <i class="pi pi-inbox"></i>-->
-<!--                        <span>Messages</span>-->
-<!--                    </button>-->
                     <button (click)="logout()" type="button" class="layout-topbar-action">
                         <i class="pi pi-user"></i>
                         <span>Profile</span>
@@ -73,7 +67,7 @@ export class AppTopbar {
     constructor(
         public layoutService: LayoutService,
         private cookieService: CookieService,
-        private router: Router,
+        private router: Router
     ) {}
 
     toggleDarkMode() {
@@ -81,7 +75,7 @@ export class AppTopbar {
     }
 
     logout() {
-        this.cookieService.delete(CookieInstances.Jwt)
+        this.cookieService.delete(CookieInstances.Jwt);
         return this.router.navigate(['/', 'login']);
     }
 }

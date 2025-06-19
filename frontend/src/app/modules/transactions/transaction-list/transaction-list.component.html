@@ -31,8 +31,8 @@
                 <th style="min-width: 12rem">
                     <div class="flex justify-between items-center">
                         Title
-                        <p-columnFilter type="text" field="account.name" display="menu"
-                                        placeholder="Search by name"></p-columnFilter>
+                        <p-columnFilter [showAddButton]="false" [showOperator]="false" [showMatchModes]="false" type="text" field="title" display="menu"
+                                        placeholder="Search by title"></p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 5rem">

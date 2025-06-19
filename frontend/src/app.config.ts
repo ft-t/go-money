@@ -13,6 +13,8 @@ import { TRANSPORT_TOKEN } from './app/consts/transport';
 import { authInterceptor } from './interceptors/auth';
 import { MessageService } from 'primeng/api';
 import { EnumService } from './app/services/enum.service';
+import { SelectedDateService } from './app/core/services/selected-date.service';
+import { DatePipe } from '@angular/common';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -28,6 +30,8 @@ export const appConfig: ApplicationConfig = {
         provideAnimationsAsync(),
         MessageService,
         EnumService,
+        SelectedDateService,
+        DatePipe,
         providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } }),
         {
             provide: TRANSPORT_TOKEN,
