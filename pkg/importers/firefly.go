@@ -57,6 +57,7 @@ func (f *FireflyImporter) Import(
 		destinationName := record[16]
 		notes := record[24]
 
+		destinationAccountType := record[18]
 		parsedDate, err := time.Parse("2006-01-02T15:04:05-07:00", date)
 		if err != nil {
 			return errors.Wrapf(err, "failed to parse date: %s", date)
@@ -114,6 +115,18 @@ func (f *FireflyImporter) Import(
 					DestinationCurrency:  currencyCode,
 					DestinationAccountId: destAccount, // mapped account
 				},
+			}
+		case "Reconciliation":
+			rec := transactionsv1.CreateTransactionRequest_Reconciliation{
+				Reconciliation: &transactionsv1.Reconciliation{
+					DiffAmount:          "",
+					SourceTransactionId: 0,
+				},
+			}
+			if destinationAccountType == "Reconciliation account" {
+
+			} else {
+
 			}
 		case "Transfer":
 			sourceAccount, ok := req.Accounts[sourceName]
