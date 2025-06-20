@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
-	"fmt"
 	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/pkg/database"
 	"github.com/samber/lo"
 	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
@@ -23,7 +23,7 @@ func NewFireflyImporter() *FireflyImporter {
 
 type ImportRequest struct {
 	Data     []byte
-	Accounts map[string]int32
+	Accounts map[string]*database.Account
 }
 
 func (f *FireflyImporter) Import(
@@ -45,6 +45,8 @@ func (f *FireflyImporter) Import(
 	records = records[1:] // Skip header row
 	mutable.Reverse(records)
 
+	var allTransactions []*transactionsv1.CreateTransactionRequest
+
 	for _, record := range records {
 		operationType := record[6]
 		amount := record[7]
@@ -56,6 +58,8 @@ func (f *FireflyImporter) Import(
 		sourceName := record[13]
 		destinationName := record[16]
 		notes := record[24]
+		sourceType := record[15]
+		journalID := record[2]
 
 		destinationAccountType := record[18]
 		parsedDate, err := time.Parse("2006-01-02T15:04:05-07:00", date)
@@ -84,9 +88,13 @@ func (f *FireflyImporter) Import(
 			}
 
 			withdrawal := &transactionsv1.Withdrawal{
-				SourceAccountId: sourceAccount,
+				SourceAccountId: sourceAccount.ID,
 				SourceAmount:    amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String(),
 				SourceCurrency:  currencyCode,
+			}
+
+			if sourceAccount.Currency != currencyCode {
+				return errors.Newf("source account currency %s does not match transaction currency %s for journal %s", sourceAccount.Currency, currencyCode, journalID)
 			}
 
 			if foreignAmount != "" {
@@ -103,35 +111,80 @@ func (f *FireflyImporter) Import(
 				Withdrawal: withdrawal,
 			}
 		case "Opening balance", "Deposit":
-			destAccount, ok := req.Accounts[destinationName]
-			if !ok {
-				return errors.Errorf("destination account not found: %s", destinationName)
-			}
-			// todo validate currency
+			if sourceType == "Debt" {
+				sourceAccount, ok := req.Accounts[sourceName]
+				if !ok {
+					return errors.Errorf("source account not found: %s", sourceName)
+				}
 
-			targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Deposit{
-				Deposit: &transactionsv1.Deposit{
-					DestinationAmount:    amountParsed.Abs().String(),
-					DestinationCurrency:  currencyCode,
-					DestinationAccountId: destAccount, // mapped account
-				},
+				if sourceAccount.Currency != currencyCode {
+					return errors.Errorf("source account currency %s does not match transaction currency %s for journal %s", sourceAccount.Currency, currencyCode, journalID)
+				}
+
+				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Withdrawal{
+					Withdrawal: &transactionsv1.Withdrawal{
+						SourceAmount:    amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String(),
+						SourceCurrency:  currencyCode,
+						SourceAccountId: sourceAccount.ID,
+					},
+				}
+			} else {
+				destAccount, ok := req.Accounts[destinationName]
+				if !ok {
+					return errors.Errorf("destination account not found: %s", destinationName)
+				}
+
+				if destAccount.Currency != currencyCode {
+					return errors.Errorf("destination account currency %s does not match transaction currency %s for journal %s", destAccount.Currency, currencyCode, journalID)
+				}
+
+				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Deposit{
+					Deposit: &transactionsv1.Deposit{
+						DestinationCurrency:  currencyCode, // todo validate currency
+						DestinationAccountId: destAccount.ID,
+						DestinationAmount:    amountParsed.Abs().String(),
+					},
+				}
 			}
 		case "Reconciliation":
 			rec := transactionsv1.CreateTransactionRequest_Reconciliation{
 				Reconciliation: &transactionsv1.Reconciliation{
-					DiffAmount:          "",
-					SourceTransactionId: 0,
+					DestinationAmount:    "",
+					DestinationCurrency:  currencyCode,
+					DestinationAccountId: 0,
 				},
 			}
 			if destinationAccountType == "Reconciliation account" {
+				rec.Reconciliation.DestinationAmount = amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String()
 
+				destAccount, ok := req.Accounts[sourceName] // yes, sourceName is used here as destination account
+				if !ok {
+					return errors.Errorf("source account not found: %s", sourceName)
+				}
+
+				if destAccount.Currency != currencyCode {
+					return errors.Errorf("destination account currency %s does not match transaction currency %s for journal %s", destAccount.Currency, currencyCode, journalID)
+				}
+
+				rec.Reconciliation.DestinationAccountId = destAccount.ID
 			} else {
+				rec.Reconciliation.DestinationAmount = amountParsed.Abs().String()
 
+				destAccount, ok := req.Accounts[destinationName]
+				if !ok {
+					return errors.Errorf("destination account not found: %s", destinationName)
+				}
+
+				if destAccount.Currency != currencyCode {
+					return errors.Errorf("destination account currency %s does not match transaction currency %s for journal %s", destAccount.Currency, currencyCode, journalID)
+				}
+
+				rec.Reconciliation.DestinationAccountId = destAccount.ID
 			}
 		case "Transfer":
 			sourceAccount, ok := req.Accounts[sourceName]
 			if !ok {
-				return errors.Errorf("source account not found: %s", destinationName)
+				return errors.Errorf("source account not found: %s", sourceName)
 			}
 
 			destAccount, ok := req.Accounts[destinationName]
@@ -156,12 +209,18 @@ func (f *FireflyImporter) Import(
 				return errors.Wrapf(err, "failed to parse foreign amount: %s", foreignAmount)
 			}
 
-			// todo validate currency
+			if sourceAccount.Currency != currencyCode {
+				return errors.Errorf("source account currency %s does not match transaction currency %s for journal %s", sourceAccount.Currency, currencyCode, journalID)
+			}
+
+			if destAccount.Currency != foreignCurrencyCode {
+				return errors.Errorf("destination account currency %s does not match foreign transaction currency %s for journal %s", destAccount.Currency, foreignCurrencyCode, journalID)
+			}
 
 			targetTx.Transaction = &transactionsv1.CreateTransactionRequest_TransferBetweenAccounts{
 				TransferBetweenAccounts: &transactionsv1.TransferBetweenAccounts{
-					SourceAccountId:      sourceAccount,
-					DestinationAccountId: destAccount,
+					SourceAccountId:      sourceAccount.ID,
+					DestinationAccountId: destAccount.ID,
 					SourceAmount:         amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String(),
 					DestinationAmount:    foreignAmountParsed.Abs().String(),
 					SourceCurrency:       currencyCode,
@@ -172,7 +231,7 @@ func (f *FireflyImporter) Import(
 			return errors.Errorf("unsupported operation type: %s", operationType)
 		}
 
-		fmt.Println(targetTx)
+		allTransactions = append(allTransactions, targetTx)
 	}
 
 	return nil
