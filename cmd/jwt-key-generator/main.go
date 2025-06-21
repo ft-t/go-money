@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/ft-t/go-money/pkg/jwt"
+	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	keyGenerator := jwt.NewKeyGenerator()
+	keyGenerator := auth.NewKeyGenerator()
 
 	key := keyGenerator.Generate()
 

@@ -5,6 +5,7 @@ import (
 	"buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
 	"connectrpc.com/connect"
 	"context"
+	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/shopspring/decimal"
 )
@@ -38,6 +39,11 @@ func (a *CurrencyApi) Exchange(
 	ctx context.Context,
 	c *connect.Request[currencyv1.ExchangeRequest],
 ) (*connect.Response[currencyv1.ExchangeResponse], error) {
+	jwtData := auth.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+	}
+
 	amount, err := decimal.NewFromString(c.Msg.Amount)
 	if err != nil {
 		return nil, err
@@ -57,6 +63,11 @@ func (a *CurrencyApi) GetCurrencies(
 	ctx context.Context,
 	c *connect.Request[currencyv1.GetCurrenciesRequest],
 ) (*connect.Response[currencyv1.GetCurrenciesResponse], error) {
+	jwtData := auth.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+	}
+
 	resp, err := a.currencySvc.GetCurrencies(ctx, c.Msg)
 	if err != nil {
 		return nil, err
@@ -66,7 +77,10 @@ func (a *CurrencyApi) GetCurrencies(
 }
 
 func (a *CurrencyApi) DeleteCurrency(ctx context.Context, c *connect.Request[currencyv1.DeleteCurrencyRequest]) (*connect.Response[currencyv1.DeleteCurrencyResponse], error) {
-	// todo auth
+	jwtData := auth.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+	}
 
 	resp, err := a.currencySvc.DeleteCurrency(ctx, c.Msg)
 	if err != nil {
@@ -80,7 +94,10 @@ func (a *CurrencyApi) CreateCurrency(
 	ctx context.Context,
 	c *connect.Request[currencyv1.CreateCurrencyRequest],
 ) (*connect.Response[currencyv1.CreateCurrencyResponse], error) {
-	// todo auth
+	jwtData := auth.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+	}
 
 	resp, err := a.currencySvc.CreateCurrency(ctx, c.Msg)
 	if err != nil {
@@ -94,7 +111,10 @@ func (a *CurrencyApi) UpdateCurrency(
 	ctx context.Context,
 	c *connect.Request[currencyv1.UpdateCurrencyRequest],
 ) (*connect.Response[currencyv1.UpdateCurrencyResponse], error) {
-	// todo auth
+	jwtData := auth.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+	}
 
 	resp, err := a.currencySvc.UpdateCurrency(ctx, c.Msg)
 	if err != nil {

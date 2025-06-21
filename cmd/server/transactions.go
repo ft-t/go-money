@@ -5,6 +5,7 @@ import (
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	"connectrpc.com/connect"
 	"context"
+	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 )
 
@@ -13,7 +14,10 @@ type TransactionApi struct {
 }
 
 func (a *TransactionApi) ListTransactions(ctx context.Context, c *connect.Request[transactionsv1.ListTransactionsRequest]) (*connect.Response[transactionsv1.ListTransactionsResponse], error) {
-	// todo auth
+	jwtData := auth.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+	}
 
 	resp, err := a.transactionsSvc.List(ctx, c.Msg)
 	if err != nil {
@@ -27,7 +31,10 @@ func (a *TransactionApi) CreateTransaction(
 	ctx context.Context,
 	c *connect.Request[transactionsv1.CreateTransactionRequest],
 ) (*connect.Response[transactionsv1.CreateTransactionResponse], error) {
-	// todo auth
+	jwtData := auth.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+	}
 
 	resp, err := a.transactionsSvc.Create(ctx, c.Msg)
 	if err != nil {

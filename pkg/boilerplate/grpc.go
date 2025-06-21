@@ -14,10 +14,6 @@ import (
 	"time"
 )
 
-func GetDefaultGrpcServerBuilder() DefaultGrpcServerBuilder {
-	return NewDefaultGrpcServerBuild(http.NewServeMux())
-}
-
 type DefaultGrpcServer struct {
 	b                  *DefaultGrpcServerBuilder
 	reflectionServices []string
@@ -100,7 +96,7 @@ func (d *DefaultGrpcServer) ServeAsync(grpcPort int) {
 			grpcreflect.NewStaticReflector(d.reflectionServices...),
 		))
 	}
-	
+
 	go func() {
 		d.srv = &http.Server{
 			Addr: grpcWebAddress,

@@ -1,10 +1,12 @@
-package boilerplate
+package auth
 
 import (
 	"github.com/cockroachdb/errors"
 	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
+
+var ErrInvalidToken = errors.New("invalid token")
 
 type JwtClaims struct {
 	*jwt.RegisteredClaims
