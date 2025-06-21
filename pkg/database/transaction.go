@@ -10,10 +10,10 @@ import (
 type Transaction struct {
 	ID int64
 
-	SourceAmount   decimal.Decimal
+	SourceAmount   decimal.NullDecimal
 	SourceCurrency string
 
-	DestinationAmount   decimal.Decimal
+	DestinationAmount   decimal.NullDecimal
 	DestinationCurrency string
 
 	SourceAccountID      *int32
@@ -34,6 +34,7 @@ type Transaction struct {
 	Flags           TransactionFlags            `gorm:"type:bigint"`
 
 	VoidedByTransactionID *int64
+	Title                 string
 }
 
 type TransactionFlags int64

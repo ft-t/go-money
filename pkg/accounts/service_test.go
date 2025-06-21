@@ -84,7 +84,7 @@ func TestList(t *testing.T) {
 
 	acc := &database.Account{
 		Extra:    map[string]string{},
-		Position: 1,
+		Position: lo.ToPtr(int32(1)),
 	}
 	assert.NoError(t, gormDB.Create(acc).Error)
 
@@ -94,20 +94,11 @@ func TestList(t *testing.T) {
 			Valid: true,
 			Time:  time.Now().UTC(),
 		},
-		Position: 999,
+		Position: lo.ToPtr(int32(999)),
 	}
 	assert.NoError(t, gormDB.Create(accDeleted).Error)
 
 	mapper := NewMockMapperSvc(gomock.NewController(t))
-
-	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
-			assert.EqualValues(t, accDeleted.ID, account.ID)
-
-			return &v1.Account{
-				Id: account.ID,
-			}
-		})
 
 	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
@@ -125,10 +116,9 @@ func TestList(t *testing.T) {
 	resp, err := srv.List(context.TODO(), &accountsv1.ListAccountsRequest{})
 
 	assert.NoError(t, err)
-	assert.Len(t, resp.Accounts, 2)
+	assert.Len(t, resp.Accounts, 1)
 
-	assert.EqualValues(t, accDeleted.ID, resp.Accounts[0].Account.Id)
-	assert.EqualValues(t, acc.ID, resp.Accounts[1].Account.Id)
+	assert.EqualValues(t, acc.ID, resp.Accounts[0].Account.Id)
 }
 
 func TestCreateAccount(t *testing.T) {

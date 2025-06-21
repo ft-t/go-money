@@ -28,7 +28,15 @@ WITH date_series AS (SELECT generate_series(
                  from date_series d
                           left join daily_sums s
                                     on s.tx_date = d.date
-                 order by d.date asc)
+                 order by d.date asc),
+     lastestRunning as (select coalesce(amount,0) + coalesce((select * from lastestValue), 0) as amount
+                        from running
+                        where date = (select max(date) from running)),
+     udpatedCurrentBalance as (update accounts set
+         current_balance = coalesce((select amount from lastestRunning), 0),
+         last_updated_at = timezone('utc', now())
+         where id = @accountID
+         returning current_balance)
 insert
 into daily_stat(account_id, date, amount)
 select @accountID, date, coalesce(coalesce((select * from lastestValue), 0) + amount, 0)

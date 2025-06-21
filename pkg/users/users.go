@@ -7,6 +7,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type Service struct {
@@ -49,6 +50,17 @@ func (s *Service) Create(
 
 	if !shouldCreate {
 		return nil, errors.New("admin already exists")
+	}
+
+	req.Login = strings.TrimSpace(req.Login)
+	req.Password = strings.TrimSpace(req.Password)
+
+	if req.Login == "" {
+		return nil, errors.New("login is required")
+	}
+
+	if req.Password == "" {
+		return nil, errors.New("password is required")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 5)

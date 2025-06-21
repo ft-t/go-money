@@ -134,5 +134,19 @@ create index if not exists daily_stat_account_id_index on public.daily_stat (acc
 				)
 			},
 		},
+		{
+			ID: "2025-06-16-AddTitleToTransaction",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table transactions add column if not exists title text;`,
+					`alter table transactions
+    alter column source_amount drop not null;
+
+alter table transactions
+    alter column destination_amount drop not null;
+`,
+				)
+			},
+		},
 	}
 }

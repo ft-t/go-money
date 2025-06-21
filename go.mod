@@ -3,14 +3,15 @@ module github.com/ft-t/go-money
 go 1.23.5
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-00000000000000-cc0661872628.1
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.2-00000000000000-cc0661872628.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250621114056-60405da60fd4.1
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.6-20250621114056-60405da60fd4.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/cockroachdb/errors v1.12.0
 	github.com/go-gormigrate/gormigrate/v2 v2.1.4
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/mock v1.6.0
+	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/jinzhu/now v1.1.5
@@ -19,7 +20,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.11.1
 	github.com/rs/zerolog v1.34.0
-	github.com/samber/lo v1.50.0
+	github.com/samber/lo v1.51.0
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.10.0

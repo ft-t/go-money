@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
 	"gorm.io/gorm"
@@ -19,4 +20,8 @@ type StatsSvc interface {
 type LockerSvc interface {
 	LockDailyStat(ctx context.Context, dbTx *gorm.DB) error
 	LockMonthlyStat(ctx context.Context, dbTx *gorm.DB) error
+}
+
+type MapperSvc interface {
+	MapTransaction(ctx context.Context, tx *database.Transaction) *v1.Transaction
 }

@@ -4,10 +4,23 @@ import (
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	"context"
 	"github.com/shopspring/decimal"
 )
+
+type TransactionsSvc interface {
+	Create(
+		ctx context.Context,
+		req *transactionsv1.CreateTransactionRequest,
+	) (*transactionsv1.CreateTransactionResponse, error)
+
+	List(
+		ctx context.Context,
+		req *transactionsv1.ListTransactionsRequest,
+	) (*transactionsv1.ListTransactionsResponse, error)
+}
 
 type UserSvc interface {
 	Login(
@@ -41,6 +54,11 @@ type AccountSvc interface {
 		ctx context.Context,
 		req *accountsv1.DeleteAccountRequest,
 	) (*accountsv1.DeleteAccountResponse, error)
+
+	CreateBulk(
+		ctx context.Context,
+		req *accountsv1.CreateAccountsBulkRequest,
+	) ([]string, error)
 }
 
 type ConfigSvc interface {

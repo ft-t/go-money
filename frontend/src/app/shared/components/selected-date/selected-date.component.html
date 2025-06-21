@@ -1,0 +1,36 @@
+<div>
+    <p-button type="button" [label]="this.getCurrentFancyDate()" (onClick)="datePopoverSelector.toggle($event)"
+              styleClass="min-w-48" />
+</div>
+
+<p-popover #datePopoverSelector>
+    <div class="flex flex-row gap-4">
+        <div class="flex flex-col gap-4">
+            @for (day of this.possibleDates; track day) {
+                <div>
+                    <p-button type="button" [label]="this.getFancyDate(day[0], day[1])" (onClick)="setDateFromButton(day[0], day[1])" />
+                </div>
+            }
+        </div>
+        <div class="flex flex-col customCalendar gap-4" #calendarContainer>
+            <div class="flex flex-row gap-4">
+                <p-datepicker (onInput)="onManualDateChanged()" (onSelect)="onManualDateChanged()" class="basis-1/2" [(ngModel)]="manualDateFrom"></p-datepicker>
+                <p-datepicker (onInput)="onManualDateChanged()" (onSelect)="onManualDateChanged()" class="basis-1/2" [(ngModel)]="manualDateTo"></p-datepicker>
+            </div>
+            <div class="flex flex-row">
+                <p-calendar
+                    [(ngModel)]="rangeDates"
+                    (onSelect)="onBigCalendarDateChanged()"
+                    selectionMode="range"
+                    styleClass="relative"
+                    panelStyleClass="relative"
+                    [appendTo]="calendarContainer"
+                    [inline]="true"
+                    [numberOfMonths]="2"
+                    variant="filled"
+                    showWeek="true"
+                    [readonlyInput]="false" />
+            </div>
+        </div>
+    </div>
+</p-popover>

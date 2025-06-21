@@ -28,7 +28,7 @@ func NewUserApi(
 }
 
 func (u *UserApi) Create(ctx context.Context, c *connect.Request[usersv1.CreateRequest]) (*connect.Response[usersv1.CreateResponse], error) {
-	resp, err := u.userSvc.Create(ctx, c.Msg)
+	resp, err := u.userSvc.Create(ctx, c.Msg) // check is basically inside
 	if err != nil {
 		return nil, err
 	}

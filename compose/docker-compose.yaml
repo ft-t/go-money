@@ -5,10 +5,11 @@ services:
     container_name: app
     restart: always
     env_file: .env
+    pull_policy: never
     networks:
       - go-money
     ports:
-      - "127.0.0.1:${PUBLIC_PORT}:${GRPC_PORT}"
+      - "0.0.0.0  :${PUBLIC_PORT}:${GRPC_PORT}"
     depends_on:
       - db
   db:
@@ -22,7 +23,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "127.0.0.1:5432:5433"
+      - "127.0.0.1:5432:5432"
     networks:
       - go-money
     volumes:

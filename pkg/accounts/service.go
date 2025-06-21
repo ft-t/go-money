@@ -3,6 +3,7 @@ package accounts
 import (
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	"context"
+	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
@@ -15,12 +16,32 @@ type Service struct {
 	cfg *ServiceConfig
 }
 
+type ServiceConfig struct {
+	MapperSvc MapperSvc
+}
+
+func NewService(
+	cfg *ServiceConfig,
+) *Service {
+	return &Service{
+		cfg: cfg,
+	}
+}
+
 func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
-	var accounts []database.Account
+	var accounts []*database.Account
 
-	db := database.GetDbWithContext(ctx, database.DbTypeReadonly)
+	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Order("position desc")
 
-	if err := db.Unscoped().Order("position desc").Find(&accounts).Error; err != nil {
+	if len(req.Ids) > 0 {
+		query = query.Where("id in ?", req.Ids)
+	}
+
+	if req.IncludeDeleted {
+		query = query.Unscoped()
+	}
+
+	if err := query.Find(&accounts).Error; err != nil {
 		return nil, err
 	}
 
@@ -29,7 +50,7 @@ func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest)
 	for _, account := range accounts {
 		mapped = append(mapped,
 			&accountsv1.ListAccountsResponse_AccountItem{
-				Account: s.cfg.MapperSvc.MapAccount(ctx, &account),
+				Account: s.cfg.MapperSvc.MapAccount(ctx, account),
 			})
 	}
 
@@ -56,16 +77,52 @@ func (s *Service) Delete(ctx context.Context, req *accountsv1.DeleteAccountReque
 	}, nil
 }
 
-type ServiceConfig struct {
-	MapperSvc MapperSvc
-}
+func (s *Service) CreateBulk(
+	ctx context.Context,
+	req *accountsv1.CreateAccountsBulkRequest,
+) ([]string, error) {
+	var existingAccounts []*database.Account
 
-func NewService(
-	cfg *ServiceConfig,
-) *Service {
-	return &Service{
-		cfg: cfg,
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+
+	if err := tx.Clauses(clause.Locking{
+		Strength: "UPDATE",
+	}).Find(&existingAccounts).Error; err != nil {
+		return nil, errors.Join(err, errors.New("failed to fetch existing accounts"))
 	}
+
+	accountMap := map[string]*database.Account{}
+	for _, account := range existingAccounts {
+		key := fmt.Sprintf("%s-%s-%s", account.Name, account.Type, account.Currency)
+		accountMap[key] = account
+	}
+
+	var messages []string
+
+	for _, toCreate := range req.Accounts {
+		key := fmt.Sprintf("%s-%s-%s", toCreate.Name, toCreate.Type, toCreate.Currency)
+		if _, exists := accountMap[key]; exists {
+			messages = append(messages,
+				fmt.Sprintf("account with name '%s', type '%s', and currency '%s' already exists",
+					toCreate.Name,
+					toCreate.Type,
+					toCreate.Currency,
+				))
+		}
+
+		if acc, err := s.Create(ctx, toCreate); err != nil {
+			return nil, errors.Join(err, errors.New("failed to create account"))
+		} else {
+			messages = append(messages,
+				fmt.Sprintf("account with id '%v' and and key '%s' created successfully",
+					acc.Account.Id,
+					key,
+				))
+		}
+	}
+
+	return messages, nil
 }
 
 func (s *Service) Create(
@@ -84,6 +141,11 @@ func (s *Service) Create(
 		Note:          req.Note,
 		Iban:          req.Iban,
 		AccountNumber: req.AccountNumber,
+		Position:      req.Position,
+	}
+
+	if account.Extra == nil {
+		account.Extra = map[string]string{}
 	}
 
 	liabilityPercent, err := s.parseLiabilityPercent(req.LiabilityPercent)

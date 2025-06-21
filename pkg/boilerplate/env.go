@@ -15,8 +15,8 @@ const (
 
 func GetCurrentEnvironment() Environment {
 	val := os.Getenv("ENVIRONMENT")
-	val = strings.ToLower(val)
-	switch val {
+	
+	switch strings.ToLower(val) {
 	case "prod":
 		return Prod
 	case "ci":

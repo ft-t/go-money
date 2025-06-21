@@ -1,70 +1,141 @@
+import { Component, Inject, OnInit } from '@angular/core';
+import { Button } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
+import { Fluid } from 'primeng/fluid';
+import { DropdownModule } from 'primeng/dropdown';
+import { TRANSPORT_TOKEN } from '../../../../consts/transport';
+import { createClient, Transport } from '@connectrpc/connect';
+import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
+import { ErrorHelper } from '../../../../helpers/error.helper';
+import { MessageService } from 'primeng/api';
+import { Account, AccountSchema, AccountType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
+import { FormsModule } from '@angular/forms';
+import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
+import { create } from '@bufbuild/protobuf';
+import { EnumService } from '../../../../services/enum.service';
+import { NgIf } from '@angular/common';
+import { Textarea } from 'primeng/textarea';
 import {
-  ChangeDetectionStrategy,
-  Component,
-  OnDestroy,
-  OnInit,
-} from '@angular/core';
-import { BaseAutoUnsubscribeClass } from '../../../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
-import { tap } from 'rxjs/operators';
-import { AccountsGrpcService } from '../../../../services/accounts/accounts-grpc.service';
+    AccountsService,
+    CreateAccountRequestSchema,
+    UpdateAccountRequestSchema
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { ActivatedRoute, ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 
 @Component({
-  selector: 'app-account-upsert',
-  standalone: false,
-  templateUrl: 'account-upsert.component.html',
-  styleUrls: ['account-upsert.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-account-upsert',
+    templateUrl: 'account-upsert.component.html',
+    styleUrls: ['account-upsert.component.scss'],
+    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea]
 })
-export class AccountUpsertComponent extends BaseAutoUnsubscribeClass implements OnInit, OnDestroy {
-  constructor(private accountsService: AccountsGrpcService) {
-    super();
-  }
+export class AccountUpsertComponent implements OnInit {
+    private currencyService;
+    private accountsService;
 
-  override ngOnInit() {
-    super.ngOnInit();
-  }
+    public currencies: Currency[] = [];
 
-  override ngOnDestroy() {
-    super.ngOnDestroy();
-  }
+    public account: Account = create(AccountSchema, {});
+    public accountTypes = EnumService.getAccountTypes();
+    public isEdit: boolean = false;
 
-  deleteAccount() {
-    // const request = new DeleteAccountRequest(
-    //   {
-    //     id: 12345
-    //   }
-    // );
+    constructor(
+        @Inject(TRANSPORT_TOKEN) private transport: Transport,
+        private messageService: MessageService,
+        private router: Router,
+        private routeSnapshot: ActivatedRoute
+    ) {
+        this.isEdit = routeSnapshot.snapshot.data['isEdit'];
 
-    // this.accountsService.deleteAccount(request)
-    //   .pipe(
-    //     tap((response: DeleteAccountResponse) => {
-    //       console.log(response);
-    //     }),
-    //     this.takeUntilDestroy
-    //   ).subscribe();
-  }
+        this.currencyService = createClient(CurrencyService, this.transport);
+        this.accountsService = createClient(AccountsService, this.transport);
+    }
 
-  updateAccount() {
-    // const request = new UpdateAccountRequest(
-    //   {
-    //     id: 12345,
-    //     name: '',
-    //     extra: {},
-    //     type: AccountType.UNSPECIFIED,
-    //     note: '',
-    //     liabilityPercent: '',
-    //     iban: '',
-    //     accountNumber: ''
-    //   }
-    // );
+    async loadCurrencies() {
+        try {
+            let response = await this.currencyService.getCurrencies({});
 
-    // this.accountsService.updateAccount(request)
-    //   .pipe(
-    //     tap((response: UpdateAccountResponse) => {
-    //       console.log(response);
-    //       // this.customers1$.next(response.accounts);
-    //     }),
-    //     this.takeUntilDestroy
-    //   ).subscribe();
-  }
+            this.currencies = response.currencies || [];
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async ngOnInit() {
+        this.account = create(AccountSchema, {});
+
+        await this.loadCurrencies();
+
+        if (this.isEdit) {
+            const accountId = +this.routeSnapshot.snapshot.params['id'];
+
+            if (isNaN(accountId) || accountId <= 0) {
+                this.messageService.add({ severity: 'error', detail: 'invalid account id' });
+                return;
+            }
+
+            try {
+                let response = await this.accountsService.listAccounts({ ids: [+accountId] });
+                if (response.accounts && response.accounts.length == 0) {
+                    this.messageService.add({ severity: 'error', detail: 'account not found' });
+                    return;
+                }
+
+                this.account = response.accounts[0].account ?? create(AccountSchema, {});
+            } catch (e) {
+                this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            }
+        }
+    }
+
+    async update() {
+        try {
+            let response = await this.accountsService.updateAccount(
+                create(UpdateAccountRequestSchema, {
+                    id: this.account.id,
+                    type: this.account.type,
+                    name: this.account.name,
+                    accountNumber: this.account.accountNumber,
+                    iban: this.account.iban,
+                    note: this.account.note,
+                    liabilityPercent: this.account.liabilityPercent,
+                    extra: {
+                        updated_by: 'web'
+                    } // todo,
+                })
+            );
+
+            this.messageService.add({ severity: 'info', detail: 'Account updated' });
+            await this.router.navigate(['/', 'accounts', response.account!.id.toString()]);
+        } catch (e: any) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            return;
+        }
+    }
+
+    async create() {
+        try {
+            let response = await this.accountsService.createAccount(
+                create(CreateAccountRequestSchema, {
+                    type: this.account.type,
+                    name: this.account.name,
+                    currency: this.account.currency,
+                    accountNumber: this.account.accountNumber,
+                    iban: this.account.iban,
+                    note: this.account.note,
+                    liabilityPercent: this.account.liabilityPercent,
+                    extra: {
+                        created_by: 'web'
+                    } // todo
+                })
+            );
+
+            this.messageService.add({ severity: 'info', detail: 'New account created' });
+            await this.router.navigate(['/', 'accounts', response.account!.id.toString()]);
+        } catch (e: any) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            return;
+        }
+    }
+
+    protected readonly AccountType = AccountType;
 }

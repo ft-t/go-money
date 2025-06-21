@@ -4,17 +4,19 @@ import (
 	"context"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/appcfg"
+	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
-	"github.com/ft-t/go-money/pkg/jwt"
 	"github.com/ft-t/go-money/pkg/mappers"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -29,17 +31,23 @@ func main() {
 	if config.JwtPrivateKey == "" {
 		logger.Warn().Msgf("jwt private key is empty. Will create a new temporary key")
 
-		keyGen := jwt.NewKeyGenerator()
+		keyGen := auth.NewKeyGenerator()
 		newKey := keyGen.Generate()
 
 		config.JwtPrivateKey = string(keyGen.Serialize(newKey))
 	}
 
-	grpcServer := boilerplate.GetDefaultGrpcServerBuilder().Build()
-
-	jwtService, err := users.NewJwtGenerator(config.JwtPrivateKey)
+	jwtService, err := auth.NewService(config.JwtPrivateKey, 24*time.Hour)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create jwt service")
+	}
+
+	grpcServer := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).
+		AddServerMiddleware(auth.GrpcMiddleware(jwtService)).Build()
+
+	if config.StaticFilesDirectory != "" {
+		logger.Info().Str("dir", config.StaticFilesDirectory).Msg("serving static files from directory")
+		grpcServer.GetMux().Handle("/", spaHandler(config.StaticFilesDirectory))
 	}
 
 	userService := users.NewService(&users.ServiceConfig{
@@ -75,6 +83,13 @@ func main() {
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create accounts handler")
 	}
+
+	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:  transactions.NewStatService(),
+		MapperSvc: mapper,
+	})
+
+	_ = NewTransactionApi(grpcServer, transactionSvc)
 
 	go func() {
 		if len(config.ExchangeRatesUrl) > 0 {

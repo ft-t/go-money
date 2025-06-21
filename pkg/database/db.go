@@ -34,7 +34,6 @@ func init() {
 	}
 
 	mainDb, err := boilerplate.GetGormConnection(config.Db)
-
 	if err != nil {
 		panic(err)
 	}

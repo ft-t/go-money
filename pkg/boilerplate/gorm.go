@@ -50,7 +50,7 @@ func GetGormConnection(config DbConfig) (*gorm.DB, error) {
 	log.Info().Msgf("========= DB [%v] [%v] ============", config.Host, config.Db)
 
 	if config.MaxIdleConnections > config.MaxOpenConnections {
-		log.Warn().Msgf("MaxIdleConnections connection should be less or equal to MaxOpenConnections")
+		log.Trace().Msgf("MaxIdleConnections connection should be less or equal to MaxOpenConnections")
 		config.MaxIdleConnections = config.MaxOpenConnections
 	}
 
@@ -59,11 +59,11 @@ func GetGormConnection(config DbConfig) (*gorm.DB, error) {
 		config.MaxConnectionIdleSec = config.MaxConnectionLifetimeSec
 	}
 
-	log.Info().Msgf("MaxIdleConnections %v", config.MaxOpenConnections)
-	log.Info().Msgf("MaxConnectionLifetimeSec %v", config.MaxConnectionLifetimeSec)
-	log.Info().Msgf("MaxOpenConnections %v", config.MaxOpenConnections)
-	log.Info().Msgf("MaxIdleTimeSec %v", config.MaxConnectionIdleSec)
-	log.Info().Msg("=========== DB END ===========")
+	log.Trace().Msgf("MaxIdleConnections %v", config.MaxOpenConnections)
+	log.Trace().Msgf("MaxConnectionLifetimeSec %v", config.MaxConnectionLifetimeSec)
+	log.Trace().Msgf("MaxOpenConnections %v", config.MaxOpenConnections)
+	log.Trace().Msgf("MaxIdleTimeSec %v", config.MaxConnectionIdleSec)
+	log.Trace().Msg("=========== DB END ===========")
 
 	rawDb.SetMaxIdleConns(config.MaxIdleConnections)
 	rawDb.SetConnMaxLifetime(time.Duration(config.MaxConnectionLifetimeSec) * time.Second)
@@ -74,7 +74,14 @@ func GetGormConnection(config DbConfig) (*gorm.DB, error) {
 }
 
 func GetDbConnectionString(config DbConfig) (string, error) {
-	return fmt.Sprintf("host=%v user=%v password=%v dbname=%v port=%v", config.Host, config.User, config.Password, config.Db, config.Port), nil
+	return fmt.Sprintf("host=%v user=%v password=%v dbname=%v port=%v sslmode=%s",
+		config.Host,
+		config.User,
+		config.Password,
+		config.Db,
+		config.Port,
+		config.SslMode,
+	), nil
 }
 
 func ExecuteSql(db *gorm.DB, sql ...string) error {

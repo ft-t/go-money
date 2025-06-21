@@ -22,8 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     container: golang:1.24-alpine
     services:
-      redis:
-        image: redis:latest
       postgres:
         image: postgres:latest
         env:
@@ -39,7 +37,7 @@ jobs:
       - run: apk update && apk add curl openssl git openssh-client build-base && mkdir -p /root/.ssh
       - run: wget -O /usr/bin/mockgen https://github.com/skynet2/mock/releases/latest/download/mockgen && chmod 777 /usr/bin/mockgen
       - run: make generate
-      - run: environment=ci go test -json -coverprofile=/root/coverage_temp.txt -covermode=atomic ./... > /root/test.json
+      - run: ENVIRONMENT=ci go test -json -coverprofile=/root/coverage_temp.txt -covermode=atomic ./... > /root/test.json
       - run: cat /root/coverage_temp.txt | grep  -v "_mock.go" | grep -v "migrations.go" | grep -v "_mocks.go" | grep  -v "_mocks_test.go" | grep -v "_mock_test.go" | grep -v "main.go" | grep -v "testingutils" | grep -v "boilerplate" > /root/coverage.txt || true
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
