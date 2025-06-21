@@ -28,7 +28,7 @@ type Account struct {
 	AccountNumber    string
 	Iban             string
 	LiabilityPercent decimal.NullDecimal
-	Position         int
+	Position         *int32
 
 	FirstTransactionAt *time.Time
 }

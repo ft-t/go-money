@@ -23,7 +23,7 @@ func NewFireflyImporter() *FireflyImporter {
 
 type ImportRequest struct {
 	Data     []byte
-	Accounts map[string]*database.Account
+	Accounts []*database.Account
 }
 
 func (f *FireflyImporter) Import(
@@ -46,6 +46,11 @@ func (f *FireflyImporter) Import(
 	mutable.Reverse(records)
 
 	var allTransactions []*transactionsv1.CreateTransactionRequest
+
+	accountMap := map[string]*database.Account{}
+	for _, acc := range req.Accounts {
+		accountMap[acc.Name] = acc
+	}
 
 	for _, record := range records {
 		operationType := record[6]
@@ -82,7 +87,7 @@ func (f *FireflyImporter) Import(
 		}
 		switch operationType {
 		case "Withdrawal":
-			sourceAccount, ok := req.Accounts[sourceName]
+			sourceAccount, ok := accountMap[sourceName]
 			if !ok {
 				return errors.Errorf("source account not found: %s", sourceName)
 			}
@@ -112,7 +117,7 @@ func (f *FireflyImporter) Import(
 			}
 		case "Opening balance", "Deposit":
 			if sourceType == "Debt" {
-				sourceAccount, ok := req.Accounts[sourceName]
+				sourceAccount, ok := accountMap[sourceName]
 				if !ok {
 					return errors.Errorf("source account not found: %s", sourceName)
 				}
@@ -129,7 +134,7 @@ func (f *FireflyImporter) Import(
 					},
 				}
 			} else {
-				destAccount, ok := req.Accounts[destinationName]
+				destAccount, ok := accountMap[destinationName]
 				if !ok {
 					return errors.Errorf("destination account not found: %s", destinationName)
 				}
@@ -157,7 +162,7 @@ func (f *FireflyImporter) Import(
 			if destinationAccountType == "Reconciliation account" {
 				rec.Reconciliation.DestinationAmount = amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String()
 
-				destAccount, ok := req.Accounts[sourceName] // yes, sourceName is used here as destination account
+				destAccount, ok := accountMap[sourceName] // yes, sourceName is used here as destination account
 				if !ok {
 					return errors.Errorf("source account not found: %s", sourceName)
 				}
@@ -170,7 +175,7 @@ func (f *FireflyImporter) Import(
 			} else {
 				rec.Reconciliation.DestinationAmount = amountParsed.Abs().String()
 
-				destAccount, ok := req.Accounts[destinationName]
+				destAccount, ok := accountMap[destinationName]
 				if !ok {
 					return errors.Errorf("destination account not found: %s", destinationName)
 				}
@@ -182,12 +187,12 @@ func (f *FireflyImporter) Import(
 				rec.Reconciliation.DestinationAccountId = destAccount.ID
 			}
 		case "Transfer":
-			sourceAccount, ok := req.Accounts[sourceName]
+			sourceAccount, ok := accountMap[sourceName]
 			if !ok {
 				return errors.Errorf("source account not found: %s", sourceName)
 			}
 
-			destAccount, ok := req.Accounts[destinationName]
+			destAccount, ok := accountMap[destinationName]
 			if !ok {
 				return errors.Errorf("destination account not found: %s", destinationName)
 			}
