@@ -107,78 +107,109 @@ func (s *Service) List(
 	return resp, nil
 }
 
+func (s *Service) CreateBulk(
+	ctx context.Context,
+	req []*transactionsv1.CreateTransactionRequest,
+) ([]*transactionsv1.CreateTransactionResponse, error) {
+	return s.createBulkInternal(ctx, req)
+}
+
+func (s *Service) createBulkInternal(
+	ctx context.Context,
+	reqs []*transactionsv1.CreateTransactionRequest,
+) ([]*transactionsv1.CreateTransactionResponse, error) {
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+
+	ctx = database.WithContext(ctx, tx)
+
+	var created []*database.Transaction
+
+	for _, req := range reqs {
+		if req.TransactionDate == nil {
+			return nil, errors.New("transaction date is required")
+		}
+
+		newTx := &database.Transaction{
+			SourceAmount:         decimal.NullDecimal{},
+			SourceCurrency:       "",
+			DestinationAmount:    decimal.NullDecimal{},
+			DestinationCurrency:  "",
+			SourceAccountID:      nil,
+			DestinationAccountID: nil,
+			LabelIDs:             req.LabelIds,
+			CreatedAt:            time.Now().UTC(),
+			Notes:                req.Notes,
+			Extra:                req.Extra,
+			TransactionDateTime:  req.TransactionDate.AsTime(),
+			TransactionDateOnly:  req.TransactionDate.AsTime(),
+			Title:                req.Title,
+		}
+
+		if newTx.Extra == nil {
+			newTx.Extra = map[string]string{}
+		}
+
+		var fillRes *fillResponse
+		var err error
+
+		switch v := req.GetTransaction().(type) {
+		case *transactionsv1.CreateTransactionRequest_TransferBetweenAccounts:
+			if fillRes, err = s.fillTransferBetweenAccounts(ctx, tx, v.TransferBetweenAccounts, newTx); err != nil {
+				return nil, err
+			}
+		case *transactionsv1.CreateTransactionRequest_Withdrawal:
+			if fillRes, err = s.fillWithdrawal(ctx, tx, v.Withdrawal, newTx); err != nil {
+				return nil, err
+			}
+		case *transactionsv1.CreateTransactionRequest_Deposit:
+			if fillRes, err = s.fillDeposit(ctx, tx, v.Deposit, newTx); err != nil {
+				return nil, err
+			}
+		case *transactionsv1.CreateTransactionRequest_Reconciliation:
+			if fillRes, err = s.fillReconciliation(ctx, tx, v.Reconciliation, newTx); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, errors.New("invalid transaction type")
+		}
+
+		for _, acc := range fillRes.Accounts {
+			if acc.FirstTransactionAt == nil || acc.FirstTransactionAt.After(newTx.TransactionDateTime) {
+				acc.FirstTransactionAt = &newTx.TransactionDateTime
+			}
+		}
+
+		// validate wallet transaction date
+
+		if err = tx.Create(newTx).Error; err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		created = append(created, newTx)
+	}
+
+	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, created); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return []*transactionsv1.CreateTransactionResponse{&transactionsv1.CreateTransactionResponse{}}, nil // todo
+}
+
 func (s *Service) Create(
 	ctx context.Context,
 	req *transactionsv1.CreateTransactionRequest,
 ) (*transactionsv1.CreateTransactionResponse, error) {
-	if req.TransactionDate == nil {
-		return nil, errors.New("transaction date is required")
+	resp, err := s.createBulkInternal(ctx, []*transactionsv1.CreateTransactionRequest{req})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create transaction for request: %v", req)
 	}
 
-	newTx := &database.Transaction{
-		SourceAmount:         decimal.NullDecimal{},
-		SourceCurrency:       "",
-		DestinationAmount:    decimal.NullDecimal{},
-		DestinationCurrency:  "",
-		SourceAccountID:      nil,
-		DestinationAccountID: nil,
-		LabelIDs:             req.LabelIds,
-		CreatedAt:            time.Now().UTC(),
-		Notes:                req.Notes,
-		Extra:                req.Extra,
-		TransactionDateTime:  req.TransactionDate.AsTime(),
-		TransactionDateOnly:  req.TransactionDate.AsTime(),
-		Title:                req.Title,
-	}
-
-	if newTx.Extra == nil {
-		newTx.Extra = map[string]string{}
-	}
-
-	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
-	defer tx.Rollback()
-
-	var fillRes *fillResponse
-	var err error
-
-	switch v := req.GetTransaction().(type) {
-	case *transactionsv1.CreateTransactionRequest_TransferBetweenAccounts:
-		if fillRes, err = s.fillTransferBetweenAccounts(ctx, tx, v.TransferBetweenAccounts, newTx); err != nil {
-			return nil, err
-		}
-	case *transactionsv1.CreateTransactionRequest_Withdrawal:
-		if fillRes, err = s.fillWithdrawal(ctx, tx, v.Withdrawal, newTx); err != nil {
-			return nil, err
-		}
-	case *transactionsv1.CreateTransactionRequest_Deposit:
-		if fillRes, err = s.fillDeposit(ctx, tx, v.Deposit, newTx); err != nil {
-			return nil, err
-		}
-	default:
-		return nil, errors.New("invalid transaction type")
-	}
-
-	for _, acc := range fillRes.Accounts {
-		if acc.FirstTransactionAt == nil || acc.FirstTransactionAt.After(newTx.TransactionDateTime) {
-			acc.FirstTransactionAt = &newTx.TransactionDateTime
-		}
-	}
-
-	// validate wallet transaction date
-
-	if err = tx.Create(newTx).Error; err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, []*database.Transaction{newTx}); err != nil { // CALL BEFORE CREATE
-		return nil, err
-	}
-
-	if err = tx.Commit().Error; err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return &transactionsv1.CreateTransactionResponse{}, nil
+	return resp[0], nil
 }
 
 func (s *Service) fillDeposit(
@@ -208,6 +239,38 @@ func (s *Service) fillDeposit(
 	}
 
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT
+	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
+	newTx.DestinationCurrency = req.DestinationCurrency
+	newTx.DestinationAccountID = &req.DestinationAccountId
+
+	return &fillResponse{
+		Accounts: accounts,
+	}, nil
+}
+
+func (s *Service) fillReconciliation(
+	ctx context.Context,
+	dbTx *gorm.DB,
+	req *transactionsv1.Reconciliation,
+	newTx *database.Transaction,
+) (*fillResponse, error) {
+	if req.DestinationAccountId <= 0 {
+		return nil, errors.New("destination account id is required")
+	}
+
+	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid destination amount")
+	}
+
+	accounts, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
+		req.DestinationAccountId: req.DestinationCurrency,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = &req.DestinationAccountId

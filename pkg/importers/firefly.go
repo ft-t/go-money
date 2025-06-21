@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/samber/lo"
 	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
@@ -15,10 +16,15 @@ import (
 )
 
 type FireflyImporter struct {
+	transactionService *transactions.Service
 }
 
-func NewFireflyImporter() *FireflyImporter {
-	return &FireflyImporter{}
+func NewFireflyImporter(
+	txSvc *transactions.Service,
+) *FireflyImporter {
+	return &FireflyImporter{
+		transactionService: txSvc,
+	}
 }
 
 type ImportRequest struct {
@@ -152,7 +158,7 @@ func (f *FireflyImporter) Import(
 				}
 			}
 		case "Reconciliation":
-			rec := transactionsv1.CreateTransactionRequest_Reconciliation{
+			rec := &transactionsv1.CreateTransactionRequest_Reconciliation{
 				Reconciliation: &transactionsv1.Reconciliation{
 					DestinationAmount:    "",
 					DestinationCurrency:  currencyCode,
@@ -186,6 +192,8 @@ func (f *FireflyImporter) Import(
 
 				rec.Reconciliation.DestinationAccountId = destAccount.ID
 			}
+
+			targetTx.Transaction = rec
 		case "Transfer":
 			sourceAccount, ok := accountMap[sourceName]
 			if !ok {
@@ -237,6 +245,10 @@ func (f *FireflyImporter) Import(
 		}
 
 		allTransactions = append(allTransactions, targetTx)
+	}
+
+	if _, err = f.transactionService.CreateBulk(ctx, allTransactions); err != nil {
+		return errors.Wrap(err, "failed to create transactions")
 	}
 
 	return nil
