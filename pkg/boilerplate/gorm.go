@@ -74,7 +74,14 @@ func GetGormConnection(config DbConfig) (*gorm.DB, error) {
 }
 
 func GetDbConnectionString(config DbConfig) (string, error) {
-	return fmt.Sprintf("host=%v user=%v password=%v dbname=%v port=%v", config.Host, config.User, config.Password, config.Db, config.Port), nil
+	return fmt.Sprintf("host=%v user=%v password=%v dbname=%v port=%v sslmode=%s",
+		config.Host,
+		config.User,
+		config.Password,
+		config.Db,
+		config.Port,
+		config.SslMode,
+	), nil
 }
 
 func ExecuteSql(db *gorm.DB, sql ...string) error {
