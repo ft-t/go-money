@@ -12,6 +12,22 @@ type AccountsApi struct {
 	accSvc AccountSvc
 }
 
+func (a *AccountsApi) CreateAccountsBulk(
+	ctx context.Context,
+	c *connect.Request[accountsv1.CreateAccountsBulkRequest],
+) (*connect.Response[accountsv1.CreateAccountsBulkResponse], error) {
+	// todo auth
+
+	resp, err := a.accSvc.CreateBulk(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&accountsv1.CreateAccountsBulkResponse{
+		Messages: resp,
+	}), nil
+}
+
 func (a *AccountsApi) ReorderAccounts(ctx context.Context, c *connect.Request[accountsv1.ReorderAccountsRequest]) (*connect.Response[accountsv1.ReorderAccountsResponse], error) {
 
 	//TODO implement me

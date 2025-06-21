@@ -43,6 +43,11 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create jwt service")
 	}
 
+	if config.StaticFilesDirectory != "" {
+		logger.Info().Str("dir", config.StaticFilesDirectory).Msg("serving static files from directory")
+		grpcServer.GetMux().Handle("/", spaHandler(config.StaticFilesDirectory))
+	}
+
 	userService := users.NewService(&users.ServiceConfig{
 		JwtSvc: jwtService,
 	})

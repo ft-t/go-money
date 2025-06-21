@@ -12,7 +12,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 @Component({
     selector: 'selected-date',
     templateUrl: 'selected-date.component.html',
-    imports: [Button, Popover, Calendar, FormsModule, InputText, InputMask, DatePickerModule],
+    imports: [Button, Popover, Calendar, FormsModule, DatePickerModule],
     styles: `
         customCalendar .p-datepicker-panel {
             position: relative !important;

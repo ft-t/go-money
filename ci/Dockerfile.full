@@ -1,0 +1,5 @@
+ARG MAIN_IMAGE
+
+FROM ${MAIN_IMAGE}
+RUN mkdir -p /opt/go-money/frontend
+COPY ./dist /opt/go-money/frontend

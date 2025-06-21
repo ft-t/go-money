@@ -15,6 +15,8 @@ import { MessageService } from 'primeng/api';
 import { EnumService } from './app/services/enum.service';
 import { SelectedDateService } from './app/core/services/selected-date.service';
 import { DatePipe } from '@angular/common';
+import { CookieService } from './app/services/cookie.service';
+import { CookieInstances } from './app/objects/cookie-instances';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -35,9 +37,14 @@ export const appConfig: ApplicationConfig = {
         providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } }),
         {
             provide: TRANSPORT_TOKEN,
-            useFactory: () => {
+            deps: [CookieService],
+            useFactory: (cookiesService: CookieService) => {
+                let host = cookiesService.get(CookieInstances.CustomApiHost);
+                if (!host)
+                    host = '/'
+
                 return createConnectTransport({
-                    baseUrl: 'http://localhost:52055',
+                    baseUrl: host,
                     interceptors: [authInterceptor()]
                 });
             }

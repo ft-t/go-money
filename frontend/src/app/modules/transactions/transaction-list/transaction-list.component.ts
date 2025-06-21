@@ -25,7 +25,7 @@ import { ErrorHelper } from '../../../helpers/error.helper';
 @Component({
     selector: 'app-transaction-list',
     templateUrl: 'transaction-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule]
+    imports: [OverlayModule, FormsModule, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule]
 })
 export class TransactionListComponent implements OnInit {
     private transactionsService;
