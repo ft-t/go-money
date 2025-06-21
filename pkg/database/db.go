@@ -27,10 +27,8 @@ func init() {
 
 	log.Info().Msg("setup postgres database")
 
-	if boilerplate.GetCurrentEnvironment() == boilerplate.Ci {
-		if err := testingutils.EnsurePostgresDbExists(config.Db); err != nil {
-			panic(err)
-		}
+	if err := testingutils.EnsurePostgresDbExists(config.Db); err != nil {
+		panic(err)
 	}
 
 	mainDb, err := boilerplate.GetGormConnection(config.Db)
