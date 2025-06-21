@@ -10,5 +10,5 @@ type DbConfig struct {
 	MaxConnectionLifetimeSec int    `env:"MAX_CONNECTION_LIFETIME_SEC"`
 	MaxOpenConnections       int    `env:"MAX_OPEN_CONNECTIONS"`
 	MaxConnectionIdleSec     int    `env:"MAX_CONNECTION_IDLE_SEC"`
-	SslMode                  string `env:"SSL_MODE, default=require"`
+	SslMode                  string `env:"SSL_MODE, default=require"` //
 }
