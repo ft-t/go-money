@@ -2,7 +2,7 @@ on:
   push:
     branches:
       - master
-      - ui
+      - ui1
 
 env:
   version: 0.0.0.${{github.run_number}}

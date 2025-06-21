@@ -100,6 +100,7 @@ func TestBasicCalc(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(t, err)
 
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
@@ -112,7 +113,6 @@ func TestBasicCalc(t *testing.T) {
 			},
 		},
 	})
-
 	assert.NoError(t, err)
 
 	expenseDate2 := time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC)
@@ -126,6 +126,7 @@ func TestBasicCalc(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(t, err)
 
 	depositDate2 := time.Date(2025, 6, 7, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
@@ -138,6 +139,7 @@ func TestBasicCalc(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(t, err)
 
 	depositDate3 := time.Date(2025, 6, 9, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{

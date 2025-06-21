@@ -47,7 +47,9 @@ func flushInternal(config boilerplate.DbConfig, tables []string) error {
 		return err
 	}
 
-	defer conn.Close(context.Background())
+	defer func() {
+		_ = conn.Close(context.Background())
+	}()
 
 	res, err := conn.Query(context.Background(), "SELECT table_schema, table_name FROM information_schema.tables where table_schema != 'pg_catalog' and table_schema != 'information_schema';")
 
@@ -124,7 +126,9 @@ func EnsurePostgresDbExists(config boilerplate.DbConfig) error {
 		return err
 	}
 
-	defer conn.Close(context.Background())
+	defer func() {
+		_ = conn.Close(context.Background())
+	}()
 
 	r, err := conn.Query(context.Background(), fmt.Sprintf("SELECT * FROM pg_database WHERE datname='%v'", oldDbName))
 
@@ -134,11 +138,7 @@ func EnsurePostgresDbExists(config boilerplate.DbConfig) error {
 
 	r.Next()
 
-	exists := true
-
-	if len(r.RawValues()) == 0 {
-		exists = false
-	}
+	exists := len(r.RawValues()) == 0
 
 	if !exists {
 		_, err = conn.Exec(context.Background(), fmt.Sprintf("CREATE DATABASE %v;", oldDbName))

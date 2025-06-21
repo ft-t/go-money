@@ -17,7 +17,7 @@ func (j *JwtClaims) Valid() error {
 	}
 
 	// check expires
-	if j.RegisteredClaims.ExpiresAt.Before(time.Now().UTC()) {
+	if j.ExpiresAt.Before(time.Now().UTC()) {
 		return errors.New("token is expired")
 	}
 
