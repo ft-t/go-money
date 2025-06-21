@@ -24,8 +24,8 @@ func GetConfiguration() *Configuration {
 	}
 
 	if boilerplate.GetCurrentEnvironment() == boilerplate.Ci { // for CI, we use a unique database name to avoid conflicts
-		configuration.Db.Db = fmt.Sprintf("ci_%v", int64(os.Getpid()))
-		configuration.ReadOnlyDb.Db = configuration.Db.Db
+		cfg.Db.Db = fmt.Sprintf("ci_%v", int64(os.Getpid()))
+		cfg.ReadOnlyDb.Db = cfg.Db.Db
 	}
 
 	configuration = &cfg
