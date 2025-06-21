@@ -138,7 +138,7 @@ func EnsurePostgresDbExists(config boilerplate.DbConfig) error {
 
 	r.Next()
 
-	exists := len(r.RawValues()) == 0
+	exists := len(r.RawValues()) > 0
 
 	if !exists {
 		_, err = conn.Exec(context.Background(), fmt.Sprintf("CREATE DATABASE %v;", oldDbName))
