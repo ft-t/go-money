@@ -2,4 +2,5 @@ ARG MAIN_IMAGE
 
 FROM ${MAIN_IMAGE}
 RUN mkdir -p /opt/go-money/frontend
-COPY ./dist /opt/go-money/frontend
+COPY ./browser /opt/go-money
+ENV STATIC_FILES_DIRECTORY="/opt/go-money/browser"

@@ -84,7 +84,7 @@ func TestList(t *testing.T) {
 
 	acc := &database.Account{
 		Extra:    map[string]string{},
-		Position: 1,
+		Position: lo.ToPtr(int32(1)),
 	}
 	assert.NoError(t, gormDB.Create(acc).Error)
 
