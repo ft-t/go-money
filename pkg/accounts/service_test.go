@@ -94,7 +94,7 @@ func TestList(t *testing.T) {
 			Valid: true,
 			Time:  time.Now().UTC(),
 		},
-		Position: 999,
+		Position: lo.ToPtr(int32(999)),
 	}
 	assert.NoError(t, gormDB.Create(accDeleted).Error)
 
