@@ -53,6 +53,7 @@ jobs:
     needs:
       - backend
       - frontend
+      - version
     env:
       DOCKER_SERVER_IMAGE_NAME: "ghcr.io/${{ github.repository }}/go-money-server:${{needs.version.outputs.versionOut}}"
       DOCKER_FULL_IMAGE_NAME: "ghcr.io/${{ github.repository }}/go-money-full:${{needs.version.outputs.versionOut}}"
@@ -67,7 +68,5 @@ jobs:
       - run: ls
       - uses: docker/setup-buildx-action@v3
       - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - run: docker build -f ./ci/Dockerfile.full \
-          --build-arg MAIN_IMAGE=${DOCKER_SERVER_IMAGE_NAME} \
-          -t ${DOCKER_FULL_IMAGE_NAME} .
+      - run: docker build -f ./ci/Dockerfile.full --build-arg MAIN_IMAGE=${DOCKER_SERVER_IMAGE_NAME} -t ${DOCKER_FULL_IMAGE_NAME} .
       - run: docker push ${DOCKER_SERVER_IMAGE_NAME}
