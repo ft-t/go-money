@@ -92,16 +92,17 @@ func (s *Service) CreateBulk(
 		return nil, errors.Join(err, errors.New("failed to fetch existing accounts"))
 	}
 
-	accountMap := map[string]*database.Account{}
+	accountMap := map[string]struct{}{}
 	for _, account := range existingAccounts {
 		key := fmt.Sprintf("%s-%s-%s", account.Name, account.Type, account.Currency)
-		accountMap[key] = account
+		accountMap[key] = struct{}{}
 	}
 
 	var messages []string
 
 	for _, toCreate := range req.Accounts {
 		key := fmt.Sprintf("%s-%s-%s", toCreate.Name, toCreate.Type, toCreate.Currency)
+
 		if _, exists := accountMap[key]; exists {
 			messages = append(messages,
 				fmt.Sprintf("account with name '%s', type '%s', and currency '%s' already exists",
@@ -109,6 +110,8 @@ func (s *Service) CreateBulk(
 					toCreate.Type,
 					toCreate.Currency,
 				))
+
+			continue
 		}
 
 		if acc, err := s.Create(ctx, toCreate); err != nil {
@@ -119,6 +122,8 @@ func (s *Service) CreateBulk(
 					acc.Account.Id,
 					key,
 				))
+
+			accountMap[key] = struct{}{}
 		}
 	}
 
