@@ -91,12 +91,13 @@ func (f *FireflyImporter) Import(
 		}
 
 		targetTx := &transactionsv1.CreateTransactionRequest{
-			Notes:           notes,
-			Extra:           make(map[string]string), // todo
-			LabelIds:        nil,                     // todo
-			TransactionDate: timestamppb.New(parsedDate.UTC()),
-			Title:           description,
-			Transaction:     nil,
+			Notes:                   notes,
+			Extra:                   make(map[string]string), // todo
+			LabelIds:                nil,                     // todo
+			TransactionDate:         timestamppb.New(parsedDate.UTC()),
+			Title:                   description,
+			Transaction:             nil,
+			InternalReferenceNumber: &journalID,
 		}
 		switch operationType {
 		case "Withdrawal":
@@ -313,17 +314,27 @@ func (f *FireflyImporter) Import(
 		return allTransactions[i].TransactionDate.AsTime().Before(allTransactions[j].TransactionDate.AsTime())
 	})
 
-	if _, err = f.transactionService.CreateBulk(ctx, allTransactions); err != nil {
-		return nil, errors.Wrap(err, "failed to create transactions")
+	tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()
+	defer tx.Rollback()
+	ctx = database.WithContext(ctx, tx)
+
+	transactionResp, transactionErr := f.transactionService.CreateBulkInternal(ctx, allTransactions, tx)
+	if transactionErr != nil {
+		return nil, errors.Wrap(transactionErr, "failed to create transactions")
 	}
 
 	var deduplicationRecords []*database.ImportDeduplication
-	for _, record := range allTransactions {
+	for _, record := range transactionResp {
 		deduplicationRecords = append(deduplicationRecords, &database.ImportDeduplication{
-			ImportSource: importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
-			Key:          record.,
-			CreatedAt:    time.Now(),
+			ImportSource:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Key:           *record.Transaction.InternalReferenceNumber,
+			CreatedAt:     time.Now(),
+			TransactionID: record.Transaction.Id,
 		})
+	}
+
+	if err = tx.Create(&deduplicationRecords).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to create deduplication records")
 	}
 
 	return &importv1.ImportTransactionsResponse{

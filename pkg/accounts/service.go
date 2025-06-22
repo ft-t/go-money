@@ -28,6 +28,16 @@ func NewService(
 	}
 }
 
+func (s *Service) GetAllAccounts(ctx context.Context) ([]*database.Account, error) {
+	var accounts []*database.Account
+
+	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).Find(&accounts).Error; err != nil {
+		return nil, errors.Join(err, errors.New("failed to fetch accounts"))
+	}
+
+	return accounts, nil
+}
+
 func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
 	var accounts []*database.Account
 
@@ -154,7 +164,7 @@ func (s *Service) Create(
 		Note:          req.Note,
 		Iban:          req.Iban,
 		AccountNumber: req.AccountNumber,
-		Position:      req.Position,
+		Position:      req.DisplayOrder,
 	}
 
 	if account.Extra == nil {

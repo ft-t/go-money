@@ -6,9 +6,10 @@ import (
 )
 
 type ImportDeduplication struct {
-	ImportSource importv1.ImportSource
-	Key          string
-	CreatedAt    time.Time
+	ImportSource  importv1.ImportSource
+	Key           string
+	CreatedAt     time.Time
+	TransactionID int64
 }
 
 func (*ImportDeduplication) TableName() string {

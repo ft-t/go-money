@@ -10,19 +10,21 @@ import (
 
 func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *v1.Transaction {
 	mapped := &v1.Transaction{
-		Id:                   tx.ID,
-		SourceCurrency:       lo.EmptyableToPtr(tx.SourceCurrency),
-		DestinationCurrency:  lo.EmptyableToPtr(tx.DestinationCurrency),
-		SourceAccountId:      tx.SourceAccountID,
-		DestinationAccountId: tx.DestinationAccountID,
-		LabelIds:             tx.LabelIDs,
-		CreatedAt:            timestamppb.New(tx.CreatedAt),
-		UpdatedAt:            timestamppb.New(tx.UpdatedAt),
-		TransactionDate:      timestamppb.New(tx.CreatedAt),
-		Type:                 tx.TransactionType,
-		Notes:                tx.Notes,
-		Extra:                tx.Extra,
-		Title:                tx.Title,
+		Id:                      tx.ID,
+		SourceCurrency:          lo.EmptyableToPtr(tx.SourceCurrency),
+		DestinationCurrency:     lo.EmptyableToPtr(tx.DestinationCurrency),
+		SourceAccountId:         tx.SourceAccountID,
+		DestinationAccountId:    tx.DestinationAccountID,
+		LabelIds:                tx.LabelIDs,
+		CreatedAt:               timestamppb.New(tx.CreatedAt),
+		UpdatedAt:               timestamppb.New(tx.UpdatedAt),
+		TransactionDate:         timestamppb.New(tx.CreatedAt),
+		Type:                    tx.TransactionType,
+		Notes:                   tx.Notes,
+		Extra:                   tx.Extra,
+		Title:                   tx.Title,
+		InternalReferenceNumber: tx.InternalReferenceNumber,
+		ReferenceNumber:         tx.ReferenceNumber,
 	}
 
 	if tx.SourceAmount.Valid {

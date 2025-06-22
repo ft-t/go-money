@@ -80,6 +80,10 @@ func main() {
 		DecimalSvc: decimalSvc,
 	})
 
+	accountSvc := accounts.NewService(&accounts.ServiceConfig{
+		MapperSvc: mapper,
+	})
+
 	_, err = handlers.NewAccountsApi(grpcServer, accounts.NewService(&accounts.ServiceConfig{
 		MapperSvc: mapper,
 	}))
@@ -94,7 +98,7 @@ func main() {
 
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
 
-	importSvc := importers.NewImporter(importers.NewFireflyImporter(transactionSvc))
+	importSvc := importers.NewImporter(accountSvc, importers.NewFireflyImporter(transactionSvc))
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)
 	if err != nil {
