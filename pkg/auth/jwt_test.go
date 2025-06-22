@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -75,5 +76,35 @@ func TestJwtToken(t *testing.T) {
 		claims, err := jwtGenerator1.ValidateToken(context.TODO(), resp)
 		assert.Nil(t, claims)
 		assert.ErrorContains(t, err, "failed to parse token: token has invalid claims: token is expired")
+	})
+
+	t.Run("invalid claims type or invalid token", func(t *testing.T) {
+		keyGen := auth.NewKeyGenerator()
+		key := keyGen.Generate()
+		jwtGenerator, err := auth.NewService(string(keyGen.Serialize(key)), 5*time.Minute)
+		assert.NoError(t, err)
+
+		t.Run("nil token", func(t *testing.T) {
+			resp, claimsErr := jwtGenerator.CheckClaims(nil)
+			assert.Nil(t, resp)
+			assert.ErrorContains(t, claimsErr, "token is nil")
+		})
+
+		t.Run("claims wrong type", func(t *testing.T) {
+			resp, claimsErr := jwtGenerator.CheckClaims(&jwt.Token{
+				Claims: jwt.MapClaims{},
+			})
+			assert.Nil(t, resp)
+			assert.ErrorContains(t, claimsErr, "invalid token claims")
+		})
+
+		t.Run("not valid", func(t *testing.T) {
+			resp, claimsErr := jwtGenerator.CheckClaims(&jwt.Token{
+				Claims: &auth.JwtClaims{},
+				Valid:  false,
+			})
+			assert.Nil(t, resp)
+			assert.ErrorContains(t, claimsErr, "token is not valid")
+		})
 	})
 }
