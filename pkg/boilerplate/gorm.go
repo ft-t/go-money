@@ -20,13 +20,11 @@ func GetGormConnection(config DbConfig) (*gorm.DB, error) {
 	mainDb, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
 		QueryFields: false,
 	})
-
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	rawDb, err := mainDb.DB()
-
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
