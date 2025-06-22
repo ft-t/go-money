@@ -10,6 +10,7 @@ import (
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
+	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/users"
@@ -92,6 +93,13 @@ func main() {
 	})
 
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
+
+	importSvc := importers.NewImporter(importers.NewFireflyImporter(transactionSvc))
+
+	_, err = handlers.NewImportApi(grpcServer, importSvc)
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create import handler")
+	}
 
 	go func() {
 		if len(config.ExchangeRatesUrl) > 0 {

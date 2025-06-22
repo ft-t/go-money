@@ -1,6 +1,7 @@
 package importers
 
 import (
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	"bytes"
 	"context"
@@ -19,6 +20,16 @@ type FireflyImporter struct {
 	transactionService *transactions.Service
 }
 
+func (f *FireflyImporter) Import(ctx context.Context, req *importv1.ImportTransactionsRequest) (*importv1.ImportTransactionsResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f *FireflyImporter) Type() importv1.ImportSource {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewFireflyImporter(
 	txSvc *transactions.Service,
 ) *FireflyImporter {
@@ -32,7 +43,7 @@ type ImportRequest struct {
 	Accounts []*database.Account
 }
 
-func (f *FireflyImporter) Import(
+func (f *FireflyImporter) Importv2(
 	ctx context.Context,
 	req *ImportRequest,
 ) error {
