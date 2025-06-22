@@ -337,6 +337,10 @@ func (f *FireflyImporter) Import(
 		return nil, errors.Wrap(err, "failed to create deduplication records")
 	}
 
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.Wrap(err, "failed to commit transaction")
+	}
+
 	return &importv1.ImportTransactionsResponse{
 		ImportedCount:  int32(len(allTransactions)),
 		DuplicateCount: int32(len(existingRecords)),
