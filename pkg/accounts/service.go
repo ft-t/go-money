@@ -80,7 +80,7 @@ func (s *Service) Delete(ctx context.Context, req *accountsv1.DeleteAccountReque
 func (s *Service) CreateBulk(
 	ctx context.Context,
 	req *accountsv1.CreateAccountsBulkRequest,
-) ([]string, error) {
+) (*accountsv1.CreateAccountsBulkResponse, error) {
 	var existingAccounts []*database.Account
 
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
@@ -100,6 +100,8 @@ func (s *Service) CreateBulk(
 
 	var messages []string
 
+	finalResp := &accountsv1.CreateAccountsBulkResponse{}
+
 	for _, toCreate := range req.Accounts {
 		key := fmt.Sprintf("%s-%s-%s", toCreate.Name, toCreate.Type, toCreate.Currency)
 
@@ -110,6 +112,8 @@ func (s *Service) CreateBulk(
 					toCreate.Type,
 					toCreate.Currency,
 				))
+
+			finalResp.DuplicateCount += 1
 
 			continue
 		}
@@ -124,10 +128,14 @@ func (s *Service) CreateBulk(
 				))
 
 			accountMap[key] = struct{}{}
+
+			finalResp.CreatedCount += 1
 		}
 	}
 
-	return messages, nil
+	finalResp.Messages = messages
+
+	return finalResp, nil
 }
 
 func (s *Service) Create(

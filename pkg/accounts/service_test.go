@@ -244,10 +244,13 @@ func TestCreateBulk(t *testing.T) {
 		assert.NoError(t, gormDB.Find(&rec).Error)
 
 		assert.Len(t, rec, 2)
-		assert.Len(t, resp, 2)
+		assert.Len(t, resp.Messages, 2)
 
-		assert.Contains(t, resp[0], "created successfully")
-		assert.Contains(t, resp[1], "created successfully")
+		assert.EqualValues(t, 2, resp.CreatedCount)
+		assert.EqualValues(t, 0, resp.DuplicateCount)
+
+		assert.Contains(t, resp.Messages[0], "created successfully")
+		assert.Contains(t, resp.Messages[1], "created successfully")
 	})
 
 	t.Run("one duplicate", func(t *testing.T) {
@@ -301,10 +304,13 @@ func TestCreateBulk(t *testing.T) {
 		assert.NoError(t, gormDB.Find(&rec).Error)
 
 		assert.Len(t, rec, 1)
-		assert.Len(t, resp, 2)
+		assert.Len(t, resp.Messages, 2)
 
-		assert.Contains(t, resp[0], "created successfully")
-		assert.Contains(t, resp[1], "account with name 'some-account', type 'ACCOUNT_TYPE_REGULAR', and currency 'USD' already exists")
+		assert.EqualValues(t, 1, resp.CreatedCount)
+		assert.EqualValues(t, 1, resp.DuplicateCount)
+
+		assert.Contains(t, resp.Messages[0], "created successfully")
+		assert.Contains(t, resp.Messages[1], "account with name 'some-account', type 'ACCOUNT_TYPE_REGULAR', and currency 'USD' already exists")
 	})
 
 	t.Run("one duplicate", func(t *testing.T) {
@@ -345,9 +351,12 @@ func TestCreateBulk(t *testing.T) {
 		assert.NoError(t, gormDB.Find(&rec).Error)
 
 		assert.Len(t, rec, 1)
-		assert.Len(t, resp, 1)
+		assert.Len(t, resp.Messages, 1)
 
-		assert.Contains(t, resp[0], "created successfully")
+		assert.EqualValues(t, 1, resp.CreatedCount)
+		assert.EqualValues(t, 0, resp.DuplicateCount)
+
+		assert.Contains(t, resp.Messages[0], "created successfully")
 
 		// second call with the same account
 		resp, err = srv.CreateBulk(context.TODO(), &accountsv1.CreateAccountsBulkRequest{
@@ -369,9 +378,12 @@ func TestCreateBulk(t *testing.T) {
 		assert.NoError(t, gormDB.Find(&rec).Error)
 
 		assert.Len(t, rec, 1)
-		assert.Len(t, resp, 1)
+		assert.Len(t, resp.Messages, 1)
 
-		assert.Contains(t, resp[0], "account with name 'some-account', type 'ACCOUNT_TYPE_REGULAR', and currency 'USD' already exists")
+		assert.Contains(t, resp.Messages[0], "account with name 'some-account', type 'ACCOUNT_TYPE_REGULAR', and currency 'USD' already exists")
+
+		assert.EqualValues(t, 0, resp.CreatedCount)
+		assert.EqualValues(t, 1, resp.DuplicateCount)
 	})
 }
 
