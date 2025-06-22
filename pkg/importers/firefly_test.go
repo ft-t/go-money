@@ -10,7 +10,6 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/ft-t/go-money/pkg/mappers"
-	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -29,9 +28,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestFirefly(t *testing.T) {
-	t.Skip() // todo
-	
-	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+	//assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_06_21_transaction_export (5).csv")
 	assert.NoError(t, err)
 
@@ -62,10 +59,11 @@ func TestFirefly(t *testing.T) {
 	})
 	importer := importers.NewFireflyImporter(txSvc)
 
-	err = importer.Import(context.TODO(), &importers.ImportRequest{
+	result, err := importer.Import(context.TODO(), &importers.ImportRequest{
 		Data:     data,
 		Accounts: allAccounts,
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, result)
 }
