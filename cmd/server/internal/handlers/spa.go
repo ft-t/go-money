@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-func spaHandler(staticDir string) http.HandlerFunc {
+func SpaHandler(staticDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(staticDir, r.URL.Path)
 

@@ -1,8 +1,9 @@
-package auth
+package middlewares
 
 import (
 	"connectrpc.com/connect"
 	"context"
+	"github.com/ft-t/go-money/pkg/auth"
 )
 
 var GrpcMiddleware = func(jwtParser JwtValidator) connect.UnaryInterceptorFunc {
@@ -30,15 +31,15 @@ var GrpcMiddleware = func(jwtParser JwtValidator) connect.UnaryInterceptorFunc {
 
 type jwtKey struct{}
 
-func WithContext(ctx context.Context, wrapper JwtClaims) context.Context {
+func WithContext(ctx context.Context, wrapper auth.JwtClaims) context.Context {
 	return context.WithValue(ctx, jwtKey{}, &wrapper)
 }
 
-func FromContext(ctx context.Context) JwtClaims {
+func FromContext(ctx context.Context) auth.JwtClaims {
 	val := ctx.Value(jwtKey{})
 	if val == nil {
-		return JwtClaims{}
+		return auth.JwtClaims{}
 	}
 
-	return *val.(*JwtClaims)
+	return *val.(*auth.JwtClaims)
 }

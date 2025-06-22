@@ -1,9 +1,10 @@
-package auth_test
+package middlewares_test
 
 import (
 	"connectrpc.com/connect"
 	"context"
 	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -26,8 +27,8 @@ func TestGrpcMiddleware(t *testing.T) {
 
 		called := false
 
-		response, err := auth.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
-			assert.EqualValues(t, jwtData, auth.FromContext(ctx))
+		response, err := middlewares.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+			assert.EqualValues(t, jwtData, middlewares.FromContext(ctx))
 			called = true
 
 			return &connect.Response[any]{}, nil
@@ -48,7 +49,7 @@ func TestGrpcMiddleware(t *testing.T) {
 		parser.EXPECT().ValidateToken(gomock.Any(), "valid_token").Return(nil, errors.New("invalid token"))
 
 		called := false
-		response, err := auth.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+		response, err := middlewares.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
 			called = true
 			return &connect.Response[any]{}, nil
 		})(ctx, req)
@@ -64,8 +65,8 @@ func TestGrpcMiddleware(t *testing.T) {
 		called := false
 
 		parser := NewMockJwtValidator(gomock.NewController(t))
-		response, err := auth.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
-			jwtData := auth.FromContext(ctx)
+		response, err := middlewares.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+			jwtData := middlewares.FromContext(ctx)
 			assert.EqualValues(t, 0, jwtData.UserID)
 			called = true
 			return &connect.Response[any]{}, nil

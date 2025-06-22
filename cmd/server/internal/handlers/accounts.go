@@ -1,10 +1,11 @@
-package main
+package handlers
 
 import (
 	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/accounts/v1/accountsv1connect"
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	"connectrpc.com/connect"
 	"context"
+	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 )
@@ -13,11 +14,26 @@ type AccountsApi struct {
 	accSvc AccountSvc
 }
 
+func NewAccountsApi(
+	mux *boilerplate.DefaultGrpcServer,
+	accSvc AccountSvc,
+) (*AccountsApi, error) {
+	res := &AccountsApi{
+		accSvc: accSvc,
+	}
+
+	mux.GetMux().Handle(
+		accountsv1connect.NewAccountsServiceHandler(res, mux.GetDefaultHandlerOptions()...),
+	)
+
+	return res, nil
+}
+
 func (a *AccountsApi) CreateAccountsBulk(
 	ctx context.Context,
 	c *connect.Request[accountsv1.CreateAccountsBulkRequest],
 ) (*connect.Response[accountsv1.CreateAccountsBulkResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -27,13 +43,11 @@ func (a *AccountsApi) CreateAccountsBulk(
 		return nil, err
 	}
 
-	return connect.NewResponse(&accountsv1.CreateAccountsBulkResponse{
-		Messages: resp,
-	}), nil
+	return connect.NewResponse(resp), nil
 }
 
 func (a *AccountsApi) ReorderAccounts(ctx context.Context, c *connect.Request[accountsv1.ReorderAccountsRequest]) (*connect.Response[accountsv1.ReorderAccountsResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -42,7 +56,7 @@ func (a *AccountsApi) ReorderAccounts(ctx context.Context, c *connect.Request[ac
 }
 
 func (a *AccountsApi) DeleteAccount(ctx context.Context, c *connect.Request[accountsv1.DeleteAccountRequest]) (*connect.Response[accountsv1.DeleteAccountResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -59,7 +73,7 @@ func (a *AccountsApi) CreateAccount(
 	ctx context.Context,
 	c *connect.Request[accountsv1.CreateAccountRequest],
 ) (*connect.Response[accountsv1.CreateAccountResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -76,7 +90,7 @@ func (a *AccountsApi) UpdateAccount(
 	ctx context.Context,
 	c *connect.Request[accountsv1.UpdateAccountRequest],
 ) (*connect.Response[accountsv1.UpdateAccountResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -93,7 +107,7 @@ func (a *AccountsApi) ListAccounts(
 	ctx context.Context,
 	c *connect.Request[accountsv1.ListAccountsRequest],
 ) (*connect.Response[accountsv1.ListAccountsResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -104,19 +118,4 @@ func (a *AccountsApi) ListAccounts(
 	}
 
 	return connect.NewResponse(resp), nil
-}
-
-func NewAccountsApi(
-	mux *boilerplate.DefaultGrpcServer,
-	accSvc AccountSvc,
-) (*AccountsApi, error) {
-	res := &AccountsApi{
-		accSvc: accSvc,
-	}
-
-	mux.GetMux().Handle(
-		accountsv1connect.NewAccountsServiceHandler(res, mux.GetDefaultHandlerOptions()...),
-	)
-
-	return res, nil
 }
