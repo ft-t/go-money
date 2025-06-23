@@ -29,6 +29,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestFirefly(t *testing.T) {
+	t.Skip("todo")
+	
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_06_21_transaction_export (5).csv")
 	assert.NoError(t, err)

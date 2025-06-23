@@ -36,14 +36,14 @@ func (i *Importer) Import(
 		return nil, errors.New("unsupported import source")
 	}
 
-	accounts, err := i.accountSvc.GetAllAccounts(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get accounts")
-	}
-
 	decoded, err := base64.StdEncoding.DecodeString(req.FileContent)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode file content")
+	}
+
+	accounts, err := i.accountSvc.GetAllAccounts(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get accounts")
 	}
 
 	resp, err := impl.Import(ctx, &ImportRequest{
