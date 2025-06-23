@@ -1,10 +1,11 @@
-package main
+package handlers
 
 import (
 	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/currency/v1/currencyv1connect"
 	"buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
 	"connectrpc.com/connect"
 	"context"
+	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/shopspring/decimal"
@@ -39,7 +40,7 @@ func (a *CurrencyApi) Exchange(
 	ctx context.Context,
 	c *connect.Request[currencyv1.ExchangeRequest],
 ) (*connect.Response[currencyv1.ExchangeResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -63,7 +64,7 @@ func (a *CurrencyApi) GetCurrencies(
 	ctx context.Context,
 	c *connect.Request[currencyv1.GetCurrenciesRequest],
 ) (*connect.Response[currencyv1.GetCurrenciesResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -77,7 +78,7 @@ func (a *CurrencyApi) GetCurrencies(
 }
 
 func (a *CurrencyApi) DeleteCurrency(ctx context.Context, c *connect.Request[currencyv1.DeleteCurrencyRequest]) (*connect.Response[currencyv1.DeleteCurrencyResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -94,7 +95,7 @@ func (a *CurrencyApi) CreateCurrency(
 	ctx context.Context,
 	c *connect.Request[currencyv1.CreateCurrencyRequest],
 ) (*connect.Response[currencyv1.CreateCurrencyResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}
@@ -111,7 +112,7 @@ func (a *CurrencyApi) UpdateCurrency(
 	ctx context.Context,
 	c *connect.Request[currencyv1.UpdateCurrencyRequest],
 ) (*connect.Response[currencyv1.UpdateCurrencyResponse], error) {
-	jwtData := auth.FromContext(ctx)
+	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
 	}

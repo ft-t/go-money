@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/users/v1/usersv1connect"

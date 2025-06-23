@@ -28,6 +28,16 @@ func NewService(
 	}
 }
 
+func (s *Service) GetAllAccounts(ctx context.Context) ([]*database.Account, error) {
+	var accounts []*database.Account
+
+	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).Find(&accounts).Error; err != nil {
+		return nil, errors.Join(err, errors.New("failed to fetch accounts"))
+	}
+
+	return accounts, nil
+}
+
 func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
 	var accounts []*database.Account
 
@@ -80,7 +90,7 @@ func (s *Service) Delete(ctx context.Context, req *accountsv1.DeleteAccountReque
 func (s *Service) CreateBulk(
 	ctx context.Context,
 	req *accountsv1.CreateAccountsBulkRequest,
-) ([]string, error) {
+) (*accountsv1.CreateAccountsBulkResponse, error) {
 	var existingAccounts []*database.Account
 
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
@@ -92,16 +102,19 @@ func (s *Service) CreateBulk(
 		return nil, errors.Join(err, errors.New("failed to fetch existing accounts"))
 	}
 
-	accountMap := map[string]*database.Account{}
+	accountMap := map[string]struct{}{}
 	for _, account := range existingAccounts {
 		key := fmt.Sprintf("%s-%s-%s", account.Name, account.Type, account.Currency)
-		accountMap[key] = account
+		accountMap[key] = struct{}{}
 	}
 
 	var messages []string
 
+	finalResp := &accountsv1.CreateAccountsBulkResponse{}
+
 	for _, toCreate := range req.Accounts {
 		key := fmt.Sprintf("%s-%s-%s", toCreate.Name, toCreate.Type, toCreate.Currency)
+
 		if _, exists := accountMap[key]; exists {
 			messages = append(messages,
 				fmt.Sprintf("account with name '%s', type '%s', and currency '%s' already exists",
@@ -109,6 +122,10 @@ func (s *Service) CreateBulk(
 					toCreate.Type,
 					toCreate.Currency,
 				))
+
+			finalResp.DuplicateCount += 1
+
+			continue
 		}
 
 		if acc, err := s.Create(ctx, toCreate); err != nil {
@@ -119,10 +136,16 @@ func (s *Service) CreateBulk(
 					acc.Account.Id,
 					key,
 				))
+
+			accountMap[key] = struct{}{}
+
+			finalResp.CreatedCount += 1
 		}
 	}
 
-	return messages, nil
+	finalResp.Messages = messages
+
+	return finalResp, nil
 }
 
 func (s *Service) Create(
@@ -141,7 +164,7 @@ func (s *Service) Create(
 		Note:          req.Note,
 		Iban:          req.Iban,
 		AccountNumber: req.AccountNumber,
-		Position:      req.Position,
+		Position:      req.DisplayOrder,
 	}
 
 	if account.Extra == nil {

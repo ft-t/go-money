@@ -1,6 +1,7 @@
 package importers
 
 import (
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	"bytes"
 	"context"
@@ -12,6 +13,7 @@ import (
 	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"sort"
 	"time"
 )
 
@@ -32,27 +34,32 @@ type ImportRequest struct {
 	Accounts []*database.Account
 }
 
+func (f *FireflyImporter) Type() importv1.ImportSource {
+	return importv1.ImportSource_IMPORT_SOURCE_FIREFLY
+}
+
 func (f *FireflyImporter) Import(
 	ctx context.Context,
 	req *ImportRequest,
-) error {
+) (*importv1.ImportTransactionsResponse, error) {
 	reader := csv.NewReader(bytes.NewBuffer(req.Data))
 	reader.FieldsPerRecord = -1
 
 	records, err := reader.ReadAll()
 	if err != nil {
-		return errors.Wrap(err, "failed to read CSV data")
+		return nil, errors.Wrap(err, "failed to read CSV data")
 	}
 
 	if len(records) == 0 {
-		return errors.New("no records found in CSV data")
+		return nil, errors.New("no records found in CSV data")
 	}
 
 	records = records[1:] // Skip header row
 	mutable.Reverse(records)
 
-	var allTransactions []*transactionsv1.CreateTransactionRequest
+	//var allTransactions []*transactionsv1.CreateTransactionRequest
 
+	newTxs := map[string]*transactionsv1.CreateTransactionRequest{} // key is originalId
 	accountMap := map[string]*database.Account{}
 	for _, acc := range req.Accounts {
 		accountMap[acc.Name] = acc
@@ -75,27 +82,28 @@ func (f *FireflyImporter) Import(
 		destinationAccountType := record[18]
 		parsedDate, err := time.Parse("2006-01-02T15:04:05-07:00", date)
 		if err != nil {
-			return errors.Wrapf(err, "failed to parse date: %s", date)
+			return nil, errors.Wrapf(err, "failed to parse date: %s", date)
 		}
 
 		amountParsed, err := decimal.NewFromString(amount)
 		if err != nil {
-			return errors.Wrapf(err, "failed to parse amount: %s", amount)
+			return nil, errors.Wrapf(err, "failed to parse amount: %s", amount)
 		}
 
 		targetTx := &transactionsv1.CreateTransactionRequest{
-			Notes:           notes,
-			Extra:           make(map[string]string), // todo
-			LabelIds:        nil,                     // todo
-			TransactionDate: timestamppb.New(parsedDate.UTC()),
-			Title:           description,
-			Transaction:     nil,
+			Notes:                   notes,
+			Extra:                   make(map[string]string), // todo
+			LabelIds:                nil,                     // todo
+			TransactionDate:         timestamppb.New(parsedDate.UTC()),
+			Title:                   description,
+			Transaction:             nil,
+			InternalReferenceNumber: &journalID,
 		}
 		switch operationType {
 		case "Withdrawal":
 			sourceAccount, ok := accountMap[sourceName]
 			if !ok {
-				return errors.Errorf("source account not found: %s", sourceName)
+				return nil, errors.Errorf("source account not found: %s", sourceName)
 			}
 
 			withdrawal := &transactionsv1.Withdrawal{
@@ -105,13 +113,13 @@ func (f *FireflyImporter) Import(
 			}
 
 			if sourceAccount.Currency != currencyCode {
-				return errors.Newf("source account currency %s does not match transaction currency %s for journal %s", sourceAccount.Currency, currencyCode, journalID)
+				return nil, errors.Newf("source account currency %s does not match transaction currency %s for journal %s", sourceAccount.Currency, currencyCode, journalID)
 			}
 
 			if foreignAmount != "" {
 				foreignAmountParsed, err := decimal.NewFromString(foreignAmount)
 				if err != nil {
-					return errors.Wrapf(err, "failed to parse foreign amount: %s", foreignAmount)
+					return nil, errors.Wrapf(err, "failed to parse foreign amount: %s", foreignAmount)
 				}
 
 				withdrawal.ForeignCurrency = &foreignCurrencyCode
@@ -125,11 +133,16 @@ func (f *FireflyImporter) Import(
 			if sourceType == "Debt" {
 				sourceAccount, ok := accountMap[sourceName]
 				if !ok {
-					return errors.Errorf("source account not found: %s", sourceName)
+					return nil, errors.Errorf("source account not found: %s", sourceName)
 				}
 
 				if sourceAccount.Currency != currencyCode {
-					return errors.Errorf("source account currency %s does not match transaction currency %s for journal %s", sourceAccount.Currency, currencyCode, journalID)
+					return nil, errors.Errorf(
+						"source account currency %s does not match transaction currency %s for journal %s",
+						sourceAccount.Currency,
+						currencyCode,
+						journalID,
+					)
 				}
 
 				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Withdrawal{
@@ -142,11 +155,16 @@ func (f *FireflyImporter) Import(
 			} else {
 				destAccount, ok := accountMap[destinationName]
 				if !ok {
-					return errors.Errorf("destination account not found: %s", destinationName)
+					return nil, errors.Errorf("destination account not found: %s", destinationName)
 				}
 
 				if destAccount.Currency != currencyCode {
-					return errors.Errorf("destination account currency %s does not match transaction currency %s for journal %s", destAccount.Currency, currencyCode, journalID)
+					return nil, errors.Errorf(
+						"destination account currency %s does not match transaction currency %s for journal %s",
+						destAccount.Currency,
+						currencyCode,
+						journalID,
+					)
 				}
 
 				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Deposit{
@@ -170,11 +188,16 @@ func (f *FireflyImporter) Import(
 
 				destAccount, ok := accountMap[sourceName] // yes, sourceName is used here as destination account
 				if !ok {
-					return errors.Errorf("source account not found: %s", sourceName)
+					return nil, errors.Errorf("source account not found: %s", sourceName)
 				}
 
 				if destAccount.Currency != currencyCode {
-					return errors.Errorf("destination account currency %s does not match transaction currency %s for journal %s", destAccount.Currency, currencyCode, journalID)
+					return nil, errors.Errorf(
+						"destination account currency %s does not match transaction currency %s for journal %s",
+						destAccount.Currency,
+						currencyCode,
+						journalID,
+					)
 				}
 
 				rec.Reconciliation.DestinationAccountId = destAccount.ID
@@ -183,11 +206,16 @@ func (f *FireflyImporter) Import(
 
 				destAccount, ok := accountMap[destinationName]
 				if !ok {
-					return errors.Errorf("destination account not found: %s", destinationName)
+					return nil, errors.Errorf("destination account not found: %s", destinationName)
 				}
 
 				if destAccount.Currency != currencyCode {
-					return errors.Errorf("destination account currency %s does not match transaction currency %s for journal %s", destAccount.Currency, currencyCode, journalID)
+					return nil, errors.Errorf(
+						"destination account currency %s does not match transaction currency %s for journal %s",
+						destAccount.Currency,
+						currencyCode,
+						journalID,
+					)
 				}
 
 				rec.Reconciliation.DestinationAccountId = destAccount.ID
@@ -197,12 +225,12 @@ func (f *FireflyImporter) Import(
 		case "Transfer":
 			sourceAccount, ok := accountMap[sourceName]
 			if !ok {
-				return errors.Errorf("source account not found: %s", sourceName)
+				return nil, errors.Errorf("source account not found: %s", sourceName)
 			}
 
 			destAccount, ok := accountMap[destinationName]
 			if !ok {
-				return errors.Errorf("destination account not found: %s", destinationName)
+				return nil, errors.Errorf("destination account not found: %s", destinationName)
 			}
 
 			if foreignCurrencyCode == "" {
@@ -210,7 +238,11 @@ func (f *FireflyImporter) Import(
 			}
 
 			if currencyCode != foreignCurrencyCode && foreignAmount == "" {
-				return errors.Errorf("foreign amount is required for currency conversion from %s to %s", currencyCode, foreignCurrencyCode)
+				return nil, errors.Errorf(
+					"foreign amount is required for currency conversion from %s to %s",
+					currencyCode,
+					foreignCurrencyCode,
+				)
 			}
 
 			if foreignAmount == "" { // assuming same currency transfer
@@ -219,15 +251,25 @@ func (f *FireflyImporter) Import(
 
 			foreignAmountParsed, err := decimal.NewFromString(foreignAmount)
 			if err != nil {
-				return errors.Wrapf(err, "failed to parse foreign amount: %s", foreignAmount)
+				return nil, errors.Wrapf(err, "failed to parse foreign amount: %s", foreignAmount)
 			}
 
 			if sourceAccount.Currency != currencyCode {
-				return errors.Errorf("source account currency %s does not match transaction currency %s for journal %s", sourceAccount.Currency, currencyCode, journalID)
+				return nil, errors.Errorf(
+					"source account currency %s does not match transaction currency %s for journal %s",
+					sourceAccount.Currency,
+					currencyCode,
+					journalID,
+				)
 			}
 
 			if destAccount.Currency != foreignCurrencyCode {
-				return errors.Errorf("destination account currency %s does not match foreign transaction currency %s for journal %s", destAccount.Currency, foreignCurrencyCode, journalID)
+				return nil, errors.Errorf(
+					"destination account currency %s does not match foreign transaction currency %s for journal %s",
+					destAccount.Currency,
+					foreignCurrencyCode,
+					journalID,
+				)
 			}
 
 			targetTx.Transaction = &transactionsv1.CreateTransactionRequest_TransferBetweenAccounts{
@@ -241,15 +283,73 @@ func (f *FireflyImporter) Import(
 				},
 			}
 		default:
-			return errors.Errorf("unsupported operation type: %s", operationType)
+			return nil, errors.Errorf("unsupported operation type: %s", operationType)
 		}
 
-		allTransactions = append(allTransactions, targetTx)
+		newTxs[journalID] = targetTx
 	}
 
-	if _, err = f.transactionService.CreateBulk(ctx, allTransactions); err != nil {
-		return errors.Wrap(err, "failed to create transactions")
+	journalIDs := lo.Keys(newTxs)
+
+	var existingRecords []string
+
+	if err = database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+		Model(&database.ImportDeduplication{}).
+		Where("import_source = ?", f.Type().Number()).
+		Where("key in ?", journalIDs).
+		Pluck("key", &existingRecords).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to check existing transactions")
 	}
 
-	return nil
+	for _, record := range existingRecords {
+		delete(newTxs, record)
+	}
+
+	if len(newTxs) == 0 {
+		return &importv1.ImportTransactionsResponse{
+			ImportedCount:  0,
+			DuplicateCount: int32(len(existingRecords)),
+		}, nil
+	}
+
+	var allTransactions []*transactionsv1.CreateTransactionRequest
+	for _, tx := range newTxs {
+		allTransactions = append(allTransactions, tx)
+	}
+
+	sort.Slice(allTransactions, func(i, j int) bool {
+		return allTransactions[i].TransactionDate.AsTime().Before(allTransactions[j].TransactionDate.AsTime())
+	})
+
+	tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()
+	defer tx.Rollback()
+	ctx = database.WithContext(ctx, tx)
+
+	transactionResp, transactionErr := f.transactionService.CreateBulkInternal(ctx, allTransactions, tx)
+	if transactionErr != nil {
+		return nil, errors.Wrap(transactionErr, "failed to create transactions")
+	}
+
+	var deduplicationRecords []*database.ImportDeduplication
+	for _, record := range transactionResp {
+		deduplicationRecords = append(deduplicationRecords, &database.ImportDeduplication{
+			ImportSource:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Key:           *record.Transaction.InternalReferenceNumber,
+			CreatedAt:     time.Now(),
+			TransactionID: record.Transaction.Id,
+		})
+	}
+
+	if err = tx.Create(&deduplicationRecords).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to create deduplication records")
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.Wrap(err, "failed to commit transaction")
+	}
+
+	return &importv1.ImportTransactionsResponse{
+		ImportedCount:  int32(len(allTransactions)),
+		DuplicateCount: int32(len(existingRecords)),
+	}, nil
 }

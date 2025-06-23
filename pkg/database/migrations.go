@@ -148,5 +148,23 @@ alter table transactions
 				)
 			},
 		},
+		{
+			ID: "2025-06-22-AddImportDeduplication",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table if not exists import_deduplication
+(
+    import_source integer   not null,
+    key           text      not null,
+    created_at    timestamp not null,
+    transaction_id bigint    not null,
+    constraint import_deduplication_pk
+        primary key (import_source, key)
+);`,
+					`alter table transactions add column if not exists reference_number text;`,
+					`alter table transactions add column if not exists internal_reference_number text;`,
+				)
+			},
+		},
 	}
 }

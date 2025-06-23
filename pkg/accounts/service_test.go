@@ -189,8 +189,208 @@ func TestCreateAccount(t *testing.T) {
 	})
 }
 
+func TestCreateBulk(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+
+		srv := accounts.NewService(&accounts.ServiceConfig{
+			MapperSvc: mapper,
+		})
+
+		mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
+				assert.NotEmpty(t, account.ID)
+
+				return &v1.Account{
+					Id: account.ID,
+				}
+			}).Times(2)
+
+		resp, err := srv.CreateBulk(context.TODO(), &accountsv1.CreateAccountsBulkRequest{
+			Accounts: []*accountsv1.CreateAccountRequest{
+				{
+					Name:     "some-account1",
+					Currency: "USD",
+					Extra: map[string]string{
+						"a": "b",
+					},
+					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Note:             "some note",
+					LiabilityPercent: nil,
+					Iban:             "some-iban",
+					AccountNumber:    "some-account-number",
+				},
+				{
+					Name:     "some-account2",
+					Currency: "PLN",
+					Extra: map[string]string{
+						"a": "b",
+					},
+					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Note:             "some note",
+					LiabilityPercent: nil,
+					Iban:             "some-iban",
+					AccountNumber:    "some-account-number",
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		var rec []database.Account
+		assert.NoError(t, gormDB.Find(&rec).Error)
+
+		assert.Len(t, rec, 2)
+		assert.Len(t, resp.Messages, 2)
+
+		assert.EqualValues(t, 2, resp.CreatedCount)
+		assert.EqualValues(t, 0, resp.DuplicateCount)
+
+		assert.Contains(t, resp.Messages[0], "created successfully")
+		assert.Contains(t, resp.Messages[1], "created successfully")
+	})
+
+	t.Run("one duplicate", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+
+		srv := accounts.NewService(&accounts.ServiceConfig{
+			MapperSvc: mapper,
+		})
+
+		mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
+				assert.NotEmpty(t, account.ID)
+
+				return &v1.Account{
+					Id: account.ID,
+				}
+			}).Times(1)
+
+		resp, err := srv.CreateBulk(context.TODO(), &accountsv1.CreateAccountsBulkRequest{
+			Accounts: []*accountsv1.CreateAccountRequest{
+				{
+					Name:             "some-account",
+					Currency:         "USD",
+					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Note:             "some note",
+					LiabilityPercent: nil,
+					Iban:             "some-iban",
+					AccountNumber:    "some-account-number",
+				},
+				{
+					Name:     "some-account",
+					Currency: "USD",
+					Extra: map[string]string{
+						"a": "b",
+					},
+					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Note:             "some note",
+					LiabilityPercent: nil,
+					Iban:             "some-iban",
+					AccountNumber:    "some-account-number",
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		var rec []database.Account
+		assert.NoError(t, gormDB.Find(&rec).Error)
+
+		assert.Len(t, rec, 1)
+		assert.Len(t, resp.Messages, 2)
+
+		assert.EqualValues(t, 1, resp.CreatedCount)
+		assert.EqualValues(t, 1, resp.DuplicateCount)
+
+		assert.Contains(t, resp.Messages[0], "created successfully")
+		assert.Contains(t, resp.Messages[1], "account with name 'some-account', type 'ACCOUNT_TYPE_REGULAR', and currency 'USD' already exists")
+	})
+
+	t.Run("one duplicate", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+
+		srv := accounts.NewService(&accounts.ServiceConfig{
+			MapperSvc: mapper,
+		})
+
+		mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
+				assert.NotEmpty(t, account.ID)
+
+				return &v1.Account{
+					Id: account.ID,
+				}
+			}).Times(1)
+
+		resp, err := srv.CreateBulk(context.TODO(), &accountsv1.CreateAccountsBulkRequest{
+			Accounts: []*accountsv1.CreateAccountRequest{
+				{
+					Name:             "some-account",
+					Currency:         "USD",
+					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Note:             "some note",
+					LiabilityPercent: nil,
+					Iban:             "some-iban",
+					AccountNumber:    "some-account-number",
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		var rec []database.Account
+		assert.NoError(t, gormDB.Find(&rec).Error)
+
+		assert.Len(t, rec, 1)
+		assert.Len(t, resp.Messages, 1)
+
+		assert.EqualValues(t, 1, resp.CreatedCount)
+		assert.EqualValues(t, 0, resp.DuplicateCount)
+
+		assert.Contains(t, resp.Messages[0], "created successfully")
+
+		// second call with the same account
+		resp, err = srv.CreateBulk(context.TODO(), &accountsv1.CreateAccountsBulkRequest{
+			Accounts: []*accountsv1.CreateAccountRequest{
+				{
+					Name:             "some-account",
+					Currency:         "USD",
+					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Note:             "some note",
+					LiabilityPercent: nil,
+					Iban:             "some-iban",
+					AccountNumber:    "some-account-number",
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		assert.NoError(t, gormDB.Find(&rec).Error)
+
+		assert.Len(t, rec, 1)
+		assert.Len(t, resp.Messages, 1)
+
+		assert.Contains(t, resp.Messages[0], "account with name 'some-account', type 'ACCOUNT_TYPE_REGULAR', and currency 'USD' already exists")
+
+		assert.EqualValues(t, 0, resp.CreatedCount)
+		assert.EqualValues(t, 1, resp.DuplicateCount)
+	})
+}
+
 func TestUpdate(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 		srv := accounts.NewService(&accounts.ServiceConfig{
 			MapperSvc: mapper,
@@ -243,6 +443,28 @@ func TestUpdate(t *testing.T) {
 		assert.EqualValues(t, "12", rec.LiabilityPercent.Decimal.String())
 		assert.EqualValues(t, "iban", rec.Iban)
 		assert.EqualValues(t, "num", rec.AccountNumber)
+	})
+
+	t.Run("update non existing", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		resp, err := srv.Update(context.TODO(), &accountsv1.UpdateAccountRequest{
+			Id:   -100,
+			Name: "yy",
+			Extra: map[string]string{
+				"updated": "b",
+			},
+			Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Note:             "updated note",
+			LiabilityPercent: lo.ToPtr("12"),
+			Iban:             "iban",
+			AccountNumber:    "num",
+		})
+
+		assert.ErrorContains(t, err, "record not found")
+		assert.Nil(t, resp)
 	})
 
 	t.Run("success empty extra", func(t *testing.T) {

@@ -111,18 +111,27 @@ func (s *Service) CreateBulk(
 	ctx context.Context,
 	req []*transactionsv1.CreateTransactionRequest,
 ) ([]*transactionsv1.CreateTransactionResponse, error) {
-	return s.createBulkInternal(ctx, req)
-}
-
-func (s *Service) createBulkInternal(
-	ctx context.Context,
-	reqs []*transactionsv1.CreateTransactionRequest,
-) ([]*transactionsv1.CreateTransactionResponse, error) {
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
 	defer tx.Rollback()
-
 	ctx = database.WithContext(ctx, tx)
 
+	resp, err := s.CreateBulkInternal(ctx, req, tx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create transactions for request: %v", req)
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return resp, nil
+}
+
+func (s *Service) CreateBulkInternal(
+	ctx context.Context,
+	reqs []*transactionsv1.CreateTransactionRequest,
+	tx *gorm.DB,
+) ([]*transactionsv1.CreateTransactionResponse, error) {
 	var created []*database.Transaction
 
 	for _, req := range reqs {
@@ -131,19 +140,21 @@ func (s *Service) createBulkInternal(
 		}
 
 		newTx := &database.Transaction{
-			SourceAmount:         decimal.NullDecimal{},
-			SourceCurrency:       "",
-			DestinationAmount:    decimal.NullDecimal{},
-			DestinationCurrency:  "",
-			SourceAccountID:      nil,
-			DestinationAccountID: nil,
-			LabelIDs:             req.LabelIds,
-			CreatedAt:            time.Now().UTC(),
-			Notes:                req.Notes,
-			Extra:                req.Extra,
-			TransactionDateTime:  req.TransactionDate.AsTime(),
-			TransactionDateOnly:  req.TransactionDate.AsTime(),
-			Title:                req.Title,
+			SourceAmount:            decimal.NullDecimal{},
+			SourceCurrency:          "",
+			DestinationAmount:       decimal.NullDecimal{},
+			DestinationCurrency:     "",
+			SourceAccountID:         nil,
+			DestinationAccountID:    nil,
+			LabelIDs:                req.LabelIds,
+			CreatedAt:               time.Now().UTC(),
+			Notes:                   req.Notes,
+			Extra:                   req.Extra,
+			TransactionDateTime:     req.TransactionDate.AsTime(),
+			TransactionDateOnly:     req.TransactionDate.AsTime(),
+			Title:                   req.Title,
+			ReferenceNumber:         req.ReferenceNumber,
+			InternalReferenceNumber: req.InternalReferenceNumber,
 		}
 
 		if newTx.Extra == nil {
@@ -193,20 +204,32 @@ func (s *Service) createBulkInternal(
 		return nil, err
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		return nil, errors.WithStack(err)
+	var finalRes []*transactionsv1.CreateTransactionResponse
+
+	for _, createdTx := range created {
+		finalRes = append(finalRes, &transactionsv1.CreateTransactionResponse{
+			Transaction: s.cfg.MapperSvc.MapTransaction(ctx, createdTx),
+		})
 	}
 
-	return []*transactionsv1.CreateTransactionResponse{&transactionsv1.CreateTransactionResponse{}}, nil // todo
+	return finalRes, nil
 }
 
 func (s *Service) Create(
 	ctx context.Context,
 	req *transactionsv1.CreateTransactionRequest,
 ) (*transactionsv1.CreateTransactionResponse, error) {
-	resp, err := s.createBulkInternal(ctx, []*transactionsv1.CreateTransactionRequest{req})
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+	ctx = database.WithContext(ctx, tx)
+
+	resp, err := s.CreateBulkInternal(ctx, []*transactionsv1.CreateTransactionRequest{req}, tx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create transaction for request: %v", req)
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	return resp[0], nil

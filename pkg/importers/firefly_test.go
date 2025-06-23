@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestFirefly(t *testing.T) {
-	t.Skip() // todo
+	t.Skip("todo")
 	
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_06_21_transaction_export (5).csv")
@@ -62,10 +62,11 @@ func TestFirefly(t *testing.T) {
 	})
 	importer := importers.NewFireflyImporter(txSvc)
 
-	err = importer.Import(context.TODO(), &importers.ImportRequest{
+	result, err := importer.Import(context.TODO(), &importers.ImportRequest{
 		Data:     data,
 		Accounts: allAccounts,
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, result)
 }

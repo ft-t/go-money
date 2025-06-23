@@ -47,16 +47,30 @@ func (j *Service) ValidateToken(
 		}
 		return j.privateKey.Public(), nil
 	})
-
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse token")
 	}
+	
+	return j.CheckClaims(token)
+}
 
-	if claims, ok := token.Claims.(*JwtClaims); ok && token.Valid {
-		return claims, nil
+func (j *Service) CheckClaims(
+	token *jwt2.Token,
+) (*JwtClaims, error) {
+	if token == nil {
+		return nil, errors.New("token is nil")
 	}
 
-	return nil, errors.New("invalid token")
+	claims, ok := token.Claims.(*JwtClaims)
+	if !ok || claims == nil {
+		return nil, errors.New("invalid token claims")
+	}
+
+	if !token.Valid {
+		return nil, errors.New("token is not valid")
+	}
+
+	return claims, nil
 }
 
 func (j *Service) GenerateToken(

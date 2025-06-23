@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"github.com/ft-t/go-money/cmd/server/internal/handlers"
+	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/appcfg"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
+	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/users"
@@ -43,23 +46,23 @@ func main() {
 	}
 
 	grpcServer := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).
-		AddServerMiddleware(auth.GrpcMiddleware(jwtService)).Build()
+		AddServerMiddleware(middlewares.GrpcMiddleware(jwtService)).Build()
 
 	if config.StaticFilesDirectory != "" {
 		logger.Info().Str("dir", config.StaticFilesDirectory).Msg("serving static files from directory")
-		grpcServer.GetMux().Handle("/", spaHandler(config.StaticFilesDirectory))
+		grpcServer.GetMux().Handle("/", handlers.SpaHandler(config.StaticFilesDirectory))
 	}
 
 	userService := users.NewService(&users.ServiceConfig{
 		JwtSvc: jwtService,
 	})
 
-	_, err = NewUserApi(grpcServer, userService)
+	_, err = handlers.NewUserApi(grpcServer, userService)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create user handler")
 	}
 
-	_, err = NewConfigApi(grpcServer, appcfg.NewService(&appcfg.ServiceConfig{
+	_, err = handlers.NewConfigApi(grpcServer, appcfg.NewService(&appcfg.ServiceConfig{
 		UserSvc: userService,
 	}))
 	if err != nil {
@@ -68,7 +71,7 @@ func main() {
 
 	decimalSvc := currency.NewDecimalService()
 
-	_, err = NewCurrencyApi(grpcServer, currency.NewService(), currency.NewConverter(), decimalSvc)
+	_, err = handlers.NewCurrencyApi(grpcServer, currency.NewService(), currency.NewConverter(), decimalSvc)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
 	}
@@ -77,7 +80,11 @@ func main() {
 		DecimalSvc: decimalSvc,
 	})
 
-	_, err = NewAccountsApi(grpcServer, accounts.NewService(&accounts.ServiceConfig{
+	accountSvc := accounts.NewService(&accounts.ServiceConfig{
+		MapperSvc: mapper,
+	})
+
+	_, err = handlers.NewAccountsApi(grpcServer, accounts.NewService(&accounts.ServiceConfig{
 		MapperSvc: mapper,
 	}))
 	if err != nil {
@@ -89,7 +96,14 @@ func main() {
 		MapperSvc: mapper,
 	})
 
-	_ = NewTransactionApi(grpcServer, transactionSvc)
+	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
+
+	importSvc := importers.NewImporter(accountSvc, importers.NewFireflyImporter(transactionSvc))
+
+	_, err = handlers.NewImportApi(grpcServer, importSvc)
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create import handler")
+	}
 
 	go func() {
 		if len(config.ExchangeRatesUrl) > 0 {

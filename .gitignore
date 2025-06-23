@@ -31,3 +31,5 @@ go.work.sum
 **/*_mocks.go
 
 .DS_Store
+
+pkg/auth/test_key.pem

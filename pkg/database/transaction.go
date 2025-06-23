@@ -35,6 +35,9 @@ type Transaction struct {
 
 	VoidedByTransactionID *int64
 	Title                 string
+
+	ReferenceNumber         *string
+	InternalReferenceNumber *string
 }
 
 type TransactionFlags int64

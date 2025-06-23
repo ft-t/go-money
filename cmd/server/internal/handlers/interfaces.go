@@ -1,14 +1,17 @@
-package main
+package handlers
 
 import (
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	"context"
 	"github.com/shopspring/decimal"
 )
+
+//go:generate mockgen -destination interfaces_mocks_test.go -package handlers_test -source=interfaces.go
 
 type TransactionsSvc interface {
 	Create(
@@ -32,6 +35,10 @@ type UserSvc interface {
 		ctx context.Context,
 		req *usersv1.CreateRequest,
 	) (*usersv1.CreateResponse, error)
+}
+
+type ImportSvc interface {
+	Import(ctx context.Context, req *importv1.ImportTransactionsRequest) (*importv1.ImportTransactionsResponse, error)
 }
 
 type AccountSvc interface {
@@ -58,7 +65,7 @@ type AccountSvc interface {
 	CreateBulk(
 		ctx context.Context,
 		req *accountsv1.CreateAccountsBulkRequest,
-	) ([]string, error)
+	) (*accountsv1.CreateAccountsBulkResponse, error)
 }
 
 type ConfigSvc interface {
