@@ -140,19 +140,21 @@ func (s *Service) CreateBulkInternal(
 		}
 
 		newTx := &database.Transaction{
-			SourceAmount:         decimal.NullDecimal{},
-			SourceCurrency:       "",
-			DestinationAmount:    decimal.NullDecimal{},
-			DestinationCurrency:  "",
-			SourceAccountID:      nil,
-			DestinationAccountID: nil,
-			LabelIDs:             req.LabelIds,
-			CreatedAt:            time.Now().UTC(),
-			Notes:                req.Notes,
-			Extra:                req.Extra,
-			TransactionDateTime:  req.TransactionDate.AsTime(),
-			TransactionDateOnly:  req.TransactionDate.AsTime(),
-			Title:                req.Title,
+			SourceAmount:            decimal.NullDecimal{},
+			SourceCurrency:          "",
+			DestinationAmount:       decimal.NullDecimal{},
+			DestinationCurrency:     "",
+			SourceAccountID:         nil,
+			DestinationAccountID:    nil,
+			LabelIDs:                req.LabelIds,
+			CreatedAt:               time.Now().UTC(),
+			Notes:                   req.Notes,
+			Extra:                   req.Extra,
+			TransactionDateTime:     req.TransactionDate.AsTime(),
+			TransactionDateOnly:     req.TransactionDate.AsTime(),
+			Title:                   req.Title,
+			ReferenceNumber:         req.ReferenceNumber,
+			InternalReferenceNumber: req.InternalReferenceNumber,
 		}
 
 		if newTx.Extra == nil {
@@ -202,7 +204,15 @@ func (s *Service) CreateBulkInternal(
 		return nil, err
 	}
 
-	return []*transactionsv1.CreateTransactionResponse{&transactionsv1.CreateTransactionResponse{}}, nil // todo
+	var finalRes []*transactionsv1.CreateTransactionResponse
+
+	for _, createdTx := range created {
+		finalRes = append(finalRes, &transactionsv1.CreateTransactionResponse{
+			Transaction: s.cfg.MapperSvc.MapTransaction(ctx, createdTx),
+		})
+	}
+
+	return finalRes, nil
 }
 
 func (s *Service) Create(

@@ -305,6 +305,13 @@ func (f *FireflyImporter) Import(
 		delete(newTxs, record)
 	}
 
+	if len(newTxs) == 0 {
+		return &importv1.ImportTransactionsResponse{
+			ImportedCount:  0,
+			DuplicateCount: int32(len(existingRecords)),
+		}, nil
+	}
+
 	var allTransactions []*transactionsv1.CreateTransactionRequest
 	for _, tx := range newTxs {
 		allTransactions = append(allTransactions, tx)
