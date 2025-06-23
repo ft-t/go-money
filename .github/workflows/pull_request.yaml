@@ -53,3 +53,12 @@ jobs:
         if: always()
         with:
           test-results: /root/test.json
+  frontend:
+    runs-on: ubuntu-latest
+    container: node:24-alpine
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install and build frontend
+        working-directory: frontend
+        run: npm install && npm run build
