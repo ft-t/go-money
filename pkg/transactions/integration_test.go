@@ -2,10 +2,12 @@ package transactions_test
 
 import (
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
@@ -19,9 +21,11 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
 	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
 
 	srv := transactions.NewService(&transactions.ServiceConfig{
-		StatsSvc: statsSvc,
+		StatsSvc:  statsSvc,
+		MapperSvc: mapper,
 	})
 
 	accounts := []*database.Account{
@@ -32,6 +36,9 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		Return(&gomoneypbv1.Transaction{})
 
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
@@ -53,9 +60,14 @@ func TestBasicCalc(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
 	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		Return(&gomoneypbv1.Transaction{}).AnyTimes()
 
 	srv := transactions.NewService(&transactions.ServiceConfig{
-		StatsSvc: statsSvc,
+		StatsSvc:  statsSvc,
+		MapperSvc: mapper,
 	})
 
 	accounts := []*database.Account{
