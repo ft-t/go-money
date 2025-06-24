@@ -83,7 +83,13 @@ func (s *Service) List(
 	if len(req.AnyAccountIds) > 0 {
 		query = query.Where("source_account_id IN ? OR destination_account_id IN ?", req.AnyAccountIds, req.AnyAccountIds)
 	}
-	
+
+	if len(req.TransactionTypes) > 0 {
+		query = query.Where("transaction_type IN ?", lo.Map(req.TransactionTypes, func(t gomoneypbv1.TransactionType, _ int) int32 {
+			return int32(t)
+		}))
+	}
+
 	var transactions []*database.Transaction
 
 	var count int64
