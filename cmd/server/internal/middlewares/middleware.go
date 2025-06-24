@@ -19,7 +19,7 @@ var GrpcMiddleware = func(jwtParser JwtValidator) connect.UnaryInterceptorFunc {
 
 			parsed, err := jwtParser.ValidateToken(ctx, jwt)
 			if err != nil {
-				return nil, err
+				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
 			ctx = WithContext(ctx, *parsed)

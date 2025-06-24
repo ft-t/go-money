@@ -6,6 +6,7 @@
              [value]="accounts"
              [rows]="1000"
              [loading]="loading"
+             sortMode="multiple"
              [rowHover]="true"
              [showGridlines]="true"
              [filters]="filters"
@@ -29,9 +30,9 @@
         </ng-template>
         <ng-template #header>
             <tr>
-                <th style="min-width: 20rem">
+                <th style="min-width: 20rem" pSortableColumn="account.name">
                     <div class="flex justify-between items-center">
-                        Name
+                        Name <p-sortIcon field="account.name" />
                         <p-columnFilter type="text" field="account.name" display="menu"
                                         placeholder="Search by name"></p-columnFilter>
                     </div>
@@ -69,9 +70,9 @@
                                         currency="USD"></p-columnFilter>
                     </div>
                 </th>
-                <th style="min-width: 5rem">
+                <th style="min-width: 5rem" pSortableColumn="account.updatedAt.nanos">
                     <div class="flex justify-between items-center">
-                        Updated date
+                        Updated date <p-sortIcon field="account.updatedAt.nanos" />
                         <p-columnFilter type="date" field="date" display="menu"
                                         placeholder="mm/dd/yyyy"></p-columnFilter>
                     </div>

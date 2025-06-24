@@ -21,7 +21,7 @@ import { IftaLabel } from 'primeng/iftalabel';
 
 @Component({
     selector: 'app-accounts-import',
-    imports: [Button, DropdownModule, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel, IftaLabel],
+    imports: [Button, DropdownModule, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel],
     templateUrl: './accounts-import.component.html'
 })
 export class AccountsImportComponent {
@@ -40,8 +40,8 @@ export class AccountsImportComponent {
                                                       LIMIT 1) AS note,
                                    (SELECT CASE
                                                WHEN n.text ~ '^\\s*[\\{\\[]'
-                                THEN (SELECT jsonb_object_agg(key, value)
-                                      FROM jsonb_each_text(n.text::jsonb))
+                             THEN (SELECT jsonb_object_agg(key, value)
+                                   FROM jsonb_each_text(n.text::jsonb))
                                                ELSE jsonb_build_object('note', n.text)
                                                END
                                     FROM notes n
@@ -51,14 +51,14 @@ export class AccountsImportComponent {
                                    (SELECT replace(am2.data, '"', '')
                                     FROM account_meta am2
                                     WHERE am2.account_id = a.id
-                                      AND am2.name = 'account_number' LIMIT 1) AS account_number FROM accounts a
-                  JOIN public.account_meta am
+                                      AND am2.name = 'account_number' LIMIT 1) AS account_number,
+                                   a."order" as display_order FROM accounts a
+               JOIN public.account_meta am
                               ON a.id = am.account_id AND am.name = 'currency_id'
                                   JOIN public.transaction_currencies tc
                                   ON replace(am.data, '"', ''):: int = tc.id
                               WHERE a.account_type_id NOT IN (6, 13, 10, 2)
-                              ORDER BY a."order" ASC
-                                  ) result;
+                              ORDER BY a."order" ASC) result;
     `;
 
     private accountService;
@@ -114,7 +114,8 @@ export class AccountsImportComponent {
                     type: item.type,
                     iban: item.iban,
                     accountNumber: item.account_number,
-                    note: item.note
+                    note: item.note,
+                    displayOrder: item.display_order
                 })
             );
         }

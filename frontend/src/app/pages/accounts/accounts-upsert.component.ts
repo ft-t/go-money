@@ -97,9 +97,8 @@ export class AccountsUpsertComponent implements OnInit {
                     iban: this.account.iban,
                     note: this.account.note,
                     liabilityPercent: this.account.liabilityPercent,
-                    extra: {
-                        updated_by: 'web'
-                    } // todo,
+                    displayOrder: this.account.displayOrder,
+                    extra: this.account.extra ?? {},
                 })
             );
 
@@ -122,9 +121,8 @@ export class AccountsUpsertComponent implements OnInit {
                     iban: this.account.iban,
                     note: this.account.note,
                     liabilityPercent: this.account.liabilityPercent,
-                    extra: {
-                        created_by: 'web'
-                    } // todo
+                    displayOrder: this.account.displayOrder,
+                    extra: this.account.extra ?? {},
                 })
             );
 

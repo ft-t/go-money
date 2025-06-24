@@ -10,7 +10,7 @@ import { InitialConfiguration } from './app/objects/configuration/сonfiguration
 import { BroadcastService } from './app/services/broadcast.service';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import { TRANSPORT_TOKEN } from './app/consts/transport';
-import { authInterceptor } from './interceptors/auth';
+import { authInterceptor } from './app/core/interceptors/auth';
 import { MessageService } from 'primeng/api';
 import { EnumService } from './app/services/enum.service';
 import { SelectedDateService } from './app/core/services/selected-date.service';

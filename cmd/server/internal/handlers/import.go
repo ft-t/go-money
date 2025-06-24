@@ -35,7 +35,7 @@ func (i *ImportApi) ImportTransactions(
 ) (*connect.Response[importv1.ImportTransactionsResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := i.importSvc.Import(
