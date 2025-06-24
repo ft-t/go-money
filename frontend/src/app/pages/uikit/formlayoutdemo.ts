@@ -107,7 +107,7 @@ import { TextareaModule } from 'primeng/textarea';
                 <div class="flex flex-col md:flex-row gap-6">
                     <div class="flex flex-wrap gap-2 w-full">
                         <label for="state">State</label>
-                        <p-select id="state" [(ngModel)]="dropdownItem" [options]="dropdownItems" optionLabel="name" placeholder="Select One" class="w-full"></p-select>
+                        <p-select id="state" [(ngModel)]="dropdownItem" [options]="dropdownItems" optionLabel="name" placeholder="Select" class="w-full"></p-select>
                     </div>
                     <div class="flex flex-wrap gap-2 w-full">
                         <label for="zip">Zip</label>

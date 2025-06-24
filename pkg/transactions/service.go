@@ -83,7 +83,7 @@ func (s *Service) List(
 	if len(req.AnyAccountIds) > 0 {
 		query = query.Where("source_account_id IN ? OR destination_account_id IN ?", req.AnyAccountIds, req.AnyAccountIds)
 	}
-
+	
 	var transactions []*database.Transaction
 
 	var count int64

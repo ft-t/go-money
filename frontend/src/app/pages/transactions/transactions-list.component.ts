@@ -1,10 +1,8 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ViewEncapsulation } from '@angular/core';
 import { OverlayModule } from 'primeng/overlay';
 import { FormsModule } from '@angular/forms';
 import { ToastModule } from 'primeng/toast';
 import { TableLazyLoadEvent, TableModule } from 'primeng/table';
-import { InputIcon } from 'primeng/inputicon';
-import { IconField } from 'primeng/iconfield';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Button } from 'primeng/button';
 import { MultiSelectModule } from 'primeng/multiselect';
@@ -16,7 +14,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ListTransactionsRequestSchema, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
-import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { AccountsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { AccountTypeEnum, EnumService } from '../../services/enum.service';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { ErrorHelper } from '../../helpers/error.helper';
@@ -27,14 +25,19 @@ import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 @Component({
     selector: 'app-transaction-list',
     templateUrl: 'transactions-list.component.html',
-    imports: [OverlayModule, FormsModule, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink]
+    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    styles: `
+        :host ::ng-deep .transactionListingTable .p-datatable-header {
+            border-width: 0 !important;
+        }
+    `
 })
 export class TransactionsListComponent implements OnInit {
     private transactionsService;
     public loading = false;
     public transactions: Transaction[] = [];
     public accountsService;
-    public transactionTypes: AccountTypeEnum[] = EnumService.getBaseTransactionTypes();
+    public transactionTypes: AccountTypeEnum[] = EnumService.getAllTransactionTypes();
     public transactionTypesMap: { [id: string]: AccountTypeEnum } = {};
 
     public filters: { [s: string]: FilterMetadata } = {};
@@ -42,7 +45,9 @@ export class TransactionsListComponent implements OnInit {
     public accounts: Account[] = [];
 
     private currentAccountId: number | undefined;
-    private ignoreDateFilter: boolean = false;
+    public ignoreDateFilter: boolean = false;
+    private lastEvent: TableLazyLoadEvent | undefined;
+    public totalRecords: number = 0;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -54,6 +59,18 @@ export class TransactionsListComponent implements OnInit {
         this.transactionsService = createClient(TransactionsService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
         this.currentAccountId = parseInt(this.activeRoute.snapshot.params['accountId']) ?? undefined;
+    }
+
+    getFilterIcon(): string {
+        if (this.ignoreDateFilter) return 'pi pi-filter';
+
+        return 'pi pi-filter-slash';
+    }
+
+    async switchDateFilter() {
+        this.ignoreDateFilter = !this.ignoreDateFilter;
+
+        if (this.lastEvent) await this.fetchTransactions(this.lastEvent);
     }
 
     async ngOnInit() {
@@ -89,19 +106,24 @@ export class TransactionsListComponent implements OnInit {
 
     async fetchTransactions(event: TableLazyLoadEvent) {
         console.log(event);
+        this.lastEvent = event;
 
         let req = create(ListTransactionsRequestSchema, {
             limit: event.rows ?? 50,
-            skip: event.first ?? 0,
-            fromDate: create(TimestampSchema, {
+            skip: event.first ?? 0
+        });
+
+        if (!this.ignoreDateFilter) {
+            req.fromDate = create(TimestampSchema, {
                 seconds: BigInt(Math.floor(this.selectedDateService.getFromDate().getTime() / 1000)),
                 nanos: (this.selectedDateService.getFromDate().getMilliseconds() % 1000) * 1_000_000
-            }),
-            toDate: create(TimestampSchema, {
+            });
+
+            req.toDate = create(TimestampSchema, {
                 seconds: BigInt(Math.floor(this.selectedDateService.getToDate().getTime() / 1000)),
                 nanos: (this.selectedDateService.getToDate().getMilliseconds() % 1000) * 1_000_000
-            })
-        });
+            });
+        }
 
         if (this.currentAccountId) {
             req.anyAccountIds = req.anyAccountIds ?? [];
@@ -125,6 +147,11 @@ export class TransactionsListComponent implements OnInit {
             if (title && title.value && typeof title.value === 'string' && title.value.trim() !== '') {
                 req.textQuery = title.value.trim();
             }
+
+            let transactionTypes = event.filters['transactionTypes'] as FilterMetadata;
+            // if (transactionTypes && transactionTypes.value && Array.isArray(transactionTypes.value)) {
+            //     req.transactionTypes = transactionTypes.value.map((type) => type as TransactionType);
+            // }
         }
 
         switch (event.sortField) {
@@ -139,6 +166,7 @@ export class TransactionsListComponent implements OnInit {
         let resp = await this.transactionsService.listTransactions(req);
 
         this.transactions = resp.transactions;
+        this.totalRecords = Number(resp.totalCount);
     }
 
     getTransactionType(transaction: Transaction): string {
@@ -157,6 +185,7 @@ export class TransactionsListComponent implements OnInit {
     getTransactionTypeColor(transaction: Transaction): string[] {
         return ['text-wrap', 'break-all', this.getAmountColor(transaction)];
     }
+
     getAmountColor(transaction: Transaction): string {
         switch (transaction.type) {
             case TransactionType.WITHDRAWAL:
@@ -194,6 +223,28 @@ export class TransactionsListComponent implements OnInit {
         }
 
         return Math.abs(parseFloat(val));
+    }
+
+    isSameAmount(transaction: Transaction): boolean {
+        return this.abs(transaction.sourceAmount) == this.abs(transaction.destinationAmount) && transaction.sourceCurrency == transaction.destinationCurrency;
+    }
+
+    formatAmountV2(transaction: Transaction): string[] {
+        let val: string[] = [];
+
+        if (transaction.sourceAmount) {
+            val.push(`${transaction.sourceAmount} ${transaction.sourceCurrency ?? ''}`);
+        } else {
+            val.push('');
+        }
+
+        if (transaction.destinationAmount) {
+            val.push(`${transaction.destinationAmount} ${transaction.destinationCurrency ?? ''}`);
+        } else {
+            val.push('');
+        }
+
+        return val;
     }
 
     formatAmounts(transaction: Transaction): string {

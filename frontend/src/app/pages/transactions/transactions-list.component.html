@@ -1,4 +1,4 @@
-<div class="card">
+<div class="card transactionListingTable">
     <div class="font-semibold text-xl mb-4">Transaction List</div>
     <p-table #dt1
              dataKey="id"
@@ -12,17 +12,15 @@
              [lazyLoadOnInit]="true"
              (onLazyLoad)="fetchTransactions($event)"
              [paginator]="true"
+             [totalRecords]="totalRecords"
              [rowsPerPageOptions]="[20, 50, 100, 1000]"
              responsiveLayout="scroll">
         <ng-template #caption>
-            <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
-                <p-iconfield iconPosition="left" class="ml-auto">
-                    <p-inputicon>
-                        <i class="pi pi-search"></i>
-                    </p-inputicon>
-                </p-iconfield>
-
-                <p-button label="Create new transaction" class="p-button-link"
+            <div class="flex justify-end items-center flex-column sm:flex-row gap-2">
+                <p-button [icon]="getFilterIcon()" severity="warn"
+                          [label]="ignoreDateFilter ? 'Enable date filter' : 'Disable date filter'"
+                          (click)="switchDateFilter()" />
+                <p-button label="Create new transaction" severity="info" class="p-button-link"
                           (click)="this.router.navigate(['/transactions', 'new'])" />
             </div>
         </ng-template>
@@ -31,23 +29,11 @@
                 <th style="min-width: 12rem">
                     <div class="flex justify-between items-center">
                         Title
-                        <p-columnFilter [showAddButton]="false" [showOperator]="false" [showMatchModes]="false"
-                                        type="text" field="title" display="menu"
-                                        placeholder="Search by title"></p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 12rem">
                     <div class="flex justify-between items-center">
                         Types
-                        <p-columnFilter field="transactionTypes" matchMode="equals" [showMenu]="false">
-                            <ng-template #filter let-value let-filter="filterCallback">
-                                <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
-                                               [options]="transactionTypes"
-                                               optionValue="value" optionLabel="name" (onChange)="filter($event.value)"
-                                               placeholder="Select" [showClear]="false">
-                                </p-multiselect>
-                            </ng-template>
-                        </p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 5rem">
@@ -64,27 +50,11 @@
                 <th style="min-width: 10rem">
                     <div class="flex justify-between items-center">
                         Source Account
-                        <p-columnFilter field="sourceAccountIds" matchMode="equals" [showMenu]="false">
-                            <ng-template #filter let-value let-filter="filterCallback">
-                                <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
-                                               optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
-                                               placeholder="Select One" [showClear]="true">
-                                </p-multiselect>
-                            </ng-template>
-                        </p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 5rem">
                     <div class="flex justify-between items-center">
                         Destination Account
-                        <p-columnFilter field="destinationAccountIds" matchMode="equals" [showMenu]="false">
-                            <ng-template #filter let-value let-filter="filterCallback">
-                                <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
-                                               optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
-                                               placeholder="Select One" [showClear]="true">
-                                </p-multiselect>
-                            </ng-template>
-                        </p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 3rem">
@@ -94,7 +64,50 @@
                                         placeholder="Search by account number"></p-columnFilter>
                     </div>
                 </th>
-                <th style="width: 5rem"></th>
+            </tr>
+            <tr>
+                <th>
+                    <p-columnFilter type="text" showAddButton="false" showMatchModes="false" field="title"
+                                    showMenu="false"
+                                    placeholder="Search by title" ariaLabel="Filter Name"></p-columnFilter>
+                </th>
+                <th>
+                    <p-columnFilter field="transactionTypes" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
+                                           [options]="transactionTypes"
+                                           maxSelectedLabels="1"
+                                           optionValue="value" optionLabel="name" (onChange)="filter($event.value)"
+                                           placeholder="Select" [showClear]="false">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th></th>
+                <th></th>
+                <th>
+                    <p-columnFilter field="sourceAccountIds" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
+                                           optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
+                                           maxSelectedLabels="1"
+                                           placeholder="Select" [showClear]="true">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th>
+                    <p-columnFilter field="destinationAccountIds" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
+                                           optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
+                                           maxSelectedLabels="1"
+                                           placeholder="Select" [showClear]="true">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th></th>
             </tr>
         </ng-template>
         <ng-template #body let-transactionItem>
@@ -110,12 +123,16 @@
                     </p>
                 </td>
                 <td>
-                    <p [class]="getAmountColor(transactionItem)">
+                    <p [class]="getAmountColor(transactionItem)" *ngIf="this.formatAmountV2(transactionItem)[0] != ''">
                         <i class="pi"
                            [ngClass]="{'pi-arrow-down': transactionItem.sourceAmount < 0, 'pi-arrow-up': transactionItem.sourceAmount >= 0}"></i>
-                        <!--                        {{ accountItem.account.currentBalance }} ({{accountItem.account.currency}})-->
-                        {{ this.formatAmounts(transactionItem) }}
-
+                        {{ this.formatAmountV2(transactionItem)[0] }}
+                    </p>
+                    <p [class]="getAmountColor(transactionItem)"
+                       *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''">
+                        <i class="pi"
+                           [ngClass]="{'pi-arrow-down': transactionItem.sourceAmount < 0, 'pi-arrow-up': transactionItem.sourceAmount >= 0}"></i>
+                        {{ this.formatAmountV2(transactionItem)[1] }}
                     </p>
                 </td>
                 <td>

@@ -56,4 +56,14 @@ export class EnumService {
             }
         ]
     }
+
+    static getAllTransactionTypes(): AccountTypeEnum[] {
+        return [
+            ...EnumService.getBaseTransactionTypes(),
+            {
+                name: "Reconciliation",
+                value: TransactionType.RECONCILIATION
+            }
+        ];
+    }
 }
