@@ -17,6 +17,7 @@ import { SelectedDateService } from './app/core/services/selected-date.service';
 import { DatePipe } from '@angular/common';
 import { CookieService } from './app/services/cookie.service';
 import { CookieInstances } from './app/objects/cookie-instances';
+import { provideHighlightOptions } from 'ngx-highlightjs';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -28,6 +29,10 @@ export const appConfig: ApplicationConfig = {
             }),
             withEnabledBlockingInitialNavigation()
         ),
+        provideHighlightOptions({
+            fullLibraryLoader: () => import('highlight.js'),
+        }),
+
         provideHttpClient(withFetch()),
         provideAnimationsAsync(),
         MessageService,
@@ -40,8 +45,7 @@ export const appConfig: ApplicationConfig = {
             deps: [CookieService],
             useFactory: (cookiesService: CookieService) => {
                 let host = cookiesService.get(CookieInstances.CustomApiHost);
-                if (!host)
-                    host = '/'
+                if (!host) host = '/';
 
                 return createConnectTransport({
                     baseUrl: host,

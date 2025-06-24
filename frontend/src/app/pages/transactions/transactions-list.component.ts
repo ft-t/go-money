@@ -10,24 +10,24 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Button } from 'primeng/button';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
-import { TRANSPORT_TOKEN } from '../../../consts/transport';
+import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { FilterMetadata, MessageService } from 'primeng/api';
 import { Router } from '@angular/router';
 import { TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { Transaction } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
-import { TimestampHelper } from '../../../helpers/timestamp.helper';
+import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { AccountsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-import { AccountTypeEnum } from '../../../services/enum.service';
+import { AccountTypeEnum } from '../../services/enum.service';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
-import { ErrorHelper } from '../../../helpers/error.helper';
+import { ErrorHelper } from '../../helpers/error.helper';
 
 @Component({
     selector: 'app-transaction-list',
-    templateUrl: 'transaction-list.component.html',
+    templateUrl: 'transactions-list.component.html',
     imports: [OverlayModule, FormsModule, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule]
 })
-export class TransactionListComponent implements OnInit {
+export class TransactionsListComponent implements OnInit {
     private transactionsService;
     public loading = false;
     public transactions: Transaction[] = [];

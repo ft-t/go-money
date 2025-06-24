@@ -5,26 +5,26 @@ import { InputText } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
 import { InputIcon } from 'primeng/inputicon';
 import { IconField } from 'primeng/iconfield';
-import { TRANSPORT_TOKEN } from '../../../consts/transport';
+import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-import { ErrorHelper } from '../../../helpers/error.helper';
+import { ErrorHelper } from '../../helpers/error.helper';
 import { FilterMetadata, MessageService } from 'primeng/api';
 import { CommonModule, DatePipe } from '@angular/common';
-import { TimestampHelper } from '../../../helpers/timestamp.helper';
+import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Button } from 'primeng/button';
-import { EnumService, AccountTypeEnum } from '../../../services/enum.service';
+import { EnumService, AccountTypeEnum } from '../../services/enum.service';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
 
 @Component({
     selector: 'app-account-list',
-    templateUrl: 'account-list.component.html',
+    templateUrl: 'accounts-list.component.html',
     imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule]
 })
-export class AccountListComponent implements OnInit {
+export class AccountsListComponent implements OnInit {
     statuses: any[] = [];
 
     loading: boolean = false;

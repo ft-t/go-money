@@ -67,6 +67,22 @@ export class AppMenu {
             ]
         },
         {
+            label: 'Bulk',
+            items: [
+                {
+                    label: 'Transactions Import',
+                    icon: 'pi pi-fw pi-file-import',
+                    routerLink: ['/transactions/import']
+                },
+                {
+                    label: 'Accounts Import',
+                    icon: 'pi pi-fw pi-globe',
+                    routerLink: ['/accounts/import']
+                },
+
+            ]
+        },
+        {
             label: 'Admin Section',
             items: [
                 {

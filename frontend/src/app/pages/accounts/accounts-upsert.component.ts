@@ -3,16 +3,16 @@ import { Button } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Fluid } from 'primeng/fluid';
 import { DropdownModule } from 'primeng/dropdown';
-import { TRANSPORT_TOKEN } from '../../../../consts/transport';
+import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
-import { ErrorHelper } from '../../../../helpers/error.helper';
+import { ErrorHelper } from '../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
 import { Account, AccountSchema, AccountType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { FormsModule } from '@angular/forms';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { create } from '@bufbuild/protobuf';
-import { EnumService } from '../../../../services/enum.service';
+import { EnumService } from '../../services/enum.service';
 import { NgIf } from '@angular/common';
 import { Textarea } from 'primeng/textarea';
 import {
@@ -20,15 +20,14 @@ import {
     CreateAccountRequestSchema,
     UpdateAccountRequestSchema
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-import { ActivatedRoute, ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
     selector: 'app-account-upsert',
-    templateUrl: 'account-upsert.component.html',
-    styleUrls: ['account-upsert.component.scss'],
+    templateUrl: 'accounts-upsert.component.html',
     imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea]
 })
-export class AccountUpsertComponent implements OnInit {
+export class AccountsUpsertComponent implements OnInit {
     private currencyService;
     private accountsService;
 
