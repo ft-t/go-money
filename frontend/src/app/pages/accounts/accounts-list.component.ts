@@ -12,7 +12,7 @@ import { ErrorHelper } from '../../helpers/error.helper';
 import { FilterMetadata, MessageService } from 'primeng/api';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
 import { EnumService, AccountTypeEnum } from '../../services/enum.service';
 import { MultiSelectModule } from 'primeng/multiselect';
@@ -22,7 +22,7 @@ import { OverlayModule } from 'primeng/overlay';
 @Component({
     selector: 'app-account-list',
     templateUrl: 'accounts-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule]
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink]
 })
 export class AccountsListComponent implements OnInit {
     statuses: any[] = [];
@@ -53,6 +53,10 @@ export class AccountsListComponent implements OnInit {
                 }
             }
         }
+    }
+
+    getAccountUrl(account: ListAccountsResponse_AccountItem): string {
+        return this.router.createUrlTree(['/', 'accounts', account.account!.id.toString()]).toString();
     }
 
     async ngOnInit() {

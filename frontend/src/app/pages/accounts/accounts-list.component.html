@@ -91,7 +91,9 @@
         <ng-template #body let-accountItem>
             <tr>
                 <td>
-                    {{ accountItem.account.name }}
+                    <a [href]="getAccountUrl(accountItem)" [routerLink]="getAccountUrl(accountItem)">
+                        {{ accountItem.account.name }}
+                    </a>
                 </td>
                 <td>
                     {{ this.accountTypesMap[accountItem.account.type].name }}
@@ -103,7 +105,6 @@
                     <p class="{{accountItem.account.currentBalance < 0 ? 'text-red-500' : 'text-green-500'}}">
                         <i class="pi" [ngClass]="{'pi-arrow-down': accountItem.account.currentBalance < 0, 'pi-arrow-up': accountItem.account.currentBalance >= 0}"></i>
                         {{ accountItem.account.currentBalance }} ({{accountItem.account.currency}})
-
                     </p>
                 </td>
                 <td>
