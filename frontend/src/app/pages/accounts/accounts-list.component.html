@@ -29,33 +29,33 @@
         </ng-template>
         <ng-template #header>
             <tr>
-                <th style="min-width: 12rem">
+                <th style="min-width: 20rem">
                     <div class="flex justify-between items-center">
                         Name
                         <p-columnFilter type="text" field="account.name" display="menu"
                                         placeholder="Search by name"></p-columnFilter>
                     </div>
                 </th>
-                <th style="min-width: 5rem">
+                <th style="max-width: 5rem">
                     <div class="flex justify-between items-center">
                         Type
-                        <p-columnFilter matchMode="in" field="account.type" display="row" [showMatchModes]="false"
-                                        [showOperator]="false" [showAddButton]="false" [showButtons]="false"
-                                        [showApplyButton]="false" [showClearButton]="true">
-                            <ng-template #filter let-value let-filter="filterCallback">
-                                <p-multiselect [(ngModel)]="value" [options]="accountTypes" placeholder="Any" appendTo="body"
-                                               (onChange)="filter($event.value)" optionLabel="name" optionValue="value">
-                                    <ng-template let-option #item>
-                                        <div class="flex items-center gap-2">
-                                            <span>{{ option.name }}</span>
-                                        </div>
-                                    </ng-template>
-                                </p-multiselect>
-                            </ng-template>
-                        </p-columnFilter>
+<!--                        <p-columnFilter matchMode="in" field="account.type" display="row" [showMatchModes]="false"-->
+<!--                                        [showOperator]="false" [showAddButton]="false" [showButtons]="false"-->
+<!--                                        [showApplyButton]="false" [showClearButton]="true">-->
+<!--                            <ng-template #filter let-value let-filter="filterCallback">-->
+<!--                                <p-multiselect [(ngModel)]="value" [options]="accountTypes" placeholder="Any" appendTo="body"-->
+<!--                                               (onChange)="filter($event.value)" optionLabel="name" optionValue="value">-->
+<!--                                    <ng-template let-option #item>-->
+<!--                                        <div class="flex items-center gap-2">-->
+<!--                                            <span>{{ option.name }}</span>-->
+<!--                                        </div>-->
+<!--                                    </ng-template>-->
+<!--                                </p-multiselect>-->
+<!--                            </ng-template>-->
+<!--                        </p-columnFilter>-->
                     </div>
                 </th>
-                <th style="min-width: 3rem">
+                <th style="min-width: 2rem">
                     <div class="flex justify-between items-center">
                         Currency
                         <p-columnFilter type="text" field="account.currency" display="menu"
@@ -76,7 +76,7 @@
                                         placeholder="mm/dd/yyyy"></p-columnFilter>
                     </div>
                 </th>
-                <th style="min-width: 3rem">
+                <th style="min-width: 3rem; max-width: 5rem;">
                     <div class="flex justify-between items-center">
                         Account number
                         <p-columnFilter type="text" field="account.accountNumber" display="menu"
@@ -98,13 +98,19 @@
                     {{ accountItem.account.currency }}
                 </td>
                 <td>
-                    {{ accountItem.account.currentBalance }}
+                    <p class="{{accountItem.account.currentBalance < 0 ? 'text-red-500' : 'text-green-500'}}">
+                        <i class="pi" [ngClass]="{'pi-arrow-down': accountItem.account.currentBalance < 0, 'pi-arrow-up': accountItem.account.currentBalance >= 0}"></i>
+                        {{ accountItem.account.currentBalance }} ({{accountItem.account.currency}})
+
+                    </p>
                 </td>
                 <td>
                     {{ TimestampHelper.timestampToDate(accountItem.account.updatedAt) | date: 'MM/dd/yyyy' }}
                 </td>
-                <td>
-                    {{ accountItem.account.accountNumber }}
+                <td style="max-width: 10rem">
+                    <p class="text-wrap break-all">
+                        {{ accountItem.account.accountNumber }}
+                    </p>
                 </td>
                 <td>
                     <p-button icon="pi pi-pencil"
