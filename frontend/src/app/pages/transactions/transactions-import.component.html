@@ -1,1 +1,27 @@
-<p>transactions-import works!</p>
+<p-toast />
+<p-fluid>
+    <div class="flex flex-col gap-8">
+        <div class="card flex flex-col gap-4">
+            <div class="font-semibold text-xl">Transactions Import</div>
+            <div class="flex flex-col gap-2">
+                <p-dropdown
+                    [options]="sources"
+                    [(ngModel)]="selectedSource"
+                    optionLabel="name"
+                    optionValue="value"
+                    placeholder="Select a Import Type" />
+
+                <p-fileupload mode="advanced" name="demo[]"
+                              chooseIcon="pi pi-upload"
+                              maxFileSize="100000000"
+                              accept="text/csv"
+                              customUpload="true"
+                              (uploadHandler)="onBasicUploadAuto($event)"
+                              [auto]="true" chooseLabel="Browse" />
+
+
+                <textarea readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
+            </div>
+        </div>
+    </div>
+</p-fluid>

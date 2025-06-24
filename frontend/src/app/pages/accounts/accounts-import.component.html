@@ -1,9 +1,8 @@
 <p-toast />
 <p-fluid>
-
     <div class="flex flex-col gap-8">
         <div class="card flex flex-col gap-4">
-            <div class="font-semibold text-xl">Account Importer</div>
+            <div class="font-semibold text-xl">Accounts Importer</div>
             <div class="flex flex-row">
                 <p-stepper [value]="1" class="w-full" linear="true" (valueChange)="onValueChange($event)" >
                     <p-step-list>
@@ -52,7 +51,7 @@
                                 <div class="flex flex-col">
 
                                     <p-card header="Review and Import">
-                                        <textarea disabled="disabled" rows="5" cols="30" pTextarea [(ngModel)]="reviewText"></textarea>
+                                        <textarea autoResize="true" disabled="disabled" rows="5" cols="30" pTextarea [(ngModel)]="reviewText"></textarea>
 
                                         <p-button label="Import" (onClick)="import()" [disabled]="importDisabled"></p-button>
                                     </p-card>

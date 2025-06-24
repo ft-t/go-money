@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { AccountType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { ImportSource } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/import/v1/import_pb';
 
 @Injectable({
     providedIn: 'root'
@@ -12,6 +13,12 @@ export class AccountTypeEnum {
 }
 
 export class EnumService {
+    static getImportTypes(): AccountTypeEnum[] {
+        return [{
+            name: "Firefly",
+            value: ImportSource.FIREFLY
+        }]
+    }
     static getAccountTypes(): AccountTypeEnum[] {
         return [
             {

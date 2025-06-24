@@ -129,7 +129,7 @@ export class AccountsImportComponent {
             this.importDisabled = true;
             let response = await this.accountService.createAccountsBulk(req);
 
-            let text = `Import completed successfully. Created ${response.createdCount} accounts, skipped ${response.duplicateCount} accounts.`;
+            let text = `Import completed successfully. Created ${response.createdCount} accounts, skipped ${response.duplicateCount} accounts.\n`;
 
             for (let message of response.messages) {
                 text += `\n${message}`;
