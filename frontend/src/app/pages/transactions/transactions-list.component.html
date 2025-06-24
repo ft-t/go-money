@@ -54,11 +54,11 @@
                         </p-columnFilter>
                     </div>
                 </th>
-                <th style="min-width: 3rem">
+                <th style="min-width: 3rem" pSortableColumn="transactionItem.transactionDate.nanos">
                     <div class="flex justify-between items-center">
-                        Date
-                        <p-columnFilter type="text" field="account.currency" display="menu"
-                                        placeholder="Search by currency"></p-columnFilter>
+                        Date <p-sortIcon field="transactionItem.transactionDate.nanos" />
+                        <p-columnFilter type="date" field="transactionItem.transactionDate.nanos" display="menu"
+                                        placeholder="Search by date"></p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 10rem">
@@ -87,20 +87,33 @@
         </ng-template>
         <ng-template #body let-transactionItem>
             <tr>
-                <td>
-                    {{ transactionItem.title }}
+                <td style="max-width: 20rem;">
+                    <p class="text-wrap break-all">
+                        {{ transactionItem.title }}
+                    </p>
                 </td>
                 <td>
-                    {{ this.formatAmounts(transactionItem) }}
+                    <p [class]="getAmountColor(transactionItem)">
+                        <i class="pi" [ngClass]="{'pi-arrow-down': transactionItem.sourceAmount < 0, 'pi-arrow-up': transactionItem.sourceAmount >= 0}"></i>
+<!--                        {{ accountItem.account.currentBalance }} ({{accountItem.account.currency}})-->
+                        {{ this.formatAmounts(transactionItem) }}
+
+                    </p>
                 </td>
                 <td>
-                    {{ TimestampHelper.timestampToDate(transactionItem.transactionDate) | date: 'MM/dd/yyyy' }}
+                    <p class="text-wrap break-all">
+                        {{ TimestampHelper.timestampToDate(transactionItem.transactionDate) | date: 'MM/dd/yyyy' }}
+                    </p>
                 </td>
                 <td>
-                    {{ this.getAccountName(transactionItem.sourceAccountId) }}
+                    <p class="text-wrap break-all">
+                        {{ this.getAccountName(transactionItem.sourceAccountId) }}
+                    </p>
                 </td>
                 <td>
-                    {{ this.getAccountName(transactionItem.destinationAccountId) }}
+                    <p class="text-wrap break-all">
+                        {{ this.getAccountName(transactionItem.destinationAccountId) }}
+                    </p>
                 </td>
                 <td>
                     Labels to DO

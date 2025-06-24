@@ -11,6 +11,7 @@ import {
 } from './app/pages/transactions/transactions-create.component';
 import { AccountsImportComponent } from './app/pages/accounts/accounts-import.component';
 import { TransactionsImportComponent } from './app/pages/transactions/transactions-import.component';
+import { AccountsDetailComponent } from './app/pages/accounts/accounts-detail.component';
 
 export const appRoutes: Routes = [
     {
@@ -69,11 +70,17 @@ export const appRoutes: Routes = [
                 }
             },
             {
+                path: 'accounts/:accountId',
+                component: AccountsDetailComponent,
+                data: {}
+            },
+            {
                 path: 'transactions',
                 component: TransactionsListComponent,
                 data: {
                 }
             },
+
             {
                 path: 'transactions/new',
                 component: TransactionUpsertComponent,
