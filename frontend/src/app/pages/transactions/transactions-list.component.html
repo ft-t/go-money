@@ -102,16 +102,16 @@
                 </td>
                 <td>
                     <p class="text-wrap break-all">
-                        {{ TimestampHelper.timestampToDate(transactionItem.transactionDate) | date: 'MM/dd/yyyy' }}
+                        {{ TimestampHelper.timestampToDate(transactionItem.transactionDate) | date: 'yyyy-MM-dd HH:mm' }}
                     </p>
                 </td>
                 <td>
-                    <p class="text-wrap break-all">
+                    <p [ngClass]="getAccountColorClass(transactionItem.sourceAccountId)">
                         {{ this.getAccountName(transactionItem.sourceAccountId) }}
                     </p>
                 </td>
                 <td>
-                    <p class="text-wrap break-all">
+                    <p [ngClass]="getAccountColorClass(transactionItem.destinationAccountId)">
                         {{ this.getAccountName(transactionItem.destinationAccountId) }}
                     </p>
                 </td>

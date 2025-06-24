@@ -13,7 +13,10 @@ import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { FilterMetadata, MessageService } from 'primeng/api';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ListTransactionsRequestSchema, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import {
+    ListTransactionsRequestSchema,
+    TransactionsService
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { AccountsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
@@ -90,10 +93,10 @@ export class TransactionsListComponent implements OnInit {
         }
 
         switch (event.sortField) {
-            case "transactionItem.transactionDate.nanos":
+            case 'transactionItem.transactionDate.nanos':
                 console.log('Sorting by transaction date');
                 // todo
-                break
+                break;
             default:
                 console.log('Unknown sort field:', event.sortField);
         }
@@ -114,6 +117,16 @@ export class TransactionsListComponent implements OnInit {
             default:
                 return 'text-gray-500';
         }
+    }
+
+    getAccountColorClass(accID: number | undefined): string[] {
+        let result = ['text-wrap', 'break-all'];
+
+        if (this.currentAccountId && this.currentAccountId === accID) {
+            result.push("text-purple-500");
+        }
+
+        return result
     }
 
     formatAmounts(transaction: Transaction): string {
