@@ -1,3 +1,4 @@
+<script src="transactions-table.component.ts"></script>
 <div class="transactionListingTable">
     <p-table #dt1
              dataKey="id"
@@ -19,7 +20,7 @@
         <ng-template #caption>
             <div class="flex flex-column sm:flex-row gap-2 justify-between">
                 <div class="flex flex-col justify-items-start">
-                    <p class="font-semibold text-xl mb-4">{{tableTitle}}</p>
+                    <p class="font-semibold text-xl mb-4">{{ tableTitle }}</p>
                 </div>
                 <div class="flex flex-col">
                     <div class="flex flex-row gap-4">
@@ -67,7 +68,7 @@
                 </th>
                 <th style="min-width: 3rem">
                     <div class="flex justify-between items-center">
-                        Labels
+                        Tags
                         <p-columnFilter type="text" field="account.accountNumber" display="menu"
                                         placeholder="Search by account number"></p-columnFilter>
                     </div>
@@ -115,7 +116,18 @@
                         </ng-template>
                     </p-columnFilter>
                 </th>
-                <th></th>
+                <th>
+                    <p-columnFilter field="tags" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
+                                           [options]="tags"
+                                           maxSelectedLabels="1"
+                                           optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
+                                           placeholder="Select" [showClear]="false">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
             </tr>
         </ng-template>
         <ng-template #body let-transactionItem>
@@ -165,7 +177,9 @@
                     </p>
                 </td>
                 <td>
-                    Labels to DO
+                    @for (tagID of transactionItem.tagIds; track tagID) {
+                        <fancy-tag [tag]="getTag(tagID)"></fancy-tag>
+                    }
                 </td>
             </tr>
         </ng-template>

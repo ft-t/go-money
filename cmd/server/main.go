@@ -97,9 +97,10 @@ func main() {
 		MapperSvc: mapper,
 	})
 
-	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
-
 	tagSvc := tags.NewService(mapper)
+
+	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
+	_ = handlers.NewTagsApi(grpcServer, tagSvc)
 
 	importSvc := importers.NewImporter(accountSvc, tagSvc, importers.NewFireflyImporter(transactionSvc))
 

@@ -21,6 +21,24 @@ func NewService(
 	}
 }
 
+func (s *Service) ListTags(ctx context.Context, msg *tagsv1.ListTagsRequest) (*tagsv1.ListTagsResponse, error) {
+	allTags, err := s.GetAllTags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get all tags")
+	}
+
+	var mapped []*tagsv1.ListTagsResponse_TagItem
+	for _, tag := range allTags {
+		mapped = append(mapped, &tagsv1.ListTagsResponse_TagItem{
+			Tag: s.mapper.MapTag(ctx, tag),
+		})
+	}
+
+	return &tagsv1.ListTagsResponse{
+		Tags: mapped,
+	}, nil
+}
+
 func (s *Service) GetAllTags(ctx context.Context) ([]*database.Tag, error) {
 	var tags []*database.Tag
 
@@ -67,7 +85,7 @@ func (s *Service) ImportTags(
 ) (*tagsv1.ImportTagsResponse, error) {
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
 	defer tx.Rollback()
-	
+
 	finalResp := &tagsv1.ImportTagsResponse{
 		Messages:     nil,
 		CreatedCount: 0,

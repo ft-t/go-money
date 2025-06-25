@@ -3,20 +3,13 @@ import { DropdownChangeEvent, DropdownModule } from 'primeng/dropdown';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import {
-    Transaction,
-    TransactionSchema,
-    TransactionType
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { Transaction, TransactionSchema, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { create } from '@bufbuild/protobuf';
 import { AccountTypeEnum, EnumService } from '../../services/enum.service';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
-import {
-    AccountsService,
-    ListAccountsResponse_AccountItem
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { DatePicker } from 'primeng/datepicker';
@@ -26,16 +19,15 @@ import { NgIf } from '@angular/common';
 import { Textarea } from 'primeng/textarea';
 import { Button } from 'primeng/button';
 import { MultiSelect } from 'primeng/multiselect';
-import {
-    CreateTransactionRequestSchema,
-    DepositSchema,
-    TransactionsService, WithdrawalSchema
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { CreateTransactionRequestSchema, DepositSchema, TransactionsService, WithdrawalSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { InputGroup } from 'primeng/inputgroup';
 import { InputGroupAddon } from 'primeng/inputgroupaddon';
 import { InputNumber } from 'primeng/inputnumber';
+import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
+import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
+import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 
 @Component({
     selector: 'transaction-upsert',
@@ -47,8 +39,8 @@ export class TransactionUpsertComponent implements OnInit {
 
     public transaction: Transaction;
     public transactionTypes: AccountTypeEnum[];
-    public labels: AccountTypeEnum[];
     public currencies: Currency[] = [];
+    public tags: Tag[] = [];
 
     private accountService;
     public accounts: ListAccountsResponse_AccountItem[] = [];
@@ -56,32 +48,41 @@ export class TransactionUpsertComponent implements OnInit {
     private transactionService;
 
     private currencyService;
+    private tagsService;
+    public transactionDate: Date = new Date();
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService
     ) {
-        this.transaction = create(TransactionSchema, {});
+        this.transaction = create(TransactionSchema, {
+            destinationAmount: undefined,
+            sourceAmount: undefined
+        });
         this.transactionTypes = EnumService.getBaseTransactionTypes();
         this.accountService = createClient(AccountsService, this.transport);
         this.transactionService = createClient(TransactionsService, this.transport);
         this.currencyService = createClient(CurrencyService, this.transport);
-
-        this.labels = [
-            {
-                name: 'tag1',
-                value: 1
-            },
-            {
-                name: 'tag2',
-                value: 2
-            }
-        ];
+        this.tagsService = createClient(TagsService, this.transport);
     }
 
     async ngOnInit() {
-        await this.fetchAccounts();
-        await this.fetchCurrencies();
+        await Promise.all([
+            this.fetchAccounts(),
+            this.fetchCurrencies(),
+            this.fetchTags()
+        ]);
+    }
+
+    async fetchTags() {
+        try {
+            let resp = await this.tagsService.listTags({});
+            for (let tag of resp.tags || []) {
+                this.tags.push(tag.tag!)
+            }
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
     }
 
     async fetchCurrencies() {
@@ -112,20 +113,20 @@ export class TransactionUpsertComponent implements OnInit {
 
     onTransactionTypeChange(event: DropdownChangeEvent) {
         if (!this.isDestinationAccountActive()) {
-            this.transaction.destinationAccountId = 0;
-            this.transaction.destinationCurrency = '';
-            this.transaction.destinationAmount = '';
+            this.transaction.destinationAccountId = undefined;
+            this.transaction.destinationCurrency = undefined;
+            this.transaction.destinationAmount = undefined;
         }
 
         if (!this.isSourceAccountActive()) {
-            this.transaction.sourceAccountId = 0;
-            this.transaction.sourceCurrency = '';
-            this.transaction.sourceAmount = '';
+            this.transaction.sourceAccountId = undefined;
+            this.transaction.sourceCurrency = undefined;
+            this.transaction.sourceAmount = undefined;
         }
 
         if (!this.isForeignCurrencyActive()) {
-            this.transaction.destinationCurrency = '';
-            this.transaction.destinationAmount = '';
+            this.transaction.destinationCurrency = undefined;
+            this.transaction.destinationAmount = undefined;
         }
     }
 
@@ -165,8 +166,11 @@ export class TransactionUpsertComponent implements OnInit {
         let req = create(CreateTransactionRequestSchema, {
             notes: this.transaction.notes,
             extra: {}, // todo
-            labelIds: this.transaction.labelIds,
-            transactionDate: this.transaction.transactionDate,
+            tagIds: this.transaction.tagIds,
+            transactionDate: create(TimestampSchema, {
+                seconds: BigInt(Math.floor(this.transactionDate.getTime() / 1000)),
+                nanos: (this.transactionDate.getMilliseconds() % 1000) * 1_000_000
+            }),
             title: this.transaction.title
         });
 
@@ -198,6 +202,7 @@ export class TransactionUpsertComponent implements OnInit {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
     }
+
     async update() {}
 
     toNegativeNumber(value: string | undefined): string | undefined {

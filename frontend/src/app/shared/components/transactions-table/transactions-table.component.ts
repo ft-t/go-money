@@ -1,4 +1,4 @@
-import { Component, Inject, Input, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, Inject, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import { OverlayModule } from 'primeng/overlay';
 import { FormsModule } from '@angular/forms';
 import { ToastModule } from 'primeng/toast';
@@ -22,34 +22,39 @@ import { create } from '@bufbuild/protobuf';
 import { SelectedDateService } from '../../../core/services/selected-date.service';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { BusService } from '../../../core/services/bus.service';
-import { Subscription } from 'rxjs';
+import { combineLatest, Observable, skip, Subscription, switchMap } from 'rxjs';
+import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
+import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
+import { FancyTagComponent } from '../fancy-tag/fancy-tag.component';
 
 @Component({
     selector: 'app-transaction-table',
     templateUrl: 'transactions-table.component.html',
-    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent],
     styles: `
         :host ::ng-deep .transactionListingTable .p-datatable-header {
             border-width: 0 !important;
         }
     `
 })
-export class TransactionsTableComponent implements OnInit {
+export class TransactionsTableComponent implements OnInit, AfterViewInit, OnChanges {
     private transactionsService;
     public loading = false;
     public transactions: Transaction[] = [];
     public accountsService;
+    public tagsService;
     public transactionTypes: AccountTypeEnum[] = EnumService.getAllTransactionTypes();
     public transactionTypesMap: { [id: string]: AccountTypeEnum } = {};
 
     public filters: { [s: string]: FilterMetadata } = {};
     public accountMap: { [id: number]: Account } = {};
+    public tagsMap: { [id: number]: Tag } = {};
     public accounts: Account[] = [];
+    public tags: Tag[] = [];
 
     @Input() tableTitle: string = 'Transactions';
 
-    private currentAccountId: number | undefined;
-    @Input() subscribeToAccountChanges: boolean = false;
+    @Input() public currentAccountId: number | undefined;
 
     public ignoreDateFilter: boolean = false;
     private lastEvent: TableLazyLoadEvent | undefined;
@@ -68,23 +73,66 @@ export class TransactionsTableComponent implements OnInit {
         private messageService: MessageService,
         public router: Router,
         private selectedDateService: SelectedDateService,
-        private routeSnapshot: ActivatedRoute,
-        private busService: BusService
+        routeSnapshot: ActivatedRoute
     ) {
+        for (let type of this.transactionTypes) {
+            this.transactionTypesMap[type.value] = type;
+        }
+
         if (routeSnapshot.snapshot.data['preselectedFilter']) {
             this.filters = routeSnapshot.snapshot.data['preselectedFilter'];
         }
 
         this.transactionsService = createClient(TransactionsService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
+        this.tagsService = createClient(TagsService, this.transport);
+    }
 
-        selectedDateService.fromDate.subscribe(() => {
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['currentAccountId']) {
+            console.log(changes);
+            this.refreshTable();
+        }
+    }
+
+    ngAfterViewInit(): void {
+        this.selectedDateService.fromDate.pipe(skip(1)).subscribe(() => {
             this.refreshTable();
         });
 
-        selectedDateService.toDate.subscribe(() => {
+        this.selectedDateService.toDate.pipe(skip(1)).subscribe(() => {
             this.refreshTable();
         });
+    }
+
+    async ngOnInit() {
+        await Promise.all([this.fetchAccounts(), this.fetchTags()]);
+    }
+
+    async fetchTags() {
+        this.tags = [];
+
+        try {
+            let resp = await this.tagsService.listTags({});
+            for (let account of resp.tags) {
+                this.tagsMap[account.tag!.id] = account.tag!;
+                this.tags.push(account.tag!);
+            }
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async fetchAccounts() {
+        try {
+            let resp = await this.accountsService.listAccounts({});
+            for (let account of resp.accounts) {
+                this.accountMap[account.account!.id] = account.account!;
+                this.accounts.push(account.account!);
+            }
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
     }
 
     getFilterIcon(): string {
@@ -99,31 +147,11 @@ export class TransactionsTableComponent implements OnInit {
         if (this.lastEvent) await this.fetchTransactions(this.lastEvent);
     }
 
-    async ngOnInit() {
-        for (let type of this.transactionTypes) {
-            this.transactionTypesMap[type.value] = type;
-        }
-
-        try {
-            let resp = await this.accountsService.listAccounts({});
-            for (let account of resp.accounts) {
-                this.accountMap[account.account!.id] = account.account!;
-                this.accounts.push(account.account!);
-            }
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        }
-
-        if (this.subscribeToAccountChanges) {
-            this.busService.currentAccountId.subscribe((val) => {
-                this.currentAccountId = val;
-
-                this.refreshTable();
-            });
-        }
-    }
-
     refreshTable() {
+        if (!this.table) {
+            return;
+        }
+
         this.table.filter('', '', '');
     }
 
@@ -138,6 +166,10 @@ export class TransactionsTableComponent implements OnInit {
         }
 
         return account.name || '';
+    }
+
+    getTag(tagID: number): Tag | undefined {
+        return this.tagsMap[tagID];
     }
 
     paramsToQueryString(filters: { [s: string]: FilterMetadata }) {
@@ -194,6 +226,11 @@ export class TransactionsTableComponent implements OnInit {
             let transactionTypes = event.filters['transactionTypes'] as FilterMetadata;
             if (transactionTypes && transactionTypes.value && Array.isArray(transactionTypes.value)) {
                 req.transactionTypes = transactionTypes.value.map((type) => type as TransactionType);
+            }
+
+            let tags = event.filters['tags'] as FilterMetadata;
+            if (tags && tags.value && Array.isArray(tags.value)) {
+                req.tagIds = tags.value.map((id) => parseInt(id as string));
             }
         }
 

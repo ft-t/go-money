@@ -4,6 +4,7 @@ import (
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
@@ -12,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"strings"
 	"time"
 )
 
@@ -88,6 +90,15 @@ func (s *Service) List(
 		query = query.Where("transaction_type IN ?", lo.Map(req.TransactionTypes, func(t gomoneypbv1.TransactionType, _ int) int32 {
 			return int32(t)
 		}))
+	}
+
+	if len(req.TagIds) > 0 {
+		var tagIds []string
+		for _, tagId := range req.TagIds {
+			tagIds = append(tagIds, fmt.Sprintf("%d", tagId))
+		}
+
+		query = query.Where(fmt.Sprintf("tag_ids && Array[%s]", strings.Join(tagIds, ",")))
 	}
 
 	for _, sort := range req.Sort {

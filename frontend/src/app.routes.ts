@@ -12,6 +12,7 @@ import { AccountsDetailComponent } from './app/pages/accounts/accounts-detail.co
 import { FilterMetadata } from 'primeng/api';
 import { TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionsListComponent } from './app/pages/transactions/transactions-list.component';
+import { TagsImportComponent } from './app/pages/tags/tags-import.component';
 
 export const appRoutes: Routes = [
     {
@@ -123,6 +124,11 @@ export const appRoutes: Routes = [
             {
                 path: 'transactions/import',
                 component: TransactionsImportComponent,
+                data: {}
+            },
+            {
+                path: 'tags/import',
+                component: TagsImportComponent,
                 data: {}
             }
         ]

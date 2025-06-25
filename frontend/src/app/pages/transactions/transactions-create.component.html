@@ -39,7 +39,7 @@
 
                     <p-inputgroup>
                         <p-inputgroup-addon>-</p-inputgroup-addon>
-                        <p-inputnumber [(ngModel)]="transaction.sourceAmount" placeholder="Price"/>
+                        <p-inputnumber [(ngModel)]="transaction.sourceAmount" placeholder="Amount"></p-inputnumber>
                         <p-inputgroup-addon>{{transaction.sourceCurrency}}</p-inputgroup-addon>
                     </p-inputgroup>
                 </div>
@@ -56,7 +56,7 @@
                         placeholder="Select foreign currency" />
                     <p-inputgroup>
                         <p-inputgroup-addon>-</p-inputgroup-addon>
-                        <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount"/>
+                        <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount"></p-inputnumber>
                         <p-inputgroup-addon>{{transaction.destinationCurrency}}</p-inputgroup-addon>
                     </p-inputgroup>
                 </div>
@@ -82,15 +82,15 @@
 
                 <div class="flex flex-col gap-2">
                     <label>Date</label>
-                    <p-datepicker [(ngModel)]="transaction.transactionDate" [hourFormat]="'24'" [showTime]="true"></p-datepicker>
+                    <p-datepicker [(ngModel)]="transactionDate" [hourFormat]="'24'" [showTime]="true"></p-datepicker>
                 </div>
                 <div class="flex flex-col gap-2">
                     <label>Notes</label>
                     <textarea rows="5" cols="30" [(ngModel)]="transaction.notes" pTextarea [autoResize]="true"></textarea>
                 </div>
                 <div class="flex flex-col gap-2">
-                    <label>Labels</label>
-                    <p-multiselect [options]="labels" [(ngModel)]="transaction.labelIds" placeholder="Select Tags" optionLabel="name" optionValue="value" display="chip" styleClass="w-full md:w-80"></p-multiselect>
+                    <label>Tags</label>
+                    <p-multiselect [options]="tags" [(ngModel)]="transaction.tagIds" placeholder="Select Tags" optionLabel="name" optionValue="id" display="chip" styleClass="w-full md:w-80"></p-multiselect>
                 </div>
             </div>
         </div>
