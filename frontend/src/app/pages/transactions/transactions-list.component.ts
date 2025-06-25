@@ -86,8 +86,6 @@ export class TransactionsListComponent implements OnInit {
             }
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        } finally {
-            this.loading = false;
         }
     }
 
@@ -149,9 +147,9 @@ export class TransactionsListComponent implements OnInit {
             }
 
             let transactionTypes = event.filters['transactionTypes'] as FilterMetadata;
-            // if (transactionTypes && transactionTypes.value && Array.isArray(transactionTypes.value)) {
-            //     req.transactionTypes = transactionTypes.value.map((type) => type as TransactionType);
-            // }
+            if (transactionTypes && transactionTypes.value && Array.isArray(transactionTypes.value)) {
+                req.transactionTypes = transactionTypes.value.map((type) => type as TransactionType);
+            }
         }
 
         switch (event.sortField) {

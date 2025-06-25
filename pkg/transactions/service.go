@@ -90,6 +90,19 @@ func (s *Service) List(
 		}))
 	}
 
+	for _, sort := range req.Sort {
+		switch sort.Field {
+		default:
+			query = query.Order(clause.OrderByColumn{
+				Column: clause.Column{
+					Table: "transactions",
+					Name:  "transaction_date_time",
+				},
+				Desc: !sort.Ascending,
+			})
+		}
+	}
+
 	var transactions []*database.Transaction
 
 	var count int64
