@@ -3,7 +3,7 @@ import { AppLayout } from './app/layout/component/app.layout';
 import { Notfound } from './app/pages/notfound/notfound';
 import { authGuard } from './app/services/guards/auth.guard';
 import { LoginComponent } from './app/modules/auth/login/login.component';
-import { AccountsListComponent } from './app/pages/accounts/accounts-list.component';
+import { TagsListComponent } from './app/pages/tags/tags-list.component';
 import { AccountsUpsertComponent } from './app/pages/accounts/accounts-upsert.component';
 import { TransactionUpsertComponent } from './app/pages/transactions/transactions-create.component';
 import { AccountsImportComponent } from './app/pages/accounts/accounts-import.component';
@@ -26,7 +26,7 @@ export const appRoutes: Routes = [
         children: [
             {
                 path: 'accounts',
-                component: AccountsListComponent,
+                component: Account,
                 data: {
                     filters: [
                         {
@@ -40,7 +40,7 @@ export const appRoutes: Routes = [
             },
             {
                 path: 'accounts/liabilities',
-                component: AccountsListComponent,
+                component: TagsListComponent,
                 data: {
                     filters: [
                         {
@@ -129,6 +129,11 @@ export const appRoutes: Routes = [
             {
                 path: 'tags/import',
                 component: TagsImportComponent,
+                data: {}
+            },
+            {
+                path: 'tags',
+                component: TagsListComponent,
                 data: {}
             }
         ]

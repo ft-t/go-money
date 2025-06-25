@@ -20,24 +20,23 @@ import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
 import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { create } from '@bufbuild/protobuf';
+import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 
 @Component({
     selector: 'app-account-list',
-    templateUrl: 'accounts-list.component.html',
+    templateUrl: 'tags-list.component.html',
     imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink]
 })
-export class AccountsListComponent implements OnInit {
+export class TagsListComponent implements OnInit {
     statuses: any[] = [];
 
     loading: boolean = false;
 
-    public accountTypesMap: { [id: string]: AccountTypeEnum } = {};
+    public tags: ListTagsResponse_TagItem[] = [];
+    private tagsService;
 
-    public accounts: ListAccountsResponse_AccountItem[] = [];
-    private accountService;
     public accountTypes = EnumService.getAccountTypes();
     public filters: { [s: string]: FilterMetadata } = {};
-    public accountCurrencies: Currency[] = [];
 
     @ViewChild('filter') filter!: ElementRef;
 
@@ -47,7 +46,7 @@ export class AccountsListComponent implements OnInit {
         public router: Router,
         route: ActivatedRoute
     ) {
-        this.accountService = createClient(AccountsService, this.transport);
+        this.tagsService = createClient(TagsService, this.transport);
 
         if (route.snapshot.data['filters']) {
             for (let ob of route.snapshot.data['filters']) {
@@ -58,33 +57,16 @@ export class AccountsListComponent implements OnInit {
         }
     }
 
-    getAccountUrl(account: ListAccountsResponse_AccountItem): string {
-        return this.router.createUrlTree(['/', 'accounts', account.account!.id.toString()]).toString();
+    getAccountUrl(account: ListTagsResponse_TagItem): string {
+        return this.router.createUrlTree(['/', 'tags', account.tag!.id.toString()]).toString();
     }
 
     async ngOnInit() {
         this.loading = true;
 
-        for (let type of this.accountTypes) {
-            this.accountTypesMap[type.value] = type;
-        }
-
-        let foundCurrencies: { [s: string]: boolean } = {};
-        this.accountCurrencies = [];
-
         try {
-            let resp = await this.accountService.listAccounts({});
-            this.accounts = resp.accounts || [];
-
-            for (let account of this.accounts) {
-                if (account.account && account.account.currency && !foundCurrencies[account.account.currency]) {
-                    foundCurrencies[account.account.currency] = true;
-                    this.accountCurrencies.push(create(CurrencySchema, {
-                        id: account.account.currency
-                    }));
-                }
-            }
-
+            let resp = await this.tagsService.listTags({});
+            this.tags = resp.tags || [];
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {

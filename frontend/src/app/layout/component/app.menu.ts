@@ -96,8 +96,8 @@ export class AppMenu {
             items: [
                 {
                     label: 'Tags',
-                    icon: 'pi pi-fw pi-table',
-                    routerLink: ['/accounts']
+                    icon: 'pi pi-fw pi-tag',
+                    routerLink: ['/tags']
                 },
                 {
                     label: 'Currencies',
