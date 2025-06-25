@@ -165,3 +165,46 @@ func TestDeleteTag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, allTags, 0)
 }
+
+func TestImportTags(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	mapper := NewMockMapper(gomock.NewController(t))
+
+	srv := tags.NewService(mapper)
+
+	assert.NoError(t, gormDB.Create(&database.Tag{
+		Name:  "tag1",
+		Color: "red",
+		Icon:  "icon1",
+	}).Error)
+
+	resp, err := srv.ImportTags(context.TODO(), &tagsv1.ImportTagsRequest{
+		Tags: []*tagsv1.CreateTagRequest{
+			{
+				Name:  "tag1",
+				Color: "xx",
+				Icon:  "yy",
+			},
+			{
+				Name:  "tag2",
+				Color: "white",
+				Icon:  "icon2",
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	allTags, err := srv.GetAllTags(context.TODO())
+	assert.NoError(t, err)
+	assert.Len(t, allTags, 2)
+
+	assert.Equal(t, "tag1", allTags[0].Name)
+	assert.Equal(t, "xx", allTags[0].Color)
+	assert.Equal(t, "yy", allTags[0].Icon)
+
+	assert.Equal(t, "tag2", allTags[1].Name)
+	assert.Equal(t, "white", allTags[1].Color)
+	assert.Equal(t, "icon2", allTags[1].Icon)
+}

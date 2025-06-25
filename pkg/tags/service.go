@@ -3,6 +3,7 @@ package tags
 import (
 	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
 	"context"
+	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"time"
@@ -30,7 +31,10 @@ func (s *Service) GetAllTags(ctx context.Context) ([]*database.Tag, error) {
 	return tags, nil
 }
 
-func (s *Service) CreateTag(ctx context.Context, req *tagsv1.CreateTagRequest) (*tagsv1.CreateTagResponse, error) {
+func (s *Service) CreateTag(
+	ctx context.Context,
+	req *tagsv1.CreateTagRequest,
+) (*tagsv1.CreateTagResponse, error) {
 	var existingTag database.Tag
 
 	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
@@ -61,9 +65,47 @@ func (s *Service) ImportTags(
 	ctx context.Context,
 	req *tagsv1.ImportTagsRequest,
 ) (*tagsv1.ImportTagsResponse, error) {
-	// todo
-}
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+	
+	finalResp := &tagsv1.ImportTagsResponse{
+		Messages:     nil,
+		CreatedCount: 0,
+		UpdatedCount: 0,
+	}
 
+	for _, tag := range req.Tags {
+		var existingTag database.Tag
+
+		if err := tx.Where("name = ?", tag.Name).Find(&existingTag).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to check existing tag")
+		}
+
+		existingTag.Name = tag.Name
+		existingTag.Color = tag.Color
+		existingTag.Icon = tag.Icon
+
+		if existingTag.ID == 0 {
+			existingTag.CreatedAt = time.Now().UTC()
+			finalResp.CreatedCount += 1
+
+			finalResp.Messages = append(finalResp.Messages, fmt.Sprintf("created tag: %s", tag.Name))
+		} else {
+			finalResp.UpdatedCount += 1
+			finalResp.Messages = append(finalResp.Messages, fmt.Sprintf("updated tag: %s", tag.Name))
+		}
+
+		if err := tx.Save(&existingTag).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to save tag")
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.Wrap(err, "failed to commit transaction")
+	}
+
+	return finalResp, nil
+}
 func (s *Service) DeleteTag(ctx context.Context, req *tagsv1.DeleteTagRequest) error {
 	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
 
@@ -74,7 +116,10 @@ func (s *Service) DeleteTag(ctx context.Context, req *tagsv1.DeleteTagRequest) e
 	return nil
 }
 
-func (s *Service) UpdateTag(ctx context.Context, req *tagsv1.UpdateTagRequest) (*tagsv1.UpdateTagResponse, error) {
+func (s *Service) UpdateTag(
+	ctx context.Context,
+	req *tagsv1.UpdateTagRequest,
+) (*tagsv1.UpdateTagResponse, error) {
 	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
 
 	var existingTag database.Tag
