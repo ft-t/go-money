@@ -57,7 +57,10 @@ func (s *Service) CreateTag(ctx context.Context, req *tagsv1.CreateTagRequest) (
 	}, nil
 }
 
-func (s *Service) Import(ctx context.Context) {
+func (s *Service) ImportTags(
+	ctx context.Context,
+	req *tagsv1.ImportTagsRequest,
+) (*tagsv1.ImportTagsResponse, error) {
 	// todo
 }
 
