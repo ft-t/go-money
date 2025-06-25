@@ -17,7 +17,7 @@ type TransactionApi struct {
 func (a *TransactionApi) ListTransactions(ctx context.Context, c *connect.Request[transactionsv1.ListTransactionsRequest]) (*connect.Response[transactionsv1.ListTransactionsResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.transactionsSvc.List(ctx, c.Msg)
@@ -34,7 +34,7 @@ func (a *TransactionApi) CreateTransaction(
 ) (*connect.Response[transactionsv1.CreateTransactionResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.transactionsSvc.Create(ctx, c.Msg)

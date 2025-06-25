@@ -166,5 +166,12 @@ alter table transactions
 				)
 			},
 		},
+		{
+			ID: "2025-06-24-RenameToDisplayOrder",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table accounts rename column position to display_order;`)
+			},
+		},
 	}
 }

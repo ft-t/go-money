@@ -83,8 +83,8 @@ func TestList(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
 	acc := &database.Account{
-		Extra:    map[string]string{},
-		Position: lo.ToPtr(int32(1)),
+		Extra:        map[string]string{},
+		DisplayOrder: lo.ToPtr(int32(1)),
 	}
 	assert.NoError(t, gormDB.Create(acc).Error)
 
@@ -94,7 +94,7 @@ func TestList(t *testing.T) {
 			Valid: true,
 			Time:  time.Now().UTC(),
 		},
-		Position: lo.ToPtr(int32(999)),
+		DisplayOrder: lo.ToPtr(int32(999)),
 	}
 	assert.NoError(t, gormDB.Create(accDeleted).Error)
 

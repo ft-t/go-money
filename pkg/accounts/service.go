@@ -41,7 +41,7 @@ func (s *Service) GetAllAccounts(ctx context.Context) ([]*database.Account, erro
 func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
 	var accounts []*database.Account
 
-	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Order("position desc")
+	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Order("display_order asc nulls last")
 
 	if len(req.Ids) > 0 {
 		query = query.Where("id in ?", req.Ids)
@@ -164,7 +164,7 @@ func (s *Service) Create(
 		Note:          req.Note,
 		Iban:          req.Iban,
 		AccountNumber: req.AccountNumber,
-		Position:      req.DisplayOrder,
+		DisplayOrder:  req.DisplayOrder,
 	}
 
 	if account.Extra == nil {
@@ -222,6 +222,7 @@ func (s *Service) Update(
 	account.Note = req.Note
 	account.AccountNumber = req.AccountNumber
 	account.Iban = req.Iban
+	account.DisplayOrder = req.DisplayOrder
 
 	liabilityPercent, err := s.parseLiabilityPercent(req.LiabilityPercent)
 	if err != nil {

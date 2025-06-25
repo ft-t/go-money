@@ -9,10 +9,10 @@ import {
     TransactionType
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { create } from '@bufbuild/protobuf';
-import { AccountTypeEnum, EnumService } from '../../../../services/enum.service';
-import { TRANSPORT_TOKEN } from '../../../../consts/transport';
+import { AccountTypeEnum, EnumService } from '../../services/enum.service';
+import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
-import { ErrorHelper } from '../../../../helpers/error.helper';
+import { ErrorHelper } from '../../helpers/error.helper';
 import {
     AccountsService,
     ListAccountsResponse_AccountItem
@@ -39,7 +39,7 @@ import { InputNumber } from 'primeng/inputnumber';
 
 @Component({
     selector: 'transaction-upsert',
-    templateUrl: 'create-transaction.component.html',
+    templateUrl: 'transactions-create.component.html',
     imports: [DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber]
 })
 export class TransactionUpsertComponent implements OnInit {

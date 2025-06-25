@@ -32,9 +32,15 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+                "src/styles.scss",
+                "./node_modules/quill/dist/quill.core.css",
+                "./node_modules/quill/dist/quill.snow.css",
+                "./node_modules/highlight.js/styles/github.css",
+                "./node_modules/highlight.js/styles/github-dark.css"
             ],
-            "scripts": []
+            "scripts": [
+                "./node_modules/quill/dist/quill.js"
+            ]
           },
           "configurations": {
             "production": {

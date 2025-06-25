@@ -1,0 +1,183 @@
+<div class="transactionListingTable">
+    <p-table #dt1
+             dataKey="id"
+             [value]="transactions"
+             [rows]="50"
+             [loading]="loading"
+             [rowHover]="true"
+             [showGridlines]="true"
+             [filters]="filters"
+             [lazy]="true"
+             sortMode="multiple"
+             [lazyLoadOnInit]="true"
+             (onLazyLoad)="fetchTransactions($event)"
+             [paginator]="true"
+             [multiSortMeta]="multiSortMeta"
+             [totalRecords]="totalRecords"
+             [rowsPerPageOptions]="[20, 50, 100, 1000]"
+             responsiveLayout="scroll">
+        <ng-template #caption>
+            <div class="flex flex-column sm:flex-row gap-2 justify-between">
+                <div class="flex flex-col justify-items-start">
+                    <p class="font-semibold text-xl mb-4">{{tableTitle}}</p>
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex flex-row gap-4">
+                        <p-button [icon]="getFilterIcon()" severity="warn"
+                                  [label]="ignoreDateFilter ? 'Enable date filter' : 'Disable date filter'"
+                                  (click)="switchDateFilter()" />
+                        <p-button label="Create new transaction" severity="info" class="p-button-link"
+                                  (click)="this.router.navigate(['/transactions', 'new'])" />
+                    </div>
+                </div>
+            </div>
+        </ng-template>
+        <ng-template #header>
+            <tr>
+                <th style="min-width: 12rem">
+                    <div class="flex justify-between items-center">
+                        Title
+                    </div>
+                </th>
+                <th style="min-width: 12rem">
+                    <div class="flex justify-between items-center">
+                        Types
+                    </div>
+                </th>
+                <th style="min-width: 5rem">
+                    <div class="flex justify-between items-center">
+                        Amount
+                    </div>
+                </th>
+                <th style="min-width: 5rem" pSortableColumn="transactionItem.transactionDate.nanos">
+                    <div class="flex justify-between items-center">
+                        Date
+                        <p-sortIcon field="transactionItem.transactionDate.nanos" />
+                    </div>
+                </th>
+                <th style="min-width: 10rem">
+                    <div class="flex justify-between items-center">
+                        Source Account
+                    </div>
+                </th>
+                <th style="min-width: 5rem">
+                    <div class="flex justify-between items-center">
+                        Destination Account
+                    </div>
+                </th>
+                <th style="min-width: 3rem">
+                    <div class="flex justify-between items-center">
+                        Labels
+                        <p-columnFilter type="text" field="account.accountNumber" display="menu"
+                                        placeholder="Search by account number"></p-columnFilter>
+                    </div>
+                </th>
+            </tr>
+            <tr>
+                <th>
+                    <p-columnFilter type="text" showAddButton="false" showMatchModes="false" field="title"
+                                    showMenu="false"
+                                    placeholder="Search by title" ariaLabel="Filter Name"></p-columnFilter>
+                </th>
+                <th>
+                    <p-columnFilter field="transactionTypes" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
+                                           [options]="transactionTypes"
+                                           maxSelectedLabels="1"
+                                           optionValue="value" optionLabel="name" (onChange)="filter($event.value)"
+                                           placeholder="Select" [showClear]="false">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th></th>
+                <th></th>
+                <th>
+                    <p-columnFilter field="sourceAccountIds" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
+                                           optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
+                                           maxSelectedLabels="1"
+                                           placeholder="Select" [showClear]="true">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th>
+                    <p-columnFilter field="destinationAccountIds" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
+                                           optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
+                                           maxSelectedLabels="1"
+                                           placeholder="Select" [showClear]="true">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th></th>
+            </tr>
+        </ng-template>
+        <ng-template #body let-transactionItem>
+            <tr>
+                <td style="max-width: 20rem;">
+                    <p class="text-wrap break-all">
+                        {{ transactionItem.title }}
+                    </p>
+                </td>
+                <td style="max-width: 20rem;">
+                    <p [ngClass]="getTransactionTypeColor(transactionItem)">
+                        {{ getTransactionType(transactionItem) }}
+                    </p>
+                </td>
+                <td>
+                    <p [class]="getAmountColor(transactionItem)" *ngIf="this.formatAmountV2(transactionItem)[0] != ''">
+                        <i class="pi"
+                           [ngClass]="{'pi-arrow-down': transactionItem.sourceAmount < 0, 'pi-arrow-up': transactionItem.sourceAmount >= 0}"></i>
+                        {{ this.formatAmountV2(transactionItem)[0] }}
+                    </p>
+                    <p [class]="getAmountColor(transactionItem)"
+                       *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''">
+                        <i class="pi"
+                           [ngClass]="{'pi-arrow-down': transactionItem.sourceAmount < 0, 'pi-arrow-up': transactionItem.sourceAmount >= 0}"></i>
+                        {{ this.formatAmountV2(transactionItem)[1] }}
+                    </p>
+                </td>
+                <td>
+                    <p class="text-wrap break-all">
+                        {{ TimestampHelper.timestampToDate(transactionItem.transactionDate) | date: 'yyyy-MM-dd HH:mm' }}
+                    </p>
+                </td>
+                <td>
+                    <p [ngClass]="getAccountColorClass(transactionItem.sourceAccountId)">
+                        <a [href]="getAccountUrl(transactionItem.sourceAccountId)"
+                           [routerLink]="getAccountUrl(transactionItem.sourceAccountId)">
+                            {{ this.getAccountName(transactionItem.sourceAccountId) }}
+                        </a>
+                    </p>
+                </td>
+                <td>
+                    <p [ngClass]="getAccountColorClass(transactionItem.destinationAccountId)">
+                        <a [href]="getAccountUrl(transactionItem.destinationAccountId)"
+                           [routerLink]="getAccountUrl(transactionItem.destinationAccountId)">
+                            {{ this.getAccountName(transactionItem.destinationAccountId) }}
+                        </a>
+                    </p>
+                </td>
+                <td>
+                    Labels to DO
+                </td>
+            </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+            <tr>
+                <td colspan="8">No transactions found.</td>
+            </tr>
+        </ng-template>
+        <ng-template #loadingbody>
+            <tr>
+                <td colspan="8">Loading Transaction data. Please wait.</td>
+            </tr>
+        </ng-template>
+    </p-table>
+</div>

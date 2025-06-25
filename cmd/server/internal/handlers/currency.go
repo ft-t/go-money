@@ -42,7 +42,7 @@ func (a *CurrencyApi) Exchange(
 ) (*connect.Response[currencyv1.ExchangeResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	amount, err := decimal.NewFromString(c.Msg.Amount)
@@ -66,7 +66,7 @@ func (a *CurrencyApi) GetCurrencies(
 ) (*connect.Response[currencyv1.GetCurrenciesResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.currencySvc.GetCurrencies(ctx, c.Msg)
@@ -80,7 +80,7 @@ func (a *CurrencyApi) GetCurrencies(
 func (a *CurrencyApi) DeleteCurrency(ctx context.Context, c *connect.Request[currencyv1.DeleteCurrencyRequest]) (*connect.Response[currencyv1.DeleteCurrencyResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.currencySvc.DeleteCurrency(ctx, c.Msg)
@@ -97,7 +97,7 @@ func (a *CurrencyApi) CreateCurrency(
 ) (*connect.Response[currencyv1.CreateCurrencyResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.currencySvc.CreateCurrency(ctx, c.Msg)
@@ -114,7 +114,7 @@ func (a *CurrencyApi) UpdateCurrency(
 ) (*connect.Response[currencyv1.UpdateCurrencyResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.currencySvc.UpdateCurrency(ctx, c.Msg)

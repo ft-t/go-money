@@ -48,6 +48,10 @@
                     <label for="liability">Liability (percent)</label>
                     <input pInputText [(ngModel)]="account.liabilityPercent" id="liability" type="number" />
                 </div>
+                <div class="flex flex-col gap-2">
+                    <label for="liability">Display Order</label>
+                    <input pInputText [(ngModel)]="account.displayOrder" id="displayOrder" type="number" />
+                </div>
             </div>
 
         </div>
@@ -57,7 +61,7 @@
             <div class="font-semibold text-xl">Advanced</div>
             <div class="flex flex-wrap">
                 <label for="note">Note</label>
-                <textarea pTextarea [(ngModel)]="account.note" id="note" type="text"></textarea>
+                <textarea  autoResize="true" pTextarea [(ngModel)]="account.note" id="note" type="text"></textarea>
             </div>
         </div>
     </div>

@@ -35,7 +35,7 @@ func (a *AccountsApi) CreateAccountsBulk(
 ) (*connect.Response[accountsv1.CreateAccountsBulkResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.accSvc.CreateBulk(ctx, c.Msg)
@@ -49,7 +49,7 @@ func (a *AccountsApi) CreateAccountsBulk(
 func (a *AccountsApi) ReorderAccounts(ctx context.Context, c *connect.Request[accountsv1.ReorderAccountsRequest]) (*connect.Response[accountsv1.ReorderAccountsResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 	//TODO implement me
 	panic("implement me")
@@ -58,7 +58,7 @@ func (a *AccountsApi) ReorderAccounts(ctx context.Context, c *connect.Request[ac
 func (a *AccountsApi) DeleteAccount(ctx context.Context, c *connect.Request[accountsv1.DeleteAccountRequest]) (*connect.Response[accountsv1.DeleteAccountResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.accSvc.Delete(ctx, c.Msg)
@@ -75,7 +75,7 @@ func (a *AccountsApi) CreateAccount(
 ) (*connect.Response[accountsv1.CreateAccountResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.accSvc.Create(ctx, c.Msg)
@@ -92,7 +92,7 @@ func (a *AccountsApi) UpdateAccount(
 ) (*connect.Response[accountsv1.UpdateAccountResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.accSvc.Update(ctx, c.Msg)
@@ -109,7 +109,7 @@ func (a *AccountsApi) ListAccounts(
 ) (*connect.Response[accountsv1.ListAccountsResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, auth.ErrInvalidToken)
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
 	resp, err := a.accSvc.List(ctx, c.Msg)

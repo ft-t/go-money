@@ -18,7 +18,7 @@ func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *
 		LabelIds:                tx.LabelIDs,
 		CreatedAt:               timestamppb.New(tx.CreatedAt),
 		UpdatedAt:               timestamppb.New(tx.UpdatedAt),
-		TransactionDate:         timestamppb.New(tx.CreatedAt),
+		TransactionDate:         timestamppb.New(tx.TransactionDateTime),
 		Type:                    tx.TransactionType,
 		Notes:                   tx.Notes,
 		Extra:                   tx.Extra,

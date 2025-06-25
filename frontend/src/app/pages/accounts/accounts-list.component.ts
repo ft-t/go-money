@@ -5,26 +5,28 @@ import { InputText } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
 import { InputIcon } from 'primeng/inputicon';
 import { IconField } from 'primeng/iconfield';
-import { TRANSPORT_TOKEN } from '../../../consts/transport';
+import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-import { ErrorHelper } from '../../../helpers/error.helper';
+import { ErrorHelper } from '../../helpers/error.helper';
 import { FilterMetadata, MessageService } from 'primeng/api';
 import { CommonModule, DatePipe } from '@angular/common';
-import { TimestampHelper } from '../../../helpers/timestamp.helper';
-import { ActivatedRoute, Router } from '@angular/router';
+import { TimestampHelper } from '../../helpers/timestamp.helper';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
-import { EnumService, AccountTypeEnum } from '../../../services/enum.service';
+import { EnumService, AccountTypeEnum } from '../../services/enum.service';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
+import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
+import { create } from '@bufbuild/protobuf';
 
 @Component({
     selector: 'app-account-list',
-    templateUrl: 'account-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule]
+    templateUrl: 'accounts-list.component.html',
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink]
 })
-export class AccountListComponent implements OnInit {
+export class AccountsListComponent implements OnInit {
     statuses: any[] = [];
 
     loading: boolean = false;
@@ -35,6 +37,7 @@ export class AccountListComponent implements OnInit {
     private accountService;
     public accountTypes = EnumService.getAccountTypes();
     public filters: { [s: string]: FilterMetadata } = {};
+    public accountCurrencies: Currency[] = [];
 
     @ViewChild('filter') filter!: ElementRef;
 
@@ -55,6 +58,10 @@ export class AccountListComponent implements OnInit {
         }
     }
 
+    getAccountUrl(account: ListAccountsResponse_AccountItem): string {
+        return this.router.createUrlTree(['/', 'accounts', account.account!.id.toString()]).toString();
+    }
+
     async ngOnInit() {
         this.loading = true;
 
@@ -62,10 +69,22 @@ export class AccountListComponent implements OnInit {
             this.accountTypesMap[type.value] = type;
         }
 
+        let foundCurrencies: { [s: string]: boolean } = {};
+        this.accountCurrencies = [];
+
         try {
             let resp = await this.accountService.listAccounts({});
             this.accounts = resp.accounts || [];
-            console.log(this.accounts);
+
+            for (let account of this.accounts) {
+                if (account.account && account.account.currency && !foundCurrencies[account.account.currency]) {
+                    foundCurrencies[account.account.currency] = true;
+                    this.accountCurrencies.push(create(CurrencySchema, {
+                        id: account.account.currency
+                    }));
+                }
+            }
+
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {

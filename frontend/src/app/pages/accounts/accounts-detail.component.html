@@ -1,0 +1,7 @@
+<div class="card">
+    <div class="font-semibold text-xl mb-4">Account details for "{{ currentAccount.name }}"</div>
+</div>
+<div class="card">
+    <app-transaction-table [currentAccountId]="currentAccountId ?? 0"
+                          [tableTitle]="getTableTitle()"></app-transaction-table>
+</div>

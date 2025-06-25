@@ -57,6 +57,13 @@ func TestGrpcMiddleware(t *testing.T) {
 		assert.False(t, called)
 		assert.ErrorContains(t, err, "invalid token")
 		assert.Nil(t, response)
+
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
+		} else {
+			t.Fatalf("expected connect.Error, got %T", err)
+		}
 	})
 
 	t.Run("no token", func(t *testing.T) {

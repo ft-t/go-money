@@ -3,12 +3,15 @@ import { AppLayout } from './app/layout/component/app.layout';
 import { Notfound } from './app/pages/notfound/notfound';
 import { authGuard } from './app/services/guards/auth.guard';
 import { LoginComponent } from './app/modules/auth/login/login.component';
-import { AccountListComponent } from './app/modules/accounts/account-list/account-list.component';
-import { AccountUpsertComponent } from './app/modules/accounts/account-list/account-upsert/account-upsert.component';
-import { TransactionListComponent } from './app/modules/transactions/transaction-list/transaction-list.component';
-import {
-    TransactionUpsertComponent
-} from './app/modules/transactions/transaction-list/create/create-transaction.component';
+import { AccountsListComponent } from './app/pages/accounts/accounts-list.component';
+import { AccountsUpsertComponent } from './app/pages/accounts/accounts-upsert.component';
+import { TransactionUpsertComponent } from './app/pages/transactions/transactions-create.component';
+import { AccountsImportComponent } from './app/pages/accounts/accounts-import.component';
+import { TransactionsImportComponent } from './app/pages/transactions/transactions-import.component';
+import { AccountsDetailComponent } from './app/pages/accounts/accounts-detail.component';
+import { FilterMetadata } from 'primeng/api';
+import { TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { TransactionsListComponent } from './app/pages/transactions/transactions-list.component';
 
 export const appRoutes: Routes = [
     {
@@ -22,7 +25,7 @@ export const appRoutes: Routes = [
         children: [
             {
                 path: 'accounts',
-                component: AccountListComponent,
+                component: AccountsListComponent,
                 data: {
                     filters: [
                         {
@@ -36,7 +39,7 @@ export const appRoutes: Routes = [
             },
             {
                 path: 'accounts/liabilities',
-                component: AccountListComponent,
+                component: AccountsListComponent,
                 data: {
                     filters: [
                         {
@@ -50,31 +53,78 @@ export const appRoutes: Routes = [
             },
             {
                 path: 'accounts/new',
-                component: AccountUpsertComponent,
+                component: AccountsUpsertComponent,
                 data: {
                     isEdit: false
                 }
             },
             {
+                path: 'accounts/import',
+                component: AccountsImportComponent
+            },
+            {
                 path: 'accounts/edit/:id',
-                component: AccountUpsertComponent,
+                component: AccountsUpsertComponent,
                 data: {
                     isEdit: true
                 }
             },
             {
+                path: 'accounts/:accountId',
+                component: AccountsDetailComponent,
+                data: {}
+            },
+            {
                 path: 'transactions',
-                component: TransactionListComponent,
+                component: TransactionsListComponent,
+                data: {}
+            },
+            {
+                path: 'transactions/deposits',
+                component: TransactionsListComponent,
                 data: {
+                    preselectedFilter: {
+                        transactionTypes: {
+                            matchMode: 'in',
+                            value: [TransactionType.DEPOSIT]
+                        }
+                    }
+                }
+            },
+            {
+                path: 'transactions/withdrawals',
+                component: TransactionsListComponent,
+                data: {
+                    preselectedFilter: {
+                        transactionTypes: {
+                            matchMode: 'in',
+                            value: [TransactionType.WITHDRAWAL]
+                        }
+                    }
+                }
+            },
+            {
+                path: 'transactions/transfers',
+                component: TransactionsListComponent,
+                data: {
+                    preselectedFilter: {
+                        transactionTypes: {
+                            matchMode: 'in',
+                            value: [TransactionType.TRANSFER_BETWEEN_ACCOUNTS, TransactionType.RECONCILIATION]
+                        }
+                    }
                 }
             },
             {
                 path: 'transactions/new',
                 component: TransactionUpsertComponent,
-                data: {
-                }
+                data: {}
             },
-
+            {
+                path: 'transactions/import',
+                component: TransactionsImportComponent,
+                data: {}
+            }
         ]
     },
 

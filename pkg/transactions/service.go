@@ -84,6 +84,25 @@ func (s *Service) List(
 		query = query.Where("source_account_id IN ? OR destination_account_id IN ?", req.AnyAccountIds, req.AnyAccountIds)
 	}
 
+	if len(req.TransactionTypes) > 0 {
+		query = query.Where("transaction_type IN ?", lo.Map(req.TransactionTypes, func(t gomoneypbv1.TransactionType, _ int) int32 {
+			return int32(t)
+		}))
+	}
+
+	for _, sort := range req.Sort {
+		switch sort.Field {
+		default:
+			query = query.Order(clause.OrderByColumn{
+				Column: clause.Column{
+					Table: "transactions",
+					Name:  "transaction_date_time",
+				},
+				Desc: !sort.Ascending,
+			})
+		}
+	}
+
 	var transactions []*database.Transaction
 
 	var count int64

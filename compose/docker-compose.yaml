@@ -9,7 +9,7 @@ services:
     networks:
       - go-money
     ports:
-      - "0.0.0.0  :${PUBLIC_PORT}:${GRPC_PORT}"
+      - "0.0.0.0:${PUBLIC_PORT}:${GRPC_PORT}"
     depends_on:
       - db
   db:
