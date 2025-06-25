@@ -33,7 +33,7 @@ func TestTransactionMapper(t *testing.T) {
 		DestinationCurrency:   "USD",
 		SourceAccountID:       lo.ToPtr(int32(1)),
 		DestinationAccountID:  lo.ToPtr(int32(2)),
-		LabelIDs:              []int32{1, 2, 3},
+		TagIDs:                []int32{1, 2, 3},
 		CreatedAt:             time.Now(),
 		UpdatedAt:             time.Now(),
 		Notes:                 "Test transaction",

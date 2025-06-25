@@ -16,3 +16,7 @@ type Implementation interface {
 type AccountSvc interface {
 	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
 }
+
+type TagSvc interface {
+	GetAllTags(ctx context.Context) ([]*database.Tag, error)
+}
