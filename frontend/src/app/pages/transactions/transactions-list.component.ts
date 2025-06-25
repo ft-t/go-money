@@ -65,6 +65,9 @@ export class TransactionsListComponent implements OnInit {
         private routeSnapshot: ActivatedRoute
     ) {
         console.log(routeSnapshot)
+        if (routeSnapshot.snapshot.data['preselectedFilter']) {
+            this.filters = routeSnapshot.snapshot.data['preselectedFilter'];
+        }
         this.transactionsService = createClient(TransactionsService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
     }

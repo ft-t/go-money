@@ -51,18 +51,23 @@ export class AppMenu {
             items: [
                 {
                     label: 'Deposits',
-                    icon: 'pi pi-fw pi-table',
-                    routerLink: ['/transactions']
+                    icon: 'pi pi-fw pi-plus',
+                    routerLink: ['/transactions/deposits']
                 },
                 {
                     label: 'Withdrawals',
-                    icon: 'pi pi-fw pi-table',
-                    routerLink: ['/accounts']
+                    icon: 'pi pi-fw pi-minus',
+                    routerLink: ['/transactions/withdrawals']
                 },
                 {
                     label: 'Transfers',
-                    icon: 'pi pi-fw pi-table',
-                    routerLink: ['/accounts']
+                    icon: 'pi pi-fw pi-send',
+                    routerLink: ['/transactions/transfers']
+                },
+                {
+                    label: 'All',
+                    icon: 'pi pi-fw pi-asterisk',
+                    routerLink: ['/transactions']
                 }
             ]
         },

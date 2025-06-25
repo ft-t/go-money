@@ -82,15 +82,38 @@ export const appRoutes: Routes = [
             {
                 path: 'transactions/deposits',
                 component: TransactionsListComponent,
+                data: {
+                    preselectedFilter: {
+                        transactionTypes: {
+                            matchMode: 'in',
+                            value: [TransactionType.DEPOSIT]
+                        }
+                    }
+                }
             },
             {
                 path: 'transactions/withdrawals',
                 component: TransactionsListComponent,
-                data: {}
+                data: {
+                    preselectedFilter: {
+                        transactionTypes: {
+                            matchMode: 'in',
+                            value: [TransactionType.WITHDRAWAL]
+                        }
+                    }
+                }
             },
             {
                 path: 'transactions/transfers',
                 component: TransactionsListComponent,
+                data: {
+                    preselectedFilter: {
+                        transactionTypes: {
+                            matchMode: 'in',
+                            value: [TransactionType.TRANSFER_BETWEEN_ACCOUNTS, TransactionType.RECONCILIATION]
+                        }
+                    }
+                }
             },
             {
                 path: 'transactions/new',

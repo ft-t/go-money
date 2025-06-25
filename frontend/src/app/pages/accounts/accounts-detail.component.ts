@@ -25,6 +25,7 @@ export class AccountsDetailComponent implements OnInit {
         private activeRoute: ActivatedRoute,
         private messageService: MessageService
     ) {
+        console.log(activeRoute)
         this.accountsService = createClient(AccountsService, this.transport);
         this.currentAccountId = parseInt(this.activeRoute.snapshot.params['accountId']) ?? undefined;
     }
