@@ -5,13 +5,13 @@ import { authGuard } from './app/services/guards/auth.guard';
 import { LoginComponent } from './app/modules/auth/login/login.component';
 import { AccountsListComponent } from './app/pages/accounts/accounts-list.component';
 import { AccountsUpsertComponent } from './app/pages/accounts/accounts-upsert.component';
-import { TransactionsListComponent } from './app/pages/transactions/transactions-list.component';
 import { TransactionUpsertComponent } from './app/pages/transactions/transactions-create.component';
 import { AccountsImportComponent } from './app/pages/accounts/accounts-import.component';
 import { TransactionsImportComponent } from './app/pages/transactions/transactions-import.component';
 import { AccountsDetailComponent } from './app/pages/accounts/accounts-detail.component';
 import { FilterMetadata } from 'primeng/api';
 import { TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { TransactionsListComponent } from './app/pages/transactions/transactions-list.component';
 
 export const appRoutes: Routes = [
     {

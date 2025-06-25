@@ -1,5 +1,4 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { TransactionsListComponent } from '../transactions/transactions-list.component';
 import { ActivatedRoute } from '@angular/router';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
@@ -8,10 +7,11 @@ import { Account, AccountSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gom
 import { create } from '@bufbuild/protobuf';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
+import { TransactionsTableComponent } from '../../shared/components/transactions-table/transactions-table.component';
 
 @Component({
     selector: 'app-accounts-detail',
-    imports: [TransactionsListComponent],
+    imports: [TransactionsTableComponent],
     templateUrl: './accounts-detail.component.html'
 })
 export class AccountsDetailComponent implements OnInit {

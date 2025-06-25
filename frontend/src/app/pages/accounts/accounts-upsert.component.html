@@ -48,7 +48,7 @@
                     <label for="liability">Liability (percent)</label>
                     <input pInputText [(ngModel)]="account.liabilityPercent" id="liability" type="number" />
                 </div>
-                <div class="flex flex-col gap-2" *ngIf="account.type == AccountType.LIABILITY">
+                <div class="flex flex-col gap-2">
                     <label for="liability">Display Order</label>
                     <input pInputText [(ngModel)]="account.displayOrder" id="displayOrder" type="number" />
                 </div>
