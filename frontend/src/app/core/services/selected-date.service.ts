@@ -10,7 +10,7 @@ export class SelectedDateService {
     constructor(private cookieService: CookieService) {}
 
     public getFromDate(): Date {
-        let val = this.cookieService.get(this.FROM_DATE_COOKIE_NAME)
+        let val = this.cookieService.get(this.FROM_DATE_COOKIE_NAME);
 
         if (!val) {
             let targetDate = this.getFirstDayOfMonth();
@@ -44,15 +44,19 @@ export class SelectedDateService {
     }
 
     public setFromDate(date: Date): void {
-        this.cookieService.set(this.FROM_DATE_COOKIE_NAME, date.toISOString());
+        this.cookieService.set(this.FROM_DATE_COOKIE_NAME, date.toISOString(), {
+            path: '/'
+        });
     }
 
     public setToDate(date: Date): void {
-        this.cookieService.set(this.TO_DATE_COOKIE_NAME, date.toISOString());
+        this.cookieService.set(this.TO_DATE_COOKIE_NAME, date.toISOString(), {
+            path: '/'
+        });
     }
 
     public getToDate(): Date {
-        let val = this.cookieService.get(this.TO_DATE_COOKIE_NAME)
+        let val = this.cookieService.get(this.TO_DATE_COOKIE_NAME);
 
         if (!val) {
             let targetDate = this.getLastDayOfMonth();

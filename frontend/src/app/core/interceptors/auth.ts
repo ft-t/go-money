@@ -18,7 +18,9 @@ export function authInterceptor(): Interceptor {
             return await next(req);
         }
 
-        req.header.set('Authorization', `Bearer ${jwtValue}`);
+        if (req.method?.localName != "login") {
+            req.header.set('Authorization', `Bearer ${jwtValue}`);
+        }
 
         try {
             let resp = await next(req);
