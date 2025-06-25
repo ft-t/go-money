@@ -1,8 +1,8 @@
-import { Component, Inject, Input, OnInit } from '@angular/core';
+import { Component, Inject, Input, OnInit, ViewChild } from '@angular/core';
 import { OverlayModule } from 'primeng/overlay';
 import { FormsModule } from '@angular/forms';
 import { ToastModule } from 'primeng/toast';
-import { TableLazyLoadEvent, TableModule } from 'primeng/table';
+import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Button } from 'primeng/button';
 import { MultiSelectModule } from 'primeng/multiselect';
@@ -21,6 +21,7 @@ import { ErrorHelper } from '../../../helpers/error.helper';
 import { create } from '@bufbuild/protobuf';
 import { SelectedDateService } from '../../../core/services/selected-date.service';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
+import { BusService } from '../../../core/services/bus.service';
 
 @Component({
     selector: 'app-transaction-table',
@@ -46,7 +47,9 @@ export class TransactionsTableComponent implements OnInit {
 
     @Input() tableTitle: string = 'Transactions';
 
-    @Input() currentAccountId: number | undefined;
+    private currentAccountId: number | undefined;
+    @Input() subscribeToAccountChanges: boolean = false;
+
     public ignoreDateFilter: boolean = false;
     private lastEvent: TableLazyLoadEvent | undefined;
     public totalRecords: number = 0;
@@ -57,14 +60,16 @@ export class TransactionsTableComponent implements OnInit {
         }
     ];
 
+    @ViewChild('dt1', { static: false }) table!: Table;
+
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         public router: Router,
         private selectedDateService: SelectedDateService,
-        private routeSnapshot: ActivatedRoute
+        private routeSnapshot: ActivatedRoute,
+        private busService: BusService
     ) {
-        console.log(routeSnapshot)
         if (routeSnapshot.snapshot.data['preselectedFilter']) {
             this.filters = routeSnapshot.snapshot.data['preselectedFilter'];
         }
@@ -98,6 +103,13 @@ export class TransactionsTableComponent implements OnInit {
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
+
+        if (this.subscribeToAccountChanges) {
+            this.busService.currentAccountId.subscribe((val) => {
+                this.currentAccountId = val;
+                this.table.filter('','','')
+            });
+        }
     }
 
     getAccountName(accountId: number | undefined): string {
@@ -114,7 +126,7 @@ export class TransactionsTableComponent implements OnInit {
     }
 
     paramsToQueryString(filters: { [s: string]: FilterMetadata }) {
-        console.log("constructFilters", filters)
+        console.log('constructFilters', filters);
     }
 
     async fetchTransactions(event: TableLazyLoadEvent) {

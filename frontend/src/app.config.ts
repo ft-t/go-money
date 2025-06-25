@@ -18,6 +18,7 @@ import { DatePipe } from '@angular/common';
 import { CookieService } from './app/services/cookie.service';
 import { CookieInstances } from './app/objects/cookie-instances';
 import { provideHighlightOptions } from 'ngx-highlightjs';
+import { BusService } from './app/core/services/bus.service';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -39,6 +40,7 @@ export const appConfig: ApplicationConfig = {
         EnumService,
         SelectedDateService,
         DatePipe,
+        BusService,
         providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } }),
         {
             provide: TRANSPORT_TOKEN,

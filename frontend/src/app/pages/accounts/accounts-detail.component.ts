@@ -8,13 +8,14 @@ import { create } from '@bufbuild/protobuf';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
 import { TransactionsTableComponent } from '../../shared/components/transactions-table/transactions-table.component';
+import { BusService } from '../../core/services/bus.service';
 
 @Component({
     selector: 'app-accounts-detail',
     imports: [TransactionsTableComponent],
     templateUrl: './accounts-detail.component.html'
 })
-export class AccountsDetailComponent implements OnInit {
+export class AccountsDetailComponent {
     private accountsService;
 
     protected currentAccountId: number | undefined = undefined;
@@ -23,18 +24,27 @@ export class AccountsDetailComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private activeRoute: ActivatedRoute,
-        private messageService: MessageService
+        private messageService: MessageService,
+        private busService: BusService
     ) {
-        console.log(activeRoute)
         this.accountsService = createClient(AccountsService, this.transport);
-        this.currentAccountId = parseInt(this.activeRoute.snapshot.params['accountId']) ?? undefined;
+
+        busService.currentAccountId.subscribe(async (accountId) => {
+            await this.setAccount(accountId);
+        });
+
+        activeRoute.params.subscribe((params) => {
+            this.currentAccountId = parseInt(params['accountId']) ?? undefined;
+
+            busService.currentAccountId.next(this.currentAccountId);
+        });
     }
 
     getTableTitle(): string {
         return `Transactions for "${this.currentAccount.name}"`;
     }
 
-    async ngOnInit() {
+    async setAccount(accountID: number) {
         try {
             let accountDetails = await this.accountsService.listAccounts(
                 create(ListAccountsRequestSchema, {
