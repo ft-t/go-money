@@ -55,7 +55,7 @@ func TestTransactionMapper(t *testing.T) {
 	assert.EqualValues(t, "USD", *mapped.DestinationCurrency)
 	assert.EqualValues(t, 1, *mapped.SourceAccountId)
 	assert.EqualValues(t, 2, *mapped.DestinationAccountId)
-	assert.EqualValues(t, []int32{1, 2, 3}, mapped.LabelIds)
+	assert.EqualValues(t, []int32{1, 2, 3}, mapped.TagIds)
 	assert.EqualValues(t, "Test transaction", mapped.Notes)
 	assert.EqualValues(t, map[string]string{"key": "value"}, mapped.Extra)
 	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT, mapped.Type)

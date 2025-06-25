@@ -173,5 +173,25 @@ alter table transactions
 					`alter table accounts rename column position to display_order;`)
 			},
 		},
+		{
+			ID: "2025-06-25-AddTags",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table if not exists tags
+(
+    id         serial
+        constraint tags_pk
+            primary key,
+    name       text      not null,
+    color      text,
+    icon       text,
+    created_at timestamp not null,
+    deleted_at timestamp
+);`,
+					`create unique index ix_tag_name on tags (name) where (deleted_at is null)`,
+					`alter table transactions rename column label_ids to tag_ids;`,
+				)
+			},
+		},
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/ft-t/go-money/pkg/currency"
 	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/ft-t/go-money/pkg/mappers"
+	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
@@ -98,7 +99,9 @@ func main() {
 
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
 
-	importSvc := importers.NewImporter(accountSvc, importers.NewFireflyImporter(transactionSvc))
+	tagSvc := tags.NewService(mapper)
+
+	importSvc := importers.NewImporter(accountSvc, tagSvc, importers.NewFireflyImporter(transactionSvc))
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"time"
 )
 
 type Service struct {
@@ -45,6 +46,7 @@ func (s *Service) CreateTag(ctx context.Context, req *tagsv1.CreateTagRequest) (
 	existingTag.Name = req.Name
 	existingTag.Color = req.Color
 	existingTag.Icon = req.Icon
+	existingTag.CreatedAt = time.Now().UTC()
 
 	if err := db.Create(&existingTag).Error; err != nil {
 		return nil, err
@@ -53,6 +55,10 @@ func (s *Service) CreateTag(ctx context.Context, req *tagsv1.CreateTagRequest) (
 	return &tagsv1.CreateTagResponse{
 		Tag: s.mapper.MapTag(ctx, &existingTag),
 	}, nil
+}
+
+func (s *Service) Import(ctx context.Context) {
+	// todo
 }
 
 func (s *Service) DeleteTag(ctx context.Context, req *tagsv1.DeleteTagRequest) error {

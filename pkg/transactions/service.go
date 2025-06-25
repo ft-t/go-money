@@ -165,7 +165,7 @@ func (s *Service) CreateBulkInternal(
 			DestinationCurrency:     "",
 			SourceAccountID:         nil,
 			DestinationAccountID:    nil,
-			TagIDs:                  req.LabelIds,
+			TagIDs:                  req.TagIds,
 			CreatedAt:               time.Now().UTC(),
 			Notes:                   req.Notes,
 			Extra:                   req.Extra,
