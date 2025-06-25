@@ -31,44 +31,24 @@
         </ng-template>
         <ng-template #header>
             <tr>
-                <th style="min-width: 20rem" pSortableColumn="account.name">
+                <th style="min-width: 15rem" pSortableColumn="account.name">
                     <div class="flex justify-between items-center">
                         Name <p-sortIcon field="account.name" />
-                        <p-columnFilter type="text" field="account.name" display="menu"
-                                        placeholder="Search by name"></p-columnFilter>
                     </div>
                 </th>
                 <th style="max-width: 5rem">
                     <div class="flex justify-between items-center">
                         Type
-<!--                        <p-columnFilter matchMode="in" field="account.type" display="row" [showMatchModes]="false"-->
-<!--                                        [showOperator]="false" [showAddButton]="false" [showButtons]="false"-->
-<!--                                        [showApplyButton]="false" [showClearButton]="true">-->
-<!--                            <ng-template #filter let-value let-filter="filterCallback">-->
-<!--                                <p-multiselect [(ngModel)]="value" [options]="accountTypes" placeholder="Any" appendTo="body"-->
-<!--                                               (onChange)="filter($event.value)" optionLabel="name" optionValue="value">-->
-<!--                                    <ng-template let-option #item>-->
-<!--                                        <div class="flex items-center gap-2">-->
-<!--                                            <span>{{ option.name }}</span>-->
-<!--                                        </div>-->
-<!--                                    </ng-template>-->
-<!--                                </p-multiselect>-->
-<!--                            </ng-template>-->
-<!--                        </p-columnFilter>-->
                     </div>
                 </th>
                 <th style="min-width: 2rem">
                     <div class="flex justify-between items-center">
                         Currency
-                        <p-columnFilter type="text" field="account.currency" display="menu"
-                                        placeholder="Search by currency"></p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 10rem">
                     <div class="flex justify-between items-center">
                         Current Balance
-                        <p-columnFilter type="numeric" field="account.currentBalance" display="menu"
-                                        currency="USD"></p-columnFilter>
                     </div>
                 </th>
                 <th style="min-width: 5rem" pSortableColumn="account.updatedAt.nanos">
@@ -81,11 +61,61 @@
                 <th style="min-width: 3rem; max-width: 5rem;">
                     <div class="flex justify-between items-center">
                         Account number
-                        <p-columnFilter type="text" field="account.accountNumber" display="menu"
-                                        placeholder="Search by account number"></p-columnFilter>
                     </div>
                 </th>
                 <th style="width: 5rem"></th>
+            </tr>
+            <tr>
+                <th>
+                    <p-columnFilter type="text" showAddButton="false" showMatchModes="false" field="account.name"
+                                    showMenu="true"
+                                    [showApplyButton]="false"
+                                    matchMode="contains"
+                                    placeholder="Filter"></p-columnFilter>
+                </th>
+                <th>
+                    <p-columnFilter field="account.type" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
+                                           [options]="accountTypes"
+                                           field="account.type"
+                                           maxSelectedLabels="1"
+                                           optionLabel="name" optionValue="value" (onChange)="filter($event.value)"
+                                           placeholder="Select" [showClear]="false">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th>
+                    <p-columnFilter field="account.currency" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
+                                           [options]="accountCurrencies"
+                                           field="account.currency"
+                                           maxSelectedLabels="1"
+                                           optionLabel="id" optionValue="id" (onChange)="filter($event.value)"
+                                           placeholder="Select" [showClear]="false">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th>
+                    <p-columnFilter type="numeric" showAddButton="true" showMatchModes="true" field="account.currentBalance"
+                                    showMenu="true"
+                                    [showApplyButton]="false"
+                                    matchMode="between"
+                                    placeholder=""></p-columnFilter>
+                </th>
+                <th></th>
+                <th>
+                    <p-columnFilter type="text" showAddButton="false" showMatchModes="false" field="account.accountNumber"
+                                    showMenu="true"
+                                    [showApplyButton]="false"
+                                    matchMode="contains"
+                                    placeholder="Filter"></p-columnFilter>
+                </th>
+                <th>
+                </th>
             </tr>
         </ng-template>
         <ng-template #body let-accountItem>

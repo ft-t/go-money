@@ -18,6 +18,8 @@ import { EnumService, AccountTypeEnum } from '../../services/enum.service';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
+import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
+import { create } from '@bufbuild/protobuf';
 
 @Component({
     selector: 'app-account-list',
@@ -35,6 +37,7 @@ export class AccountsListComponent implements OnInit {
     private accountService;
     public accountTypes = EnumService.getAccountTypes();
     public filters: { [s: string]: FilterMetadata } = {};
+    public accountCurrencies: Currency[] = [];
 
     @ViewChild('filter') filter!: ElementRef;
 
@@ -66,10 +69,22 @@ export class AccountsListComponent implements OnInit {
             this.accountTypesMap[type.value] = type;
         }
 
+        let foundCurrencies: { [s: string]: boolean } = {};
+        this.accountCurrencies = [];
+
         try {
             let resp = await this.accountService.listAccounts({});
             this.accounts = resp.accounts || [];
-            console.log(this.accounts);
+
+            for (let account of this.accounts) {
+                if (account.account && account.account.currency && !foundCurrencies[account.account.currency]) {
+                    foundCurrencies[account.account.currency] = true;
+                    this.accountCurrencies.push(create(CurrencySchema, {
+                        id: account.account.currency
+                    }));
+                }
+            }
+
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {
