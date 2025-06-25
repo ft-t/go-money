@@ -13,6 +13,7 @@ import { FilterMetadata } from 'primeng/api';
 import { TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionsListComponent } from './app/pages/transactions/transactions-list.component';
 import { TagsImportComponent } from './app/pages/tags/tags-import.component';
+import { AccountsListComponent } from './app/pages/accounts/accounts-list.component';
 
 export const appRoutes: Routes = [
     {
@@ -26,7 +27,7 @@ export const appRoutes: Routes = [
         children: [
             {
                 path: 'accounts',
-                component: Account,
+                component: AccountsListComponent,
                 data: {
                     filters: [
                         {
@@ -40,7 +41,7 @@ export const appRoutes: Routes = [
             },
             {
                 path: 'accounts/liabilities',
-                component: TagsListComponent,
+                component: AccountsListComponent,
                 data: {
                     filters: [
                         {
