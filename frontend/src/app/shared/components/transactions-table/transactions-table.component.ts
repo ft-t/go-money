@@ -22,6 +22,7 @@ import { create } from '@bufbuild/protobuf';
 import { SelectedDateService } from '../../../core/services/selected-date.service';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { BusService } from '../../../core/services/bus.service';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-transaction-table',
@@ -73,8 +74,17 @@ export class TransactionsTableComponent implements OnInit {
         if (routeSnapshot.snapshot.data['preselectedFilter']) {
             this.filters = routeSnapshot.snapshot.data['preselectedFilter'];
         }
+
         this.transactionsService = createClient(TransactionsService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
+
+        selectedDateService.fromDate.subscribe(() => {
+            this.refreshTable();
+        });
+
+        selectedDateService.toDate.subscribe(() => {
+            this.refreshTable();
+        });
     }
 
     getFilterIcon(): string {
@@ -107,9 +117,14 @@ export class TransactionsTableComponent implements OnInit {
         if (this.subscribeToAccountChanges) {
             this.busService.currentAccountId.subscribe((val) => {
                 this.currentAccountId = val;
-                this.table.filter('','','')
+
+                this.refreshTable();
             });
         }
+    }
+
+    refreshTable() {
+        this.table.filter('', '', '');
     }
 
     getAccountName(accountId: number | undefined): string {
@@ -138,15 +153,18 @@ export class TransactionsTableComponent implements OnInit {
             skip: event.first ?? 0
         });
 
+        let fromDate = this.selectedDateService.fromDate.value;
+        let toDate = this.selectedDateService.toDate.value;
+
         if (!this.ignoreDateFilter) {
             req.fromDate = create(TimestampSchema, {
-                seconds: BigInt(Math.floor(this.selectedDateService.getFromDate().getTime() / 1000)),
-                nanos: (this.selectedDateService.getFromDate().getMilliseconds() % 1000) * 1_000_000
+                seconds: BigInt(Math.floor(fromDate.getTime() / 1000)),
+                nanos: (fromDate.getMilliseconds() % 1000) * 1_000_000
             });
 
             req.toDate = create(TimestampSchema, {
-                seconds: BigInt(Math.floor(this.selectedDateService.getToDate().getTime() / 1000)),
-                nanos: (this.selectedDateService.getToDate().getMilliseconds() % 1000) * 1_000_000
+                seconds: BigInt(Math.floor(toDate.getTime() / 1000)),
+                nanos: (toDate.getMilliseconds() % 1000) * 1_000_000
             });
         }
 

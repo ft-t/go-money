@@ -1,15 +1,22 @@
 import { Injectable } from '@angular/core';
 import { CookieService } from '../../services/cookie.service';
 import { CookieInstances } from '../../objects/cookie-instances';
+import { BehaviorSubject } from 'rxjs';
 
 @Injectable()
 export class SelectedDateService {
     private readonly FROM_DATE_COOKIE_NAME = 'go_money_from_date';
     private readonly TO_DATE_COOKIE_NAME = 'go_money_to_date';
 
-    constructor(private cookieService: CookieService) {}
+    public fromDate = new BehaviorSubject<Date>(new Date());
+    public toDate = new BehaviorSubject<Date>(new Date());
 
-    public getFromDate(): Date {
+    constructor(private cookieService: CookieService) {
+        this.fromDate.next(this.loadFromDate());
+        this.toDate.next(this.loadToDate());
+    }
+
+    public loadFromDate(): Date {
         let val = this.cookieService.get(this.FROM_DATE_COOKIE_NAME);
 
         if (!val) {
@@ -33,29 +40,7 @@ export class SelectedDateService {
         return parsedDate;
     }
 
-    public getFirstDayOfMonth(): Date {
-        let date = new Date();
-        return new Date(date.getFullYear(), date.getMonth(), 1);
-    }
-
-    public getLastDayOfMonth(): Date {
-        let date = new Date();
-        return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    }
-
-    public setFromDate(date: Date): void {
-        this.cookieService.set(this.FROM_DATE_COOKIE_NAME, date.toISOString(), {
-            path: '/'
-        });
-    }
-
-    public setToDate(date: Date): void {
-        this.cookieService.set(this.TO_DATE_COOKIE_NAME, date.toISOString(), {
-            path: '/'
-        });
-    }
-
-    public getToDate(): Date {
+    public loadToDate(): Date {
         let val = this.cookieService.get(this.TO_DATE_COOKIE_NAME);
 
         if (!val) {
@@ -77,5 +62,31 @@ export class SelectedDateService {
         }
 
         return parsedDate;
+    }
+
+    public getFirstDayOfMonth(): Date {
+        let date = new Date();
+        return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+
+    public getLastDayOfMonth(): Date {
+        let date = new Date();
+        return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    }
+
+    public setFromDate(date: Date): void {
+        this.cookieService.set(this.FROM_DATE_COOKIE_NAME, date.toISOString(), {
+            path: '/'
+        });
+
+        this.fromDate.next(date)
+    }
+
+    public setToDate(date: Date): void {
+        this.cookieService.set(this.TO_DATE_COOKIE_NAME, date.toISOString(), {
+            path: '/'
+        });
+
+        this.toDate.next(date)
     }
 }

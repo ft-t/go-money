@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
@@ -9,24 +9,26 @@ import { ErrorHelper } from '../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
 import { TransactionsTableComponent } from '../../shared/components/transactions-table/transactions-table.component';
 import { BusService } from '../../core/services/bus.service';
+import { BaseAutoUnsubscribeClass } from '../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
 
 @Component({
     selector: 'app-accounts-detail',
     imports: [TransactionsTableComponent],
     templateUrl: './accounts-detail.component.html'
 })
-export class AccountsDetailComponent {
+export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements OnDestroy {
     private accountsService;
 
-    protected currentAccountId: number | undefined = undefined;
     public currentAccount: Account = create(AccountSchema, {});
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
-        private activeRoute: ActivatedRoute,
+        activeRoute: ActivatedRoute,
         private messageService: MessageService,
-        private busService: BusService
+        busService: BusService
     ) {
+        super();
+
         this.accountsService = createClient(AccountsService, this.transport);
 
         busService.currentAccountId.subscribe(async (accountId) => {
@@ -34,10 +36,14 @@ export class AccountsDetailComponent {
         });
 
         activeRoute.params.subscribe((params) => {
-            this.currentAccountId = parseInt(params['accountId']) ?? undefined;
+            let parsed = parseInt(params['accountId']) ?? undefined;
 
-            busService.currentAccountId.next(this.currentAccountId);
+            busService.currentAccountId.next(parsed);
         });
+    }
+
+    public override ngOnDestroy(): void {
+        super.ngOnDestroy();
     }
 
     getTableTitle(): string {
@@ -48,7 +54,7 @@ export class AccountsDetailComponent {
         try {
             let accountDetails = await this.accountsService.listAccounts(
                 create(ListAccountsRequestSchema, {
-                    ids: [this.currentAccountId!]
+                    ids: [accountID]
                 })
             );
 
