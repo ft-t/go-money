@@ -1,5 +1,4 @@
-<div class="card transactionListingTable">
-    <div class="font-semibold text-xl mb-4">Transaction List</div>
+<div class="transactionListingTable">
     <p-table #dt1
              dataKey="id"
              [value]="transactions"
@@ -13,16 +12,24 @@
              [lazyLoadOnInit]="true"
              (onLazyLoad)="fetchTransactions($event)"
              [paginator]="true"
+             [multiSortMeta]="multiSortMeta"
              [totalRecords]="totalRecords"
              [rowsPerPageOptions]="[20, 50, 100, 1000]"
              responsiveLayout="scroll">
         <ng-template #caption>
-            <div class="flex justify-end items-center flex-column sm:flex-row gap-2">
-                <p-button [icon]="getFilterIcon()" severity="warn"
-                          [label]="ignoreDateFilter ? 'Enable date filter' : 'Disable date filter'"
-                          (click)="switchDateFilter()" />
-                <p-button label="Create new transaction" severity="info" class="p-button-link"
-                          (click)="this.router.navigate(['/transactions', 'new'])" />
+            <div class="flex flex-column sm:flex-row gap-2 justify-between">
+                <div class="flex flex-col justify-items-start">
+                    <p class="font-semibold text-xl mb-4">{{tableTitle}}</p>
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex flex-row gap-4">
+                        <p-button [icon]="getFilterIcon()" severity="warn"
+                                  [label]="ignoreDateFilter ? 'Enable date filter' : 'Disable date filter'"
+                                  (click)="switchDateFilter()" />
+                        <p-button label="Create new transaction" severity="info" class="p-button-link"
+                                  (click)="this.router.navigate(['/transactions', 'new'])" />
+                    </div>
+                </div>
             </div>
         </ng-template>
         <ng-template #header>

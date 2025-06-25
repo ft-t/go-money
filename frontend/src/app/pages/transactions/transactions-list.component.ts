@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, Inject, Input, OnInit } from '@angular/core';
 import { OverlayModule } from 'primeng/overlay';
 import { FormsModule } from '@angular/forms';
 import { ToastModule } from 'primeng/toast';
@@ -9,9 +9,9 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
-import { FilterMetadata, MessageService } from 'primeng/api';
+import { FilterMetadata, MessageService, SortMeta } from 'primeng/api';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ListTransactionsRequestSchema, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { ListTransactionsRequest_SortSchema, ListTransactionsRequestSchema, SortField, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { AccountsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
@@ -44,21 +44,29 @@ export class TransactionsListComponent implements OnInit {
     public accountMap: { [id: number]: Account } = {};
     public accounts: Account[] = [];
 
-    private currentAccountId: number | undefined;
+    @Input() tableTitle: string = 'Transactions';
+
+    @Input() currentAccountId: number | undefined;
     public ignoreDateFilter: boolean = false;
     private lastEvent: TableLazyLoadEvent | undefined;
     public totalRecords: number = 0;
+    public multiSortMeta: SortMeta[] = [
+        {
+            field: 'transactionItem.transactionDate.nanos',
+            order: -1
+        }
+    ];
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         public router: Router,
-        private activeRoute: ActivatedRoute,
-        private selectedDateService: SelectedDateService
+        private selectedDateService: SelectedDateService,
+        private routeSnapshot: ActivatedRoute
     ) {
+        console.log(routeSnapshot)
         this.transactionsService = createClient(TransactionsService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
-        this.currentAccountId = parseInt(this.activeRoute.snapshot.params['accountId']) ?? undefined;
     }
 
     getFilterIcon(): string {
@@ -100,6 +108,10 @@ export class TransactionsListComponent implements OnInit {
         }
 
         return account.name || '';
+    }
+
+    paramsToQueryString(filters: { [s: string]: FilterMetadata }) {
+        console.log("constructFilters", filters)
     }
 
     async fetchTransactions(event: TableLazyLoadEvent) {
@@ -152,13 +164,23 @@ export class TransactionsListComponent implements OnInit {
             }
         }
 
-        switch (event.sortField) {
-            case 'transactionItem.transactionDate.nanos':
-                console.log('Sorting by transaction date');
-                // todo
-                break;
-            default:
-                console.log('Unknown sort field:', event.sortField);
+        if (event.multiSortMeta) {
+            for (let sortData of event.multiSortMeta) {
+                let sortReq = create(ListTransactionsRequest_SortSchema, {
+                    ascending: sortData.order == 1
+                });
+
+                switch (sortData.field) {
+                    case 'transactionItem.transactionDate.nanos':
+                        sortReq.field = SortField.TRANSACTION_DATE;
+                        break;
+                    default:
+                        console.log('Unknown sort field:', sortData.field);
+                        continue;
+                }
+
+                req.sort.push(sortReq);
+            }
         }
 
         let resp = await this.transactionsService.listTransactions(req);
