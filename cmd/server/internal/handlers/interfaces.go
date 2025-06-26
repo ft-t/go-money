@@ -5,9 +5,11 @@ import (
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
+	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	"context"
+	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
 )
 
@@ -108,4 +110,13 @@ type ConverterSvc interface {
 		toCurrency string,
 		amount decimal.Decimal,
 	) (decimal.Decimal, error)
+}
+
+type TagSvc interface {
+	GetAllTags(ctx context.Context) ([]*database.Tag, error)
+	CreateTag(ctx context.Context, req *tagsv1.CreateTagRequest) (*tagsv1.CreateTagResponse, error)
+	DeleteTag(ctx context.Context, req *tagsv1.DeleteTagRequest) error
+	UpdateTag(ctx context.Context, req *tagsv1.UpdateTagRequest) (*tagsv1.UpdateTagResponse, error)
+	ImportTags(ctx context.Context, req *tagsv1.ImportTagsRequest) (*tagsv1.ImportTagsResponse, error)
+	ListTags(ctx context.Context, msg *tagsv1.ListTagsRequest) (*tagsv1.ListTagsResponse, error)
 }

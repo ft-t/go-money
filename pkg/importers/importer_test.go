@@ -17,8 +17,18 @@ func TestImport(t *testing.T) {
 
 		impl1 := NewMockImplementation(gomock.NewController(t))
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		tag1 := NewMockTagSvc(gomock.NewController(t))
 
-		imp := importers.NewImporter(accSvc, impl1)
+		targetTags := []*database.Tag{
+			{
+				Name: "ab",
+				ID:   5,
+			},
+		}
+
+		tag1.EXPECT().GetAllTags(gomock.Any()).Return(targetTags, nil)
+
+		imp := importers.NewImporter(accSvc, tag1, impl1)
 
 		rawBytes := []byte{0x1, 0x2}
 		accounts := []*database.Account{
@@ -33,6 +43,9 @@ func TestImport(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, request *importers.ImportRequest) (*importv1.ImportTransactionsResponse, error) {
 				assert.Equal(t, accounts, request.Accounts)
 				assert.EqualValues(t, rawBytes, request.Data)
+
+				assert.Len(t, request.Tags, 1)
+				assert.EqualValues(t, 5, request.Tags["ab"].ID)
 
 				return finalResp, nil
 			})
@@ -51,7 +64,9 @@ func TestImport(t *testing.T) {
 		impl1 := NewMockImplementation(gomock.NewController(t))
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
-		imp := importers.NewImporter(accSvc, impl1)
+		tag1 := NewMockTagSvc(gomock.NewController(t))
+
+		imp := importers.NewImporter(accSvc, tag1, impl1)
 
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
 			FileContent: "test",
@@ -68,7 +83,9 @@ func TestImport(t *testing.T) {
 		impl1 := NewMockImplementation(gomock.NewController(t))
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
-		imp := importers.NewImporter(accSvc, impl1)
+		tag1 := NewMockTagSvc(gomock.NewController(t))
+
+		imp := importers.NewImporter(accSvc, tag1, impl1)
 
 		rawBytes := []byte{0x1, 0x2}
 
@@ -89,7 +106,9 @@ func TestImport(t *testing.T) {
 		impl1 := NewMockImplementation(gomock.NewController(t))
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
-		imp := importers.NewImporter(accSvc, impl1)
+		tag1 := NewMockTagSvc(gomock.NewController(t))
+
+		imp := importers.NewImporter(accSvc, tag1, impl1)
 
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
 			FileContent: "invalid_base64",
@@ -106,7 +125,10 @@ func TestImport(t *testing.T) {
 		impl1 := NewMockImplementation(gomock.NewController(t))
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
-		imp := importers.NewImporter(accSvc, impl1)
+		tag1 := NewMockTagSvc(gomock.NewController(t))
+		tag1.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+
+		imp := importers.NewImporter(accSvc, tag1, impl1)
 
 		rawBytes := []byte{0x1, 0x2}
 		accounts := []*database.Account{

@@ -19,7 +19,7 @@ type Transaction struct {
 	SourceAccountID      *int32
 	DestinationAccountID *int32
 
-	LabelIDs pq.Int32Array `gorm:"type:integer[]"`
+	TagIDs pq.Int32Array `gorm:"type:integer[]"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

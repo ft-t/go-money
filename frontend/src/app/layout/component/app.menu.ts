@@ -84,16 +84,20 @@ export class AppMenu {
                     icon: 'pi pi-fw pi-globe',
                     routerLink: ['/accounts/import']
                 },
-
+                {
+                    label: 'Tags Import',
+                    icon: 'pi pi-fw pi-hashtag',
+                    routerLink: ['/tags/import']
+                },
             ]
         },
         {
             label: 'Admin Section',
             items: [
                 {
-                    label: 'Labels',
-                    icon: 'pi pi-fw pi-table',
-                    routerLink: ['/accounts']
+                    label: 'Tags',
+                    icon: 'pi pi-fw pi-tag',
+                    routerLink: ['/tags']
                 },
                 {
                     label: 'Currencies',

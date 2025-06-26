@@ -35,7 +35,7 @@ export class LoginComponent implements OnInit {
         private cookieService: CookieService,
         private router: Router,
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
-        private messageService: MessageService,
+        private messageService: MessageService
     ) {
         this.configService = createClient(ConfigurationService, this.transport);
         this.usersService = createClient(UsersService, this.transport);
@@ -54,7 +54,9 @@ export class LoginComponent implements OnInit {
                 password: this.password
             });
 
-            this.cookieService.set(CookieInstances.Jwt, resp.token);
+            this.cookieService.set(CookieInstances.Jwt, resp.token, {
+                path: '/'
+            });
 
             await this.router.navigate(['/', 'accounts']);
         } catch (e: any) {

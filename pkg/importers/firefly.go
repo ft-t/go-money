@@ -14,6 +14,7 @@ import (
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -32,6 +33,7 @@ func NewFireflyImporter(
 type ImportRequest struct {
 	Data     []byte
 	Accounts []*database.Account
+	Tags     map[string]*database.Tag
 }
 
 func (f *FireflyImporter) Type() importv1.ImportSource {
@@ -74,12 +76,21 @@ func (f *FireflyImporter) Import(
 		description := record[11]
 		date := record[12]
 		sourceName := record[13]
-		destinationName := record[16]
 		notes := record[24]
 		sourceType := record[15]
 		journalID := record[2]
 
+		destinationName := record[16]
 		destinationAccountType := record[18]
+
+		possibleTags := f.toTag(record[20], "category:")
+		possibleTags = append(possibleTags, f.toTag(record[21], "budget:")...)
+		possibleTags = append(possibleTags, f.toTag(record[22], "bill:")...)
+
+		for _, remoteTag := range strings.Split(record[23], ",") {
+			possibleTags = append(possibleTags, f.toTag(remoteTag, "tag:")...)
+		}
+
 		parsedDate, err := time.Parse("2006-01-02T15:04:05-07:00", date)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse date: %s", date)
@@ -93,12 +104,21 @@ func (f *FireflyImporter) Import(
 		targetTx := &transactionsv1.CreateTransactionRequest{
 			Notes:                   notes,
 			Extra:                   make(map[string]string), // todo
-			LabelIds:                nil,                     // todo
+			TagIds:                  nil,                     // mapped
 			TransactionDate:         timestamppb.New(parsedDate.UTC()),
 			Title:                   description,
 			Transaction:             nil,
 			InternalReferenceNumber: &journalID,
 		}
+
+		if len(req.Tags) > 0 {
+			for _, tag := range lo.Uniq(possibleTags) {
+				if _, ok := req.Tags[tag]; ok {
+					targetTx.TagIds = append(targetTx.TagIds, req.Tags[tag].ID)
+				}
+			}
+		}
+
 		switch operationType {
 		case "Withdrawal":
 			sourceAccount, ok := accountMap[sourceName]
@@ -352,4 +372,19 @@ func (f *FireflyImporter) Import(
 		ImportedCount:  int32(len(allTransactions)),
 		DuplicateCount: int32(len(existingRecords)),
 	}, nil
+}
+
+func (f *FireflyImporter) toTag(
+	input string,
+	prefix string,
+) []string {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return nil
+	}
+
+	return []string{
+		input,
+		prefix + input,
+	}
 }

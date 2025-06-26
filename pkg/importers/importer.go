@@ -5,15 +5,18 @@ import (
 	"context"
 	"encoding/base64"
 	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/pkg/database"
 )
 
 type Importer struct {
 	impl       map[importv1.ImportSource]Implementation
 	accountSvc AccountSvc
+	tagSvc     TagSvc
 }
 
 func NewImporter(
 	accountSvc AccountSvc,
+	tagSvc TagSvc,
 	impl ...Implementation,
 ) *Importer {
 	implementations := make(map[importv1.ImportSource]Implementation)
@@ -24,6 +27,7 @@ func NewImporter(
 	return &Importer{
 		impl:       implementations,
 		accountSvc: accountSvc,
+		tagSvc:     tagSvc,
 	}
 }
 
@@ -46,9 +50,20 @@ func (i *Importer) Import(
 		return nil, errors.Wrap(err, "failed to get accounts")
 	}
 
+	tags, err := i.tagSvc.GetAllTags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get tags")
+	}
+
+	tagMap := make(map[string]*database.Tag)
+	for _, tag := range tags {
+		tagMap[tag.Name] = tag
+	}
+
 	resp, err := impl.Import(ctx, &ImportRequest{
 		Data:     decoded,
 		Accounts: accounts,
+		Tags:     tagMap,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "import failed")

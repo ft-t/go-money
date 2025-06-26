@@ -79,6 +79,23 @@ func TestDelete(t *testing.T) {
 	})
 }
 
+func TestGetAllAccounts(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	acc := &database.Account{
+		Extra:        map[string]string{},
+		DisplayOrder: lo.ToPtr(int32(1)),
+	}
+	assert.NoError(t, gormDB.Create(acc).Error)
+
+	srv := accounts.NewService(&accounts.ServiceConfig{})
+
+	resp, err := srv.GetAllAccounts(context.TODO())
+	
+	assert.NoError(t, err)
+	assert.Len(t, resp, 1)
+}
+
 func TestList(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 

@@ -15,7 +15,7 @@ func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *
 		DestinationCurrency:     lo.EmptyableToPtr(tx.DestinationCurrency),
 		SourceAccountId:         tx.SourceAccountID,
 		DestinationAccountId:    tx.DestinationAccountID,
-		LabelIds:                tx.LabelIDs,
+		TagIds:                  tx.TagIDs,
 		CreatedAt:               timestamppb.New(tx.CreatedAt),
 		UpdatedAt:               timestamppb.New(tx.UpdatedAt),
 		TransactionDate:         timestamppb.New(tx.TransactionDateTime),

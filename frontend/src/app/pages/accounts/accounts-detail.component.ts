@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
@@ -8,37 +8,53 @@ import { create } from '@bufbuild/protobuf';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
 import { TransactionsTableComponent } from '../../shared/components/transactions-table/transactions-table.component';
+import { BusService } from '../../core/services/bus.service';
+import { BaseAutoUnsubscribeClass } from '../../objects/auto-unsubscribe/base-auto-unsubscribe-class';
 
 @Component({
     selector: 'app-accounts-detail',
     imports: [TransactionsTableComponent],
     templateUrl: './accounts-detail.component.html'
 })
-export class AccountsDetailComponent implements OnInit {
+export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements OnDestroy {
     private accountsService;
 
-    protected currentAccountId: number | undefined = undefined;
     public currentAccount: Account = create(AccountSchema, {});
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
-        private activeRoute: ActivatedRoute,
-        private messageService: MessageService
+        activeRoute: ActivatedRoute,
+        private messageService: MessageService,
+        busService: BusService
     ) {
-        console.log(activeRoute)
+        super();
+
         this.accountsService = createClient(AccountsService, this.transport);
-        this.currentAccountId = parseInt(this.activeRoute.snapshot.params['accountId']) ?? undefined;
+
+        busService.currentAccountId.subscribe(async (accountId) => {
+            await this.setAccount(accountId);
+        });
+
+        activeRoute.params.subscribe((params) => {
+            let parsed = parseInt(params['accountId']) ?? undefined;
+
+            busService.currentAccountId.next(parsed);
+        });
+    }
+
+    public override ngOnDestroy(): void {
+        super.ngOnDestroy();
     }
 
     getTableTitle(): string {
         return `Transactions for "${this.currentAccount.name}"`;
     }
 
-    async ngOnInit() {
+    async setAccount(accountID: number) {
         try {
             let accountDetails = await this.accountsService.listAccounts(
                 create(ListAccountsRequestSchema, {
-                    ids: [this.currentAccountId!]
+                    ids: [accountID]
                 })
             );
 

@@ -33,20 +33,20 @@ export class SelectedDateComponent implements OnInit {
 
     ngOnInit(): void {
         this.possibleDates = this.buildPreviousMonthDates();
-        this.rangeDates = [this.selectedDateService.getFromDate(), this.selectedDateService.getToDate()];
-        this.setManualDateFrom()
+        this.rangeDates = [this.selectedDateService.fromDate.value, this.selectedDateService.toDate.value];
+        this.setManualDateFrom();
     }
 
     setManualDateFrom() {
-        this.manualDateFrom = this.selectedDateService.getFromDate()
-        this.manualDateTo = this.selectedDateService.getToDate()
+        this.manualDateFrom = this.selectedDateService.fromDate.value;
+        this.manualDateTo = this.selectedDateService.toDate.value;
     }
 
     rangeDates: Date[] = [];
 
     getCurrentFancyDate(): string {
-        let from = this.selectedDateService.getFromDate();
-        let to = this.selectedDateService.getToDate();
+        let from = this.selectedDateService.fromDate.value;
+        let to = this.selectedDateService.toDate.value;
 
         return this.getFancyDate(from, to);
     }
@@ -55,17 +55,17 @@ export class SelectedDateComponent implements OnInit {
         this.manualDateTo = to;
         this.manualDateFrom = from;
 
-       this.onManualDateChanged()
+        this.onManualDateChanged();
     }
 
     onManualDateChanged() {
         this.rangeDates = [this.manualDateFrom, this.manualDateTo];
-        this.setDate()
+        this.setDate();
     }
 
     onBigCalendarDateChanged() {
         let copy = this.rangeDates.slice();
-        copy.sort()
+        copy.sort();
 
         this.manualDateFrom = copy[0];
         this.manualDateTo = copy[1];
@@ -81,13 +81,11 @@ export class SelectedDateComponent implements OnInit {
     }
 
     buildPreviousMonthDates() {
-        let from = this.selectedDateService.getFromDate();
-        let to = this.selectedDateService.getToDate();
+        let from = this.selectedDateService.fromDate.value;
+        let to = this.selectedDateService.toDate.value;
 
         let firstDayOfCurrentMonth = this.selectedDateService.getFirstDayOfMonth();
-        let possibleDates: Date[][] = [
-            [firstDayOfCurrentMonth, this.selectedDateService.getLastDayOfMonth()]
-        ];
+        let possibleDates: Date[][] = [[firstDayOfCurrentMonth, this.selectedDateService.getLastDayOfMonth()]];
 
         let max = 6;
 
@@ -98,8 +96,8 @@ export class SelectedDateComponent implements OnInit {
             safeFrom.setMonth(safeFrom.getMonth() - i);
             safeTo.setMonth(safeTo.getMonth() - i);
 
-            if (safeFrom.toISOString() == firstDayOfCurrentMonth.toISOString()){
-                max +=1;
+            if (safeFrom.toISOString() == firstDayOfCurrentMonth.toISOString()) {
+                max += 1;
                 continue;
             }
 
