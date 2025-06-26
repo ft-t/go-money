@@ -3,6 +3,7 @@ import { Tag as Tag2, TagSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gom
 import { create } from '@bufbuild/protobuf';
 import { Tag } from 'primeng/tag';
 import { NgIf } from '@angular/common';
+import { FilterMetadata } from 'primeng/api';
 
 @Component({
     selector: 'fancy-tag',
@@ -11,4 +12,14 @@ import { NgIf } from '@angular/common';
 })
 export class FancyTagComponent {
     @Input() public tag: Tag2 | undefined = create(TagSchema, {});
+
+    getStyle(): { [s: string]: string } {
+        let val: { [s: string]: string } = {};
+
+        if (this.tag?.color) {
+            val['background-color'] = this.tag.color;
+        }
+
+        return val;
+    }
 }

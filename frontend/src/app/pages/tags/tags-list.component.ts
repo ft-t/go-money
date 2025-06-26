@@ -25,7 +25,12 @@ import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.
 @Component({
     selector: 'app-account-list',
     templateUrl: 'tags-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink]
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    styles: `
+        :host ::ng-deep .tagListingTable .p-datatable-header {
+            border-width: 0 !important;
+        }
+    `
 })
 export class TagsListComponent implements OnInit {
     statuses: any[] = [];
@@ -35,7 +40,6 @@ export class TagsListComponent implements OnInit {
     public tags: ListTagsResponse_TagItem[] = [];
     private tagsService;
 
-    public accountTypes = EnumService.getAccountTypes();
     public filters: { [s: string]: FilterMetadata } = {};
 
     @ViewChild('filter') filter!: ElementRef;

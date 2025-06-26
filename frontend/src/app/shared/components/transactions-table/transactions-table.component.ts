@@ -27,6 +27,10 @@ import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { FancyTagComponent } from '../fancy-tag/fancy-tag.component';
 
+export class FilterWrapper {
+    public filters: { [s: string]: FilterMetadata } | undefined;
+}
+
 @Component({
     selector: 'app-transaction-table',
     templateUrl: 'transactions-table.component.html',
@@ -37,7 +41,7 @@ import { FancyTagComponent } from '../fancy-tag/fancy-tag.component';
         }
     `
 })
-export class TransactionsTableComponent implements OnInit, AfterViewInit, OnChanges {
+export class TransactionsTableComponent implements OnInit, OnChanges {
     private transactionsService;
     public loading = false;
     public transactions: Transaction[] = [];
@@ -51,6 +55,8 @@ export class TransactionsTableComponent implements OnInit, AfterViewInit, OnChan
     public tagsMap: { [id: number]: Tag } = {};
     public accounts: Account[] = [];
     public tags: Tag[] = [];
+
+    @Input() filtersWrapper: FilterWrapper | undefined;
 
     @Input() tableTitle: string = 'Transactions';
 
@@ -95,7 +101,14 @@ export class TransactionsTableComponent implements OnInit, AfterViewInit, OnChan
         }
     }
 
-    ngAfterViewInit(): void {
+
+    async ngOnInit() {
+        await Promise.all([this.fetchAccounts(), this.fetchTags()]);
+
+        if (this.filtersWrapper && this.filtersWrapper.filters) {
+            Object.assign(this.filters, this.filtersWrapper.filters);
+        }
+
         this.selectedDateService.fromDate.pipe(skip(1)).subscribe(() => {
             this.refreshTable();
         });
@@ -103,10 +116,8 @@ export class TransactionsTableComponent implements OnInit, AfterViewInit, OnChan
         this.selectedDateService.toDate.pipe(skip(1)).subscribe(() => {
             this.refreshTable();
         });
-    }
 
-    async ngOnInit() {
-        await Promise.all([this.fetchAccounts(), this.fetchTags()]);
+        this.refreshTable()
     }
 
     async fetchTags() {

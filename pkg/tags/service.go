@@ -21,14 +21,29 @@ func NewService(
 	}
 }
 
-func (s *Service) ListTags(ctx context.Context, msg *tagsv1.ListTagsRequest) (*tagsv1.ListTagsResponse, error) {
-	allTags, err := s.GetAllTags(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get all tags")
+func (s *Service) ListTags(ctx context.Context, req *tagsv1.ListTagsRequest) (*tagsv1.ListTagsResponse, error) {
+	var tags []*database.Tag
+
+	query := database.GetDbWithContext(ctx, database.DbTypeReadonly)
+
+	if req.IncludeDeleted {
+		query = query.Unscoped()
+	}
+
+	if req.Name != nil {
+		query = query.Where("name LIKE ?", fmt.Sprintf("%%%s%%", *req.Name))
+	}
+
+	if len(req.Ids) > 0 {
+		query = query.Where("id IN ?", req.Ids)
+	}
+
+	if err := query.Find(&tags).Error; err != nil {
+		return nil, err
 	}
 
 	var mapped []*tagsv1.ListTagsResponse_TagItem
-	for _, tag := range allTags {
+	for _, tag := range tags {
 		mapped = append(mapped, &tagsv1.ListTagsResponse_TagItem{
 			Tag: s.mapper.MapTag(ctx, tag),
 		})

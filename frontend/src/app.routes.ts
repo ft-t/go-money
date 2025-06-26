@@ -14,6 +14,8 @@ import { TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/
 import { TransactionsListComponent } from './app/pages/transactions/transactions-list.component';
 import { TagsImportComponent } from './app/pages/tags/tags-import.component';
 import { AccountsListComponent } from './app/pages/accounts/accounts-list.component';
+import { TagsUpsertComponent } from './app/pages/tags/tags-upsert.component';
+import { TagsDetailComponent } from './app/pages/tags/tags-detail.component';
 
 export const appRoutes: Routes = [
     {
@@ -130,6 +132,21 @@ export const appRoutes: Routes = [
             {
                 path: 'tags/import',
                 component: TagsImportComponent,
+                data: {}
+            },
+            {
+                path: 'tags/edit/:id',
+                component: TagsUpsertComponent,
+                data: {}
+            },
+            {
+                path: 'tags/:id',
+                component: TagsDetailComponent,
+                data: {}
+            },
+            {
+                path: 'tags/new',
+                component: TagsUpsertComponent,
                 data: {}
             },
             {

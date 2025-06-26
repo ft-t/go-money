@@ -1,3 +1,4 @@
+<script src="../../../pages/accounts/accounts-upsert.component.ts"></script>
 <script src="transactions-table.component.ts"></script>
 <div class="transactionListingTable">
     <p-table #dt1
@@ -10,7 +11,7 @@
              [filters]="filters"
              [lazy]="true"
              sortMode="multiple"
-             [lazyLoadOnInit]="true"
+             [lazyLoadOnInit]="false"
              (onLazyLoad)="fetchTransactions($event)"
              [paginator]="true"
              [multiSortMeta]="multiSortMeta"

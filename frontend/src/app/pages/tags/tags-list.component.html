@@ -1,3 +1,4 @@
+<script src="tags-upsert.component.ts"></script>
 <div class="card">
     <div class="font-semibold text-xl mb-4">Tags List</div>
     <p-table #dt1
@@ -39,6 +40,8 @@
                         Name <p-sortIcon field="tag.name" />
                     </div>
                 </th>
+                <th>
+                </th>
             </tr>
             <tr>
                 <th style="max-width: 3rem">
@@ -59,6 +62,7 @@
                         </ng-template>
                     </p-columnFilter>
                 </th>
+                <th></th>
             </tr>
         </ng-template>
         <ng-template #body let-accountItem>
@@ -69,13 +73,20 @@
                     </a>
                 </td>
                 <td>
-                    {{ accountItem.tag.name }}
+                    <a [href]="getAccountUrl(accountItem)" [routerLink]="getAccountUrl(accountItem)">
+                        {{ accountItem.tag.name }}
+                    </a>
+                </td>
+                <td style="max-width: 1rem">
+                    <p-button icon="pi pi-pencil"
+                              (onClick)="this.router.navigate(['/', 'tags', 'edit', accountItem.tag.id])"
+                              severity="secondary" rounded />
                 </td>
             </tr>
         </ng-template>
         <ng-template #emptymessage>
             <tr>
-                <td colspan="8">No accounts found.</td>
+                <td colspan="8">No tags found.</td>
             </tr>
         </ng-template>
         <ng-template #loadingbody>

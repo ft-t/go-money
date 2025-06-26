@@ -24,7 +24,12 @@ import { create } from '@bufbuild/protobuf';
 @Component({
     selector: 'app-account-list',
     templateUrl: 'accounts-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink]
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    styles: `
+        :host ::ng-deep .accountListTable .p-datatable-header {
+            border-width: 0 !important;
+        }
+    `
 })
 export class AccountsListComponent implements OnInit {
     statuses: any[] = [];
