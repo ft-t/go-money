@@ -4,6 +4,7 @@ import (
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -24,4 +25,13 @@ type LockerSvc interface {
 
 type MapperSvc interface {
 	MapTransaction(ctx context.Context, tx *database.Transaction) *v1.Transaction
+}
+
+type CurrencyConverterSvc interface {
+	Convert(
+		ctx context.Context,
+		fromCurrency string,
+		toCurrency string,
+		amount decimal.Decimal,
+	) (decimal.Decimal, error)
 }

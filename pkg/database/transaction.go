@@ -10,11 +10,13 @@ import (
 type Transaction struct {
 	ID int64
 
-	SourceAmount   decimal.NullDecimal
-	SourceCurrency string
+	SourceAmount               decimal.NullDecimal
+	SourceCurrency             string
+	SourceAmountInBaseCurrency decimal.NullDecimal
 
-	DestinationAmount   decimal.NullDecimal
-	DestinationCurrency string
+	DestinationAmount               decimal.NullDecimal
+	DestinationCurrency             string
+	DestinationAmountInBaseCurrency decimal.NullDecimal
 
 	SourceAccountID      *int32
 	DestinationAccountID *int32

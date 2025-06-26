@@ -9,4 +9,9 @@ type Configuration struct {
 	JwtPrivateKey        string               `env:"JWT_PRIVATE_KEY"`
 	ExchangeRatesUrl     string               `env:"EXCHANGE_RATES_URL, default=http://go-money-exchange-rates.s3-website.eu-north-1.amazonaws.com/latest.json"`
 	StaticFilesDirectory string               `env:"STATIC_FILES_DIRECTORY"`
+	CurrencyConfig       CurrencyConfig       `env:", prefix=CURRENCY_CONFIG_"`
+}
+
+type CurrencyConfig struct {
+	UpdateTransactionAmountInBaseCurrency bool `env:"UPDATE_TRANSACTION_AMOUNT_IN_BASE_CURRENCY, default=true"`
 }

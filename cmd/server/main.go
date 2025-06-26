@@ -71,8 +71,9 @@ func main() {
 	}
 
 	decimalSvc := currency.NewDecimalService()
+	currencyConverter := currency.NewConverter()
 
-	_, err = handlers.NewCurrencyApi(grpcServer, currency.NewService(), currency.NewConverter(), decimalSvc)
+	_, err = handlers.NewCurrencyApi(grpcServer, currency.NewService(), currencyConverter, decimalSvc)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
 	}
@@ -93,8 +94,9 @@ func main() {
 	}
 
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
-		StatsSvc:  transactions.NewStatService(),
-		MapperSvc: mapper,
+		StatsSvc:             transactions.NewStatService(),
+		MapperSvc:            mapper,
+		CurrencyConverterSvc: currencyConverter,
 	})
 
 	tagSvc := tags.NewService(mapper)

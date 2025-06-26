@@ -2,7 +2,9 @@ package currency
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"gorm.io/gorm/clause"
@@ -10,12 +12,22 @@ import (
 	"time"
 )
 
+//go:embed scripts/update_amount_in_base_currency.sql
+var updateAmountInBaseCurrency string
+
 type Syncer struct {
-	cl httpClient
+	cl  httpClient
+	cfg configuration.CurrencyConfig
 }
 
-func NewSyncer(cl httpClient) *Syncer {
-	return &Syncer{cl: cl}
+func NewSyncer(
+	cl httpClient,
+	config configuration.CurrencyConfig,
+) *Syncer {
+	return &Syncer{
+		cl:  cl,
+		cfg: config,
+	}
 }
 
 func (s *Syncer) Sync(
@@ -50,9 +62,12 @@ func (s *Syncer) Sync(
 		if err = tx.Clauses(clause.OnConflict{
 			OnConstraint: "currencies_pk",
 			DoUpdates: clause.Set{
-				{Column: clause.Column{
-					Name: "rate",
-				}, Value: rate},
+				{
+					Column: clause.Column{
+						Name: "rate",
+					},
+					Value: rate,
+				},
 			},
 		}).Create(&database.Currency{
 			ID:            currency,
@@ -61,6 +76,13 @@ func (s *Syncer) Sync(
 			UpdatedAt:     time.Now().UTC(),
 		}).Error; err != nil {
 			return err
+		}
+	}
+
+	if s.cfg.UpdateTransactionAmountInBaseCurrency {
+		if err = tx.Exec(updateAmountInBaseCurrency). //sql.Named("startDate", configuration.BaseCurrency),
+								Error; err != nil {
+			return errors.Wrap(err, "failed to recalculate")
 		}
 	}
 
