@@ -193,5 +193,17 @@ alter table transactions
 				)
 			},
 		},
+		{
+			ID: "2025-06-26-AmountsInBaseCurrency",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table transactions
+    add column if not exists destination_amount_in_base_currency numeric;
+
+alter table transactions
+    add column if not exists source_amount_in_base_currency numeric;
+`)
+			},
+		},
 	}
 }

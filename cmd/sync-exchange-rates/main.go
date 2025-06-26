@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
 	"net/http"
 	"os"
@@ -18,9 +19,11 @@ func main() {
 		fetchURL = v
 	}
 
+	cfg := configuration.GetConfiguration()
+
 	ctx := context.TODO()
 
-	sync := currency.NewSyncer(http.DefaultClient)
+	sync := currency.NewSyncer(http.DefaultClient, cfg.CurrencyConfig)
 	if err := sync.Sync(ctx, fetchURL); err != nil {
 		panic(err)
 	}

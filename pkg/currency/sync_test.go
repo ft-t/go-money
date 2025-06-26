@@ -82,12 +82,16 @@ func TestSync(t *testing.T) {
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
 
 				DestinationCurrency: configuration.BaseCurrency,
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)), // should not be updated by script, because foreign currency is set to base
+				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)),
+				Extra:               make(map[string]string),
+
+				// should not be updated by script, because foreign currency is set to base
 			},
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
+				Extra:           make(map[string]string),
 
 				// source to rate
 				// here dest should be null
@@ -96,6 +100,7 @@ func TestSync(t *testing.T) {
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
 				SourceCurrency:  configuration.BaseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+				Extra:           make(map[string]string),
 
 				// source same,
 				// dest null
@@ -103,14 +108,41 @@ func TestSync(t *testing.T) {
 
 			// transfers
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 				SourceCurrency:  configuration.BaseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 
-				// source same,
-				// dest null
+				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(9999)),
+				DestinationCurrency: "PLN",
+				Extra:               make(map[string]string),
+
+				// source is in USD to should use 55,
+			},
+			{
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
+				SourceCurrency:  "PLN",
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(9999)),
+
+				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(55)),
+				DestinationCurrency: configuration.BaseCurrency,
+				Extra:               make(map[string]string),
+
+				// destination is in USD to should use 55,
+			},
+			{
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
+				SourceCurrency:  "PLN",
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+
+				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)),
+				DestinationCurrency: "UAH",
+
+				Extra: make(map[string]string),
+				// should convert to base currency with same amount from PLN
 			},
 		}
+
+		assert.NoError(t, gormDB.Create(&txs).Error)
 
 		syn := currency.NewSyncer(mockClient, configuration.CurrencyConfig{
 			UpdateTransactionAmountInBaseCurrency: true,
@@ -119,22 +151,27 @@ func TestSync(t *testing.T) {
 		err := syn.Sync(context.TODO(), remoteURL)
 		assert.NoError(t, err)
 
-		var currencies []*database.Currency
-		assert.NoError(t, gormDB.Order("id asc").Find(&currencies).Error)
+		var updatedTxs []*database.Transaction
+		assert.NoError(t, gormDB.Order("id asc").Find(&updatedTxs).Error)
 
-		assert.Len(t, currencies, 3)
-		assert.Equal(t, "EUR", currencies[0].ID)
-		assert.EqualValues(t, "0.85", currencies[0].Rate.String())
-		assert.EqualValues(t, 2, currencies[0].DecimalPlaces)
+		assert.EqualValues(t, 999, updatedTxs[0].DestinationAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, 999, updatedTxs[0].SourceAmountInBaseCurrency.Decimal.IntPart())
 
-		assert.Equal(t, "PLN", currencies[1].ID)
-		assert.EqualValues(t, "3.8", currencies[1].Rate.String())
-		assert.EqualValues(t, 2, currencies[1].DecimalPlaces)
+		assert.EqualValues(t, 2, updatedTxs[1].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, false, updatedTxs[1].DestinationAmountInBaseCurrency.Valid)
 
-		assert.Equal(t, "USD", currencies[2].ID)
-		assert.EqualValues(t, "1", currencies[2].Rate.String())
-		assert.EqualValues(t, 2, currencies[2].DecimalPlaces)
+		assert.EqualValues(t, 55, updatedTxs[2].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, false, updatedTxs[2].DestinationAmountInBaseCurrency.Valid)
 
+		// transfers
+		assert.EqualValues(t, 55, updatedTxs[3].DestinationAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, 55, updatedTxs[3].SourceAmountInBaseCurrency.Decimal.IntPart())
+
+		assert.EqualValues(t, 55, updatedTxs[4].DestinationAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, 55, updatedTxs[4].SourceAmountInBaseCurrency.Decimal.IntPart())
+
+		assert.EqualValues(t, 26, updatedTxs[5].DestinationAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, 26, updatedTxs[5].SourceAmountInBaseCurrency.Decimal.IntPart())
 	})
 
 	t.Run("success update", func(t *testing.T) {

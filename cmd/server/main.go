@@ -113,7 +113,7 @@ func main() {
 
 	go func() {
 		if len(config.ExchangeRatesUrl) > 0 {
-			sync := currency.NewSyncer(http.DefaultClient)
+			sync := currency.NewSyncer(http.DefaultClient, config.CurrencyConfig)
 
 			if currencyErr := sync.Sync(context.TODO(), config.ExchangeRatesUrl); currencyErr != nil {
 				logger.Err(err).Msg("cannot sync exchange rates")
