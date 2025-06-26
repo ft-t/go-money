@@ -9,6 +9,7 @@ import (
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/golang/mock/gomock"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"os"
@@ -166,6 +167,45 @@ func TestDeleteTag(t *testing.T) {
 	assert.Len(t, allTags, 0)
 }
 
+func TestListTags(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	mapper := NewMockMapper(gomock.NewController(t))
+
+	srv := tags.NewService(mapper)
+
+	mapper.EXPECT().MapTag(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, tag *database.Tag) *gomoneypbv1.Tag {
+			return &gomoneypbv1.Tag{
+				Id:    tag.ID,
+				Name:  tag.Name,
+				Color: tag.Color,
+				Icon:  tag.Icon,
+			}
+		}).AnyTimes()
+
+	tagData := &database.Tag{
+		Name:  "tag2",
+		Color: "blue",
+		Icon:  "icon2",
+	}
+	assert.NoError(t, gormDB.Create(tagData).Error)
+
+	tagResp, err := srv.ListTags(context.TODO(), &tagsv1.ListTagsRequest{
+		Ids: []int32{
+			tagData.ID,
+		},
+		IncludeDeleted: true,
+		Name:           lo.ToPtr("tag2"),
+	})
+	assert.NoError(t, err)
+	assert.Len(t, tagResp.Tags, 1)
+
+	assert.Equal(t, "tag2", tagResp.Tags[0].Tag.Name)
+	assert.Equal(t, "blue", tagResp.Tags[0].Tag.Color)
+	assert.Equal(t, "icon2", tagResp.Tags[0].Tag.Icon)
+}
+
 func TestImportTags(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
@@ -180,7 +220,7 @@ func TestImportTags(t *testing.T) {
 	}).Error)
 
 	resp, err := srv.ImportTags(context.TODO(), &tagsv1.ImportTagsRequest{
-		Tags: []*tagsv1.CreateTagRequest{
+		Tags: []*tagsv1.UpdateTagRequest{
 			{
 				Name:  "tag1",
 				Color: "xx",
