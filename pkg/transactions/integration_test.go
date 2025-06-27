@@ -12,6 +12,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/gorm"
 	"testing"
 	"time"
 )
@@ -23,9 +24,18 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 	statsSvc := transactions.NewStatService()
 	mapper := NewMockMapperSvc(gomock.NewController(t))
 
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
+			assert.Len(t, i, 1)
+
+			return nil
+		})
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
-		StatsSvc:  statsSvc,
-		MapperSvc: mapper,
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
 	})
 
 	accounts := []*database.Account{
@@ -65,9 +75,18 @@ func TestBasicCalc(t *testing.T) {
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		Return(&gomoneypbv1.Transaction{}).AnyTimes()
 
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
+			assert.Len(t, i, 1)
+
+			return nil
+		}).Times(6)
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
-		StatsSvc:  statsSvc,
-		MapperSvc: mapper,
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
 	})
 
 	accounts := []*database.Account{

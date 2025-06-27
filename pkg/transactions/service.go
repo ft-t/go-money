@@ -23,8 +23,10 @@ type Service struct {
 }
 
 type ServiceConfig struct {
-	StatsSvc  StatsSvc
-	MapperSvc MapperSvc
+	StatsSvc             StatsSvc
+	MapperSvc            MapperSvc
+	CurrencyConverterSvc CurrencyConverterSvc
+	BaseAmountService    BaseAmountSvc
 }
 
 func NewService(
@@ -232,6 +234,10 @@ func (s *Service) CreateBulkInternal(
 
 	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, created); err != nil {
 		return nil, err
+	}
+
+	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
 	}
 
 	var finalRes []*transactionsv1.CreateTransactionResponse

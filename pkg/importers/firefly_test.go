@@ -14,6 +14,7 @@ import (
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+	"net/http"
 	"os"
 	"testing"
 )
@@ -30,9 +31,9 @@ func TestMain(m *testing.M) {
 
 func TestFirefly(t *testing.T) {
 	t.Skip("todo")
-	
+
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
-	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_06_21_transaction_export (5).csv")
+	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_06_26_transaction_export.csv")
 	assert.NoError(t, err)
 
 	accountsData, err := os.ReadFile("C:\\Users\\iqpir\\Result_17.json")
@@ -56,9 +57,15 @@ func TestFirefly(t *testing.T) {
 	var allAccounts []*database.Account
 	assert.NoError(t, gormDB.Find(&allAccounts).Error)
 
+	cur := currency.NewSyncer(http.DefaultClient, transactions.NewBaseAmountService(), configuration.CurrencyConfig{})
+	assert.NoError(t, cur.Sync(context.TODO(), "http://go-money-exchange-rates.s3-website.eu-north-1.amazonaws.com/latest.json"))
+
+	converter := currency.NewConverter()
+
 	txSvc := transactions.NewService(&transactions.ServiceConfig{
-		StatsSvc:  transactions.NewStatService(),
-		MapperSvc: m,
+		StatsSvc:             transactions.NewStatService(),
+		MapperSvc:            m,
+		CurrencyConverterSvc: converter,
 	})
 	importer := importers.NewFireflyImporter(txSvc)
 

@@ -119,6 +119,10 @@ func (f *FireflyImporter) Import(
 			}
 		}
 
+		if operationType == "Withdrawal" && destinationAccountType == "Debt" { // debt repayment, so basically a transfer
+			operationType = "Transfer"
+		}
+
 		switch operationType {
 		case "Withdrawal":
 			sourceAccount, ok := accountMap[sourceName]

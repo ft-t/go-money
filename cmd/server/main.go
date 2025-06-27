@@ -71,8 +71,9 @@ func main() {
 	}
 
 	decimalSvc := currency.NewDecimalService()
+	currencyConverter := currency.NewConverter()
 
-	_, err = handlers.NewCurrencyApi(grpcServer, currency.NewService(), currency.NewConverter(), decimalSvc)
+	_, err = handlers.NewCurrencyApi(grpcServer, currency.NewService(), currencyConverter, decimalSvc)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
 	}
@@ -92,9 +93,13 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create accounts handler")
 	}
 
+	baseAmountSvc := transactions.NewBaseAmountService()
+
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
-		StatsSvc:  transactions.NewStatService(),
-		MapperSvc: mapper,
+		StatsSvc:             transactions.NewStatService(),
+		MapperSvc:            mapper,
+		CurrencyConverterSvc: currencyConverter,
+		BaseAmountService:    baseAmountSvc,
 	})
 
 	tagSvc := tags.NewService(mapper)
@@ -111,7 +116,7 @@ func main() {
 
 	go func() {
 		if len(config.ExchangeRatesUrl) > 0 {
-			sync := currency.NewSyncer(http.DefaultClient)
+			sync := currency.NewSyncer(http.DefaultClient, baseAmountSvc, config.CurrencyConfig)
 
 			if currencyErr := sync.Sync(context.TODO(), config.ExchangeRatesUrl); currencyErr != nil {
 				logger.Err(err).Msg("cannot sync exchange rates")
