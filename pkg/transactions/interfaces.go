@@ -35,3 +35,11 @@ type CurrencyConverterSvc interface {
 		amount decimal.Decimal,
 	) (decimal.Decimal, error)
 }
+
+type BaseAmountSvc interface {
+	RecalculateAmountInBaseCurrency(
+		_ context.Context,
+		tx *gorm.DB,
+		txs []*database.Transaction,
+	) error
+}

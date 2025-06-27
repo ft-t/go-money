@@ -1,7 +1,6 @@
 package currency_test
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"bytes"
 	"context"
 	_ "embed"
@@ -36,7 +35,7 @@ func TestSync(t *testing.T) {
 				}, nil
 			})
 
-		syn := currency.NewSyncer(mockClient, configuration.CurrencyConfig{
+		syn := currency.NewSyncer(mockClient, nil, configuration.CurrencyConfig{
 			UpdateTransactionAmountInBaseCurrency: false,
 		})
 
@@ -60,11 +59,16 @@ func TestSync(t *testing.T) {
 		assert.EqualValues(t, 2, currencies[2].DecimalPlaces)
 	})
 
-	t.Run("success with update base currency", func(t *testing.T) {
+	t.Run("success with recalculate", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 		remoteURL := "https://localhost/rates.json"
 
 		mockClient := NewMockhttpClient(gomock.NewController(t))
+		mockBaseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
+
+		mockBaseSvc.EXPECT().RecalculateAmountInBaseCurrencyForAll(gomock.Any(), gomock.Any()).
+			Return(nil)
+
 		mockClient.EXPECT().Do(gomock.Any()).
 			DoAndReturn(func(request *http.Request) (*http.Response, error) {
 				assert.EqualValues(t, remoteURL, request.URL.String())
@@ -75,103 +79,28 @@ func TestSync(t *testing.T) {
 				}, nil
 			})
 
-		txs := []*database.Transaction{
-			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-				SourceCurrency:  "PLN",
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
-
-				DestinationCurrency: configuration.BaseCurrency,
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)),
-				Extra:               make(map[string]string),
-
-				// should not be updated by script, because foreign currency is set to base
-			},
-			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-				SourceCurrency:  "PLN",
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
-				Extra:           make(map[string]string),
-
-				// source to rate
-				// here dest should be null
-			},
-			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-				SourceCurrency:  configuration.BaseCurrency,
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
-				Extra:           make(map[string]string),
-
-				// source same,
-				// dest null
-			},
-
-			// transfers
-			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-				SourceCurrency:  configuration.BaseCurrency,
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
-
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(9999)),
-				DestinationCurrency: "PLN",
-				Extra:               make(map[string]string),
-
-				// source is in USD to should use 55,
-			},
-			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-				SourceCurrency:  "PLN",
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(9999)),
-
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(55)),
-				DestinationCurrency: configuration.BaseCurrency,
-				Extra:               make(map[string]string),
-
-				// destination is in USD to should use 55,
-			},
-			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-				SourceCurrency:  "PLN",
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
-
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)),
-				DestinationCurrency: "UAH",
-
-				Extra: make(map[string]string),
-				// should convert to base currency with same amount from PLN
-			},
-		}
-
-		assert.NoError(t, gormDB.Create(&txs).Error)
-
-		syn := currency.NewSyncer(mockClient, configuration.CurrencyConfig{
+		syn := currency.NewSyncer(mockClient, nil, configuration.CurrencyConfig{
 			UpdateTransactionAmountInBaseCurrency: true,
 		})
 
 		err := syn.Sync(context.TODO(), remoteURL)
 		assert.NoError(t, err)
 
-		var updatedTxs []*database.Transaction
-		assert.NoError(t, gormDB.Order("id asc").Find(&updatedTxs).Error)
+		var currencies []*database.Currency
+		assert.NoError(t, gormDB.Order("id asc").Find(&currencies).Error)
 
-		assert.EqualValues(t, 999, updatedTxs[0].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 999, updatedTxs[0].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.Len(t, currencies, 3)
+		assert.Equal(t, "EUR", currencies[0].ID)
+		assert.EqualValues(t, "0.85", currencies[0].Rate.String())
+		assert.EqualValues(t, 2, currencies[0].DecimalPlaces)
 
-		assert.EqualValues(t, 2, updatedTxs[1].SourceAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, false, updatedTxs[1].DestinationAmountInBaseCurrency.Valid)
+		assert.Equal(t, "PLN", currencies[1].ID)
+		assert.EqualValues(t, "3.8", currencies[1].Rate.String())
+		assert.EqualValues(t, 2, currencies[1].DecimalPlaces)
 
-		assert.EqualValues(t, 55, updatedTxs[2].SourceAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, false, updatedTxs[2].DestinationAmountInBaseCurrency.Valid)
-
-		// transfers
-		assert.EqualValues(t, 55, updatedTxs[3].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 55, updatedTxs[3].SourceAmountInBaseCurrency.Decimal.IntPart())
-
-		assert.EqualValues(t, 55, updatedTxs[4].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 55, updatedTxs[4].SourceAmountInBaseCurrency.Decimal.IntPart())
-
-		assert.EqualValues(t, 26, updatedTxs[5].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 26, updatedTxs[5].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.Equal(t, "USD", currencies[2].ID)
+		assert.EqualValues(t, "1", currencies[2].Rate.String())
+		assert.EqualValues(t, 2, currencies[2].DecimalPlaces)
 	})
 
 	t.Run("success update", func(t *testing.T) {
@@ -210,7 +139,7 @@ func TestSync(t *testing.T) {
 				}, nil
 			})
 
-		syn := currency.NewSyncer(mockClient, configuration.CurrencyConfig{})
+		syn := currency.NewSyncer(mockClient, nil, configuration.CurrencyConfig{})
 
 		err := syn.Sync(context.TODO(), remoteURL)
 		assert.NoError(t, err)
@@ -245,7 +174,7 @@ func TestSync(t *testing.T) {
 				return nil, assert.AnError
 			})
 
-		syn := currency.NewSyncer(mockClient, configuration.CurrencyConfig{})
+		syn := currency.NewSyncer(mockClient, nil, configuration.CurrencyConfig{})
 
 		err := syn.Sync(context.TODO(), remoteURL)
 		assert.Error(t, err)
@@ -266,7 +195,7 @@ func TestSync(t *testing.T) {
 				}, nil
 			})
 
-		syn := currency.NewSyncer(mockClient, configuration.CurrencyConfig{})
+		syn := currency.NewSyncer(mockClient, nil, configuration.CurrencyConfig{})
 
 		err := syn.Sync(context.TODO(), remoteURL)
 		assert.Error(t, err)

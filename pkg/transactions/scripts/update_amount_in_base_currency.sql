@@ -22,7 +22,9 @@ with upd as (select t.id,
                         end as destinationInBase
              from transactions t
                       left join currencies sourceCurrency on sourceCurrency.id = t.source_currency
-                      left join currencies destinationCurrency on destinationCurrency.id = t.destination_currency)
+                      left join currencies destinationCurrency on destinationCurrency.id = t.destination_currency
+             where (@specificTxIDs)::bigint[] IS NULL
+                OR t.id = ANY ((@specificTxIDs)::bigint[]))
 UPDATE transactions
 SET destination_amount_in_base_currency = case
                                               when transaction_type = 1
@@ -31,3 +33,4 @@ SET destination_amount_in_base_currency = case
     source_amount_in_base_currency      = upd.sourceInBase
 FROM upd
 WHERE upd.id = transactions.id
+returning transactions.id, destination_amount_in_base_currency, source_amount_in_base_currency

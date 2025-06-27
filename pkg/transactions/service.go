@@ -26,6 +26,7 @@ type ServiceConfig struct {
 	StatsSvc             StatsSvc
 	MapperSvc            MapperSvc
 	CurrencyConverterSvc CurrencyConverterSvc
+	BaseAmountService    BaseAmountSvc
 }
 
 func NewService(
@@ -222,34 +223,6 @@ func (s *Service) CreateBulkInternal(
 			}
 		}
 
-		if newTx.DestinationAmount.Valid && newTx.DestinationCurrency != configuration.BaseCurrency {
-			result, currencyErr := s.cfg.CurrencyConverterSvc.Convert(
-				ctx,
-				newTx.DestinationCurrency,
-				configuration.BaseCurrency,
-				newTx.DestinationAmount.Decimal,
-			)
-			if currencyErr != nil {
-				return nil, errors.Wrap(err, "failed to convert destination amount to base currency")
-			}
-
-			newTx.DestinationAmountInBaseCurrency = decimal.NewNullDecimal(result)
-		}
-
-		if newTx.SourceAmount.Valid && newTx.SourceCurrency != configuration.BaseCurrency {
-			result, currencyErr := s.cfg.CurrencyConverterSvc.Convert(
-				ctx,
-				newTx.SourceCurrency,
-				configuration.BaseCurrency,
-				newTx.SourceAmount.Decimal,
-			)
-			if currencyErr != nil {
-				return nil, errors.Wrap(err, "failed to convert source amount to base currency")
-			}
-
-			newTx.SourceAmountInBaseCurrency = decimal.NewNullDecimal(result)
-		}
-
 		// validate wallet transaction date
 
 		if err = tx.Create(newTx).Error; err != nil {
@@ -263,9 +236,16 @@ func (s *Service) CreateBulkInternal(
 		return nil, err
 	}
 
+	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
+	}
+
 	var finalRes []*transactionsv1.CreateTransactionResponse
+	var impactedTxIds []int64
 
 	for _, createdTx := range created {
+		impactedTxIds = append(impactedTxIds, createdTx.ID)
+
 		finalRes = append(finalRes, &transactionsv1.CreateTransactionResponse{
 			Transaction: s.cfg.MapperSvc.MapTransaction(ctx, createdTx),
 		})

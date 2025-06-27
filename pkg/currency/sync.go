@@ -12,21 +12,21 @@ import (
 	"time"
 )
 
-//go:embed scripts/update_amount_in_base_currency.sql
-var updateAmountInBaseCurrency string
-
 type Syncer struct {
-	cl  httpClient
-	cfg configuration.CurrencyConfig
+	cl            httpClient
+	cfg           configuration.CurrencyConfig
+	baseAmountSvc BaseAmountSvc
 }
 
 func NewSyncer(
 	cl httpClient,
+	baseAmountSvc BaseAmountSvc,
 	config configuration.CurrencyConfig,
 ) *Syncer {
 	return &Syncer{
-		cl:  cl,
-		cfg: config,
+		cl:            cl,
+		baseAmountSvc: baseAmountSvc,
+		cfg:           config,
 	}
 }
 
@@ -80,8 +80,7 @@ func (s *Syncer) Sync(
 	}
 
 	if s.cfg.UpdateTransactionAmountInBaseCurrency {
-		if err = tx.Exec(updateAmountInBaseCurrency). //sql.Named("startDate", configuration.BaseCurrency),
-								Error; err != nil {
+		if err = s.baseAmountSvc.RecalculateAmountInBaseCurrencyForAll(ctx, tx); err != nil {
 			return errors.Wrap(err, "failed to recalculate")
 		}
 	}
