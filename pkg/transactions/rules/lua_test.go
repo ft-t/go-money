@@ -11,19 +11,23 @@ func TestLuaInterpreter_Run(t *testing.T) {
 	interpreter := &LuaInterpreter{}
 
 	script := `
-        print(current:destinationAmount())
-		if current:destinationAmount() == nil then
-			current:destinationAmount(123.45)
+        print(tx:destinationAmount())
+		if tx:destinationAmount() == nil then
+			tx:destinationAmount(123.45)
 		end
-        print(current:destinationAmount())
+        print(tx:destinationAmount())
 
-		current:destinationAmount(nil)
-		print(current:destinationAmount())
+		tx:destinationAmount(nil)
+		print(tx:destinationAmount())
+
+		tx:addTag(1)
 	`
 
-	result, err := interpreter.Run(context.TODO(), script, &database.Transaction{
+	tx := &database.Transaction{
 		Title: "abcd",
-	})
+	}
+
+	result, err := interpreter.Run(context.TODO(), script, tx)
 	if err != nil {
 		t.Fatalf("Failed to run Lua script: %v", err)
 	}
