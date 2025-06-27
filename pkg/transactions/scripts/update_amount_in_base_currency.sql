@@ -1,22 +1,22 @@
 with upd as (select t.id,
                     case
-                        when t.source_currency = 'USD' then
+                        when t.source_currency = @baseCurrency then
                             t.source_amount
                         when t.source_amount is not null and t.destination_amount is not null and
-                             t.destination_currency = 'USD' -- if other side already in usd, no need to convert
+                             t.destination_currency = @baseCurrency -- if other side already in usd, no need to convert
                             then
                             t.destination_amount
-                        when t.source_currency != 'USD' then
+                        when t.source_currency != @baseCurrency then
                             round(t.source_amount / sourceCurrency.rate, sourceCurrency.decimal_places)
                         else t.source_amount
                         end as sourceInBase,
                     case
-                        when t.destination_currency = 'USD' then
+                        when t.destination_currency = @baseCurrency then
                             t.destination_amount
                         when t.destination_amount is not null and t.source_amount is not null and
-                             t.source_currency = 'USD' then -- if other side already in usd, no need to convert
+                             t.source_currency = @baseCurrency then -- if other side already in usd, no need to convert
                             t.source_amount
-                        when t.destination_currency != 'USD' then
+                        when t.destination_currency != @baseCurrency then
                             round(t.destination_amount / destinationCurrency.rate, destinationCurrency.decimal_places)
                         else t.destination_amount
                         end as destinationInBase
