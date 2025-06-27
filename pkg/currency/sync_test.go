@@ -79,7 +79,7 @@ func TestSync(t *testing.T) {
 				}, nil
 			})
 
-		syn := currency.NewSyncer(mockClient, nil, configuration.CurrencyConfig{
+		syn := currency.NewSyncer(mockClient, mockBaseSvc, configuration.CurrencyConfig{
 			UpdateTransactionAmountInBaseCurrency: true,
 		})
 

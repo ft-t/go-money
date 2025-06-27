@@ -9,6 +9,7 @@ import (
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/golang/mock/gomock"
+	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -306,202 +307,148 @@ func TestListTransactions(t *testing.T) {
 	})
 }
 
-//
-//func TestCreateWithdrawal(
-//	t *testing.T,
-//) {
-//	t.Run("success", func(t *testing.T) {
-//		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
-//
-//		statSvc := NewMockStatsSvc(gomock.NewController(t))
-//		srv := transactions.NewService(
-//			&transactions.ServiceConfig{
-//				StatsSvc: statSvc,
-//			},
-//		)
-//
-//		account := &database.Account{
-//			Currency: "USD",
-//			Extra:    map[string]string{},
-//		}
-//		assert.NoError(t, gormDB.Create(account).Error)
-//
-//		timeNow := time.Now().UTC()
-//
-//		statSvc.EXPECT().
-//			ProcessTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
-//			DoAndReturn(func(ctx context.Context, db *gorm.DB, transaction *database.Transaction) error {
-//				assert.EqualValues(
-//					t,
-//					account.ID,
-//					*transaction.SourceAccountID,
-//				)
-//				assert.EqualValues(
-//					t,
-//					gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-//					transaction.TransactionType,
-//				)
-//				return nil
-//			})
-//
-//		resp, err := srv.Create(
-//			context.TODO(),
-//			&transactionsv1.CreateTransactionRequest{
-//				Notes:    "",
-//				Extra:    nil,
-//				LabelIds: nil,
-//				TransactionDate: timestamppb.New(
-//					timeNow,
-//				),
-//				Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-//					Withdrawal: &transactionsv1.Withdrawal{
-//						SourceAccountId: account.ID,
-//						SourceAmount:    "-55.21",
-//						SourceCurrency:  "USD",
-//					},
-//				},
-//			},
-//		)
-//		assert.NoError(t, err)
-//		assert.NotNil(t, resp)
-//	})
-//
-//	t.Run("invalid amount format", func(t *testing.T) {
-//		srv := transactions.NewService(
-//			&transactions.ServiceConfig{},
-//		)
-//
-//		resp, err := srv.Create(
-//			context.TODO(),
-//			&transactionsv1.CreateTransactionRequest{
-//				Notes:    "",
-//				Extra:    nil,
-//				LabelIds: nil,
-//				TransactionDate: timestamppb.New(
-//					time.Now().
-//						UTC(),
-//				),
-//				Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-//					Withdrawal: &transactionsv1.Withdrawal{
-//						SourceAccountId: 1,
-//						SourceAmount:    "invalid",
-//						SourceCurrency:  "USD",
-//					},
-//				},
-//			},
-//		)
-//		assert.Error(t, err)
-//		assert.Nil(t, resp)
-//	})
-//
-//	t.Run("invalid source account id", func(t *testing.T) {
-//		srv := transactions.NewService(
-//			&transactions.ServiceConfig{},
-//		)
-//
-//		resp, err := srv.Create(
-//			context.TODO(),
-//			&transactionsv1.CreateTransactionRequest{
-//				Notes:    "",
-//				Extra:    nil,
-//				LabelIds: nil,
-//				TransactionDate: timestamppb.New(
-//					time.Now().
-//						UTC(),
-//				),
-//				Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-//					Withdrawal: &transactionsv1.Withdrawal{
-//						SourceAccountId: -100,
-//						SourceAmount:    "55.21",
-//						SourceCurrency:  "USD",
-//					},
-//				},
-//			},
-//		)
-//		assert.ErrorContains(
-//			t,
-//			err,
-//			"source account id is required",
-//		)
-//		assert.Nil(t, resp)
-//	})
-//
-//	t.Run("source amount should not be positive", func(t *testing.T) {
-//		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
-//		srv := transactions.NewService(
-//			&transactions.ServiceConfig{},
-//		)
-//
-//		account := &database.Account{
-//			Currency: "USD",
-//			Extra:    map[string]string{},
-//		}
-//		assert.NoError(t, gormDB.Create(account).Error)
-//
-//		resp, err := srv.Create(
-//			context.TODO(),
-//			&transactionsv1.CreateTransactionRequest{
-//				Notes:    "",
-//				Extra:    nil,
-//				LabelIds: nil,
-//				TransactionDate: timestamppb.New(
-//					time.Now().
-//						UTC(),
-//				),
-//				Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-//					Withdrawal: &transactionsv1.Withdrawal{
-//						SourceAccountId: 1,
-//						SourceAmount:    "55.21",
-//						SourceCurrency:  "USD",
-//					},
-//				},
-//			},
-//		)
-//		assert.ErrorContains(
-//			t,
-//			err,
-//			"source amount must be negative",
-//		)
-//		assert.Nil(t, resp)
-//	})
-//
-//	t.Run("invalid account currency", func(t *testing.T) {
-//		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
-//		srv := transactions.NewService(
-//			&transactions.ServiceConfig{},
-//		)
-//
-//		account := &database.Account{
-//			Currency: "USD",
-//			Extra:    map[string]string{},
-//		}
-//		assert.NoError(t, gormDB.Create(account).Error)
-//
-//		resp, err := srv.Create(
-//			context.TODO(),
-//			&transactionsv1.CreateTransactionRequest{
-//				Notes:    "",
-//				Extra:    nil,
-//				LabelIds: nil,
-//				TransactionDate: timestamppb.New(
-//					time.Now().
-//						UTC(),
-//				),
-//				Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-//					Withdrawal: &transactionsv1.Withdrawal{
-//						SourceAccountId: account.ID,
-//						SourceAmount:    "-55.21",
-//						SourceCurrency:  "EUR",
-//					},
-//				},
-//			},
-//		)
-//
-//		assert.ErrorContains(
-//			t,
-//			err,
-//			"has currency USD, expected EUR",
-//		)
-//		assert.Nil(t, resp)
-//	})
-//}
+func TestCreateReconciliation(t *testing.T) {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
+			assert.Len(t, i, 1)
+
+			return nil
+		})
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
+	})
+
+	accounts := []*database.Account{
+		{
+			Name:     "Private [UAH]",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
+			return &gomoneypbv1.Transaction{
+				Id: transaction.ID,
+			}
+		})
+
+	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
+	resp, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
+		TransactionDate: timestamppb.New(expenseDate),
+		Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
+			Reconciliation: &transactionsv1.Reconciliation{
+				DestinationAmount:    "556",
+				DestinationCurrency:  accounts[0].Currency,
+				DestinationAccountId: accounts[0].ID,
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	var createdTx *database.Transaction
+	assert.NoError(t, gormDB.Where("id = ?", resp.Transaction.Id).Find(&createdTx).Error)
+
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx.TransactionType)
+	assert.EqualValues(t, 556, createdTx.DestinationAmount.Decimal.IntPart())
+	assert.EqualValues(t, accounts[0].Currency, createdTx.DestinationCurrency)
+	assert.EqualValues(t, accounts[0].ID, *createdTx.DestinationAccountID)
+}
+
+func TestCreateBulk(t *testing.T) {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
+			assert.Len(t, i, 2)
+
+			return nil
+		})
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
+	})
+
+	accounts := []*database.Account{
+		{
+			Name:     "Private [UAH]",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
+			return &gomoneypbv1.Transaction{
+				Id: transaction.ID,
+			}
+		}).Times(2)
+
+	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
+	resp, err := srv.CreateBulk(context.TODO(), []*transactionsv1.CreateTransactionRequest{
+		{
+			TransactionDate: timestamppb.New(expenseDate),
+			Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
+				Reconciliation: &transactionsv1.Reconciliation{
+					DestinationAmount:    "556",
+					DestinationCurrency:  accounts[0].Currency,
+					DestinationAccountId: accounts[0].ID,
+				},
+			},
+		},
+		{
+			TransactionDate: timestamppb.New(expenseDate),
+			Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
+				Reconciliation: &transactionsv1.Reconciliation{
+					DestinationAmount:    "777",
+					DestinationCurrency:  accounts[0].Currency,
+					DestinationAccountId: accounts[0].ID,
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	assert.Len(t, resp, 2)
+
+	var ids []int64
+	for _, r := range resp {
+		assert.NotNil(t, r.Transaction)
+		ids = append(ids, r.Transaction.Id)
+	}
+
+	var createdTx []*database.Transaction
+	assert.NoError(t, gormDB.Where("id in ?", ids).Order("id asc").Find(&createdTx).Error)
+	assert.Len(t, createdTx, 2)
+
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx[0].TransactionType)
+	assert.EqualValues(t, 556, createdTx[0].DestinationAmount.Decimal.IntPart())
+	assert.EqualValues(t, accounts[0].Currency, createdTx[0].DestinationCurrency)
+	assert.EqualValues(t, accounts[0].ID, *createdTx[0].DestinationAccountID)
+
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx[1].TransactionType)
+	assert.EqualValues(t, 777, createdTx[1].DestinationAmount.Decimal.IntPart())
+	assert.EqualValues(t, accounts[0].Currency, createdTx[1].DestinationCurrency)
+	assert.EqualValues(t, accounts[0].ID, *createdTx[1].DestinationAccountID)
+}

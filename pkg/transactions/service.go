@@ -241,11 +241,8 @@ func (s *Service) CreateBulkInternal(
 	}
 
 	var finalRes []*transactionsv1.CreateTransactionResponse
-	var impactedTxIds []int64
 
 	for _, createdTx := range created {
-		impactedTxIds = append(impactedTxIds, createdTx.ID)
-
 		finalRes = append(finalRes, &transactionsv1.CreateTransactionResponse{
 			Transaction: s.cfg.MapperSvc.MapTransaction(ctx, createdTx),
 		})
