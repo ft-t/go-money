@@ -24,6 +24,7 @@ require (
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.10.0
+	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.39.0
 	golang.org/x/net v0.41.0
 	google.golang.org/protobuf v1.36.6
