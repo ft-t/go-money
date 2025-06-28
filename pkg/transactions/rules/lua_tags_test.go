@@ -1,43 +1,16 @@
-package rules
+package rules_test
 
 import (
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestLuaInterpreter_Run(t *testing.T) {
-	interpreter := &LuaInterpreter{}
-
-	script := `
-        print(tx:destinationAmount())
-		if tx:destinationAmount() == nil then
-			tx:destinationAmount(123.45)
-		end
-        print(tx:destinationAmount())
-
-		tx:destinationAmount(nil)
-		print(tx:destinationAmount())
-
-		tx:addTag(1)
-	`
-
-	tx := &database.Transaction{
-		Title: "abcd",
-	}
-
-	result, err := interpreter.Run(context.TODO(), script, tx)
-	if err != nil {
-		t.Fatalf("Failed to run Lua script: %v", err)
-	}
-
-	assert.True(t, result)
-}
-
 func TestTagsApi(t *testing.T) {
 	t.Run("add tags", func(t *testing.T) {
-		interpreter := &LuaInterpreter{}
+		interpreter := &rules.LuaInterpreter{}
 
 		script := `
 		tx:addTag(1)
@@ -60,7 +33,7 @@ func TestTagsApi(t *testing.T) {
 	})
 
 	t.Run("remove tags", func(t *testing.T) {
-		interpreter := &LuaInterpreter{}
+		interpreter := &rules.LuaInterpreter{}
 
 		script := `
 		tx:addTag(1)
@@ -83,7 +56,7 @@ func TestTagsApi(t *testing.T) {
 	})
 
 	t.Run("remove all tags", func(t *testing.T) {
-		interpreter := &LuaInterpreter{}
+		interpreter := &rules.LuaInterpreter{}
 
 		script := `
 		tx:addTag(1)
@@ -104,7 +77,7 @@ func TestTagsApi(t *testing.T) {
 	})
 
 	t.Run("get tags and remove single tag", func(t *testing.T) {
-		interpreter := &LuaInterpreter{}
+		interpreter := &rules.LuaInterpreter{}
 
 		script := `
 		tx:addTag(1)
@@ -130,7 +103,7 @@ func TestTagsApi(t *testing.T) {
 	})
 
 	t.Run("remove tag 5 if it exists", func(t *testing.T) {
-		interpreter := &LuaInterpreter{}
+		interpreter := &rules.LuaInterpreter{}
 
 		script := `
 		local tags = tx:getTags()
@@ -153,7 +126,7 @@ func TestTagsApi(t *testing.T) {
 	})
 
 	t.Run("missing tag ID (handled in lua)", func(t *testing.T) {
-		interpreter := &LuaInterpreter{}
+		interpreter := &rules.LuaInterpreter{}
 
 		script := `
 		function errHandler( err )
@@ -175,8 +148,8 @@ func TestTagsApi(t *testing.T) {
 		assert.Equal(t, 0, len(tx.TagIDs))
 	})
 
-	t.Run("missing tag ID", func(t *testing.T) {
-		interpreter := &LuaInterpreter{}
+	t.Run("missing tag in add tag ID", func(t *testing.T) {
+		interpreter := &rules.LuaInterpreter{}
 
 		script := `
 		tx:addTag()
@@ -188,6 +161,24 @@ func TestTagsApi(t *testing.T) {
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.Error(t, err, "bad argument #1 to addTag (tag ID expected)")
+		assert.False(t, result)
+
+		assert.Equal(t, 0, len(tx.TagIDs))
+	})
+
+	t.Run("missing tag in remove tag ID", func(t *testing.T) {
+		interpreter := &rules.LuaInterpreter{}
+
+		script := `
+		tx:removeTag()
+	`
+
+		tx := &database.Transaction{
+			Title: "abcd",
+		}
+
+		result, err := interpreter.Run(context.TODO(), script, tx)
+		assert.Error(t, err, "bad argument #1 to removeTag (tag ID expected)")
 		assert.False(t, result)
 
 		assert.Equal(t, 0, len(tx.TagIDs))

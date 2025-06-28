@@ -9,6 +9,10 @@ import (
 type LuaInterpreter struct {
 }
 
+func NewLuaInterpreter() *LuaInterpreter {
+	return &LuaInterpreter{}
+}
+
 const luaTypeName = "transactionType"
 
 func registerType(state *lua.LState, wrapped *LuaTransactionWrapper) {
@@ -16,9 +20,14 @@ func registerType(state *lua.LState, wrapped *LuaTransactionWrapper) {
 
 	state.SetGlobal(luaTypeName, mt)
 	state.SetField(mt, "__index", state.SetFuncs(state.NewTable(), map[string]lua.LGFunction{
-		"title":                   wrapped.Title,
-		"destinationAmount":       wrapped.DestinationAmount,
-		"sourceAmount":            wrapped.SourceAmount,
+		"title": wrapped.Title,
+
+		"destinationAmount":                     wrapped.DestinationAmount,
+		"getDestinationAmountWithDecimalPlaces": wrapped.GetDestinationAmountWithDecimalPlaces,
+		
+		"sourceAmount":                     wrapped.SourceAmount,
+		"getSourceAmountWithDecimalPlaces": wrapped.GetSourceAmountWithDecimalPlaces,
+
 		"sourceCurrency":          wrapped.SourceCurrency,
 		"destinationCurrency":     wrapped.DestinationCurrency,
 		"sourceAccountID":         wrapped.SourceAccountID,
@@ -45,7 +54,7 @@ func (l *LuaInterpreter) Run(
 	_ context.Context,
 	script string,
 	tx *database.Transaction,
-) (lua.LValue, error) {
+) (bool, error) {
 	state := lua.NewState()
 	defer state.Close()
 
@@ -56,8 +65,8 @@ func (l *LuaInterpreter) Run(
 	registerType(state, wrapped)
 
 	if err := state.DoString(script); err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return nil, nil
+	return wrapped.modified, nil
 }
