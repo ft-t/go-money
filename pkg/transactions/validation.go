@@ -283,5 +283,4 @@ func (s *Service) validateAmount(
 	}
 
 	return nil
-
 }

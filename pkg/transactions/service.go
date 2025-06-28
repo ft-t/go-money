@@ -233,9 +233,15 @@ func (s *Service) CreateBulkInternal(
 		created = append(created, newTx)
 	}
 
-	created, err := s.cfg.RuleSvc.ProcessTransactions(ctx, created) // run rule engine
+	created, err := s.cfg.RuleSvc.ProcessTransactions(ctx, created) // run rule engine can change transactions
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to process transactions with rules")
+	}
+
+	for _, createdTx := range created {
+		if err = s.ValidateTransaction(ctx, tx, createdTx); err != nil {
+			return nil, errors.Wrapf(err, "failed to validate transaction")
+		}
 	}
 
 	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, created); err != nil {
