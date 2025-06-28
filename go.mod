@@ -7,6 +7,7 @@ require (
 	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.6-20250625191316-3783cd08df06.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
+	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
 	github.com/cockroachdb/errors v1.12.0
 	github.com/go-gormigrate/gormigrate/v2 v2.1.4
 	github.com/golang-jwt/jwt/v5 v5.2.2
