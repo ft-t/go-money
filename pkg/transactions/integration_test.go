@@ -32,10 +32,18 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 			return nil
 		})
 
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 1)
+			return i, nil
+		})
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
+		RuleSvc:           ruleEngine,
 	})
 
 	accounts := []*database.Account{
@@ -75,6 +83,13 @@ func TestBasicCalc(t *testing.T) {
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		Return(&gomoneypbv1.Transaction{}).AnyTimes()
 
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 1)
+			return i, nil
+		}).Times(6)
+
 	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
 	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
@@ -87,6 +102,7 @@ func TestBasicCalc(t *testing.T) {
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
+		RuleSvc:           ruleEngine,
 	})
 
 	accounts := []*database.Account{
