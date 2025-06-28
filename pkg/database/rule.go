@@ -5,16 +5,17 @@ import (
 	"time"
 )
 
-type RuleInterpreter string
+type RuleInterpreter int32
 
 type Rule struct {
-	ID          int32
-	Script      string
-	Interpreter RuleInterpreter
-	SortOrder   int32
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Enabled     bool
-	IsFinalRule bool
-	DeletedAt   gorm.DeletedAt
+	ID              int32
+	Script          string
+	InterpreterType RuleInterpreter
+	SortOrder       int32
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Enabled         bool
+	IsFinalRule     bool
+	DeletedAt       gorm.DeletedAt
+	GroupName       string
 }

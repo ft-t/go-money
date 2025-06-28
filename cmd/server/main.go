@@ -14,6 +14,7 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -94,12 +95,14 @@ func main() {
 	}
 
 	baseAmountSvc := transactions.NewBaseAmountService()
+	ruleEngine := rules.NewService(rules.NewLuaInterpreter())
 
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             transactions.NewStatService(),
 		MapperSvc:            mapper,
 		CurrencyConverterSvc: currencyConverter,
 		BaseAmountService:    baseAmountSvc,
+		RuleSvc:              ruleEngine,
 	})
 
 	tagSvc := tags.NewService(mapper)

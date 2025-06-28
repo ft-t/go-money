@@ -27,6 +27,7 @@ type ServiceConfig struct {
 	MapperSvc            MapperSvc
 	CurrencyConverterSvc CurrencyConverterSvc
 	BaseAmountService    BaseAmountSvc
+	RuleSvc              RuleSvc
 }
 
 func NewService(
@@ -232,11 +233,16 @@ func (s *Service) CreateBulkInternal(
 		created = append(created, newTx)
 	}
 
-	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, created); err != nil {
+	created, err := s.cfg.RuleSvc.ProcessTransactions(ctx, created) // run rule engine
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to process transactions with rules")
+	}
+
+	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, created); err != nil {
 		return nil, err
 	}
 
-	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+	if err = s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
 		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
 	}
 

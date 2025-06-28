@@ -322,9 +322,17 @@ func TestCreateReconciliation(t *testing.T) {
 			return nil
 		})
 
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 1)
+			return i, nil
+		})
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
+		RuleSvc:           ruleEngine,
 		BaseAmountService: baseCurrency,
 	})
 
@@ -382,10 +390,18 @@ func TestCreateBulk(t *testing.T) {
 			return nil
 		})
 
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 2)
+			return i, nil
+		})
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
+		RuleSvc:           ruleEngine,
 	})
 
 	accounts := []*database.Account{

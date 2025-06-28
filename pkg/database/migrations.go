@@ -205,5 +205,26 @@ alter table transactions
 `)
 			},
 		},
+		{
+			ID: "2025-06-28-AddRules",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table if not exists rules
+(
+    id               serial,
+    script           text      not null,
+    interpreter_type integer   not null,
+    sort_order       integer   not null,
+    created_at       timestamp not null,
+    updated_at       timestamp not null,
+    enabled          bool      not null,
+    is_final_rule    bool      not null,
+    deleted_at       timestamp,
+    group_name       text      not null
+);
+`,
+				)
+			},
+		},
 	}
 }

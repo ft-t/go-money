@@ -5,6 +5,8 @@ import (
 	"github.com/barkimedes/go-deepcopy"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/samber/lo"
+	"sort"
 )
 
 type Service struct {
@@ -41,7 +43,7 @@ func (s *Service) ProcessTransactions(
 
 	var processedTxs []*database.Transaction
 
-	rules, err := s.getRules()
+	rules, err := s.getRules(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get rules")
 	}
@@ -75,6 +77,9 @@ func (s *Service) executeInternal(
 	for _, ruleGroup := range ruleGroups {
 		for _, rule := range ruleGroup.Rules {
 			clonedTxForRule, err := s.cloneTx(tx) // clone of cloned initial transaction for each rule
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to clone transaction for rule execution")
+			}
 
 			result, err := s.interpreter.Run(ctx, rule.Script, clonedTxForRule)
 			if err != nil { // errors should be handled in lua scripts
@@ -94,19 +99,42 @@ func (s *Service) executeInternal(
 	return tx, nil
 }
 
-func (s *Service) getRules() ([]*RuleGroup, error) {
-	// This function should return the rules from the database or any other source.
-	// For now, we return an empty slice.
-	return []*RuleGroup{
-		{
-			Rules: []*database.Rule{
-				{
-					Script: "somescript",
-				},
-				{
-					Script: "somescript2",
-				},
-			},
-		},
-	}, nil
+func (s *Service) getRules(
+	ctx context.Context,
+) ([]*RuleGroup, error) {
+	var rules []*database.Rule
+
+	if err := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly)).
+		Order("sort_order asc").
+		Find(&rules).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to get rules from database")
+	}
+
+	ruleGroups := map[string]*RuleGroup{}
+
+	for _, rule := range rules {
+		if _, exists := ruleGroups[rule.GroupName]; !exists {
+			ruleGroups[rule.GroupName] = &RuleGroup{
+				Name: rule.GroupName,
+			}
+		}
+
+		ruleGroups[rule.GroupName].Rules = append(ruleGroups[rule.GroupName].Rules, rule)
+	}
+
+	groupNames := lo.Keys(ruleGroups)
+	sort.Strings(groupNames) // ordering
+
+	var orderedRuleGroups []*RuleGroup
+	for _, key := range groupNames {
+		ruleGroup := ruleGroups[key]
+
+		sort.Slice(ruleGroup.Rules, func(i, j int) bool {
+			return ruleGroup.Rules[i].SortOrder < ruleGroup.Rules[j].SortOrder
+		})
+
+		orderedRuleGroups = append(orderedRuleGroups, ruleGroup)
+	}
+
+	return orderedRuleGroups, nil
 }

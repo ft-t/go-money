@@ -43,3 +43,10 @@ type BaseAmountSvc interface {
 		txs []*database.Transaction,
 	) error
 }
+
+type RuleSvc interface {
+	ProcessTransactions(
+		ctx context.Context,
+		inputTxs []*database.Transaction,
+	) ([]*database.Transaction, error)
+}
