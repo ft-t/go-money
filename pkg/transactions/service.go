@@ -39,6 +39,19 @@ func NewService(
 	}
 }
 
+func (s *Service) GetTransactionByIDs(ctx context.Context, ids []int64) ([]*database.Transaction, error) {
+	var transactions []*database.Transaction
+
+	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
+		Where("id IN ?", ids).
+		Find(&transactions).
+		Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return transactions, nil
+}
+
 func (s *Service) List(
 	ctx context.Context,
 	req *transactionsv1.ListTransactionsRequest,

@@ -14,16 +14,18 @@ import (
 	"testing"
 )
 
-func newRulesApiWithMock(t *testing.T) (*handlers.RulesApi, *MockRulesSvc) {
+func newRulesApiWithMock(t *testing.T) (*handlers.RulesApi, *MockRulesSvc, *MockDryRunSvc) {
 	ctrl := gomock.NewController(t)
 	ruleSvc := NewMockRulesSvc(ctrl)
+	dryRunSvc := NewMockDryRunSvc(ctrl)
+
 	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
-	api := handlers.NewRulesApi(grpc, ruleSvc)
-	return api, ruleSvc
+	api := handlers.NewRulesApi(grpc, ruleSvc, dryRunSvc)
+	return api, ruleSvc, dryRunSvc
 }
 
 func TestRulesApi_ListRules(t *testing.T) {
-	api, ruleSvc := newRulesApiWithMock(t)
+	api, ruleSvc, _ := newRulesApiWithMock(t)
 
 	t.Run("success", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
@@ -53,7 +55,7 @@ func TestRulesApi_ListRules(t *testing.T) {
 }
 
 func TestRulesApi_CreateRule(t *testing.T) {
-	api, ruleSvc := newRulesApiWithMock(t)
+	api, ruleSvc, _ := newRulesApiWithMock(t)
 
 	t.Run("success", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
@@ -83,7 +85,7 @@ func TestRulesApi_CreateRule(t *testing.T) {
 }
 
 func TestRulesApi_UpdateRule(t *testing.T) {
-	api, ruleSvc := newRulesApiWithMock(t)
+	api, ruleSvc, _ := newRulesApiWithMock(t)
 
 	t.Run("success", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
@@ -113,7 +115,7 @@ func TestRulesApi_UpdateRule(t *testing.T) {
 }
 
 func TestRulesApi_DeleteRule(t *testing.T) {
-	api, ruleSvc := newRulesApiWithMock(t)
+	api, ruleSvc, _ := newRulesApiWithMock(t)
 
 	t.Run("success", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
@@ -143,13 +145,13 @@ func TestRulesApi_DeleteRule(t *testing.T) {
 }
 
 func TestRulesApi_DryRunRule(t *testing.T) {
-	api, ruleSvc := newRulesApiWithMock(t)
+	api, _, dryRunSvc := newRulesApiWithMock(t)
 
 	t.Run("success", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
 		req := connect.NewRequest(&rulesv1.DryRunRuleRequest{})
 		respMsg := &rulesv1.DryRunRuleResponse{}
-		ruleSvc.EXPECT().DryRunRule(gomock.Any(), req.Msg).Return(respMsg, nil)
+		dryRunSvc.EXPECT().DryRunRule(gomock.Any(), req.Msg).Return(respMsg, nil)
 		resp, err := api.DryRunRule(ctx, req)
 		assert.NoError(t, err)
 		assert.Equal(t, respMsg, resp.Msg)
@@ -158,7 +160,7 @@ func TestRulesApi_DryRunRule(t *testing.T) {
 	t.Run("service error", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
 		req := connect.NewRequest(&rulesv1.DryRunRuleRequest{})
-		ruleSvc.EXPECT().DryRunRule(gomock.Any(), req.Msg).Return(nil, assert.AnError)
+		dryRunSvc.EXPECT().DryRunRule(gomock.Any(), req.Msg).Return(nil, assert.AnError)
 		resp, err := api.DryRunRule(ctx, req)
 		assert.Error(t, err)
 		assert.Nil(t, resp)
