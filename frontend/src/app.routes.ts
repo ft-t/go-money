@@ -17,6 +17,7 @@ import { AccountsListComponent } from './app/pages/accounts/accounts-list.compon
 import { TagsUpsertComponent } from './app/pages/tags/tags-upsert.component';
 import { TagsDetailComponent } from './app/pages/tags/tags-detail.component';
 import { RuleListComponent } from './app/pages/rules/rule-list.component';
+import { RulesUpsertComponent } from './app/pages/rules/rules-upsert.component';
 
 export const appRoutes: Routes = [
     {
@@ -162,7 +163,7 @@ export const appRoutes: Routes = [
             },
             {
                 path: 'rules/edit/:id',
-                component: TagsUpsertComponent,
+                component: RulesUpsertComponent,
                 data: {}
             },
         ]

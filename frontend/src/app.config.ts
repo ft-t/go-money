@@ -19,9 +19,11 @@ import { CookieService } from './app/services/cookie.service';
 import { CookieInstances } from './app/objects/cookie-instances';
 import { provideHighlightOptions } from 'ngx-highlightjs';
 import { BusService } from './app/core/services/bus.service';
+import { provideMonacoEditor } from 'ngx-monaco-editor-v2'
 
 export const appConfig: ApplicationConfig = {
     providers: [
+        provideMonacoEditor(),
         provideRouter(
             appRoutes,
             withInMemoryScrolling({

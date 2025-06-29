@@ -25,12 +25,17 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
-            ],
+              "assets": [
+                  {
+                      "glob": "**/*",
+                      "input": "public"
+                  },
+                  {
+                      "glob": "**/*",
+                      "input": "node_modules/monaco-editor",
+                      "output": "/assets/monaco/"
+                  }
+              ],
             "styles": [
                 "src/styles.scss",
                 "./node_modules/quill/dist/quill.core.css",
