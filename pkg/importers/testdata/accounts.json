@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Account UAH",
+    "currency": "UAH",
+    "type": 1,
+    "note": "",
+    "extra": {},
+    "iban": "",
+    "account_number": "4"
+  },
+  {
+    "name": "Account PLN",
+    "currency": "PLN",
+    "type": 1,
+    "note": null,
+    "extra": {},
+    "iban": null,
+    "account_number": null
+  },
+  {
+    "name": "Account USD",
+    "currency": "USD",
+    "type": 1,
+    "note": null,
+    "extra": {},
+    "iban": "",
+    "account_number": null
+  }
+]

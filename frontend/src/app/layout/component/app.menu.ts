@@ -92,6 +92,16 @@ export class AppMenu {
             ]
         },
         {
+            label: 'Automation',
+            items: [
+                {
+                    label: 'Rules',
+                    icon: 'pi pi-fw pi-file-import',
+                    routerLink: ['/rules']
+                },
+            ]
+        },
+        {
             label: 'Admin Section',
             items: [
                 {
@@ -99,21 +109,21 @@ export class AppMenu {
                     icon: 'pi pi-fw pi-tag',
                     routerLink: ['/tags']
                 },
-                {
-                    label: 'Currencies',
-                    icon: 'pi pi-fw pi-table',
-                    routerLink: ['/accounts']
-                },
-                {
-                    label: 'Users',
-                    icon: 'pi pi-fw pi-table',
-                    routerLink: ['/accounts']
-                },
-                {
-                    label: 'Debug',
-                    icon: 'pi pi-fw pi-table',
-                    routerLink: ['/accounts']
-                }
+                // {
+                //     label: 'Currencies',
+                //     icon: 'pi pi-fw pi-table',
+                //     routerLink: ['/accounts']
+                // },
+                // {
+                //     label: 'Users',
+                //     icon: 'pi pi-fw pi-table',
+                //     routerLink: ['/accounts']
+                // },
+                // {
+                //     label: 'Debug',
+                //     icon: 'pi pi-fw pi-table',
+                //     routerLink: ['/accounts']
+                // }
             ]
         }
         // {

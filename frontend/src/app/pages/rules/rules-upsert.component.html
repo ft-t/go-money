@@ -1,0 +1,98 @@
+<script src="rules-upsert.component.ts"></script>
+<p-fluid>
+    <div class="flex flex-col gap-4">
+        <div class="flex flex-row">
+            <div class="flex flex-col md:flex-row gap-8 flex-grow">
+                <div class="md:w-1/2">
+                    <div class="card flex flex-col gap-4">
+                        <div class="font-semibold text-xl">Base fields</div>
+                        <div class="flex flex-col gap-2" *ngIf="rule.id">
+                            <label for="accountName">ID</label>
+                            <input pInputText id="accountName" type="number" [(ngModel)]="rule.id" disabled />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="accountName">Name</label>
+                            <input pInputText id="accountName" type="text" [(ngModel)]="rule.title" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="accountName">Group</label>
+                            <input pInputText id="accountName" type="text" [(ngModel)]="rule.groupName" />
+                        </div>
+                    </div>
+                </div>
+                <div class="md:w-1/2">
+                    <div class="card flex flex-col gap-4 ">
+                        <div class="font-semibold text-xl">Configuration</div>
+                        <div class="flex flex-col gap-2">
+                            <label for="accountName">Is Enabled</label>
+                            <p-checkbox [(ngModel)]="rule.enabled" [binary]="true" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="accountName">Is Final Rule</label>
+                            <p-checkbox [(ngModel)]="rule.isFinalRule" [binary]="true" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex flex-row gap-2">
+            <div class="w-2/4">
+                <div class="card flex flex-col gap-4">
+                    <div class="font-semibold text-xl">Script (lua)</div>
+
+                    <ngx-monaco-editor class="min-h-96" (onInit)="onEditorInit($event)" [options]="editorOptions"
+                                       [(ngModel)]="rule.script"></ngx-monaco-editor>
+
+                </div>
+            </div>
+            <div class="w-2/4">
+                <div class="card flex flex-col gap-4 h-full">
+                    <div class="font-semibold text-xl">Documentation</div>
+                    <textarea class="h-full" [ngModel]="helpContent" pTextarea readonly></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="flex flex-row gap-4">
+            <div class="flex flex-col card gap-4 w-full">
+                <div class="font-semibold text-xl">Dry run</div>
+                <div class="flex flex-row gap-4">
+                    <div class="flex flex-col gap-2 w-1/2">
+                        <div class="flex flex-row gap-2">
+                            <div class="flex flex-col w-full gap-2">
+                                <label for="accountName">Transaction ID</label>
+                                <input  pInputText id="accountName" type="number" [(ngModel)]="dryRunTransactionId"/>
+                            </div>
+                            <div class="flex flex-col w-full gap-2">
+                                <label for="accountName">Fetch test transaction</label>
+                                <p-button severity="info" (onClick)="ensureTxSet()">Fetch last transaction</p-button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 w-1/2">
+
+                        <label for="accountName">Dry run</label>
+                        <p-button label="Test script" (onClick)="dryRun()" />
+                    </div>
+                </div>
+                <div class="flex flex-row">
+                    <div class="flex flex-col gap-4 w-full">
+                        <div class="font-semibold text-xl">Diff ( Original -> Modified )</div>
+
+                        <ngx-monaco-diff-editor (onInit)="onDiffEditorInit($event)" [options]="diffOptions" [originalModel]="originalModel" [modifiedModel]="modifiedModel"></ngx-monaco-diff-editor>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="flex mt-8">
+        <div class="card flex flex-wrap gap-6 w-full justify-end">
+            <p-button *ngIf="!rule.id" label="Create" [fluid]="false" (click)="create()"></p-button>
+            <p-button *ngIf="rule.id" label="Update" [fluid]="false" (click)="update()"></p-button>
+        </div>
+    </div>
+
+    <p-toast />
+</p-fluid>

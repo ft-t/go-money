@@ -18,13 +18,18 @@ import { EnumService, AccountTypeEnum } from '../../services/enum.service';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
-import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
-import { create } from '@bufbuild/protobuf';
 import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
+import { RulesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
+import { Rule } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
+
+class RuleGroup {
+    title: string = 'Default';
+    rules: Rule[] = [];
+}
 
 @Component({
-    selector: 'app-tags-list',
-    templateUrl: 'tags-list.component.html',
+    selector: 'app-rule-list',
+    templateUrl: 'rule-list.component.html',
     imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
     styles: `
         :host ::ng-deep .tagListingTable .p-datatable-header {
@@ -32,13 +37,15 @@ import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.
         }
     `
 })
-export class TagsListComponent implements OnInit {
+export class RuleListComponent implements OnInit {
     statuses: any[] = [];
 
     loading: boolean = false;
 
-    public tags: ListTagsResponse_TagItem[] = [];
-    private tagsService;
+    public rules: Rule[] = [];
+    public ruleGroups: RuleGroup[] = [];
+
+    private ruleService;
 
     public filters: { [s: string]: FilterMetadata } = {};
 
@@ -47,30 +54,40 @@ export class TagsListComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        public router: Router,
-        route: ActivatedRoute
+        public router: Router
     ) {
-        this.tagsService = createClient(TagsService, this.transport);
-
-        if (route.snapshot.data['filters']) {
-            for (let ob of route.snapshot.data['filters']) {
-                for (let [key, value] of Object.entries(ob)) {
-                    this.filters[key] = value as FilterMetadata;
-                }
-            }
-        }
+        this.ruleService = createClient(RulesService, this.transport);
     }
 
-    getAccountUrl(account: ListTagsResponse_TagItem): string {
-        return this.router.createUrlTree(['/', 'tags', account.tag!.id.toString()]).toString();
+    getAccountUrl(rule: Rule): string {
+        return this.router.createUrlTree(['/', 'rules', rule!.id.toString()]).toString();
     }
 
     async ngOnInit() {
         this.loading = true;
 
         try {
-            let resp = await this.tagsService.listTags({});
-            this.tags = resp.tags || [];
+            let resp = await this.ruleService.listRules({});
+            this.rules = resp.rules || [];
+
+            let ruleMap: { [key: string]: Rule[] } = {};
+            for (const rule of this.rules) {
+                const groupName = rule.groupName || 'Default';
+                if (!ruleMap[groupName]) {
+                    ruleMap[groupName] = [];
+                }
+
+                ruleMap[groupName].push(rule);
+            }
+
+            this.ruleGroups = Object.keys(ruleMap).map((groupName) => {
+                return {
+                    title: groupName,
+                    rules: ruleMap[groupName]
+                };
+            });
+
+            console.log(this.ruleGroups)
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {

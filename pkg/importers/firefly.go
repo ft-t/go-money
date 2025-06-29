@@ -8,7 +8,6 @@ import (
 	"encoding/csv"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/samber/lo"
 	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
@@ -19,11 +18,11 @@ import (
 )
 
 type FireflyImporter struct {
-	transactionService *transactions.Service
+	transactionService TransactionSvc
 }
 
 func NewFireflyImporter(
-	txSvc *transactions.Service,
+	txSvc TransactionSvc,
 ) *FireflyImporter {
 	return &FireflyImporter{
 		transactionService: txSvc,
@@ -58,8 +57,6 @@ func (f *FireflyImporter) Import(
 
 	records = records[1:] // Skip header row
 	mutable.Reverse(records)
-
-	//var allTransactions []*transactionsv1.CreateTransactionRequest
 
 	newTxs := map[string]*transactionsv1.CreateTransactionRequest{} // key is originalId
 	accountMap := map[string]*database.Account{}

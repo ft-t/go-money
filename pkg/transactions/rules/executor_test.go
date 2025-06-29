@@ -8,6 +8,7 @@ import (
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/golang/mock/gomock"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"os"
@@ -45,9 +46,11 @@ func TestExecuteRule(t *testing.T) {
 		srv := rules.NewExecutor(interpreter)
 
 		tx := &database.Transaction{
-			ID:     22,
-			Title:  "abcd",
-			TagIDs: []int32{1, 2},
+			ID:                22,
+			Title:             "abcd",
+			TagIDs:            []int32{1, 2},
+			SourceAmount:      decimal.NewNullDecimal(decimal.NewFromInt(55)),
+			DestinationAmount: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}
 
 		var clonedTx1 *database.Transaction
