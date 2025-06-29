@@ -129,3 +129,41 @@ func TestCreateUserAndLogin(t *testing.T) {
 		assert.Nil(t, lResp)
 	})
 }
+
+func TestMissingDataOnRegister(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	t.Run("no login", func(t *testing.T) {
+		srv := users.NewService(&users.ServiceConfig{})
+
+		resp, err := srv.Create(context.TODO(), &usersv1.CreateRequest{})
+		assert.Nil(t, resp)
+		assert.ErrorContains(t, err, "login is required")
+	})
+
+	t.Run("no password", func(t *testing.T) {
+		srv := users.NewService(&users.ServiceConfig{})
+
+		resp, err := srv.Create(context.TODO(), &usersv1.CreateRequest{
+			Login: "some-logic",
+		})
+
+		assert.Nil(t, resp)
+		assert.ErrorContains(t, err, "password is required")
+	})
+}
+
+func TestFailOnRegistration(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	srv := users.NewService(&users.ServiceConfig{})
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
+
+	resp, err := srv.Create(ctx, &usersv1.CreateRequest{
+		Login: "some-logic",
+	})
+	assert.Nil(t, resp)
+	assert.ErrorContains(t, err, "context canceled")
+}
