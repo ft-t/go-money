@@ -243,7 +243,12 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             if (tags && tags.value && Array.isArray(tags.value)) {
                 req.tagIds = tags.value.map((id) => parseInt(id as string));
             }
+
+            // let idFilter = event.filters['id'] as FilterMetadata
+            // if(idFilter)
+            //     req.tagIds
         }
+
 
         if (event.multiSortMeta) {
             for (let sortData of event.multiSortMeta) {

@@ -166,6 +166,11 @@ export const appRoutes: Routes = [
                 component: RulesUpsertComponent,
                 data: {}
             },
+            {
+                path: 'rules/new',
+                component: RulesUpsertComponent,
+                data: {}
+            },
         ]
     },
 

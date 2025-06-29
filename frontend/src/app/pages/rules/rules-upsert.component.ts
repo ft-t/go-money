@@ -5,10 +5,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { MessageService } from 'primeng/api';
-import { Tag, TagSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { create } from '@bufbuild/protobuf';
 import { ErrorHelper } from '../../helpers/error.helper';
-import { CreateTagRequestSchema, TagsService, UpdateTagRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIf } from '@angular/common';
 import { Button } from 'primeng/button';
@@ -16,41 +14,25 @@ import { Toast } from 'primeng/toast';
 import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { Rule, RuleSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
-import {
-    CreateRuleRequestSchema,
-    DryRunRuleRequestSchema,
-    RulesService,
-    UpdateRuleRequestSchema
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
+import { CreateRuleRequestSchema, DryRunRuleRequestSchema, RulesService, UpdateRuleRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
 import { Checkbox } from 'primeng/checkbox';
 import { DiffEditorComponent, DiffEditorModel, EditorComponent } from 'ngx-monaco-editor-v2';
 import { editor } from 'monaco-editor';
 import IStandaloneCodeEditor = editor.IStandaloneCodeEditor;
 import { TextareaModule } from 'primeng/textarea';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 
 @Component({
     selector: 'app-rules-upsert',
-    imports: [
-        InputNumberModule,
-        TextareaModule,
-        Fluid,
-        InputText,
-        ReactiveFormsModule,
-        FormsModule,
-        NgIf,
-        Button,
-        Toast,
-        ColorPickerModule,
-        Checkbox,
-        EditorComponent,
-        DiffEditorComponent
-    ],
+    imports: [InputNumberModule, TextareaModule, Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Checkbox, EditorComponent, DiffEditorComponent],
     templateUrl: './rules-upsert.component.html'
 })
 export class RulesUpsertComponent implements OnInit {
     public rule: Rule = create(RuleSchema, {});
     private rulesService;
+    private transactionService;
+
     editorOptions = { theme: 'vs-dark', language: 'lua' };
     diffOptions = {
         theme: 'vs-dark'
@@ -66,7 +48,7 @@ export class RulesUpsertComponent implements OnInit {
     };
 
     public helpContent = this.generateSimpleApiHelp(this.getSuggestions());
-    public dryRunTransactionId: number = 13442;
+    public dryRunTransactionId: number = 0;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -75,6 +57,7 @@ export class RulesUpsertComponent implements OnInit {
         private router: Router
     ) {
         this.rulesService = createClient(RulesService, this.transport);
+        this.transactionService = createClient(TransactionsService, this.transport);
 
         try {
             this.rule.id = +routeSnapshot.snapshot.params['id'];
@@ -109,6 +92,8 @@ export class RulesUpsertComponent implements OnInit {
     }
 
     async dryRun() {
+        await this.ensureTxSet();
+
         try {
             let response = await this.rulesService.dryRunRule(
                 create(DryRunRuleRequestSchema, {
@@ -117,20 +102,18 @@ export class RulesUpsertComponent implements OnInit {
                 })
             );
 
-            this.originalTextModel!.setValue(
-                JSON.stringify(response.before, null, 2)
-            );
+            this.originalTextModel!.setValue(JSON.stringify(response.before, null, 2));
 
-            this.modifiedTextModel!.setValue(
-                JSON.stringify(response.after, null, 2)
-            );
+            this.modifiedTextModel!.setValue(JSON.stringify(response.after, null, 2));
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-            return;
+            throw e;
         }
     }
 
     async update() {
+        await this.dryRun();
+
         try {
             let response = await this.rulesService.updateRule(
                 create(UpdateRuleRequestSchema, {
@@ -147,6 +130,7 @@ export class RulesUpsertComponent implements OnInit {
     }
 
     async create() {
+        await this.dryRun();
         try {
             let response = await this.rulesService.createRule(
                 create(CreateRuleRequestSchema, {
@@ -178,6 +162,29 @@ export class RulesUpsertComponent implements OnInit {
         return lines.join('\n');
     }
 
+    async ensureTxSet() {
+        if (this.dryRunTransactionId) return;
+
+        try {
+            let txs = await this.transactionService.listTransactions({
+                limit: 1
+            });
+
+            if (txs.transactions.length == 0) {
+                this.messageService.add({
+                    severity: 'error',
+                    detail: 'No transactions found for dry run. Please create at least 1 transaction'
+                });
+                return;
+            }
+
+            this.dryRunTransactionId = Number(txs.transactions[0].id);
+        } catch (e: any) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            return;
+        }
+    }
+
     getSuggestions() {
         let monaco = (window as any).monaco;
 
@@ -186,7 +193,7 @@ export class RulesUpsertComponent implements OnInit {
 
         if (monaco) {
             kind = monaco.languages.CompletionItemKind.Field;
-            snippet = snippet;
+            snippet = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
         }
 
         let suggestions = [];
