@@ -5,7 +5,6 @@ import (
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
-	"gorm.io/gorm"
 	"time"
 )
 
@@ -24,7 +23,13 @@ func NewService(
 func (s *Service) DeleteRule(ctx context.Context, req *rulesv1.DeleteRuleRequest) (*rulesv1.DeleteRuleResponse, error) {
 	var rule database.Rule
 
-	if err := database.GetDbWithContext(ctx, database.DbTypeMaster).Delete(&rule).Error; err != nil {
+	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+
+	if err := db.Where("id = ?", req.Id).First(&rule).Error; err != nil {
+		return nil, err
+	}
+
+	if err := db.Delete(&rule).Error; err != nil {
 		return nil, err
 	}
 
@@ -35,6 +40,7 @@ func (s *Service) DeleteRule(ctx context.Context, req *rulesv1.DeleteRuleRequest
 
 func (s *Service) mapRule(rule *gomoneypbv1.Rule) *database.Rule {
 	mapped := &database.Rule{
+		ID:              rule.Id,
 		Title:           rule.Title,
 		Script:          rule.Script,
 		InterpreterType: rule.Interpreter,
@@ -44,13 +50,6 @@ func (s *Service) mapRule(rule *gomoneypbv1.Rule) *database.Rule {
 		Enabled:         rule.Enabled,
 		IsFinalRule:     rule.IsFinalRule,
 		GroupName:       rule.GroupName,
-	}
-
-	if rule.DeletedAt != nil {
-		mapped.DeletedAt = gorm.DeletedAt{
-			Time:  rule.DeletedAt.AsTime(),
-			Valid: true,
-		}
 	}
 
 	return mapped

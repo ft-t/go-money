@@ -95,7 +95,7 @@ func main() {
 	}
 
 	baseAmountSvc := transactions.NewBaseAmountService()
-	ruleEngine := rules.NewExectuor(rules.NewLuaInterpreter())
+	ruleEngine := rules.NewExecutor(rules.NewLuaInterpreter())
 
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             transactions.NewStatService(),

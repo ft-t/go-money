@@ -13,7 +13,7 @@ type Executor struct {
 	interpreter Interpreter
 }
 
-func NewExectuor(interpreter Interpreter) *Executor {
+func NewExecutor(interpreter Interpreter) *Executor {
 	return &Executor{
 		interpreter: interpreter,
 	}

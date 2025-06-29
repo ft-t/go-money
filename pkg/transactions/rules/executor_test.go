@@ -42,7 +42,7 @@ func TestExecuteRule(t *testing.T) {
 
 		interpreter := NewMockInterpreter(gomock.NewController(t))
 
-		srv := rules.NewExectuor(interpreter)
+		srv := rules.NewExecutor(interpreter)
 
 		tx := &database.Transaction{
 			ID:     22,
@@ -102,7 +102,7 @@ func TestExecuteRule(t *testing.T) {
 
 		interpreter := NewMockInterpreter(gomock.NewController(t))
 
-		srv := rules.NewExectuor(interpreter)
+		srv := rules.NewExecutor(interpreter)
 
 		tx := &database.Transaction{
 			ID:     22,
@@ -164,7 +164,7 @@ func TestExecuteRule(t *testing.T) {
 
 		interpreter := NewMockInterpreter(gomock.NewController(t))
 
-		srv := rules.NewExectuor(interpreter)
+		srv := rules.NewExecutor(interpreter)
 
 		tx := &database.Transaction{
 			ID:     22,
@@ -232,7 +232,7 @@ func TestExecuteRule(t *testing.T) {
 
 		interpreter := NewMockInterpreter(gomock.NewController(t))
 
-		srv := rules.NewExectuor(interpreter)
+		srv := rules.NewExecutor(interpreter)
 
 		tx := &database.Transaction{
 			ID:     22,
