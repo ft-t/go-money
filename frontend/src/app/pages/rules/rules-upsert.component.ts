@@ -16,21 +16,65 @@ import { Toast } from 'primeng/toast';
 import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { Rule, RuleSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
-import { CreateRuleRequestSchema, RulesService, UpdateRuleRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
+import {
+    CreateRuleRequestSchema,
+    DryRunRuleRequestSchema,
+    RulesService,
+    UpdateRuleRequestSchema
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
 import { Checkbox } from 'primeng/checkbox';
-import { EditorComponent } from 'ngx-monaco-editor-v2';
+import { DiffEditorComponent, DiffEditorModel, EditorComponent } from 'ngx-monaco-editor-v2';
 import { editor } from 'monaco-editor';
 import IStandaloneCodeEditor = editor.IStandaloneCodeEditor;
+import { Accordion, AccordionContent, AccordionHeader, AccordionPanel } from 'primeng/accordion';
+import { TextareaModule } from 'primeng/textarea';
+import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
 
 @Component({
     selector: 'app-rules-upsert',
-    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Checkbox, EditorComponent],
+    imports: [
+        InputNumberModule,
+        InputNumber,
+        TextareaModule,
+        Fluid,
+        InputText,
+        ReactiveFormsModule,
+        FormsModule,
+        NgIf,
+        Button,
+        Toast,
+        ColorPickerModule,
+        Checkbox,
+        EditorComponent,
+        AccordionPanel,
+        AccordionContent,
+        AccordionHeader,
+        Accordion,
+        DiffEditorComponent
+    ],
     templateUrl: './rules-upsert.component.html'
 })
 export class RulesUpsertComponent implements OnInit {
     public rule: Rule = create(RuleSchema, {});
     private rulesService;
-    editorOptions = {theme: 'vs-dark', language: 'lua',};
+    editorOptions = { theme: 'vs-dark', language: 'lua' };
+    diffOptions = {
+        theme: 'vs-dark'
+    };
+    originalModel: DiffEditorModel = {
+        code: '',
+        language: 'json'
+    };
+
+    public modifiedModel: DiffEditorModel = {
+        code: '',
+        language: 'json'
+    };
+
+    helpContent = this.generateSimpleApiHelp(this.getSuggestions());
+    dryRunOutput: string = '';
+
+    public dryRunTransactionId: number = 13442;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -60,6 +104,41 @@ export class RulesUpsertComponent implements OnInit {
             } catch (e) {
                 this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             }
+        }
+    }
+
+    originalTextModel: editor.ITextModel | null = null;
+    modifiedTextModel: editor.ITextModel | null = null;
+
+    onDiffEditorInit(diffEditor: any) {
+        const model = diffEditor.getModel();
+        this.originalTextModel = model.original;
+        this.modifiedTextModel = model.modified;
+    }
+
+    async dryRun() {
+        try {
+            let response = await this.rulesService.dryRunRule(
+                create(DryRunRuleRequestSchema, {
+                    rule: this.rule,
+                    transactionIds: [BigInt(+this.dryRunTransactionId)]
+                })
+            );
+
+            this.dryRunOutput = JSON.stringify(response.updatedTransactions);
+            this.modifiedModel.code = JSON.stringify(response.updatedTransactions);
+
+            this.modifiedTextModel!.setValue(
+                JSON.stringify(response.updatedTransactions, null, 2)
+            );
+
+            response.updatedTransactions[0].tagIds = []
+            this.originalTextModel!.setValue(
+                JSON.stringify(response.updatedTransactions, null, 2)
+            );
+        } catch (e: any) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            return;
         }
     }
 
@@ -97,6 +176,104 @@ export class RulesUpsertComponent implements OnInit {
 
     protected readonly color = color;
 
+    generateSimpleApiHelp(suggestions: any[]) {
+        const lines = ['Transaction API:', ''];
+
+        const added = new Set();
+
+        for (const s of suggestions) {
+            if (added.has(s.label)) continue;
+            lines.push(`${s.label} — ${s.documentation}`);
+            added.add(s.label);
+        }
+
+        return lines.join('\n');
+    }
+
+    getSuggestions() {
+        let monaco = (window as any).monaco;
+
+        let kind = 3;
+        let snippet = 4;
+
+        if (monaco) {
+            kind = monaco.languages.CompletionItemKind.Field;
+            snippet = snippet;
+        }
+
+        let suggestions = [];
+
+        const simpleFields = ['title', 'destinationAmount', 'sourceAmount', 'sourceCurrency', 'destinationCurrency', 'sourceAccountID', 'destinationAccountID', 'notes', 'transactionType', 'referenceNumber', 'internalReferenceNumber'];
+
+        const intFields = new Set(['sourceAmount', 'destinationAmount', 'sourceAccountID', 'destinationAccountID', 'transactionType']);
+
+        for (let field of simpleFields) {
+            suggestions.push({
+                label: `tx:${field}()`,
+                kind: kind,
+                insertText: `tx:${field}`,
+                documentation: `Get value of ${field} field`
+            });
+
+            const isInt = intFields.has(field);
+            const insertText = isInt ? `tx:${field}(\${1:value})` : `tx:${field}("\${1:value}")`;
+
+            const label = isInt ? `tx:${field}(value)` : `tx:${field}("value")`;
+
+            suggestions.push({
+                label,
+                kind: kind,
+                insertText,
+                insertTextRules: snippet,
+                documentation: `Set value of ${field} field`
+            });
+        }
+
+        for (let field of ['getDestinationAmountWithDecimalPlaces', 'getSourceAmountWithDecimalPlaces']) {
+            suggestions.push({
+                label: `tx:${field}("value")`,
+                kind: kind,
+                insertText: `tx:${field}(\${1:value})`,
+                insertTextRules: snippet,
+                documentation: `Get value of ${field} field with decimal places`
+            });
+        }
+
+        suggestions.push({
+            label: `tx:addTag(<tagID>)`,
+            kind: kind,
+            insertText: `tx:addTag(\${1:value})`,
+            insertTextRules: snippet,
+            documentation: `Add tag to transaction`
+        });
+
+        suggestions.push({
+            label: `tx:removeTag(<tagID>)`,
+            kind: kind,
+            insertText: `tx:removeTag(\${1:value})`,
+            insertTextRules: snippet,
+            documentation: `Remove tag from transaction`
+        });
+
+        suggestions.push({
+            label: `tx:getTags()`,
+            kind: kind,
+            insertText: `tx:getTags()`,
+            insertTextRules: snippet,
+            documentation: `Get list of tags for transaction (lua map)`
+        });
+
+        suggestions.push({
+            label: `tx:removeAllTags()`,
+            kind: kind,
+            insertText: `tx:removeAllTags()`,
+            insertTextRules: snippet,
+            documentation: `Remove all tags from transaction`
+        });
+
+        return suggestions;
+    }
+
     onEditorInit($event: IStandaloneCodeEditor) {
         let monaco = (window as any).monaco;
 
@@ -104,28 +281,7 @@ export class RulesUpsertComponent implements OnInit {
             triggerCharacters: [':', '.'],
             provideCompletionItems: () => {
                 return {
-                    suggestions: [
-                        {
-                            label: 'tx:addTag',
-                            kind: monaco.languages.CompletionItemKind.Function,
-                            insertText: 'tx:addTag(${1:id})',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Add a tag with a numeric ID'
-                        },
-                        {
-                            label: 'tx:title()',
-                            kind: monaco.languages.CompletionItemKind.Function,
-                            insertText: 'tx:title()',
-                            documentation: 'Get current title'
-                        },
-                        {
-                            label: 'tx:title("value")',
-                            kind: monaco.languages.CompletionItemKind.Function,
-                            insertText: 'tx:title("${1:value}")',
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: 'Set a new title'
-                        }
-                    ]
+                    suggestions: this.getSuggestions()
                 };
             }
         });
