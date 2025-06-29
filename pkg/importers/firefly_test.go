@@ -2,7 +2,10 @@ package importers_test
 
 import (
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/configuration"
@@ -12,6 +15,7 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"net/http"
@@ -29,7 +33,70 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestFirefly(t *testing.T) {
+//go:embed testdata/accounts.json
+var accountsByteData []byte
+
+//go:embed testdata/ff_withdrawal.csv
+var ffWithdrawalByteData []byte
+
+//go:embed testdata/rates.json
+var ratesByteData []byte
+
+func TestFireflyImport(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	var rates []*database.Currency
+	assert.NoError(t, json.Unmarshal(ratesByteData, &rates))
+
+	assert.NoError(t, gormDB.Create(&rates).Error)
+
+	var accountsData []*database.Account
+	assert.NoError(t, json.Unmarshal(accountsByteData, &accountsData))
+
+	assert.NoError(t, gormDB.Create(&accountsData).Error)
+
+	t.Run("basic multi currency withdrawal", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactionsv1.CreateTransactionRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+				assert.Len(t, requests, 1)
+
+				tx := requests[0].Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+
+				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
+				assert.EqualValues(t, *tx.Withdrawal.ForeignCurrency, "PLN")
+
+				assert.EqualValues(t, "-964.44", tx.Withdrawal.SourceAmount)
+				assert.EqualValues(t, "-83.81", *tx.Withdrawal.ForeignAmount)
+
+				assert.EqualValues(t, accountsData[0].ID, tx.Withdrawal.SourceAccountId)
+
+				assert.EqualValues(t, "2805", *requests[0].InternalReferenceNumber)
+
+				return []*transactionsv1.CreateTransactionResponse{
+					{
+						Transaction: &v1.Transaction{
+							InternalReferenceNumber: requests[0].InternalReferenceNumber,
+						},
+					},
+				}, nil
+			})
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     ffWithdrawalByteData,
+			Accounts: accountsData,
+			Tags:     map[string]*database.Tag{},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+}
+
+func TestFireflyIntegration(t *testing.T) {
 	t.Skip("todo")
 
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
