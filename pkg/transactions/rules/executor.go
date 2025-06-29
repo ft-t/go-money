@@ -76,18 +76,13 @@ func (s *Executor) executeInternal(
 
 	for _, ruleGroup := range ruleGroups {
 		for _, rule := range ruleGroup.Rules {
-			clonedTxForRule, err := s.cloneTx(tx) // clone of cloned initial transaction for each rule
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to clone transaction for rule execution")
-			}
-
-			result, err := s.interpreter.Run(ctx, rule.Script, clonedTxForRule)
+			result, clonedTx, err := s.ProcessSingleRule(ctx, tx, rule)
 			if err != nil { // errors should be handled in lua scripts
 				return nil, err
 			}
 
 			if result {
-				tx = clonedTxForRule
+				tx = clonedTx
 			}
 
 			if result && rule.IsFinalRule {
@@ -97,6 +92,24 @@ func (s *Executor) executeInternal(
 	}
 
 	return tx, nil
+}
+
+func (s *Executor) ProcessSingleRule(
+	ctx context.Context,
+	tx *database.Transaction,
+	rule *database.Rule,
+) (bool, *database.Transaction, error) {
+	clonedTxForRule, err := s.cloneTx(tx) // clone of cloned initial transaction for each rule
+	if err != nil {
+		return false, nil, errors.Wrap(err, "failed to clone transaction for rule execution")
+	}
+
+	result, err := s.interpreter.Run(ctx, rule.Script, clonedTxForRule)
+	if err != nil { // errors should be handled in lua scripts
+		return false, nil, err
+	}
+
+	return result, clonedTxForRule, nil
 }
 
 func (s *Executor) getRules(

@@ -105,13 +105,14 @@ func main() {
 		RuleSvc:              ruleEngine,
 	})
 
-	srv := rules.NewService()
+	srv := rules.NewService(mapper)
 
 	tagSvc := tags.NewService(mapper)
 
+	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper)
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
-	_ = handlers.NewRulesApi(grpcServer, srv)
+	_ = handlers.NewRulesApi(grpcServer, srv, dryRunSvc)
 
 	importSvc := importers.NewImporter(accountSvc, tagSvc, importers.NewFireflyImporter(transactionSvc))
 

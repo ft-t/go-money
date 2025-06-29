@@ -11,15 +11,18 @@ import (
 )
 
 type RulesApi struct {
-	ruleSvc RulesSvc
+	ruleSvc   RulesSvc
+	dryRunSvc DryRunSvc
 }
 
 func NewRulesApi(
 	mux *boilerplate.DefaultGrpcServer,
 	ruleSvc RulesSvc,
+	dryRunSvc DryRunSvc,
 ) *RulesApi {
 	res := &RulesApi{
-		ruleSvc: ruleSvc,
+		ruleSvc:   ruleSvc,
+		dryRunSvc: dryRunSvc,
 	}
 
 	mux.GetMux().Handle(
@@ -91,7 +94,7 @@ func (r *RulesApi) DryRunRule(ctx context.Context, c *connect.Request[rulesv1.Dr
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
-	resp, err := r.ruleSvc.DryRunRule(ctx, c.Msg)
+	resp, err := r.dryRunSvc.DryRunRule(ctx, c.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
