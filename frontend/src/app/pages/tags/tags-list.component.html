@@ -1,6 +1,4 @@
-<script src="tags-upsert.component.ts"></script>
-<div class="card">
-    <div class="font-semibold text-xl mb-4">Tags List</div>
+<div class="card tagListingTable">
     <p-table #dt1
              dataKey="id"
              [value]="tags"
@@ -15,6 +13,9 @@
              responsiveLayout="scroll">
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
+                <div class="flex flex-col justify-items-start">
+                    <p class="font-semibold text-xl mb-4">Tags List</p>
+                </div>
                 <p-iconfield iconPosition="left" class="ml-auto">
                     <p-inputicon>
                         <i class="pi pi-search"></i>

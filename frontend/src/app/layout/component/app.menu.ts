@@ -92,6 +92,16 @@ export class AppMenu {
             ]
         },
         {
+            label: 'Automation',
+            items: [
+                {
+                    label: 'Rules',
+                    icon: 'pi pi-fw pi-file-import',
+                    routerLink: ['/rules']
+                },
+            ]
+        },
+        {
             label: 'Admin Section',
             items: [
                 {
