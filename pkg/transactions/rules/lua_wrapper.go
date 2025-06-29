@@ -105,15 +105,3 @@ func (w *LuaTransactionWrapper) getSetStringField(l *lua.LState, val string, set
 	l.Push(lua.LString(val))
 	return 1
 }
-
-//func (w *LuaTransactionWrapper) check(L *lua.LState) *LuaTransactionWrapper {
-//	ud := L.CheckUserData(1)
-//
-//	if v, ok := ud.Value.(*LuaTransactionWrapper); ok {
-//		return v
-//	}
-//
-//	L.ArgError(1, "Transaction expected")
-//
-//	return nil
-//}

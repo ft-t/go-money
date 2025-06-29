@@ -9,6 +9,7 @@ type RuleInterpreter int32
 
 type Rule struct {
 	ID              int32
+	Title           string
 	Script          string
 	InterpreterType RuleInterpreter
 	SortOrder       int32

@@ -226,5 +226,13 @@ alter table transactions
 				)
 			},
 		},
+		{
+			ID: "2025-06-29-AddRuleTitle",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table rules add column if not exists title text;`,
+				)
+			},
+		},
 	}
 }
