@@ -39,7 +39,7 @@ func TestDryRun(t *testing.T) {
 				return &gomoneypbv1.Transaction{
 					Title: transaction.Title,
 				}
-			})
+			}).Times(2)
 
 		transactionSvc.EXPECT().GetTransactionByIDs(gomock.Any(), []int64{1}).
 			Return([]*database.Transaction{tx}, nil)
@@ -48,12 +48,12 @@ func TestDryRun(t *testing.T) {
 			Rule: &gomoneypbv1.Rule{
 				Script: "hello world",
 			},
-			TransactionIds: []int64{1},
+			TransactionId: 1,
 		})
 		assert.NoError(t, err)
 
-		assert.Len(t, resp.UpdatedTransactions, 1)
-		assert.Equal(t, "modified", resp.UpdatedTransactions[0].Title)
+		assert.Equal(t, "abcd", resp.Before.Title)
+		assert.Equal(t, "modified", resp.After.Title)
 	})
 
 	t.Run("transactionSvc error", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestDryRun(t *testing.T) {
 			Rule: &gomoneypbv1.Rule{
 				Script: "hello world",
 			},
-			TransactionIds: []int64{1},
+			TransactionId: 1,
 		})
 
 		assert.Error(t, err)
@@ -83,6 +83,14 @@ func TestDryRun(t *testing.T) {
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
 
 		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+
+		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
+
+				return &gomoneypbv1.Transaction{
+					Title: transaction.Title,
+				}
+			})
 
 		tx := &database.Transaction{
 			Title: "abcd",
@@ -98,7 +106,7 @@ func TestDryRun(t *testing.T) {
 			Rule: &gomoneypbv1.Rule{
 				Script: "hello world",
 			},
-			TransactionIds: []int64{1},
+			TransactionId: 1,
 		})
 
 		assert.Error(t, err)

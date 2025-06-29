@@ -2,10 +2,10 @@ package rules
 
 import (
 	"context"
-	"github.com/barkimedes/go-deepcopy"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/samber/lo"
+	"github.com/tiendc/go-deepcopy"
 	"sort"
 )
 
@@ -20,17 +20,12 @@ func NewExecutor(interpreter Interpreter) *Executor {
 }
 
 func (s *Executor) cloneTx(input *database.Transaction) (*database.Transaction, error) {
-	clonedAny, err := deepcopy.Anything(input)
-	if err != nil {
+	var clonedTx database.Transaction
+	if err := deepcopy.Copy(&clonedTx, input); err != nil {
 		return nil, errors.Wrap(err, "failed to deep clone transaction")
 	}
-
-	clonedTx, ok := clonedAny.(*database.Transaction)
-	if !ok {
-		return nil, errors.New("cloned transaction is not of type *database.Transaction")
-	}
-
-	return clonedTx, nil
+	
+	return &clonedTx, nil
 }
 
 func (s *Executor) ProcessTransactions(

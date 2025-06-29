@@ -26,15 +26,13 @@ import { Checkbox } from 'primeng/checkbox';
 import { DiffEditorComponent, DiffEditorModel, EditorComponent } from 'ngx-monaco-editor-v2';
 import { editor } from 'monaco-editor';
 import IStandaloneCodeEditor = editor.IStandaloneCodeEditor;
-import { Accordion, AccordionContent, AccordionHeader, AccordionPanel } from 'primeng/accordion';
 import { TextareaModule } from 'primeng/textarea';
-import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
+import { InputNumberModule } from 'primeng/inputnumber';
 
 @Component({
     selector: 'app-rules-upsert',
     imports: [
         InputNumberModule,
-        InputNumber,
         TextareaModule,
         Fluid,
         InputText,
@@ -46,10 +44,6 @@ import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
         ColorPickerModule,
         Checkbox,
         EditorComponent,
-        AccordionPanel,
-        AccordionContent,
-        AccordionHeader,
-        Accordion,
         DiffEditorComponent
     ],
     templateUrl: './rules-upsert.component.html'
@@ -63,17 +57,15 @@ export class RulesUpsertComponent implements OnInit {
     };
     originalModel: DiffEditorModel = {
         code: '',
-        language: 'json'
+        language: 'text/json'
     };
 
     public modifiedModel: DiffEditorModel = {
         code: '',
-        language: 'json'
+        language: 'text/json'
     };
 
-    helpContent = this.generateSimpleApiHelp(this.getSuggestions());
-    dryRunOutput: string = '';
-
+    public helpContent = this.generateSimpleApiHelp(this.getSuggestions());
     public dryRunTransactionId: number = 13442;
 
     constructor(
@@ -121,20 +113,16 @@ export class RulesUpsertComponent implements OnInit {
             let response = await this.rulesService.dryRunRule(
                 create(DryRunRuleRequestSchema, {
                     rule: this.rule,
-                    transactionIds: [BigInt(+this.dryRunTransactionId)]
+                    transactionId: BigInt(+this.dryRunTransactionId)
                 })
             );
 
-            this.dryRunOutput = JSON.stringify(response.updatedTransactions);
-            this.modifiedModel.code = JSON.stringify(response.updatedTransactions);
-
-            this.modifiedTextModel!.setValue(
-                JSON.stringify(response.updatedTransactions, null, 2)
+            this.originalTextModel!.setValue(
+                JSON.stringify(response.before, null, 2)
             );
 
-            response.updatedTransactions[0].tagIds = []
-            this.originalTextModel!.setValue(
-                JSON.stringify(response.updatedTransactions, null, 2)
+            this.modifiedTextModel!.setValue(
+                JSON.stringify(response.after, null, 2)
             );
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
