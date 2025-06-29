@@ -95,7 +95,7 @@ func main() {
 	}
 
 	baseAmountSvc := transactions.NewBaseAmountService()
-	ruleEngine := rules.NewService(rules.NewLuaInterpreter())
+	ruleEngine := rules.NewExectuor(rules.NewLuaInterpreter())
 
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             transactions.NewStatService(),
@@ -105,10 +105,13 @@ func main() {
 		RuleSvc:              ruleEngine,
 	})
 
+	srv := rules.NewService()
+
 	tagSvc := tags.NewService(mapper)
 
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
+	_ = handlers.NewRulesApi(grpcServer, srv)
 
 	importSvc := importers.NewImporter(accountSvc, tagSvc, importers.NewFireflyImporter(transactionSvc))
 

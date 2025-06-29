@@ -1,140 +1,114 @@
 package rules
 
 import (
+	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
-	"github.com/barkimedes/go-deepcopy"
-	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/samber/lo"
-	"sort"
+	"gorm.io/gorm"
+	"time"
 )
 
 type Service struct {
-	interpreter Interpreter
+	mapper MapperSvc
 }
 
-func NewService(interpreter Interpreter) *Service {
+func NewService(
+	mapper MapperSvc,
+) *Service {
 	return &Service{
-		interpreter: interpreter,
+		mapper: mapper,
 	}
 }
 
-func (s *Service) cloneTx(input *database.Transaction) (*database.Transaction, error) {
-	clonedAny, err := deepcopy.Anything(input)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to deep clone transaction")
+func (s *Service) DeleteRule(ctx context.Context, req *rulesv1.DeleteRuleRequest) (*rulesv1.DeleteRuleResponse, error) {
+	var rule database.Rule
+
+	if err := database.GetDbWithContext(ctx, database.DbTypeMaster).Delete(&rule).Error; err != nil {
+		return nil, err
 	}
 
-	clonedTx, ok := clonedAny.(*database.Transaction)
-	if !ok {
-		return nil, errors.New("cloned transaction is not of type *database.Transaction")
-	}
-
-	return clonedTx, nil
+	return &rulesv1.DeleteRuleResponse{
+		Rule: s.mapper.MapRule(&rule),
+	}, nil
 }
 
-func (s *Service) ProcessTransactions(
-	ctx context.Context,
-	inputTxs []*database.Transaction,
-) ([]*database.Transaction, error) {
-	if len(inputTxs) == 0 {
-		return inputTxs, nil // no transactions to process
+func (s *Service) mapRule(rule *gomoneypbv1.Rule) *database.Rule {
+	mapped := &database.Rule{
+		Title:           rule.Title,
+		Script:          rule.Script,
+		InterpreterType: rule.Interpreter,
+		SortOrder:       rule.SortOrder,
+		CreatedAt:       time.Now().UTC(),
+		UpdatedAt:       time.Now().UTC(),
+		Enabled:         rule.Enabled,
+		IsFinalRule:     rule.IsFinalRule,
+		GroupName:       rule.GroupName,
 	}
 
-	var processedTxs []*database.Transaction
-
-	rules, err := s.getRules(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get rules")
-	}
-
-	if len(rules) == 0 {
-		return inputTxs, nil // no rules to apply
-	}
-
-	for _, inputTx := range inputTxs {
-		tx, txErr := s.executeInternal(ctx, inputTx, rules)
-		if txErr != nil {
-			return nil, errors.Wrap(txErr, "failed to execute rules on transaction")
-		}
-
-		processedTxs = append(processedTxs, tx)
-	}
-
-	return processedTxs, nil
-}
-
-func (s *Service) executeInternal(
-	ctx context.Context,
-	inputTx *database.Transaction,
-	ruleGroups []*RuleGroup,
-) (*database.Transaction, error) {
-	tx, cloneErr := s.cloneTx(inputTx) // clone initial transaction
-	if cloneErr != nil {
-		return nil, errors.Wrap(cloneErr, "failed to clone transaction")
-	}
-
-	for _, ruleGroup := range ruleGroups {
-		for _, rule := range ruleGroup.Rules {
-			clonedTxForRule, err := s.cloneTx(tx) // clone of cloned initial transaction for each rule
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to clone transaction for rule execution")
-			}
-
-			result, err := s.interpreter.Run(ctx, rule.Script, clonedTxForRule)
-			if err != nil { // errors should be handled in lua scripts
-				return nil, err
-			}
-
-			if result {
-				tx = clonedTxForRule
-			}
-
-			if result && rule.IsFinalRule {
-				break // break execution for this group
-			}
+	if rule.DeletedAt != nil {
+		mapped.DeletedAt = gorm.DeletedAt{
+			Time:  rule.DeletedAt.AsTime(),
+			Valid: true,
 		}
 	}
 
-	return tx, nil
+	return mapped
 }
 
-func (s *Service) getRules(
-	ctx context.Context,
-) ([]*RuleGroup, error) {
+func (s *Service) CreateRule(ctx context.Context, req *rulesv1.CreateRuleRequest) (*rulesv1.CreateRuleResponse, error) {
+	newRule := s.mapRule(req.Rule)
+
+	newRule.ID = 0
+	newRule.CreatedAt = time.Now().UTC()
+	newRule.UpdatedAt = time.Now().UTC()
+
+	if err := database.GetDbWithContext(ctx, database.DbTypeMaster).Create(newRule).Error; err != nil {
+		return nil, err
+	}
+
+	return &rulesv1.CreateRuleResponse{
+		Rule: s.mapper.MapRule(newRule),
+	}, nil
+}
+
+func (s *Service) ListRules(ctx context.Context, req *rulesv1.ListRulesRequest) (*rulesv1.ListRulesResponse, error) {
 	var rules []*database.Rule
 
-	if err := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly)).
-		Order("sort_order asc").
-		Find(&rules).Error; err != nil {
-		return nil, errors.Wrap(err, "failed to get rules from database")
+	query := database.GetDbWithContext(ctx, database.DbTypeMaster).Order("sort_order")
+
+	if req.IncludeDeleted {
+		query = query.Unscoped()
 	}
 
-	ruleGroups := map[string]*RuleGroup{}
+	if len(req.Ids) > 0 {
+		query = query.Where("id IN ?", req.Ids)
+	}
 
+	if err := query.Find(&rules).Error; err != nil {
+		return nil, err
+	}
+
+	mappedRules := make([]*gomoneypbv1.Rule, 0, len(rules))
 	for _, rule := range rules {
-		if _, exists := ruleGroups[rule.GroupName]; !exists {
-			ruleGroups[rule.GroupName] = &RuleGroup{
-				Name: rule.GroupName,
-			}
-		}
-
-		ruleGroups[rule.GroupName].Rules = append(ruleGroups[rule.GroupName].Rules, rule)
+		mappedRules = append(mappedRules, s.mapper.MapRule(rule))
 	}
 
-	groupNames := lo.Keys(ruleGroups)
-	sort.Strings(groupNames) // ordering
+	return &rulesv1.ListRulesResponse{
+		Rules: mappedRules,
+	}, nil
+}
 
-	var orderedRuleGroups []*RuleGroup
-	for _, key := range groupNames {
-		ruleGroup := ruleGroups[key]
+func (s *Service) UpdateRule(ctx context.Context, req *rulesv1.UpdateRuleRequest) (*rulesv1.UpdateRuleResponse, error) {
+	updatedRule := s.mapRule(req.Rule)
 
-		sort.Slice(ruleGroup.Rules, func(i, j int) bool {
-			return ruleGroup.Rules[i].SortOrder < ruleGroup.Rules[j].SortOrder
-		})
+	updatedRule.UpdatedAt = time.Now().UTC()
 
-		orderedRuleGroups = append(orderedRuleGroups, ruleGroup)
+	if err := database.GetDbWithContext(ctx, database.DbTypeMaster).Save(updatedRule).Error; err != nil {
+		return nil, err
 	}
 
-	return orderedRuleGroups, nil
+	return &rulesv1.UpdateRuleResponse{
+		Rule: s.mapper.MapRule(updatedRule),
+	}, nil
 }
