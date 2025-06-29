@@ -468,3 +468,24 @@ func TestCreateBulk(t *testing.T) {
 	assert.EqualValues(t, accounts[0].Currency, createdTx[1].DestinationCurrency)
 	assert.EqualValues(t, accounts[0].ID, *createdTx[1].DestinationAccountID)
 }
+
+func TestGetTransactionsByIDs(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	txs := []*database.Transaction{
+		{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionDateTime: time.Now(),
+			Title:               "Test Deposit",
+			Extra:               map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&txs).Error)
+
+	srv := transactions.NewService(&transactions.ServiceConfig{})
+
+	resp, err := srv.GetTransactionByIDs(context.TODO(), []int64{txs[0].ID})
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp, 1)
+}
