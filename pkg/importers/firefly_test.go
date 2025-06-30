@@ -74,7 +74,9 @@ func TestFireflyImport(t *testing.T) {
 
 				assert.EqualValues(t, accountsData[0].ID, tx.Withdrawal.SourceAccountId)
 
-				assert.EqualValues(t, "2805", *requests[0].InternalReferenceNumber)
+				assert.EqualValues(t, "firefly_2805", *requests[0].InternalReferenceNumber)
+
+				assert.EqualValues(t, []int32{1}, requests[0].TagIds)
 
 				return []*transactionsv1.CreateTransactionResponse{
 					{
@@ -88,7 +90,11 @@ func TestFireflyImport(t *testing.T) {
 		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
 			Data:     ffWithdrawalByteData,
 			Accounts: accountsData,
-			Tags:     map[string]*database.Tag{},
+			Tags: map[string]*database.Tag{
+				"Grocery": {
+					ID: 1,
+				},
+			},
 		})
 
 		assert.NoError(t, err)

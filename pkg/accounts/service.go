@@ -28,6 +28,15 @@ func NewService(
 	}
 }
 
+func (s *Service) GetAccountByID(ctx context.Context, id int32) (*database.Account, error) {
+	var account database.Account
+	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).Where("id = ?", id).
+		First(&account).Error; err != nil {
+		return nil, errors.Join(err, errors.New("failed to fetch account by id"))
+	}
+	return &account, nil
+}
+
 func (s *Service) GetAllAccounts(ctx context.Context) ([]*database.Account, error) {
 	var accounts []*database.Account
 

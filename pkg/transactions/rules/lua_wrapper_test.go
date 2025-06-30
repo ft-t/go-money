@@ -11,7 +11,7 @@ import (
 
 func TestBasicFields(t *testing.T) {
 	t.Run("title", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:title() == "Old Value" then
@@ -30,7 +30,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("source currency", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:sourceCurrency() == "USD" then
@@ -50,7 +50,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("destination currency", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:destinationCurrency() == "USD" then
@@ -67,7 +67,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("notes", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:notes() == "Old Notes" then
@@ -87,7 +87,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("reference number", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:referenceNumber() == "12345" then
@@ -107,7 +107,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("internal reference number", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:internalReferenceNumber() == "12345" then
@@ -127,7 +127,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("source account ID", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:sourceAccountID() == 12345 then
@@ -147,7 +147,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("source account ID nil", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:sourceAccountID() == nil then
@@ -167,7 +167,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("set source account ID to nil", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:sourceAccountID() == 12345 then
@@ -187,7 +187,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("destination account ID", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:destinationAccountID() == 12345 then
@@ -207,7 +207,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("transaction type", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:transactionType() == 1 then
@@ -227,7 +227,7 @@ func TestBasicFields(t *testing.T) {
 	})
 
 	t.Run("transaction type nil", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:transactionType() == 2 then

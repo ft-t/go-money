@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/samber/lo"
@@ -100,12 +101,12 @@ func (f *FireflyImporter) Import(
 
 		targetTx := &transactionsv1.CreateTransactionRequest{
 			Notes:                   notes,
-			Extra:                   make(map[string]string), // todo
-			TagIds:                  nil,                     // mapped
+			Extra:                   make(map[string]string),
+			TagIds:                  nil, // mapped
 			TransactionDate:         timestamppb.New(parsedDate.UTC()),
 			Title:                   description,
 			Transaction:             nil,
-			InternalReferenceNumber: &journalID,
+			InternalReferenceNumber: lo.ToPtr(fmt.Sprintf("firefly_%v", journalID)),
 		}
 
 		if len(req.Tags) > 0 {

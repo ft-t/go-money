@@ -79,7 +79,7 @@
                     <div class="flex flex-col gap-4 w-full">
                         <div class="font-semibold text-xl">Diff ( Original -> Modified )</div>
 
-                        <ngx-monaco-diff-editor (onInit)="onDiffEditorInit($event)" [options]="diffOptions" [originalModel]="originalModel" [modifiedModel]="modifiedModel"></ngx-monaco-diff-editor>
+                        <ngx-monaco-diff-editor class="min-h-96" (onInit)="onDiffEditorInit($event)" [options]="diffOptions" [originalModel]="originalModel" [modifiedModel]="modifiedModel"></ngx-monaco-diff-editor>
                     </div>
                 </div>
             </div>

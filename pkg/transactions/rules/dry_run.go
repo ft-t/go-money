@@ -51,6 +51,14 @@ func (s *DryRun) DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest)
 		return nil, ruleErr
 	}
 
+	if err = s.transactionSvc.ValidateTransaction(
+		ctx,
+		database.FromContext(ctx, database.GetDb(database.DbTypeReadonly)),
+		updated,
+	); err != nil {
+		return nil, errors.Wrap(err, "transaction validation failed after rule execution")
+	}
+
 	finalResp.RuleApplied = executed
 	finalResp.After = s.mapperSvc.MapTransaction(ctx, updated)
 

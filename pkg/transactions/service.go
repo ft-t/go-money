@@ -87,7 +87,7 @@ func (s *Service) List(
 	}
 
 	if req.TextQuery != nil {
-		query = query.Where("title LIKE ?", "%"+*req.TextQuery+"%")
+		query = query.Where("title ILIKE ?", "%"+*req.TextQuery+"%")
 	}
 
 	if len(req.DestinationAccountIds) > 0 {
