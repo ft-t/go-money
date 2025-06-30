@@ -178,7 +178,10 @@ func (s *Service) CreateBulkInternal(
 	reqs []*transactionsv1.CreateTransactionRequest,
 	tx *gorm.DB,
 ) ([]*transactionsv1.CreateTransactionResponse, error) {
-	var created []*database.Transaction
+	//var created []*database.Transaction
+
+	var transactionWithRules []*database.Transaction
+	var transactionWithoutRules []*database.Transaction
 
 	for _, req := range reqs {
 		if req.TransactionDate == nil {
@@ -243,25 +246,35 @@ func (s *Service) CreateBulkInternal(
 			return nil, errors.WithStack(err)
 		}
 
-		created = append(created, newTx)
+		if req.SkipRules {
+			transactionWithoutRules = append(transactionWithoutRules, newTx)
+		} else {
+			transactionWithRules = append(transactionWithRules, newTx)
+		}
 	}
 
-	created, err := s.cfg.RuleSvc.ProcessTransactions(ctx, created) // run rule engine can change transactions
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to process transactions with rules")
+	if len(transactionWithRules) > 0 {
+		modifiedTxs, err := s.cfg.RuleSvc.ProcessTransactions(ctx, transactionWithRules) // run rule engine can change transactions
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to process transactions with rules")
+		}
+
+		transactionWithRules = modifiedTxs
 	}
+
+	created := append(transactionWithRules, transactionWithoutRules...)
 
 	for _, createdTx := range created {
-		if err = s.ValidateTransaction(ctx, tx, createdTx); err != nil {
+		if err := s.ValidateTransaction(ctx, tx, createdTx); err != nil {
 			return nil, errors.Wrapf(err, "failed to validate transaction")
 		}
 	}
 
-	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, created); err != nil {
+	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, created); err != nil {
 		return nil, err
 	}
 
-	if err = s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
 		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
 	}
 

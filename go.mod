@@ -3,8 +3,8 @@ module github.com/ft-t/go-money
 go 1.23.5
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250629195127-2932f5975e58.1
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.6-20250629195127-2932f5975e58.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250630151838-a33fdcd47bdb.1
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.6-20250630151838-a33fdcd47bdb.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/cockroachdb/errors v1.12.0

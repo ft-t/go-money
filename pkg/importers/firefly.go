@@ -31,9 +31,10 @@ func NewFireflyImporter(
 }
 
 type ImportRequest struct {
-	Data     []byte
-	Accounts []*database.Account
-	Tags     map[string]*database.Tag
+	Data      []byte
+	Accounts  []*database.Account
+	Tags      map[string]*database.Tag
+	SkipRules bool
 }
 
 func (f *FireflyImporter) Type() importv1.ImportSource {
@@ -107,6 +108,7 @@ func (f *FireflyImporter) Import(
 			Title:                   description,
 			Transaction:             nil,
 			InternalReferenceNumber: lo.ToPtr(fmt.Sprintf("firefly_%v", journalID)),
+			SkipRules:               req.SkipRules,
 		}
 
 		if len(req.Tags) > 0 {
