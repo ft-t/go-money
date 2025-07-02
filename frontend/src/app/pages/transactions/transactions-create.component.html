@@ -1,37 +1,24 @@
 <!--suppress TypeScriptValidateTypes -->
 <p-fluid>
-    <div class="flex flex-col md:flex-row gap-8">
-        <div class="md:w-1/2">
-            <div class="card flex flex-col gap-4">
-                <div class="font-semibold text-xl">New transaction</div>
-                <div class="flex flex-col gap-2">
-                    <label for="accountName">Transaction title</label>
-                    <input pInputText id="accountName" type="text" [(ngModel)]="transaction.title" />
-                </div>
+    <div class="flex flex-col card gap-4">
+        <div class="flex flex-row">
+            <div class="font-semibold text-xl">New transaction</div>
+        </div>
+        <div class="flex flex-col w-full">
+            <p-selectbutton size="small" styleClass="w-full" [options]="transactionTypes"
+                            [(ngModel)]="transaction.type" optionLabel="name" (onChange)="onTransactionTypeChange()"
+                            optionValue="value">
+                <ng-template #item let-item>
+                    <div class="flex flex-col items-center gap-4">
+                        <i [class]="item.icon"></i>
+                        <label>{{ item.name }}</label>
+                    </div>
+                </ng-template>
+            </p-selectbutton>
+        </div>
 
-                <div class="flex flex-col gap-2 w-full">
-                    <label for="currency">Transaction Type</label>
-
-<!--                        <p-selectbutton [fluid]="true" size="large" class="" [options]="transactionTypes" [(ngModel)]="transaction.type" optionLabel="name"-->
-<!--                                        optionValue="value">-->
-<!--                            <ng-template #item let-item>-->
-<!--                                <div class="flex flex-col items-center gap-4">-->
-<!--                                    <i [class]="item.icon"></i>-->
-<!--                                    <label>{{item.name}}</label>-->
-<!--                                </div>-->
-<!--                            </ng-template>-->
-<!--                        </p-selectbutton>-->
-                    <p-dropdown
-                        [options]="transactionTypes"
-                        [(ngModel)]="transaction.type"
-                        [filter]="true"
-                        (onChange)="onTransactionTypeChange($event)"
-                        filterBy="name"
-                        optionLabel="name"
-                        optionValue="value"
-                        placeholder="Select transaction type" />
-                </div>
-
+        <div class="flex gap-4">
+            <div class="flex flex-col w-1/2">
                 <div class="flex flex-col gap-2">
                     <label for="currency">Source Account</label>
                     <p-dropdown
@@ -46,14 +33,14 @@
                         placeholder="Select source account" />
 
                     <p-inputgroup>
-                        <p-inputgroup-addon>-</p-inputgroup-addon>
-                        <p-inputnumber [(ngModel)]="transaction.sourceAmount" placeholder="Amount"></p-inputnumber>
-                        <p-inputgroup-addon>{{transaction.sourceCurrency}}</p-inputgroup-addon>
+                        <p-inputnumber [disabled]="!isSourceAccountActive()" [(ngModel)]="transaction.sourceAmount" placeholder="Amount"></p-inputnumber>
+                        <p-inputgroup-addon>{{ transaction.sourceCurrency }}</p-inputgroup-addon>
                     </p-inputgroup>
                 </div>
-
-                <div class="flex flex-col gap-2" *ngIf="isForeignCurrencyActive()">
-                    <label for="currency">Foreign Currency</label>
+            </div>
+            <div class="flex flex-col w-1/2" *ngIf="isForeignCurrencyActive()">
+                <div class="flex flex-col gap-2">
+                    <label for="currency">Foreign Currency (optional)</label>
                     <p-dropdown
                         [options]="currencies"
                         [(ngModel)]="transaction.destinationCurrency"
@@ -62,47 +49,78 @@
                         optionLabel="id"
                         optionValue="id"
                         placeholder="Select foreign currency" />
-                    <p-inputgroup>
-                        <p-inputgroup-addon>-</p-inputgroup-addon>
-                        <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount"></p-inputnumber>
-                        <p-inputgroup-addon>{{transaction.destinationCurrency}}</p-inputgroup-addon>
-                    </p-inputgroup>
+                    <div class="flex gap-2">
+                        <p-inputgroup>
+                            <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount"></p-inputnumber>
+                            <p-inputgroup-addon>{{ transaction.destinationCurrency }}</p-inputgroup-addon>
+                        </p-inputgroup>
+                        <p-button [disabled]="!canConvertAmount()" severity="info" label="Convert" icon="pi pi-search" iconPos="left" (onClick)="convertAmount()" />
+                    </div>
                 </div>
+            </div>
+            <div class="flex flex-col gap-2 w-1/2" *ngIf="isDestinationAccountActive()">
+                <label for="currency">Destination Account</label>
+                <p-dropdown
+                    [options]="accounts"
+                    [(ngModel)]="transaction.destinationAccountId"
+                    [filter]="true"
+                    [disabled]="!isDestinationAccountActive()"
+                    (onChange)="onDestinationAccountChange($event)"
+                    filterBy="account.name"
+                    optionLabel="account.name"
+                    optionValue="account.id"
+                    placeholder="Select destination account" />
 
-                <div class="flex flex-col gap-2" *ngIf="isDestinationAccountActive()">
-                    <label for="currency">Destination Account</label>
-                    <p-dropdown
-                        [options]="accounts"
-                        [(ngModel)]="transaction.destinationAccountId"
-                        [filter]="true"
-                        [disabled]="!isDestinationAccountActive()"
-                        (onChange)="onDestinationAccountChange($event)"
-                        filterBy="account.name"
-                        optionLabel="account.name"
-                        optionValue="account.id"
-                        placeholder="Select destination account" />
-
-                    <p-iftalabel>
-                        <input pInputText id="destValue" [(ngModel)]="transaction.destinationAmount" autocomplete="off" />
-                        <label for="destValue">{{transaction.destinationCurrency}}</label>
-                    </p-iftalabel>
+                <p-inputgroup>
+                    <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount"></p-inputnumber>
+                    <p-inputgroup-addon>{{ transaction.destinationCurrency }}</p-inputgroup-addon>
+                </p-inputgroup>
+            </div>
+        </div>
+        <div class="flex gap-4">
+            <div class="flex flex-col gap-4 w-1/2">
+                <div class="flex flex-col gap-2">
+                    <label for="accountName">Transaction title</label>
+                    <input pInputText id="accountName" type="text" [(ngModel)]="transaction.title" />
                 </div>
-
+            </div>
+            <div class="flex flex-col gap-4 w-1/2">
                 <div class="flex flex-col gap-2">
                     <label>Date</label>
                     <p-datepicker [(ngModel)]="transactionDate" [hourFormat]="'24'" [showTime]="true"></p-datepicker>
                 </div>
-                <div class="flex flex-col gap-2">
-                    <label>Notes</label>
-                    <textarea rows="5" cols="30" [(ngModel)]="transaction.notes" pTextarea [autoResize]="true"></textarea>
-                </div>
+            </div>
+        </div>
+        <div class="flex gap-4">
+            <div class="flex flex-col gap-4 w-1/2">
                 <div class="flex flex-col gap-2">
                     <label>Tags</label>
-                    <p-multiselect [options]="tags" [(ngModel)]="transaction.tagIds" placeholder="Select Tags" optionLabel="name" optionValue="id" display="chip" styleClass="w-full md:w-80"></p-multiselect>
+                    <p-multiselect [options]="tags" [(ngModel)]="transaction.tagIds" placeholder="Select Tags"
+                                   optionLabel="name" optionValue="id" display="chip"
+                                   [maxSelectedLabels]="maxSelectedLabels"
+                                   styleClass="w-full"></p-multiselect>
+                    <div class="flex gap-2 flex-wrap">
+                        @for(tag of transaction.tagIds; track tag) {
+                            @let tagVal = tagById(tag);
+                            @if (tagVal) {
+                                <p-chip [label]="tagVal.name" [icon]="tagVal.icon" removable="true"
+                                        (onRemove)="removeTag(tagVal.id)" />
+                            }
+                        }
+                    </div>
+
+                </div>
+            </div>
+            <div class="flex flex-col gap-4 w-1/2">
+                <div class="flex flex-col gap-2">
+                    <label>Notes</label>
+                    <textarea rows="5" cols="30" [(ngModel)]="transaction.notes" pTextarea
+                              [autoResize]="true"></textarea>
                 </div>
             </div>
         </div>
     </div>
+
     <!--        <div class="md:w-1/2">-->
     <!--            <div class="card flex flex-col gap-4">-->
     <!--                <div class="font-semibold text-xl">Other</div>-->
@@ -133,10 +151,10 @@
     <!--    </div>-->
 
     <div class="flex mt-8">
-                <div class="card flex flex-wrap gap-6 w-full justify-end">
-                    <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
-                    <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
-                </div>
+        <div class="card flex flex-wrap gap-6 w-full justify-end">
+            <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
+            <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
+        </div>
     </div>
 </p-fluid>
 <p-toast />

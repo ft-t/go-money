@@ -20,7 +20,10 @@ import { Textarea } from 'primeng/textarea';
 import { Button } from 'primeng/button';
 import { MultiSelect } from 'primeng/multiselect';
 import { CreateTransactionRequestSchema, DepositSchema, TransactionsService, WithdrawalSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
-import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
+import {
+    CurrencyService,
+    ExchangeRequestSchema
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { InputGroup } from 'primeng/inputgroup';
 import { InputGroupAddon } from 'primeng/inputgroupaddon';
@@ -29,11 +32,12 @@ import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { SelectButton, SelectButtonModule } from 'primeng/selectbutton';
+import { Chip } from 'primeng/chip';
 
 @Component({
     selector: 'transaction-upsert',
     templateUrl: 'transactions-create.component.html',
-    imports: [SelectButtonModule, DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber, SelectButton]
+    imports: [SelectButtonModule, DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber, SelectButton, Chip]
 })
 export class TransactionUpsertComponent implements OnInit {
     public isEdit: boolean = false;
@@ -58,7 +62,8 @@ export class TransactionUpsertComponent implements OnInit {
     ) {
         this.transaction = create(TransactionSchema, {
             destinationAmount: undefined,
-            sourceAmount: undefined
+            sourceAmount: undefined,
+            type: TransactionType.WITHDRAWAL
         });
         this.transactionTypes = EnumService.getBaseTransactionTypes();
         this.accountService = createClient(AccountsService, this.transport);
@@ -108,7 +113,7 @@ export class TransactionUpsertComponent implements OnInit {
         return false;
     }
 
-    onTransactionTypeChange(event: DropdownChangeEvent) {
+    onTransactionTypeChange() {
         if (!this.isDestinationAccountActive()) {
             this.transaction.destinationAccountId = undefined;
             this.transaction.destinationCurrency = undefined;
@@ -140,6 +145,48 @@ export class TransactionUpsertComponent implements OnInit {
 
         for (let account of this.accounts) {
             if (account.account?.id == id) return account.account;
+        }
+
+        return null;
+    }
+
+    canConvertAmount(): boolean {
+        if (!this.transaction.sourceAmount || !this.transaction.sourceCurrency || !this.transaction.destinationCurrency) {
+            return false;
+        }
+
+        return true;
+    }
+    async convertAmount() {
+        if(!this.canConvertAmount())
+            return;
+
+        try{
+            let converted = await this.currencyService.exchange(create(ExchangeRequestSchema, {
+                amount: this.transaction!.sourceAmount!.toString(),
+                fromCurrency: this.transaction.sourceCurrency,
+                toCurrency: this.transaction.destinationCurrency
+            }))
+
+            this.transaction.destinationAmount = converted.amount;
+        }
+        catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            return;
+        }
+    }
+
+    maxSelectedLabels = 1
+
+    removeTag(tag: number) {
+        this.transaction.tagIds = this.transaction.tagIds.filter(t => t != tag);
+    }
+
+    tagById(id: number | undefined): Tag | null {
+        if (!id) return null;
+
+        for (let tag of this.tags) {
+            if (tag.id == id) return tag;
         }
 
         return null;
