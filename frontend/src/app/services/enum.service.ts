@@ -50,11 +50,6 @@ export class EnumService {
     static getBaseTransactionTypes(): AccountTypeEnum[] {
         return [
             {
-                name: 'Withdrawal',
-                value: TransactionType.WITHDRAWAL,
-                icon: 'pi pi-arrow-up text-red-500'
-            },
-            {
                 name: 'Deposit',
                 value: TransactionType.DEPOSIT,
                 icon: 'pi pi-arrow-down text-green-500'
@@ -63,7 +58,12 @@ export class EnumService {
                 name: 'Transfer',
                 value: TransactionType.TRANSFER_BETWEEN_ACCOUNTS,
                 icon: 'pi pi-arrows-h text-blue-500'
-            }
+            },
+            {
+                name: 'Withdrawal',
+                value: TransactionType.WITHDRAWAL,
+                icon: 'pi pi-arrow-up text-red-500'
+            },
         ];
     }
 
