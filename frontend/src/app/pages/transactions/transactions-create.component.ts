@@ -28,11 +28,12 @@ import { InputNumber } from 'primeng/inputnumber';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
+import { SelectButton, SelectButtonModule } from 'primeng/selectbutton';
 
 @Component({
     selector: 'transaction-upsert',
     templateUrl: 'transactions-create.component.html',
-    imports: [DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber]
+    imports: [SelectButtonModule, DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber, SelectButton]
 })
 export class TransactionUpsertComponent implements OnInit {
     public isEdit: boolean = false;
@@ -67,18 +68,14 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     async ngOnInit() {
-        await Promise.all([
-            this.fetchAccounts(),
-            this.fetchCurrencies(),
-            this.fetchTags()
-        ]);
+        await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags()]);
     }
 
     async fetchTags() {
         try {
             let resp = await this.tagsService.listTags({});
             for (let tag of resp.tags || []) {
-                this.tags.push(tag.tag!)
+                this.tags.push(tag.tag!);
             }
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
