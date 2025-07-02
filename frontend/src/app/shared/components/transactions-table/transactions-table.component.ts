@@ -85,9 +85,26 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             this.transactionTypesMap[type.value] = type;
         }
 
-        if (routeSnapshot.snapshot.data['preselectedFilter']) {
-            this.filters = routeSnapshot.snapshot.data['preselectedFilter'];
-        }
+        routeSnapshot.data.subscribe((data) => {
+            if (data['preselectedFilter']) {
+                this.filters = data['preselectedFilter'];
+            }
+        });
+
+        routeSnapshot.queryParams.subscribe((params) => {
+            if (params['ignoreDateFilter'] === 'true') {
+                this.ignoreDateFilter = true;
+            }
+
+            if (params['title']) {
+                this.filters['title'] = {
+                    value: params['title'],
+                    matchMode: 'contains'
+                } as FilterMetadata;
+            }
+
+            this.refreshTable()
+        });
 
         this.transactionsService = createClient(TransactionsService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
@@ -96,11 +113,9 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['currentAccountId']) {
-            console.log(changes);
             this.refreshTable();
         }
     }
-
 
     async ngOnInit() {
         await Promise.all([this.fetchAccounts(), this.fetchTags()]);
@@ -117,7 +132,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             this.refreshTable();
         });
 
-        this.refreshTable()
+        this.refreshTable();
     }
 
     async fetchTags() {
@@ -248,7 +263,6 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             // if(idFilter)
             //     req.tagIds
         }
-
 
         if (event.multiSortMeta) {
             for (let sortData of event.multiSortMeta) {

@@ -6,4 +6,8 @@ import { TransactionsTableComponent } from '../../shared/components/transactions
     imports: [TransactionsTableComponent],
     templateUrl: './transactions-list.component.html',
 })
-export class TransactionsListComponent {}
+export class TransactionsListComponent {
+    constructor() { }
+
+    // Additional methods and properties can be added here as needed
+}
