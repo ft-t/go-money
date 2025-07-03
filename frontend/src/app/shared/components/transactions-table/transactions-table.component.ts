@@ -56,6 +56,8 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
     public accounts: Account[] = [];
     public tags: Tag[] = [];
 
+    public maxSelectedLabels = 1;
+
     @Input() filtersWrapper: FilterWrapper | undefined;
 
     @Input() transactionTypeForCreate: TransactionType | null = null;
@@ -214,7 +216,9 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     async fetchTransactions(event: TableLazyLoadEvent) {
         console.log(event);
+
         this.lastEvent = event;
+        this.loading = true;
 
         let req = create(ListTransactionsRequestSchema, {
             limit: event.rows ?? 50,
@@ -293,10 +297,19 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             }
         }
 
-        let resp = await this.transactionsService.listTransactions(req);
+        try{
+            let resp = await this.transactionsService.listTransactions(req);
 
-        this.transactions = resp.transactions;
-        this.totalRecords = Number(resp.totalCount);
+            this.transactions = resp.transactions;
+            this.totalRecords = Number(resp.totalCount);
+        }
+        catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+        finally {
+            this.loading = false;
+        }
+
     }
 
     getTransactionType(transaction: Transaction): string {

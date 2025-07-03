@@ -78,12 +78,13 @@
                                         placeholder="Search by account number"></p-columnFilter>
                     </div>
                 </th>
+                <th></th>
             </tr>
             <tr>
                 <th>
-<!--                    <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="id"-->
-<!--                                    showMenu="false"-->
-<!--                                    placeholder="Search by ID" ariaLabel="Filter Name"></p-columnFilter>-->
+                    <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="id"
+                                    showMenu="false"
+                                    placeholder="Search by ID" ariaLabel="Filter Name"></p-columnFilter>
                 </th>
                 <th>
                     <p-columnFilter type="text" showAddButton="false" showMatchModes="false" field="title"
@@ -95,7 +96,7 @@
                         <ng-template #filter let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="transactionTypes"
-                                           maxSelectedLabels="1"
+                                           [maxSelectedLabels]="maxSelectedLabels"
                                            optionValue="value" optionLabel="name" (onChange)="filter($event.value)"
                                            placeholder="Select" [showClear]="false">
                             </p-multiselect>
@@ -109,7 +110,7 @@
                         <ng-template #filter let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
                                            optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
-                                           maxSelectedLabels="1"
+                                           [maxSelectedLabels]="maxSelectedLabels"
                                            placeholder="Select" [showClear]="true">
                             </p-multiselect>
                         </ng-template>
@@ -120,7 +121,7 @@
                         <ng-template #filter let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
                                            optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
-                                           maxSelectedLabels="1"
+                                           [maxSelectedLabels]="maxSelectedLabels"
                                            placeholder="Select" [showClear]="true">
                             </p-multiselect>
                         </ng-template>
@@ -131,13 +132,14 @@
                         <ng-template #filter let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="tags"
-                                           maxSelectedLabels="1"
+                                           [maxSelectedLabels]="maxSelectedLabels"
                                            optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
                                            placeholder="Select" [showClear]="false">
                             </p-multiselect>
                         </ng-template>
                     </p-columnFilter>
                 </th>
+                <th></th>
             </tr>
         </ng-template>
         <ng-template #body let-transactionItem>
@@ -195,6 +197,11 @@
                     @for (tagID of transactionItem.tagIds; track tagID) {
                         <fancy-tag [tag]="getTag(tagID)"></fancy-tag>
                     }
+                </td>
+                <td>
+                    <p-button icon="pi pi-pencil"
+                              (onClick)="this.router.navigate(['/', 'transactions', 'edit', transactionItem.id])"
+                              severity="secondary" rounded />
                 </td>
             </tr>
         </ng-template>

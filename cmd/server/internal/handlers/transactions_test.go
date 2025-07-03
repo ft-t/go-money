@@ -79,3 +79,36 @@ func TestTransactionApi_CreateTransaction(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 }
+
+func TestTransactionApi_UpdateTransaction(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockSvc := NewMockTransactionsSvc(ctrl)
+	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
+	api := handlers.NewTransactionApi(grpc, mockSvc)
+
+	t.Run("success", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.UpdateTransactionRequest{})
+		respMsg := &transactionsv1.UpdateTransactionResponse{}
+		mockSvc.EXPECT().Update(gomock.Any(), req.Msg).Return(respMsg, nil)
+		resp, err := api.UpdateTransaction(ctx, req)
+		assert.NoError(t, err)
+		assert.Equal(t, respMsg, resp.Msg)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.UpdateTransactionRequest{})
+		mockSvc.EXPECT().Update(gomock.Any(), req.Msg).Return(nil, assert.AnError)
+		resp, err := api.UpdateTransaction(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		req := connect.NewRequest(&transactionsv1.UpdateTransactionRequest{})
+		resp, err := api.UpdateTransaction(context.TODO(), req)
+		assert.ErrorIs(t, err, auth.ErrInvalidToken)
+		assert.Nil(t, resp)
+	})
+}

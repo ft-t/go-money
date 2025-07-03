@@ -374,4 +374,8 @@ export class TransactionUpsertComponent implements OnInit {
 
         return Math.abs(num).toString();
     }
+
+    async refresh() {
+        await this.editTransaction(Number(this.transaction.id));
+    }
 }
