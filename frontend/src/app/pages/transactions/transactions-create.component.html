@@ -39,7 +39,7 @@
                         <p-inputnumber [disabled]="!isSourceAccountActive()" [(ngModel)]="transaction.sourceAmount" placeholder="Amount *"
                             [ngClass]="{'ng-invalid': showValidation && !transaction.sourceAmount && isSourceAccountActive()}"
                         ></p-inputnumber>
-                        <p-inputgroup-addon>{{ transaction.sourceCurrency }}</p-inputgroup-addon>
+                        <p-inputgroup-addon [style]="{'color': 'deepskyblue'}" >{{ transaction.sourceCurrency }}</p-inputgroup-addon>
                     </p-inputgroup>
                     <div *ngIf="showValidation && !transaction.sourceAmount && isSourceAccountActive()" class="text-red-500 text-xs">Amount is required.</div>
                 </div>
@@ -58,7 +58,7 @@
                     <div class="flex gap-2">
                         <p-inputgroup>
                             <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount"></p-inputnumber>
-                            <p-inputgroup-addon>{{ transaction.destinationCurrency }}</p-inputgroup-addon>
+                            <p-inputgroup-addon [style]="{'color': 'deepskyblue'}">{{ transaction.destinationCurrency }}</p-inputgroup-addon>
                         </p-inputgroup>
                         <p-button [disabled]="!canConvertAmount()" severity="info" label="Convert" icon="pi pi-search" iconPos="left" (onClick)="convertAmount()" />
                     </div>
@@ -84,7 +84,7 @@
                     <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount *"
                         [ngClass]="{'ng-invalid': showValidation && !transaction.destinationAmount && isDestinationAccountActive()}"
                     ></p-inputnumber>
-                    <p-inputgroup-addon>{{ transaction.destinationCurrency }}</p-inputgroup-addon>
+                    <p-inputgroup-addon [style]="{'color': 'deepskyblue'}">{{ transaction.destinationCurrency }}</p-inputgroup-addon>
                 </p-inputgroup>
                 <div *ngIf="showValidation && !transaction.destinationAmount && isDestinationAccountActive()" class="text-red-500 text-xs">Amount is required.</div>
             </div>

@@ -117,6 +117,10 @@ func (s *Service) List(
 		query = query.Where(fmt.Sprintf("tag_ids && Array[%s]", strings.Join(tagIds, ",")))
 	}
 
+	if len(req.Ids) > 0 {
+		query = query.Where("id IN ?", req.Ids)
+	}
+
 	for _, sort := range req.Sort {
 		switch sort.Field {
 		default:

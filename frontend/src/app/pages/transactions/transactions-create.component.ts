@@ -3,20 +3,13 @@ import { DropdownChangeEvent, DropdownModule } from 'primeng/dropdown';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import {
-    Transaction,
-    TransactionSchema,
-    TransactionType
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { Transaction, TransactionSchema, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { create } from '@bufbuild/protobuf';
 import { AccountTypeEnum, EnumService } from '../../services/enum.service';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
-import {
-    AccountsService,
-    ListAccountsResponse_AccountItem
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { DatePicker } from 'primeng/datepicker';
@@ -26,16 +19,16 @@ import { Textarea } from 'primeng/textarea';
 import { Button } from 'primeng/button';
 import { MultiSelect } from 'primeng/multiselect';
 import {
+    CreateTransactionRequest,
     CreateTransactionRequestSchema,
     DepositSchema,
     ListTransactionsRequestSchema,
-    TransactionsService, TransferBetweenAccountsSchema,
+    TransactionsService,
+    TransferBetweenAccountsSchema,
+    UpdateTransactionRequestSchema,
     WithdrawalSchema
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
-import {
-    CurrencyService,
-    ExchangeRequestSchema
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
+import { CurrencyService, ExchangeRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { InputGroup } from 'primeng/inputgroup';
 import { InputGroupAddon } from 'primeng/inputgroupaddon';
@@ -92,9 +85,11 @@ export class TransactionUpsertComponent implements OnInit {
             if (data['type']) {
                 this.transaction.type = +(data['type'] as TransactionType);
             }
+        });
 
-            if (data['id']) {
-                await this.editTransaction(+data['id']);
+        this.route.params.subscribe(async (params) => {
+            if (params['id']) {
+                await this.editTransaction(+params['id']);
             }
         });
     }
@@ -104,7 +99,29 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     async editTransaction(id: number) {
-        this.transactionService.listTransactions(create(ListTransactionsRequestSchema, {}));
+        this.isEdit = true;
+
+        try {
+            let resp = await this.transactionService.listTransactions(
+                create(ListTransactionsRequestSchema, {
+                    ids: [id],
+                    limit: 1
+                })
+            );
+
+            if (!resp.transactions || resp.transactions.length == 0) {
+                this.messageService.add({ severity: 'error', detail: 'Transaction not found.' });
+                return;
+            }
+
+            this.transaction = resp.transactions[0];
+
+            if (this.transaction.sourceAmount) this.transaction.sourceAmount = this.toPositiveNumber(this.transaction.sourceAmount);
+
+            if (this.transaction.destinationAmount) this.transaction.destinationAmount = this.toPositiveNumber(this.transaction.destinationAmount);
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
     }
 
     getTitle() {
@@ -246,12 +263,7 @@ export class TransactionUpsertComponent implements OnInit {
         return false;
     }
 
-    async create() {
-        this.showValidation = true;
-        if (!this.isFormValid()) {
-            this.messageService.add({ severity: 'error', detail: 'Please fill all required fields.' });
-            return;
-        }
+    buildTransactionRequest(): CreateTransactionRequest {
         let req = create(CreateTransactionRequestSchema, {
             notes: this.transaction.notes,
             extra: {}, // todo
@@ -295,14 +307,45 @@ export class TransactionUpsertComponent implements OnInit {
                 break;
         }
 
+        return req;
+    }
+
+    async create() {
+        this.showValidation = true;
+        if (!this.isFormValid()) {
+            this.messageService.add({ severity: 'error', detail: 'Please fill all required fields.' });
+            return;
+        }
+
         try {
-            await this.transactionService.createTransaction(req);
+            await this.transactionService.createTransaction(this.buildTransactionRequest());
+
+            // todo transaction details page
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
     }
 
-    async update() {}
+    async update() {
+        this.showValidation = true;
+        if (!this.isFormValid()) {
+            this.messageService.add({ severity: 'error', detail: 'Please fill all required fields.' });
+            return;
+        }
+
+        try {
+            let response = await this.transactionService.updateTransaction(
+                create(UpdateTransactionRequestSchema, {
+                    transaction: this.buildTransactionRequest(),
+                    id: this.transaction.id
+                })
+            );
+
+            // todo transaction details page
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
 
     isFormValid(): boolean {
         if (!this.transaction.title) return false;

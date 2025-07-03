@@ -130,6 +130,11 @@ export const appRoutes: Routes = [
                 data: {}
             },
             {
+                path: 'transactions/edit/:id',
+                component: TransactionUpsertComponent,
+                data: {}
+            },
+            {
                 path: 'transactions/import',
                 component: TransactionsImportComponent,
                 data: {}
