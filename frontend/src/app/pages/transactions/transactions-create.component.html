@@ -20,7 +20,7 @@
         <div class="flex gap-4">
             <div class="flex flex-col w-1/2">
                 <div class="flex flex-col gap-2">
-                    <label for="currency">Source Account</label>
+                    <label for="currency">Source Account *</label>
                     <p-dropdown
                         [options]="accounts"
                         [(ngModel)]="transaction.sourceAccountId"
@@ -30,12 +30,18 @@
                         filterBy="account.name"
                         optionLabel="account.name"
                         optionValue="account.id"
-                        placeholder="Select source account" />
+                        placeholder="Select source account"
+                        [ngClass]="{'ng-invalid': showValidation && !transaction.sourceAccountId && isSourceAccountActive()}"
+                    />
+                    <div *ngIf="showValidation && !transaction.sourceAccountId && isSourceAccountActive()" class="text-red-500 text-xs">Source account is required.</div>
 
                     <p-inputgroup>
-                        <p-inputnumber [disabled]="!isSourceAccountActive()" [(ngModel)]="transaction.sourceAmount" placeholder="Amount"></p-inputnumber>
+                        <p-inputnumber [disabled]="!isSourceAccountActive()" [(ngModel)]="transaction.sourceAmount" placeholder="Amount *"
+                            [ngClass]="{'ng-invalid': showValidation && !transaction.sourceAmount && isSourceAccountActive()}"
+                        ></p-inputnumber>
                         <p-inputgroup-addon>{{ transaction.sourceCurrency }}</p-inputgroup-addon>
                     </p-inputgroup>
+                    <div *ngIf="showValidation && !transaction.sourceAmount && isSourceAccountActive()" class="text-red-500 text-xs">Amount is required.</div>
                 </div>
             </div>
             <div class="flex flex-col w-1/2" *ngIf="isForeignCurrencyActive()">
@@ -59,7 +65,7 @@
                 </div>
             </div>
             <div class="flex flex-col gap-2 w-1/2" *ngIf="isDestinationAccountActive()">
-                <label for="currency">Destination Account</label>
+                <label for="currency">Destination Account *</label>
                 <p-dropdown
                     [options]="accounts"
                     [(ngModel)]="transaction.destinationAccountId"
@@ -69,25 +75,36 @@
                     filterBy="account.name"
                     optionLabel="account.name"
                     optionValue="account.id"
-                    placeholder="Select destination account" />
+                    placeholder="Select destination account"
+                    [ngClass]="{'ng-invalid': showValidation && !transaction.destinationAccountId && isDestinationAccountActive()}"
+                />
+                <div *ngIf="showValidation && !transaction.destinationAccountId && isDestinationAccountActive()" class="text-red-500 text-xs">Destination account is required.</div>
 
                 <p-inputgroup>
-                    <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount"></p-inputnumber>
+                    <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount *"
+                        [ngClass]="{'ng-invalid': showValidation && !transaction.destinationAmount && isDestinationAccountActive()}"
+                    ></p-inputnumber>
                     <p-inputgroup-addon>{{ transaction.destinationCurrency }}</p-inputgroup-addon>
                 </p-inputgroup>
+                <div *ngIf="showValidation && !transaction.destinationAmount && isDestinationAccountActive()" class="text-red-500 text-xs">Amount is required.</div>
             </div>
         </div>
         <div class="flex gap-4">
             <div class="flex flex-col gap-4 w-1/2">
                 <div class="flex flex-col gap-2">
-                    <label for="accountName">Transaction title</label>
-                    <input pInputText id="accountName" type="text" [(ngModel)]="transaction.title" />
+                    <label for="accountName">Transaction title *</label>
+                    <input pInputText id="accountName" type="text" [(ngModel)]="transaction.title" required
+                        [ngClass]="{'ng-invalid': showValidation && !transaction.title}"
+                    />
+                    <div *ngIf="showValidation && !transaction.title" class="text-red-500 text-xs">Title is required.</div>
                 </div>
             </div>
             <div class="flex flex-col gap-4 w-1/2">
                 <div class="flex flex-col gap-2">
-                    <label>Date</label>
-                    <p-datepicker [(ngModel)]="transactionDate" [hourFormat]="'24'" [showTime]="true"></p-datepicker>
+                    <label>Date *</label>
+                    <p-datepicker [(ngModel)]="transactionDate" [hourFormat]="'24'" [showTime]="true"
+                        [ngClass]="{'ng-invalid': showValidation && !transactionDate}"></p-datepicker>
+                    <div *ngIf="showValidation && !transactionDate" class="text-red-500 text-xs">Date is required.</div>
                 </div>
             </div>
         </div>

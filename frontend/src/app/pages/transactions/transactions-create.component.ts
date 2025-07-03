@@ -21,7 +21,7 @@ import { MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { DatePicker } from 'primeng/datepicker';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
-import { NgIf } from '@angular/common';
+import { NgClass, NgIf } from '@angular/common';
 import { Textarea } from 'primeng/textarea';
 import { Button } from 'primeng/button';
 import { MultiSelect } from 'primeng/multiselect';
@@ -50,7 +50,7 @@ import { ActivatedRoute } from '@angular/router';
 @Component({
     selector: 'transaction-upsert',
     templateUrl: 'transactions-create.component.html',
-    imports: [SelectButtonModule, DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber, SelectButton, Chip]
+    imports: [SelectButtonModule, DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber, SelectButton, Chip, NgClass]
 })
 export class TransactionUpsertComponent implements OnInit {
     public isEdit: boolean = false;
@@ -68,6 +68,8 @@ export class TransactionUpsertComponent implements OnInit {
     private currencyService;
     private tagsService;
     public transactionDate: Date = new Date();
+
+    public showValidation = false;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -245,6 +247,11 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     async create() {
+        this.showValidation = true;
+        if (!this.isFormValid()) {
+            this.messageService.add({ severity: 'error', detail: 'Please fill all required fields.' });
+            return;
+        }
         let req = create(CreateTransactionRequestSchema, {
             notes: this.transaction.notes,
             extra: {}, // todo
@@ -296,6 +303,16 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     async update() {}
+
+    isFormValid(): boolean {
+        if (!this.transaction.title) return false;
+        if (!this.transactionDate) return false;
+        if (this.isSourceAccountActive() && !this.transaction.sourceAccountId) return false;
+        if (this.isSourceAccountActive() && !this.transaction.sourceAmount) return false;
+        if (this.isDestinationAccountActive() && !this.transaction.destinationAccountId) return false;
+        if (this.isDestinationAccountActive() && !this.transaction.destinationAmount) return false;
+        return true;
+    }
 
     toNegativeNumber(value: string | undefined): string | undefined {
         if (!value) return value;
