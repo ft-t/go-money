@@ -58,6 +58,8 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     @Input() filtersWrapper: FilterWrapper | undefined;
 
+    @Input() transactionTypeForCreate: TransactionType | null = null;
+
     @Input() tableTitle: string = 'Transactions';
 
     @Input() public currentAccountId: number | undefined;
@@ -115,6 +117,14 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
         if (changes['currentAccountId']) {
             this.refreshTable();
         }
+    }
+
+    async createNewTransaction() {
+        await this.router.navigate(['/transactions', 'new'], {
+            queryParams : {
+                type: this.transactionTypeForCreate ?? TransactionType.WITHDRAWAL,
+            }
+        })
     }
 
     async ngOnInit() {

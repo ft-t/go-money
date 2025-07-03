@@ -27,7 +27,7 @@
                                   [label]="ignoreDateFilter ? 'Enable date filter' : 'Disable date filter'"
                                   (click)="switchDateFilter()" />
                         <p-button label="Create new transaction" severity="info" class="p-button-link"
-                                  (click)="this.router.navigate(['/transactions', 'new'])" />
+                                  (click)="createNewTransaction()" />
                     </div>
                 </div>
             </div>

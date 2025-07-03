@@ -6,7 +6,7 @@ import { InputText } from 'primeng/inputtext';
 @Component({
     selector: 'app-sidebar',
     standalone: true,
-    imports: [AppMenu, FormsModule, InputText],
+    imports: [AppMenu, FormsModule],
     template: ` <div class="layout-sidebar">
         <app-menu></app-menu>
     </div>`

@@ -22,6 +22,11 @@ type Service struct {
 	cfg                  *ServiceConfig
 }
 
+func (s *Service) Update(ctx context.Context, msg *transactionsv1.UpdateTransactionRequest) (*transactionsv1.UpdateTransactionResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type ServiceConfig struct {
 	StatsSvc             StatsSvc
 	MapperSvc            MapperSvc

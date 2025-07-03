@@ -94,7 +94,8 @@ export const appRoutes: Routes = [
                             matchMode: 'in',
                             value: [TransactionType.DEPOSIT]
                         }
-                    }
+                    },
+                    newTransactionType: TransactionType.DEPOSIT
                 }
             },
             {
@@ -106,7 +107,8 @@ export const appRoutes: Routes = [
                             matchMode: 'in',
                             value: [TransactionType.WITHDRAWAL]
                         }
-                    }
+                    },
+                    newTransactionType: TransactionType.WITHDRAWAL
                 }
             },
             {
@@ -118,7 +120,8 @@ export const appRoutes: Routes = [
                             matchMode: 'in',
                             value: [TransactionType.TRANSFER_BETWEEN_ACCOUNTS, TransactionType.RECONCILIATION]
                         }
-                    }
+                    },
+                    newTransactionType: TransactionType.TRANSFER_BETWEEN_ACCOUNTS
                 }
             },
             {

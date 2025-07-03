@@ -2,10 +2,10 @@
 <p-fluid>
     <div class="flex flex-col card gap-4">
         <div class="flex flex-row">
-            <div class="font-semibold text-xl">New transaction</div>
+            <div class="font-semibold text-xl">{{getTitle()}}</div>
         </div>
         <div class="flex flex-col w-full">
-            <p-selectbutton size="small" styleClass="w-full" [options]="transactionTypes"
+            <p-selectbutton [disabled]="isEdit" size="small" styleClass="w-full" [options]="transactionTypes"
                             [(ngModel)]="transaction.type" optionLabel="name" (onChange)="onTransactionTypeChange()"
                             optionValue="value">
                 <ng-template #item let-item>

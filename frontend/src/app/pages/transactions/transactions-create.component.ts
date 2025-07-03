@@ -19,7 +19,13 @@ import { NgIf } from '@angular/common';
 import { Textarea } from 'primeng/textarea';
 import { Button } from 'primeng/button';
 import { MultiSelect } from 'primeng/multiselect';
-import { CreateTransactionRequestSchema, DepositSchema, TransactionsService, WithdrawalSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import {
+    CreateTransactionRequestSchema,
+    DepositSchema,
+    ListTransactionsRequestSchema,
+    TransactionsService,
+    WithdrawalSchema
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import {
     CurrencyService,
     ExchangeRequestSchema
@@ -33,11 +39,12 @@ import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { SelectButton, SelectButtonModule } from 'primeng/selectbutton';
 import { Chip } from 'primeng/chip';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
     selector: 'transaction-upsert',
     templateUrl: 'transactions-create.component.html',
-    imports: [SelectButtonModule, DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, IftaLabel, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber, SelectButton, Chip]
+    imports: [SelectButtonModule, DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber, SelectButton, Chip]
 })
 export class TransactionUpsertComponent implements OnInit {
     public isEdit: boolean = false;
@@ -58,22 +65,48 @@ export class TransactionUpsertComponent implements OnInit {
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
-        private messageService: MessageService
+        private messageService: MessageService,
+        private route: ActivatedRoute,
     ) {
         this.transaction = create(TransactionSchema, {
             destinationAmount: undefined,
             sourceAmount: undefined,
             type: TransactionType.WITHDRAWAL
         });
+
         this.transactionTypes = EnumService.getBaseTransactionTypes();
         this.accountService = createClient(AccountsService, this.transport);
         this.transactionService = createClient(TransactionsService, this.transport);
         this.currencyService = createClient(CurrencyService, this.transport);
         this.tagsService = createClient(TagsService, this.transport);
+
+        this.route.queryParams.subscribe(async (data) => {
+            if(data['type']) {
+                this.transaction.type = +(data['type'] as TransactionType);
+            }
+
+            if(data['id']) {
+                await this.editTransaction(+data['id']);
+            }
+        })
     }
 
     async ngOnInit() {
         await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags()]);
+    }
+
+    async editTransaction(id: number) {
+        this.transactionService.listTransactions(create(ListTransactionsRequestSchema, {
+
+        }))
+    }
+
+    getTitle() {
+        if (this.isEdit) {
+            return 'Editing Transaction';
+        }
+
+        return 'New Transaction';
     }
 
     async fetchTags() {

@@ -26,6 +26,11 @@ type TransactionsSvc interface {
 		ctx context.Context,
 		req *transactionsv1.ListTransactionsRequest,
 	) (*transactionsv1.ListTransactionsResponse, error)
+
+	Update(
+		ctx context.Context,
+		msg *transactionsv1.UpdateTransactionRequest,
+	) (*transactionsv1.UpdateTransactionResponse, error)
 }
 
 type UserSvc interface {
