@@ -74,6 +74,173 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUpdateTransaction(t *testing.T) {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
+			assert.Len(t, i, 1)
+
+			return nil
+		}).AnyTimes()
+
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 1)
+			return i, nil
+		}).AnyTimes()
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
+		RuleSvc:           ruleEngine,
+	})
+
+	accounts := []*database.Account{
+		{
+			Name:     "Private [UAH]",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+		},
+		{
+			Name:     "Bank 2 [USD]",
+			Currency: "USD",
+			Extra:    map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
+			return &gomoneypbv1.Transaction{
+				Id: transaction.ID,
+			}
+		}).AnyTimes()
+
+	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
+	tx1Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
+		TransactionDate: timestamppb.New(expenseDate),
+		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
+			Withdrawal: &transactionsv1.Withdrawal{
+				SourceAmount:    "-765.76",
+				SourceCurrency:  "UAH",
+				SourceAccountId: accounts[0].ID,
+				ForeignAmount:   lo.ToPtr("-67.54"),
+				ForeignCurrency: lo.ToPtr("PLN"),
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, tx1Result)
+
+	expenseDate2 := time.Date(2025, 6, 5, 0, 0, 0, 0, time.UTC)
+	tx2Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
+		TransactionDate: timestamppb.New(expenseDate2),
+		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
+			Withdrawal: &transactionsv1.Withdrawal{
+				SourceAmount:    "-200.76",
+				SourceCurrency:  "UAH",
+				SourceAccountId: accounts[0].ID,
+				ForeignAmount:   lo.ToPtr("-20.54"),
+				ForeignCurrency: lo.ToPtr("PLN"),
+			},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, tx2Result)
+
+	var stats []database.DailyStat
+	assert.NoError(t, gormDB.
+		Where("date >= ?", expenseDate).
+		Order("date asc").Find(&stats).Error)
+
+	assert.EqualValues(t, "-765.76", stats[0].Amount.String()) // day of transaction
+	assert.EqualValues(t, "-765.76", stats[1].Amount.String()) // next day no transaction
+	assert.EqualValues(t, "-966.52", stats[2].Amount.String()) // new transaction
+
+	var statBefore []database.DailyStat
+	assert.NoError(t, gormDB.
+		Where("date < ?", expenseDate).
+		Order("date asc").Find(&statBefore).Error)
+
+	assert.Len(t, statBefore, 0)
+
+	// lets move last transaction to -1 day and change amount
+
+	expenseDate3 := expenseDate2.Add(-24 * time.Hour)
+	tx3Result, err := srv.Update(context.TODO(), &transactionsv1.UpdateTransactionRequest{
+		Id: tx2Result.Transaction.Id,
+		Transaction: &transactionsv1.CreateTransactionRequest{
+			TransactionDate: timestamppb.New(expenseDate3),
+			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
+				Withdrawal: &transactionsv1.Withdrawal{
+					SourceAmount:    "-100.0",
+					SourceCurrency:  "UAH",
+					SourceAccountId: accounts[0].ID,
+					ForeignAmount:   lo.ToPtr("-20.54"),
+					ForeignCurrency: lo.ToPtr("PLN"),
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, tx3Result)
+
+	assert.NoError(t, gormDB.
+		Where("date >= ?", expenseDate).
+		Order("date asc").Find(&stats).Error)
+
+	assert.EqualValues(t, "-765.76", stats[0].Amount.String()) // day of transaction
+	assert.EqualValues(t, "-865.76", stats[1].Amount.String()) // next day no transaction
+	assert.EqualValues(t, "-865.76", stats[2].Amount.String()) // new transaction
+
+	// lets switch first transaction to another account
+
+	_, err = srv.Update(context.TODO(), &transactionsv1.UpdateTransactionRequest{
+		Id: tx1Result.Transaction.Id,
+		Transaction: &transactionsv1.CreateTransactionRequest{
+			TransactionDate: timestamppb.New(expenseDate),
+			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
+				Withdrawal: &transactionsv1.Withdrawal{
+					SourceAmount:    "-20.5",
+					SourceCurrency:  "USD",
+					SourceAccountId: accounts[1].ID,
+					ForeignAmount:   lo.ToPtr("-4.54"),
+					ForeignCurrency: lo.ToPtr("PLN"),
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	// first check first account stats
+	assert.NoError(t, gormDB.
+		Where("date >= ?", expenseDate).
+		Where("account_id = ?", accounts[0].ID).
+		Order("date asc").Find(&stats).Error)
+
+	assert.EqualValues(t, "0", stats[0].Amount.String())    // day of transaction
+	assert.EqualValues(t, "-100", stats[1].Amount.String()) // from tx2 update
+	assert.EqualValues(t, "-100", stats[2].Amount.String()) // new transaction
+
+	assert.NoError(t, gormDB.
+		Where("date >= ?", expenseDate).
+		Where("account_id = ?", accounts[1].ID).
+		Order("date asc").Find(&stats).Error)
+
+	assert.EqualValues(t, "-20.5", stats[0].Amount.String()) // day of transaction
+	assert.EqualValues(t, "-20.5", stats[1].Amount.String()) // from tx2 update
+	assert.EqualValues(t, "-20.5", stats[2].Amount.String()) // new transaction
+}
+
 func TestBasicCalc(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 

@@ -24,6 +24,10 @@ func TestStruct(t *testing.T) {
 			val:      lo.ToPtr(database.ImportDeduplication{}).TableName(),
 			expected: "import_deduplication",
 		},
+		{
+			val:      lo.ToPtr(database.DailyStat{}).TableName(),
+			expected: "daily_stat",
+		},
 	}
 
 	for _, tc := range testCases {

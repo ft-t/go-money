@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
-	"github.com/tiendc/go-deepcopy"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"strings"
@@ -329,7 +328,11 @@ func (s *Service) Create(
 	defer tx.Rollback()
 	ctx = database.WithContext(ctx, tx)
 
-	resp, err := s.CreateBulkInternal(ctx, []*transactionsv1.CreateTransactionRequest{req}, tx)
+	resp, err := s.CreateBulkInternal(ctx, []*BulkRequest{
+		{
+			Req: req,
+		},
+	}, tx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create transaction for request: %v", req)
 	}
