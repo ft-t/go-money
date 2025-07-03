@@ -66,6 +66,7 @@ func main() {
 
 	_, err = handlers.NewConfigApi(grpcServer, appcfg.NewService(&appcfg.ServiceConfig{
 		UserSvc: userService,
+		AppCfg:  configuration.GetConfiguration(),
 	}))
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")

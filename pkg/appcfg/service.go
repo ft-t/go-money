@@ -12,6 +12,7 @@ type Service struct {
 
 type ServiceConfig struct {
 	UserSvc UserSvc
+	AppCfg  *configuration.Configuration
 }
 
 func NewService(
@@ -34,5 +35,6 @@ func (s *Service) GetConfiguration(
 	return &configurationv1.GetConfigurationResponse{
 		ShouldCreateAdmin: shouldCreatedAdmin,
 		BaseCurrency:      configuration.BaseCurrency,
+		GrafanaUrl:        s.cfg.AppCfg.GrafanaConfig.Url,
 	}, nil
 }

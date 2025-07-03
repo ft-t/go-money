@@ -18,6 +18,7 @@ import { TagsUpsertComponent } from './app/pages/tags/tags-upsert.component';
 import { TagsDetailComponent } from './app/pages/tags/tags-detail.component';
 import { RuleListComponent } from './app/pages/rules/rule-list.component';
 import { RulesUpsertComponent } from './app/pages/rules/rules-upsert.component';
+import { DashboardComponent } from './app/pages/dashboard/dashboard.component';
 
 export const appRoutes: Routes = [
     {
@@ -29,6 +30,10 @@ export const appRoutes: Routes = [
         component: AppLayout,
         canActivate: [authGuard],
         children: [
+            {
+              path: '',
+              component: DashboardComponent,
+            },
             {
                 path: 'accounts',
                 component: AccountsListComponent,

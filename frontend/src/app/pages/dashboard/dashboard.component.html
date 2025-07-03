@@ -1,0 +1,9 @@
+<div class="flex card" *ngIf="!isLoading">
+    <div class="flex flex-col w-full gap-4" *ngIf="!config.grafanaUrl">
+        <p-message severity="error">Grafana url is not set. Please set it using env variable - GRAFANA_CONFIG_URL. For more details refer to official documentation.</p-message>
+        <p-message severity="info"><a target="_blank" href="https://github.com/ft-t/go-money/wiki/Grafana">Grafana integration documentation.</a></p-message>
+    </div>
+    <div class="flex flex-col w-full gap-4 justify-center">
+        <p-button severity="info" label="Navigate to grafana" (onClick)="navigate()"></p-button>
+    </div>
+</div>
