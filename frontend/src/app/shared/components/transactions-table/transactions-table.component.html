@@ -34,8 +34,8 @@
         </ng-template>
         <ng-template #header>
             <tr>
-                <th style="min-width: 2rem">
-                    <div class="flex justify-between items-center" style="max-width: 2rem">
+                <th>
+                    <div class="flex justify-between items-center">
                         ID
                     </div>
                 </th>
@@ -82,9 +82,9 @@
             </tr>
             <tr>
                 <th>
-                    <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="id"
-                                    showMenu="false"
-                                    placeholder="Search by ID" ariaLabel="Filter Name"></p-columnFilter>
+<!--                    <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="id"-->
+<!--                                    showMenu="false"-->
+<!--                                    placeholder="Search by ID" ariaLabel="Filter Name"></p-columnFilter>-->
                 </th>
                 <th>
                     <p-columnFilter type="text" showAddButton="false" showMatchModes="false" field="title"
@@ -145,7 +145,7 @@
         <ng-template #body let-transactionItem>
             <tr>
                 <td>
-                    <p class="text-wrap break-all">
+                    <p class="text-wrap break-all" style="min-width: 3rem; max-width: 5rem">
                         {{ transactionItem.id }}
                     </p>
                 </td>

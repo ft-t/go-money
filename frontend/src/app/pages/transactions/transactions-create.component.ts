@@ -126,10 +126,10 @@ export class TransactionUpsertComponent implements OnInit {
 
     getTitle() {
         if (this.isEdit) {
-            return 'Editing Transaction';
+            return `Editing Transaction (#${this.transaction.id})`;
         }
 
-        return 'New Transaction';
+        return `New Transaction`;
     }
 
     async fetchTags() {

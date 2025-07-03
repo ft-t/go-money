@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/samber/lo"
 	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
@@ -336,13 +337,15 @@ func (f *FireflyImporter) Import(
 		}, nil
 	}
 
-	var allTransactions []*transactionsv1.CreateTransactionRequest
+	var allTransactions []*transactions.BulkRequest
 	for _, tx := range newTxs {
-		allTransactions = append(allTransactions, tx)
+		allTransactions = append(allTransactions, &transactions.BulkRequest{
+			Req: tx,
+		})
 	}
 
 	sort.Slice(allTransactions, func(i, j int) bool {
-		return allTransactions[i].TransactionDate.AsTime().Before(allTransactions[j].TransactionDate.AsTime())
+		return allTransactions[i].Req.TransactionDate.AsTime().Before(allTransactions[j].Req.TransactionDate.AsTime())
 	})
 
 	tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()

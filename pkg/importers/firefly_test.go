@@ -61,10 +61,10 @@ func TestFireflyImport(t *testing.T) {
 		importer := importers.NewFireflyImporter(txSvc)
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactionsv1.CreateTransactionRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
 
 				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
 				assert.EqualValues(t, *tx.Withdrawal.ForeignCurrency, "PLN")
@@ -74,14 +74,14 @@ func TestFireflyImport(t *testing.T) {
 
 				assert.EqualValues(t, accountsData[0].ID, tx.Withdrawal.SourceAccountId)
 
-				assert.EqualValues(t, "firefly_2805", *requests[0].InternalReferenceNumber)
+				assert.EqualValues(t, "firefly_2805", *requests[0].Req.InternalReferenceNumber)
 
-				assert.EqualValues(t, []int32{1}, requests[0].TagIds)
+				assert.EqualValues(t, []int32{1}, requests[0].Req.TagIds)
 
 				return []*transactionsv1.CreateTransactionResponse{
 					{
 						Transaction: &v1.Transaction{
-							InternalReferenceNumber: requests[0].InternalReferenceNumber,
+							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
 						},
 					},
 				}, nil
