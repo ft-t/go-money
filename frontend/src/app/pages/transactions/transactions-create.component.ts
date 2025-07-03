@@ -3,17 +3,23 @@ import { DropdownChangeEvent, DropdownModule } from 'primeng/dropdown';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { Transaction, TransactionSchema, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import {
+    Transaction,
+    TransactionSchema,
+    TransactionType
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { create } from '@bufbuild/protobuf';
 import { AccountTypeEnum, EnumService } from '../../services/enum.service';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
-import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import {
+    AccountsService,
+    ListAccountsResponse_AccountItem
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { DatePicker } from 'primeng/datepicker';
-import { IftaLabel } from 'primeng/iftalabel';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { NgIf } from '@angular/common';
 import { Textarea } from 'primeng/textarea';
@@ -23,7 +29,7 @@ import {
     CreateTransactionRequestSchema,
     DepositSchema,
     ListTransactionsRequestSchema,
-    TransactionsService,
+    TransactionsService, TransferBetweenAccountsSchema,
     WithdrawalSchema
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import {
@@ -66,7 +72,7 @@ export class TransactionUpsertComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        private route: ActivatedRoute,
+        private route: ActivatedRoute
     ) {
         this.transaction = create(TransactionSchema, {
             destinationAmount: undefined,
@@ -81,14 +87,14 @@ export class TransactionUpsertComponent implements OnInit {
         this.tagsService = createClient(TagsService, this.transport);
 
         this.route.queryParams.subscribe(async (data) => {
-            if(data['type']) {
+            if (data['type']) {
                 this.transaction.type = +(data['type'] as TransactionType);
             }
 
-            if(data['id']) {
+            if (data['id']) {
                 await this.editTransaction(+data['id']);
             }
-        })
+        });
     }
 
     async ngOnInit() {
@@ -96,9 +102,7 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     async editTransaction(id: number) {
-        this.transactionService.listTransactions(create(ListTransactionsRequestSchema, {
-
-        }))
+        this.transactionService.listTransactions(create(ListTransactionsRequestSchema, {}));
     }
 
     getTitle() {
@@ -190,29 +194,30 @@ export class TransactionUpsertComponent implements OnInit {
 
         return true;
     }
-    async convertAmount() {
-        if(!this.canConvertAmount())
-            return;
 
-        try{
-            let converted = await this.currencyService.exchange(create(ExchangeRequestSchema, {
-                amount: this.transaction!.sourceAmount!.toString(),
-                fromCurrency: this.transaction.sourceCurrency,
-                toCurrency: this.transaction.destinationCurrency
-            }))
+    async convertAmount() {
+        if (!this.canConvertAmount()) return;
+
+        try {
+            let converted = await this.currencyService.exchange(
+                create(ExchangeRequestSchema, {
+                    amount: this.transaction!.sourceAmount!.toString(),
+                    fromCurrency: this.transaction.sourceCurrency,
+                    toCurrency: this.transaction.destinationCurrency
+                })
+            );
 
             this.transaction.destinationAmount = converted.amount;
-        }
-        catch (e) {
+        } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
         }
     }
 
-    maxSelectedLabels = 1
+    maxSelectedLabels = 1;
 
     removeTag(tag: number) {
-        this.transaction.tagIds = this.transaction.tagIds.filter(t => t != tag);
+        this.transaction.tagIds = this.transaction.tagIds.filter((t) => t != tag);
     }
 
     tagById(id: number | undefined): Tag | null {
@@ -255,7 +260,7 @@ export class TransactionUpsertComponent implements OnInit {
             case TransactionType.DEPOSIT:
                 req.transaction.value = create(DepositSchema, {
                     destinationAccountId: this.transaction.destinationAccountId,
-                    destinationAmount: this.transaction.destinationAmount,
+                    destinationAmount: this.toPositiveNumber(this.transaction.destinationAmount),
                     destinationCurrency: this.transaction.destinationCurrency
                 });
                 req.transaction.case = 'deposit';
@@ -269,7 +274,17 @@ export class TransactionUpsertComponent implements OnInit {
                     foreignCurrency: this.transaction.destinationCurrency
                 });
                 req.transaction.case = 'withdrawal';
-
+                break;
+            case TransactionType.TRANSFER_BETWEEN_ACCOUNTS:
+                req.transaction.value = create(TransferBetweenAccountsSchema, {
+                    sourceAccountId: this.transaction.sourceAccountId,
+                    destinationAccountId: this.transaction.destinationAccountId,
+                    sourceAmount: this.toNegativeNumber(this.transaction.sourceAmount),
+                    sourceCurrency: this.transaction.sourceCurrency,
+                    destinationAmount: this.toPositiveNumber(this.transaction.destinationAmount),
+                    destinationCurrency: this.transaction.destinationCurrency
+                });
+                req.transaction.case = 'transferBetweenAccounts';
                 break;
         }
 
@@ -291,5 +306,12 @@ export class TransactionUpsertComponent implements OnInit {
         return (-Math.abs(num)).toString();
     }
 
-    protected readonly TransactionType = TransactionType;
+    toPositiveNumber(value: string | undefined): string | undefined {
+        if (!value) return value;
+
+        let num = parseFloat(value);
+        if (!num) return value;
+
+        return Math.abs(num).toString();
+    }
 }
