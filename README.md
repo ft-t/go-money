@@ -32,6 +32,7 @@ GO Money provides a simple web UI for managing transactions, accounts, and other
 Go Money does not come with built-in reports. Instead, it allows you to use Grafana to create custom dashboards and reports based on your transaction data.
 
 [Grafana guide](https://github.com/ft-t/go-money/wiki/Grafana)
+[Database schema](https://github.com/ft-t/go-money/wiki/Database-structure-and-entities-rules)
 
 [Query examples](https://github.com/ft-t/go-money/tree/master/docs/reporting/queries)
 

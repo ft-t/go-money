@@ -31,13 +31,14 @@ services:
   db-init:
     image: postgres:latest
     container_name: db-init
+    restart: on-failure
     depends_on:
       - db
     entrypoint: >
       bash -c "
-      until pg_isready -h db -U ${DB_USER}; do sleep 1; done;
-      psql -h db -U ${DB_USER} -tc \"SELECT 1 FROM pg_database WHERE datname = 'grafana'\" | grep -q 1 ||
-      psql -h db -U ${DB_USER} -c \"CREATE DATABASE grafana;\"
+      until pg_isready -h ${DB_HOST} -U ${DB_USER}; do sleep 1; done;
+      psql -h ${DB_HOST} -U ${DB_USER} -tc \"SELECT 1 FROM pg_database WHERE datname = 'grafana'\" | grep -q 1 ||
+      psql -h ${DB_HOST} -U ${DB_USER} -c \"CREATE DATABASE grafana;\"
       "
     environment:
       PGPASSWORD: ${DB_PASSWORD}
@@ -48,6 +49,9 @@ services:
     hostname: grafana
     container_name: grafana
     restart: always
+    depends_on: 
+      - db
+      - db-init
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_DATABASE_TYPE: postgres
