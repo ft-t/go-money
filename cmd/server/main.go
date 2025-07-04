@@ -66,6 +66,7 @@ func main() {
 
 	_, err = handlers.NewConfigApi(grpcServer, appcfg.NewService(&appcfg.ServiceConfig{
 		UserSvc: userService,
+		AppCfg:  configuration.GetConfiguration(),
 	}))
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
@@ -95,7 +96,11 @@ func main() {
 	}
 
 	baseAmountSvc := transactions.NewBaseAmountService()
-	ruleEngine := rules.NewExecutor(rules.NewLuaInterpreter())
+	ruleEngine := rules.NewExecutor(rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{
+		AccountsSvc:          accountSvc,
+		CurrencyConverterSvc: currencyConverter,
+		DecimalSvc:           decimalSvc,
+	}))
 
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             transactions.NewStatService(),

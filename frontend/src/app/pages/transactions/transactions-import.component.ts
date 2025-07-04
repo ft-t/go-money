@@ -14,15 +14,17 @@ import { create } from '@bufbuild/protobuf';
 import { Textarea } from 'primeng/textarea';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
+import { Checkbox } from 'primeng/checkbox';
 
 @Component({
     selector: 'app-transactions-import',
-    imports: [Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea],
+    imports: [Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea, Checkbox],
     templateUrl: './transactions-import.component.html'
 })
 export class TransactionsImportComponent {
     public selectedSource: ImportSource = ImportSource.FIREFLY;
     public sources = EnumService.getImportTypes();
+    public skipRules: boolean = false;
 
     public importService;
 
@@ -45,6 +47,7 @@ export class TransactionsImportComponent {
             try {
                 let result = await this.importService.importTransactions(
                     create(ImportTransactionsRequestSchema, {
+                        skipRules: this.skipRules,
                         source: this.selectedSource,
                         fileContent: btoa(unescape(encodeURIComponent(event2.target!.result as string)))
                     })

@@ -7,24 +7,55 @@ import (
 )
 
 type LuaInterpreter struct {
+	cfg *LuaInterpreterConfig
 }
 
-func NewLuaInterpreter() *LuaInterpreter {
-	return &LuaInterpreter{}
+type LuaInterpreterConfig struct {
+	AccountsSvc          AccountsSvc
+	DecimalSvc           DecimalSvc
+	CurrencyConverterSvc CurrencyConverterSvc
 }
 
-const luaTypeName = "transactionType"
+func NewLuaInterpreter(
+	cfg *LuaInterpreterConfig,
+) *LuaInterpreter {
+	return &LuaInterpreter{
+		cfg: cfg,
+	}
+}
 
-func registerType(state *lua.LState, wrapped *LuaTransactionWrapper) {
-	mt := state.NewTypeMetatable(luaTypeName)
+const luaTransactionType = "transactionType"
+const luaHelpers = "helpersType"
 
-	state.SetGlobal(luaTypeName, mt)
+func (l *LuaInterpreter) registerHelpers(ctx context.Context, state *lua.LState) {
+	mt := state.NewTypeMetatable(luaHelpers)
+
+	helpers := NewLuaHelpers(ctx, l.cfg)
+
+	state.SetGlobal(luaHelpers, mt)
+	state.SetField(mt, "__index", state.SetFuncs(state.NewTable(), map[string]lua.LGFunction{
+		"getAccountByID":  helpers.GetAccountById,
+		"convertCurrency": helpers.Convert,
+	}))
+
+	ud := state.NewUserData()
+	ud.Value = helpers
+	state.SetMetatable(ud, state.GetTypeMetatable(luaHelpers))
+
+	state.SetGlobal("helpers", ud)
+	state.Push(ud)
+}
+
+func (l *LuaInterpreter) registerTransaction(state *lua.LState, wrapped *LuaTransactionWrapper) {
+	mt := state.NewTypeMetatable(luaTransactionType)
+
+	state.SetGlobal(luaTransactionType, mt)
 	state.SetField(mt, "__index", state.SetFuncs(state.NewTable(), map[string]lua.LGFunction{
 		"title": wrapped.Title,
 
 		"destinationAmount":                     wrapped.DestinationAmount,
 		"getDestinationAmountWithDecimalPlaces": wrapped.GetDestinationAmountWithDecimalPlaces,
-		
+
 		"sourceAmount":                     wrapped.SourceAmount,
 		"getSourceAmountWithDecimalPlaces": wrapped.GetSourceAmountWithDecimalPlaces,
 
@@ -44,14 +75,14 @@ func registerType(state *lua.LState, wrapped *LuaTransactionWrapper) {
 
 	ud := state.NewUserData()
 	ud.Value = wrapped
-	state.SetMetatable(ud, state.GetTypeMetatable(luaTypeName))
+	state.SetMetatable(ud, state.GetTypeMetatable(luaTransactionType))
 
 	state.SetGlobal("tx", ud)
 	state.Push(ud)
 }
 
 func (l *LuaInterpreter) Run(
-	_ context.Context,
+	ctx context.Context,
 	script string,
 	tx *database.Transaction,
 ) (bool, error) {
@@ -62,7 +93,8 @@ func (l *LuaInterpreter) Run(
 		tx: tx,
 	}
 
-	registerType(state, wrapped)
+	l.registerTransaction(state, wrapped)
+	l.registerHelpers(ctx, state)
 
 	if err := state.DoString(script); err != nil {
 		return false, err

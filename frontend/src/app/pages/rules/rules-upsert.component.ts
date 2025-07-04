@@ -188,15 +188,31 @@ export class RulesUpsertComponent implements OnInit {
     getSuggestions() {
         let monaco = (window as any).monaco;
 
-        let kind = 3;
+        let kind = 1;
         let snippet = 4;
 
         if (monaco) {
-            kind = monaco.languages.CompletionItemKind.Field;
+            kind = monaco.languages.CompletionItemKind.Function;
             snippet = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
         }
 
         let suggestions = [];
+
+        suggestions.push({
+            label: `helpers:getAccountByID(value)`,
+            kind: kind,
+            insertText: `helpers:getAccountByID(value)`,
+            insertTextRules: snippet,
+            documentation: `Get account by ID`
+        });
+
+        suggestions.push({
+            label: `helpers:convertCurrency("from", "to", value)`,
+            kind: kind,
+            insertText: `helpers:convertCurrency("from", "to", value)`,
+            insertTextRules: snippet,
+            documentation: `Convert currency from one to another using exchange rate`,
+        });
 
         const simpleFields = ['title', 'destinationAmount', 'sourceAmount', 'sourceCurrency', 'destinationCurrency', 'sourceAccountID', 'destinationAccountID', 'notes', 'transactionType', 'referenceNumber', 'internalReferenceNumber'];
 
@@ -269,9 +285,15 @@ export class RulesUpsertComponent implements OnInit {
         return suggestions;
     }
 
+    private monacoRegistered = false;
+
     onEditorInit($event: IStandaloneCodeEditor) {
         let monaco = (window as any).monaco;
 
+        if (this.monacoRegistered)
+            return;
+
+        this.monacoRegistered = true;
         monaco.languages.registerCompletionItemProvider('lua', {
             triggerCharacters: [':', '.'],
             provideCompletionItems: () => {

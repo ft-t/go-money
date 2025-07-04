@@ -1,0 +1,14 @@
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: $DB_HOST:5432
+    database: $DB
+    user: $DB_USER
+    secureJsonData:
+      password: $DB_PASSWORD
+    isDefault: true
+    jsonData:
+      sslmode: disable

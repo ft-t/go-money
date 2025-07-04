@@ -56,7 +56,11 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
     public accounts: Account[] = [];
     public tags: Tag[] = [];
 
+    public maxSelectedLabels = 1;
+
     @Input() filtersWrapper: FilterWrapper | undefined;
+
+    @Input() transactionTypeForCreate: TransactionType | null = null;
 
     @Input() tableTitle: string = 'Transactions';
 
@@ -85,9 +89,26 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             this.transactionTypesMap[type.value] = type;
         }
 
-        if (routeSnapshot.snapshot.data['preselectedFilter']) {
-            this.filters = routeSnapshot.snapshot.data['preselectedFilter'];
-        }
+        routeSnapshot.data.subscribe((data) => {
+            if (data['preselectedFilter']) {
+                this.filters = data['preselectedFilter'];
+            }
+        });
+
+        routeSnapshot.queryParams.subscribe((params) => {
+            if (params['ignoreDateFilter'] === 'true') {
+                this.ignoreDateFilter = true;
+            }
+
+            if (params['title']) {
+                this.filters['title'] = {
+                    value: params['title'],
+                    matchMode: 'contains'
+                } as FilterMetadata;
+            }
+
+            this.refreshTable();
+        });
 
         this.transactionsService = createClient(TransactionsService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
@@ -96,11 +117,17 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['currentAccountId']) {
-            console.log(changes);
             this.refreshTable();
         }
     }
 
+    async createNewTransaction() {
+        await this.router.navigate(['/transactions', 'new'], {
+            queryParams: {
+                type: this.transactionTypeForCreate ?? TransactionType.WITHDRAWAL
+            }
+        });
+    }
 
     async ngOnInit() {
         await Promise.all([this.fetchAccounts(), this.fetchTags()]);
@@ -117,7 +144,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             this.refreshTable();
         });
 
-        this.refreshTable()
+        this.refreshTable();
     }
 
     async fetchTags() {
@@ -189,7 +216,9 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     async fetchTransactions(event: TableLazyLoadEvent) {
         console.log(event);
+
         this.lastEvent = event;
+        this.loading = true;
 
         let req = create(ListTransactionsRequestSchema, {
             limit: event.rows ?? 50,
@@ -249,7 +278,6 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             //     req.tagIds
         }
 
-
         if (event.multiSortMeta) {
             for (let sortData of event.multiSortMeta) {
                 let sortReq = create(ListTransactionsRequest_SortSchema, {
@@ -269,10 +297,16 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             }
         }
 
-        let resp = await this.transactionsService.listTransactions(req);
+        try {
+            let resp = await this.transactionsService.listTransactions(req);
 
-        this.transactions = resp.transactions;
-        this.totalRecords = Number(resp.totalCount);
+            this.transactions = resp.transactions;
+            this.totalRecords = Number(resp.totalCount);
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        } finally {
+            this.loading = false;
+        }
     }
 
     getTransactionType(transaction: Transaction): string {
@@ -290,6 +324,10 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     getTransactionTypeColor(transaction: Transaction): string[] {
         return ['text-wrap', 'break-all', this.getAmountColor(transaction)];
+    }
+
+    getTransactionLink(id: number): string {
+        return this.router.createUrlTree(['/', 'transactions', 'edit', id.toString()]).toString();
     }
 
     getAmountColor(transaction: Transaction): string {

@@ -145,19 +145,17 @@ func (s *Service) validateReconciliation(
 		)
 	}
 
+	if !tx.DestinationAmount.Valid {
+		return errors.Newf(
+			"destination_amount is required for %s",
+			txType,
+		)
+	}
+
 	if err := s.validateCurrency(
 		tx.DestinationCurrency,
 		txType,
 		"destination_currency",
-	); err != nil {
-		return err
-	}
-
-	if err := s.validateAmount(
-		tx.DestinationAmount,
-		true,
-		txType,
-		"destination_amount",
 	); err != nil {
 		return err
 	}

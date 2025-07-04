@@ -87,7 +87,7 @@ func (s *Service) List(
 	}
 
 	if req.TextQuery != nil {
-		query = query.Where("title LIKE ?", "%"+*req.TextQuery+"%")
+		query = query.Where("title ILIKE ?", "%"+*req.TextQuery+"%")
 	}
 
 	if len(req.DestinationAccountIds) > 0 {
@@ -115,6 +115,10 @@ func (s *Service) List(
 		}
 
 		query = query.Where(fmt.Sprintf("tag_ids && Array[%s]", strings.Join(tagIds, ",")))
+	}
+
+	if len(req.Ids) > 0 {
+		query = query.Where("id IN ?", req.Ids)
 	}
 
 	for _, sort := range req.Sort {
@@ -161,7 +165,14 @@ func (s *Service) CreateBulk(
 	defer tx.Rollback()
 	ctx = database.WithContext(ctx, tx)
 
-	resp, err := s.CreateBulkInternal(ctx, req, tx)
+	var bulkRequests []*BulkRequest
+	for _, r := range req {
+		bulkRequests = append(bulkRequests, &BulkRequest{
+			Req: r,
+		})
+	}
+
+	resp, err := s.CreateBulkInternal(ctx, bulkRequests, tx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create transactions for request: %v", req)
 	}
@@ -173,16 +184,28 @@ func (s *Service) CreateBulk(
 	return resp, nil
 }
 
+type BulkRequest struct {
+	OriginalTx *database.Transaction // for update
+	Req        *transactionsv1.CreateTransactionRequest
+}
+
 func (s *Service) CreateBulkInternal(
 	ctx context.Context,
-	reqs []*transactionsv1.CreateTransactionRequest,
+	reqs []*BulkRequest,
 	tx *gorm.DB,
 ) ([]*transactionsv1.CreateTransactionResponse, error) {
-	var created []*database.Transaction
+	var transactionWithRules []*database.Transaction
+	var transactionWithoutRules []*database.Transaction
+
+	var originalTxs []*database.Transaction
 
 	for _, req := range reqs {
-		if req.TransactionDate == nil {
+		if req.Req.TransactionDate == nil {
 			return nil, errors.New("transaction date is required")
+		}
+
+		if req.OriginalTx != nil { // save list of original transactions for update
+			originalTxs = append(originalTxs, req.OriginalTx)
 		}
 
 		newTx := &database.Transaction{
@@ -192,15 +215,23 @@ func (s *Service) CreateBulkInternal(
 			DestinationCurrency:     "",
 			SourceAccountID:         nil,
 			DestinationAccountID:    nil,
-			TagIDs:                  req.TagIds,
+			TagIDs:                  req.Req.TagIds,
 			CreatedAt:               time.Now().UTC(),
-			Notes:                   req.Notes,
-			Extra:                   req.Extra,
-			TransactionDateTime:     req.TransactionDate.AsTime(),
-			TransactionDateOnly:     req.TransactionDate.AsTime(),
-			Title:                   req.Title,
-			ReferenceNumber:         req.ReferenceNumber,
-			InternalReferenceNumber: req.InternalReferenceNumber,
+			Notes:                   req.Req.Notes,
+			Extra:                   req.Req.Extra,
+			TransactionDateTime:     req.Req.TransactionDate.AsTime(),
+			TransactionDateOnly:     req.Req.TransactionDate.AsTime(),
+			Title:                   req.Req.Title,
+			ReferenceNumber:         req.Req.ReferenceNumber,
+			InternalReferenceNumber: req.Req.InternalReferenceNumber,
+		}
+
+		if req.OriginalTx != nil {
+			newTx.ID = req.OriginalTx.ID
+			newTx.CreatedAt = req.OriginalTx.CreatedAt
+			newTx.UpdatedAt = time.Now().UTC()
+
+			req.OriginalTx = newTx // swap
 		}
 
 		if newTx.Extra == nil {
@@ -210,7 +241,7 @@ func (s *Service) CreateBulkInternal(
 		var fillRes *fillResponse
 		var err error
 
-		switch v := req.GetTransaction().(type) {
+		switch v := req.Req.GetTransaction().(type) {
 		case *transactionsv1.CreateTransactionRequest_TransferBetweenAccounts:
 			if fillRes, err = s.fillTransferBetweenAccounts(ctx, tx, v.TransferBetweenAccounts, newTx); err != nil {
 				return nil, err
@@ -239,29 +270,46 @@ func (s *Service) CreateBulkInternal(
 
 		// validate wallet transaction date
 
-		if err = tx.Create(newTx).Error; err != nil {
-			return nil, errors.WithStack(err)
+		if req.OriginalTx == nil {
+			if err = tx.Create(newTx).Error; err != nil {
+				return nil, errors.WithStack(err)
+			}
+		} else {
+			if err = tx.Updates(newTx).Error; err != nil {
+				return nil, errors.WithStack(err)
+			}
 		}
 
-		created = append(created, newTx)
+		if req.Req.SkipRules {
+			transactionWithoutRules = append(transactionWithoutRules, newTx)
+		} else {
+			transactionWithRules = append(transactionWithRules, newTx)
+		}
 	}
 
-	created, err := s.cfg.RuleSvc.ProcessTransactions(ctx, created) // run rule engine can change transactions
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to process transactions with rules")
+	if len(transactionWithRules) > 0 {
+		modifiedTxs, err := s.cfg.RuleSvc.ProcessTransactions(ctx, transactionWithRules) // run rule engine can change transactions
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to process transactions with rules")
+		}
+
+		transactionWithRules = modifiedTxs
 	}
+
+	created := append(transactionWithRules, transactionWithoutRules...)
 
 	for _, createdTx := range created {
-		if err = s.ValidateTransaction(ctx, tx, createdTx); err != nil {
+		if err := s.ValidateTransaction(ctx, tx, createdTx); err != nil {
 			return nil, errors.Wrapf(err, "failed to validate transaction")
 		}
 	}
 
-	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, created); err != nil {
+	// include original as we need to ensure previous history is correct now
+	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
 		return nil, err
 	}
 
-	if err = s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
 		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
 	}
 
@@ -284,7 +332,11 @@ func (s *Service) Create(
 	defer tx.Rollback()
 	ctx = database.WithContext(ctx, tx)
 
-	resp, err := s.CreateBulkInternal(ctx, []*transactionsv1.CreateTransactionRequest{req}, tx)
+	resp, err := s.CreateBulkInternal(ctx, []*BulkRequest{
+		{
+			Req: req,
+		},
+	}, tx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create transaction for request: %v", req)
 	}
@@ -294,6 +346,39 @@ func (s *Service) Create(
 	}
 
 	return resp[0], nil
+}
+
+func (s *Service) Update(
+	ctx context.Context,
+	req *transactionsv1.UpdateTransactionRequest,
+) (*transactionsv1.UpdateTransactionResponse, error) {
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+	ctx = database.WithContext(ctx, tx)
+
+	var existingTx database.Transaction
+	if err := tx.Where("id = ?", req.Id).
+		First(&existingTx).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to find existing transaction")
+	}
+
+	resp, err := s.CreateBulkInternal(ctx, []*BulkRequest{
+		{
+			Req:        req.Transaction,
+			OriginalTx: &existingTx, // we need to update existing transaction
+		},
+	}, tx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create transaction for request: %v", req)
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &transactionsv1.UpdateTransactionResponse{
+		Transaction: resp[0].Transaction,
+	}, nil
 }
 
 func (s *Service) fillDeposit(

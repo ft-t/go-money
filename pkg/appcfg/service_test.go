@@ -19,6 +19,7 @@ func TestGetConfiguration(t *testing.T) {
 
 		srv := appcfg.NewService(&appcfg.ServiceConfig{
 			UserSvc: userSvc,
+			AppCfg:  &configuration.Configuration{},
 		})
 
 		resp, err := srv.GetConfiguration(context.TODO(), &configurationv1.GetConfigurationRequest{})
@@ -35,6 +36,7 @@ func TestGetConfiguration(t *testing.T) {
 
 		srv := appcfg.NewService(&appcfg.ServiceConfig{
 			UserSvc: userSvc,
+			AppCfg:  &configuration.Configuration{},
 		})
 
 		resp, err := srv.GetConfiguration(context.TODO(), &configurationv1.GetConfigurationRequest{})

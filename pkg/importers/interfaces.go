@@ -5,6 +5,7 @@ import (
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"gorm.io/gorm"
 )
 
@@ -26,7 +27,7 @@ type TagSvc interface {
 type TransactionSvc interface {
 	CreateBulkInternal(
 		ctx context.Context,
-		reqs []*transactionsv1.CreateTransactionRequest,
+		reqs []*transactions.BulkRequest,
 		tx *gorm.DB,
 	) ([]*transactionsv1.CreateTransactionResponse, error)
 }

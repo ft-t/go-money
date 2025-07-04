@@ -261,7 +261,7 @@ func TestValidateReconciliation(t *testing.T) {
 		}))
 	})
 
-	t.Run("invalid - negative amount", func(t *testing.T) {
+	t.Run("success - negative amount", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
 			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
@@ -269,8 +269,8 @@ func TestValidateReconciliation(t *testing.T) {
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: &acc[0].ID,
 		})
-		assert.Error(t, err)
-		assert.ErrorContains(t, err, "destination_amount must be positive for TRANSACTION_TYPE_RECONCILIATION")
+
+		assert.NoError(t, err)
 	})
 
 	t.Run("invalid - no destination account", func(t *testing.T) {

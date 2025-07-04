@@ -11,7 +11,7 @@ import (
 
 func TestLuaAmounts(t *testing.T) {
 	t.Run("source amount with lua convert", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		function decimal(x)
@@ -36,7 +36,7 @@ func TestLuaAmounts(t *testing.T) {
 	})
 
 	t.Run("source amount without lua convert", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:destinationAmount() == 100.5 then
@@ -57,7 +57,7 @@ func TestLuaAmounts(t *testing.T) {
 	})
 
 	t.Run("source amount with decimal places", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:getSourceAmountWithDecimalPlaces(3) == 100.500 then
@@ -78,7 +78,7 @@ func TestLuaAmounts(t *testing.T) {
 	})
 
 	t.Run("destination amount with decimal places", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:getDestinationAmountWithDecimalPlaces(3) == 100.500 then
@@ -99,7 +99,7 @@ func TestLuaAmounts(t *testing.T) {
 	})
 
 	t.Run("decimal places with nil amount", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:getSourceAmountWithDecimalPlaces(3) == nil then
@@ -120,7 +120,7 @@ func TestLuaAmounts(t *testing.T) {
 	})
 
 	t.Run("decimal places are missing", func(t *testing.T) {
-		interpreter := rules.NewLuaInterpreter()
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:getDestinationAmountWithDecimalPlaces() == nil then

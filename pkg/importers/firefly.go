@@ -6,8 +6,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/samber/lo"
 	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
@@ -30,9 +32,10 @@ func NewFireflyImporter(
 }
 
 type ImportRequest struct {
-	Data     []byte
-	Accounts []*database.Account
-	Tags     map[string]*database.Tag
+	Data      []byte
+	Accounts  []*database.Account
+	Tags      map[string]*database.Tag
+	SkipRules bool
 }
 
 func (f *FireflyImporter) Type() importv1.ImportSource {
@@ -100,12 +103,13 @@ func (f *FireflyImporter) Import(
 
 		targetTx := &transactionsv1.CreateTransactionRequest{
 			Notes:                   notes,
-			Extra:                   make(map[string]string), // todo
-			TagIds:                  nil,                     // mapped
+			Extra:                   make(map[string]string),
+			TagIds:                  nil, // mapped
 			TransactionDate:         timestamppb.New(parsedDate.UTC()),
 			Title:                   description,
 			Transaction:             nil,
-			InternalReferenceNumber: &journalID,
+			InternalReferenceNumber: lo.ToPtr(fmt.Sprintf("firefly_%v", journalID)),
+			SkipRules:               req.SkipRules,
 		}
 
 		if len(req.Tags) > 0 {
@@ -333,13 +337,15 @@ func (f *FireflyImporter) Import(
 		}, nil
 	}
 
-	var allTransactions []*transactionsv1.CreateTransactionRequest
+	var allTransactions []*transactions.BulkRequest
 	for _, tx := range newTxs {
-		allTransactions = append(allTransactions, tx)
+		allTransactions = append(allTransactions, &transactions.BulkRequest{
+			Req: tx,
+		})
 	}
 
 	sort.Slice(allTransactions, func(i, j int) bool {
-		return allTransactions[i].TransactionDate.AsTime().Before(allTransactions[j].TransactionDate.AsTime())
+		return allTransactions[i].Req.TransactionDate.AsTime().Before(allTransactions[j].Req.TransactionDate.AsTime())
 	})
 
 	tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()

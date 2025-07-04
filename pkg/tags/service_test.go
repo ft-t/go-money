@@ -248,3 +248,89 @@ func TestImportTags(t *testing.T) {
 	assert.Equal(t, "white", allTags[1].Color)
 	assert.Equal(t, "icon2", allTags[1].Icon)
 }
+
+func TestFind(t *testing.T) {
+	t.Run("fail list", func(t *testing.T) {
+		srv := tags.NewService(nil)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		resp, err := srv.ListTags(ctx, &tagsv1.ListTagsRequest{})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("fail getall", func(t *testing.T) {
+		srv := tags.NewService(nil)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		resp, err := srv.GetAllTags(ctx)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("fail delete", func(t *testing.T) {
+		srv := tags.NewService(nil)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		err := srv.DeleteTag(ctx, &tagsv1.DeleteTagRequest{
+			Id: 1,
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("fail import", func(t *testing.T) {
+		srv := tags.NewService(nil)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		resp, err := srv.ImportTags(ctx, &tagsv1.ImportTagsRequest{
+			Tags: []*tagsv1.UpdateTagRequest{
+				{
+					Name:  "tag1",
+					Color: "xx",
+					Icon:  "yy",
+				},
+			},
+		})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("fail create", func(t *testing.T) {
+		srv := tags.NewService(nil)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		resp, err := srv.CreateTag(ctx, &tagsv1.CreateTagRequest{
+			Name:  "some-name",
+			Color: "a",
+			Icon:  "i",
+		})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("fail update", func(t *testing.T) {
+		srv := tags.NewService(nil)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		resp, err := srv.UpdateTag(ctx, &tagsv1.UpdateTagRequest{
+			Id:    1,
+			Name:  "some-name",
+			Color: "a",
+			Icon:  "i",
+		})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
