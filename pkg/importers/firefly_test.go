@@ -2,6 +2,7 @@ package importers_test
 
 import (
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
@@ -38,6 +39,12 @@ var accountsByteData []byte
 
 //go:embed testdata/ff_withdrawal.csv
 var ffWithdrawalByteData []byte
+
+//go:embed testdata/ff_open_balance_debt.csv
+var ffOpenBalanceDebtByteData []byte
+
+//go:embed testdata/ff_open_balance.csv
+var ffOpenBalanceByteData []byte
 
 //go:embed testdata/rates.json
 var ratesByteData []byte
@@ -99,6 +106,130 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+	})
+
+	t.Run("open balance (debt)", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+				assert.Len(t, requests, 1)
+
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+
+				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "PLN")
+
+				assert.EqualValues(t, "-3900", tx.Withdrawal.SourceAmount)
+
+				assert.EqualValues(t, accountsData[1].ID, tx.Withdrawal.SourceAccountId)
+
+				assert.EqualValues(t, "firefly_1869", *requests[0].Req.InternalReferenceNumber)
+
+				return []*transactionsv1.CreateTransactionResponse{
+					{
+						Transaction: &v1.Transaction{
+							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
+						},
+					},
+				}, nil
+			})
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     ffOpenBalanceDebtByteData,
+			Accounts: accountsData,
+			Tags: map[string]*database.Tag{
+				"Grocery": {
+					ID: 1,
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("open balance", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+				assert.Len(t, requests, 1)
+
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Deposit)
+
+				assert.EqualValues(t, tx.Deposit.DestinationCurrency, "PLN")
+
+				assert.EqualValues(t, "3520.42", tx.Deposit.DestinationAmount)
+
+				assert.EqualValues(t, accountsData[1].ID, tx.Deposit.DestinationAccountId)
+
+				assert.EqualValues(t, "firefly_18691", *requests[0].Req.InternalReferenceNumber)
+
+				return []*transactionsv1.CreateTransactionResponse{
+					{
+						Transaction: &v1.Transaction{
+							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
+						},
+					},
+				}, nil
+			})
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     ffOpenBalanceByteData,
+			Accounts: accountsData,
+			Tags: map[string]*database.Tag{
+				"Grocery": {
+					ID: 1,
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+}
+
+func TestSkipDuplicate(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	var rates []*database.Currency
+	assert.NoError(t, json.Unmarshal(ratesByteData, &rates))
+
+	assert.NoError(t, gormDB.Create(&rates).Error)
+
+	var accountsData []*database.Account
+	assert.NoError(t, json.Unmarshal(accountsByteData, &accountsData))
+
+	assert.NoError(t, gormDB.Create(&accountsData).Error)
+
+	t.Run("skip duplicate transactions", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		tx := &database.ImportDeduplication{
+			ImportSource: importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Key:          "2805",
+		}
+		assert.NoError(t, gormDB.Create(&tx).Error)
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     ffWithdrawalByteData,
+			Accounts: accountsData,
+			Tags: map[string]*database.Tag{
+				"Grocery": {
+					ID: 1,
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.EqualValues(t, result.DuplicateCount, 1)
 	})
 }
 

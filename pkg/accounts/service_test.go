@@ -28,6 +28,21 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestService_GetAccountByID(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	acc := &database.Account{
+		Extra: map[string]string{},
+	}
+	assert.NoError(t, gormDB.Create(&acc).Error)
+
+	srv := accounts.NewService(&accounts.ServiceConfig{})
+
+	resp, err := srv.GetAccountByID(context.TODO(), acc.ID)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+}
+
 func TestDelete(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
@@ -91,7 +106,7 @@ func TestGetAllAccounts(t *testing.T) {
 	srv := accounts.NewService(&accounts.ServiceConfig{})
 
 	resp, err := srv.GetAllAccounts(context.TODO())
-	
+
 	assert.NoError(t, err)
 	assert.Len(t, resp, 1)
 }
