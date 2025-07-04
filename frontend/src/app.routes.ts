@@ -5,7 +5,7 @@ import { authGuard } from './app/services/guards/auth.guard';
 import { LoginComponent } from './app/modules/auth/login/login.component';
 import { TagsListComponent } from './app/pages/tags/tags-list.component';
 import { AccountsUpsertComponent } from './app/pages/accounts/accounts-upsert.component';
-import { TransactionUpsertComponent } from './app/pages/transactions/transactions-create.component';
+import { TransactionUpsertComponent } from './app/pages/transactions/transactions-upsert.component';
 import { AccountsImportComponent } from './app/pages/accounts/accounts-import.component';
 import { TransactionsImportComponent } from './app/pages/transactions/transactions-import.component';
 import { AccountsDetailComponent } from './app/pages/accounts/accounts-detail.component';
@@ -19,6 +19,7 @@ import { TagsDetailComponent } from './app/pages/tags/tags-detail.component';
 import { RuleListComponent } from './app/pages/rules/rule-list.component';
 import { RulesUpsertComponent } from './app/pages/rules/rules-upsert.component';
 import { DashboardComponent } from './app/pages/dashboard/dashboard.component';
+import { TransactionsDetailsComponent } from './app/pages/transactions/transactions-details.component';
 
 export const appRoutes: Routes = [
     {
@@ -132,6 +133,11 @@ export const appRoutes: Routes = [
             {
                 path: 'transactions/new',
                 component: TransactionUpsertComponent,
+                data: {}
+            },
+            {
+                path: 'transactions/:id',
+                component: TransactionsDetailsComponent,
                 data: {}
             },
             {

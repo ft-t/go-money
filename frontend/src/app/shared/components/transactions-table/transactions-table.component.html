@@ -143,10 +143,12 @@
             </tr>
         </ng-template>
         <ng-template #body let-transactionItem>
-            <tr>
+            <tr [routerLink]="getTransactionLink(transactionItem.id)">
                 <td>
                     <p class="text-wrap break-all" style="min-width: 3rem; max-width: 5rem">
-                        {{ transactionItem.id }}
+                        <a>
+                            {{ transactionItem.id }}
+                        </a>
                     </p>
                 </td>
                 <td style="max-width: 20rem;">

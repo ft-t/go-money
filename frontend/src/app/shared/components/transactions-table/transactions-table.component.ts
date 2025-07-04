@@ -107,7 +107,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
                 } as FilterMetadata;
             }
 
-            this.refreshTable()
+            this.refreshTable();
         });
 
         this.transactionsService = createClient(TransactionsService, this.transport);
@@ -123,10 +123,10 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     async createNewTransaction() {
         await this.router.navigate(['/transactions', 'new'], {
-            queryParams : {
-                type: this.transactionTypeForCreate ?? TransactionType.WITHDRAWAL,
+            queryParams: {
+                type: this.transactionTypeForCreate ?? TransactionType.WITHDRAWAL
             }
-        })
+        });
     }
 
     async ngOnInit() {
@@ -297,19 +297,16 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             }
         }
 
-        try{
+        try {
             let resp = await this.transactionsService.listTransactions(req);
 
             this.transactions = resp.transactions;
             this.totalRecords = Number(resp.totalCount);
-        }
-        catch (e) {
+        } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        }
-        finally {
+        } finally {
             this.loading = false;
         }
-
     }
 
     getTransactionType(transaction: Transaction): string {
@@ -327,6 +324,10 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     getTransactionTypeColor(transaction: Transaction): string[] {
         return ['text-wrap', 'break-all', this.getAmountColor(transaction)];
+    }
+
+    getTransactionLink(id: number): string {
+        return this.router.createUrlTree(['/', 'transactions', 'edit', id.toString()]).toString();
     }
 
     getAmountColor(transaction: Transaction): string {

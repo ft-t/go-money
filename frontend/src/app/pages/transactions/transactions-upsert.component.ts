@@ -42,7 +42,7 @@ import { ActivatedRoute } from '@angular/router';
 
 @Component({
     selector: 'transaction-upsert',
-    templateUrl: 'transactions-create.component.html',
+    templateUrl: 'transactions-upsert.component.html',
     imports: [SelectButtonModule, DropdownModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Toast, DatePicker, NgIf, Textarea, Button, MultiSelect, InputGroup, InputGroupAddon, InputNumber, SelectButton, Chip, NgClass]
 })
 export class TransactionUpsertComponent implements OnInit {

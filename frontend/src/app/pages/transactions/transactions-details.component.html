@@ -1,0 +1,63 @@
+<p-fluid>
+
+    <div class="flex flex-row gap-4">
+        <div class="flex flex-col gap-4 w-1/2">
+            <p-card header="Transaction Info" class="mb-4">
+                <div class="flex flex-col gap-2 p-2">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">Type - </span>
+                        <span class="justify-start">{{ transaction.type }}</span>
+                    </div>
+                    <div>
+                        <span class="font-semibold">Date - </span>
+                        <span>{{ TimestampHelper.timestampToDate(transaction.transactionDate!) }}</span>
+                    </div>
+                </div>
+            </p-card>
+        </div>
+        <div class="flex flex-col gap-4 w-1/2">
+            <p-card header="Tags & Notes" class="mb-4">
+                <div>
+                    <span class="font-semibold">Tags - </span>
+                    <span>
+                            <ng-container *ngIf="transaction.tagIds?.length; else noTags">
+                                <p-tag *ngFor="let tag of transaction.tagIds" [value]="tagById(tag)?.name"
+                                       class="mr-1" />
+                            </ng-container>
+                            <ng-template #noTags><span class="text-gray-400">No tags</span></ng-template>
+                        </span>
+                </div>
+                <div>
+                    <span class="font-semibold">Notes - </span>
+                    <span>{{ transaction.notes || 'No notes' }}</span>
+                </div>
+            </p-card>
+        </div>
+    </div>
+    <div class="flex flex-row gap-4">
+        <div class="flex flex-col gap-4 w-1/2">
+            <p-card header="Accounts & Amounts" class="mb-4">
+                <div class="flex flex-col gap-2 p-2">
+                    <div>
+                        <span class="font-semibold">Source Account - </span>
+                        <span>{{ accountById(transaction.sourceAccountId)?.name || '-' }}</span>
+                    </div>
+                    <div>
+                        <span class="font-semibold">Source Amount - </span>
+                        <span>{{ transaction.sourceAmount || '-' }} <span
+                            class="text-xs text-gray-400">{{ transaction.sourceCurrency }}</span></span>
+                    </div>
+                    <div>
+                        <span class="font-semibold">Destination Account - </span>
+                        <span>{{ accountById(transaction.destinationAccountId)?.name || '-' }}</span>
+                    </div>
+                    <div>
+                        <span class="font-semibold">Destination Amount - </span>
+                        <span>{{ transaction.destinationAmount || '-' }} <span
+                            class="text-xs text-gray-400">{{ transaction.destinationCurrency }}</span></span>
+                    </div>
+                </div>
+            </p-card>
+        </div>
+    </div>
+</p-fluid>
