@@ -27,4 +27,4 @@ DOCKER_SERVER_IMAGE_NAME ?= "go-money-server:latest"
 
 .PHONY: build-docker
 build-docker:
-	docker build -f ./cmd/server/Dockerfile --build-arg="SOURCE_PATH=cmd/server" -t ${DOCKER_SERVER_IMAGE_NAME} .
+	docker build -f ./build/Dockerfile.server --build-arg="SOURCE_PATH=cmd/server" -t ${DOCKER_SERVER_IMAGE_NAME} .
