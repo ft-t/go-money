@@ -28,7 +28,7 @@ services:
     networks:
       - go-money
     volumes:
-      - ./db_data:/var/lib/postgresql/data
+      - ./db_data:/var/lib/postgresql/data:rw
   db-init:
     image: postgres:latest
     container_name: db-init
@@ -71,8 +71,8 @@ services:
     networks:
       - go-money
     volumes:
-      - ./grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana_data:/var/lib/grafana:rw
+      - ./grafana/provisioning:/etc/grafana/provisioning:rw
   
   traefik:
     image: traefik:latest
