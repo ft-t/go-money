@@ -36,7 +36,7 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
         });
 
         activeRoute.params.subscribe((params) => {
-            let parsed = parseInt(params['accountId']) ?? undefined;
+            let parsed = parseInt(params['id']) ?? undefined;
 
             busService.currentAccountId.next(parsed);
         });
@@ -51,6 +51,11 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
     }
 
     async setAccount(accountID: number) {
+        if (!accountID) {
+            this.currentAccount = create(AccountSchema, {});
+            return;
+        }
+
         try {
             let accountDetails = await this.accountsService.listAccounts(
                 create(ListAccountsRequestSchema, {

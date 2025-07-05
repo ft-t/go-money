@@ -82,7 +82,7 @@ export const appRoutes: Routes = [
                 }
             },
             {
-                path: 'accounts/:accountId',
+                path: 'accounts/:id',
                 component: AccountsDetailComponent,
                 data: {}
             },
@@ -161,13 +161,13 @@ export const appRoutes: Routes = [
                 data: {}
             },
             {
-                path: 'tags/:id',
-                component: TagsDetailComponent,
+                path: 'tags/new',
+                component: TagsUpsertComponent,
                 data: {}
             },
             {
-                path: 'tags/new',
-                component: TagsUpsertComponent,
+                path: 'tags/:id',
+                component: TagsDetailComponent,
                 data: {}
             },
             {
