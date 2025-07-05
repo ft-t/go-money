@@ -1,75 +1,88 @@
 <p-fluid>
-    <div class="flex flex-col md:flex-row gap-8">
-        <div class="md:w-1/2">
-            <div class="card flex flex-col gap-4">
-                <div class="font-semibold text-xl">Base fields</div>
-                <div class="flex flex-col gap-2">
-                    <label for="accountName">Name</label>
-                    <input pInputText id="accountName" type="text" [(ngModel)]="account.name" />
+    <form [formGroup]="form" (ngSubmit)="submit()" *ngIf="isFormReady">
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="md:w-1/2">
+                <div class="card flex flex-col gap-4">
+                    <div class="font-semibold text-xl">Base fields</div>
+                    <div class="flex flex-col gap-2">
+                        <label for="accountName">Name</label>
+                        <input pInputText id="accountName" type="text" formControlName="name" />
+                        @if (name.invalid && (name.dirty || name.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Name is required</p-message>
+                        }
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label for="type">Type</label>
+                        <p-dropdown
+                            [options]="accountTypes"
+                            formControlName="type"
+                            [filter]="true"
+                            filterBy="name"
+                            optionLabel="name"
+                            optionValue="value"
+                            placeholder="Select Type" />
+
+                        @if (type.invalid && (type.dirty || type.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Currency is required</p-message>
+                        }
+                    </div>
+
+
+                    <div class="flex flex-col gap-2">
+                        <label for="currency">Currency</label>
+                        <p-dropdown
+                            [options]="currencies"
+                            formControlName="currency"
+                            [filter]="true"
+                            filterBy="id"
+                            optionLabel="id"
+                            optionValue="id"
+                            placeholder="Select Currency" />
+
+                        @if (currency.invalid && (currency.dirty || currency.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Type is required</p-message>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="md:w-1/2">
+                <div class="card flex flex-col gap-4">
+                    <div class="font-semibold text-xl">Other</div>
+                    <div class="flex flex-wrap gap-2">
+                        <label for="iban">IBAN</label>
+                        <input pInputText formControlName="iban" id="iban" type="text" />
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <label for="iban">Account Number</label>
+                        <input pInputText formControlName="accountNumber" id="iban" type="text" />
+                    </div>
+                    <div class="flex flex-col gap-2" *ngIf="account.type == AccountType.LIABILITY">
+                        <label for="liability">Liability (percent)</label>
+                        <input pInputText formControlName="liabilityPercent" id="liability" type="number" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="liability">Display Order</label>
+                        <input pInputText formControlName="displayOrder" id="displayOrder" type="number" />
+                    </div>
                 </div>
 
-                <div class="flex flex-col gap-2">
-                    <label for="type">Type</label>
-                    <p-dropdown
-                        [options]="accountTypes"
-                        [(ngModel)]="account.type"
-                        [filter]="true"
-                        filterBy="name"
-                        optionLabel="name"
-                        optionValue="value"
-                        placeholder="Select Type" />
-                </div>
-
-                <div class="flex flex-col gap-2">
-                    <label for="currency">Currency</label>
-                    <p-dropdown
-                        [options]="currencies"
-                        [(ngModel)]="account.currency"
-                        [filter]="true"
-                        filterBy="id"
-                        optionLabel="id"
-                        optionValue="id"
-                        placeholder="Select Currency" />
+            </div>
+        </div>
+        <div class="flex mt-8">
+            <div class="card flex flex-col gap-6 w-full">
+                <div class="font-semibold text-xl">Advanced</div>
+                <div class="flex flex-wrap">
+                    <label for="note">Note</label>
+                    <textarea autoResize="true" pTextarea formControlName="note" id="note" type="text"></textarea>
                 </div>
             </div>
         </div>
-        <div class="md:w-1/2">
-            <div class="card flex flex-col gap-4">
-                <div class="font-semibold text-xl">Other</div>
-                <div class="flex flex-wrap gap-2">
-                    <label for="iban">IBAN</label>
-                    <input pInputText [(ngModel)]="account.iban" id="iban" type="text" />
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <label for="iban">Account Number</label>
-                    <input pInputText [(ngModel)]="account.accountNumber" id="iban" type="text" />
-                </div>
-                <div class="flex flex-col gap-2" *ngIf="account.type == AccountType.LIABILITY">
-                    <label for="liability">Liability (percent)</label>
-                    <input pInputText [(ngModel)]="account.liabilityPercent" id="liability" type="number" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label for="liability">Display Order</label>
-                    <input pInputText [(ngModel)]="account.displayOrder" id="displayOrder" type="number" />
-                </div>
-            </div>
 
-        </div>
-    </div>
-    <div class="flex mt-8">
-        <div class="card flex flex-col gap-6 w-full">
-            <div class="font-semibold text-xl">Advanced</div>
-            <div class="flex flex-wrap">
-                <label for="note">Note</label>
-                <textarea  autoResize="true" pTextarea [(ngModel)]="account.note" id="note" type="text"></textarea>
+        <div class="flex mt-8">
+            <div class="card flex flex-wrap gap-6 w-full justify-end">
+                <p-button [label]="isEdit ? 'Update' : 'Create' " [fluid]="false" (click)="submit()"></p-button>
             </div>
         </div>
-    </div>
-
-    <div class="flex mt-8">
-        <div class="card flex flex-wrap gap-6 w-full justify-end">
-            <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
-            <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
-        </div>
-    </div>
+    </form>
 </p-fluid>
