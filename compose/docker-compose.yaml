@@ -71,7 +71,7 @@ services:
     networks:
       - go-money
     volumes:
-      - ./grafana_data:/var/lib/grafana:rw
+      - grafana_data:/var/lib/grafana:rw
       - ./grafana/provisioning:/etc/grafana/provisioning:rw
   
   traefik:
@@ -91,6 +91,9 @@ services:
 #      - "127.0.0.1:8080:8080"
     networks:
       - go-money
+
+volumes:
+  grafana_data:
 
 networks:
   go-money:
