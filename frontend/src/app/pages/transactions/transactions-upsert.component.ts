@@ -38,7 +38,8 @@ import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { SelectButton, SelectButtonModule } from 'primeng/selectbutton';
 import { Chip } from 'primeng/chip';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { TimestampHelper } from '../../helpers/timestamp.helper';
 
 @Component({
     selector: 'transaction-upsert',
@@ -67,7 +68,8 @@ export class TransactionUpsertComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        private route: ActivatedRoute
+        private route: ActivatedRoute,
+        private router: Router,
     ) {
         this.transaction = create(TransactionSchema, {
             destinationAmount: undefined,
@@ -119,6 +121,8 @@ export class TransactionUpsertComponent implements OnInit {
             if (this.transaction.sourceAmount) this.transaction.sourceAmount = this.toPositiveNumber(this.transaction.sourceAmount);
 
             if (this.transaction.destinationAmount) this.transaction.destinationAmount = this.toPositiveNumber(this.transaction.destinationAmount);
+
+            this.transactionDate = TimestampHelper.timestampToDate(this.transaction.transactionDate!);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -320,7 +324,10 @@ export class TransactionUpsertComponent implements OnInit {
         try {
             await this.transactionService.createTransaction(this.buildTransactionRequest());
 
+            this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
+
             // todo transaction details page
+            await this.router.navigate(['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -340,6 +347,11 @@ export class TransactionUpsertComponent implements OnInit {
                     id: this.transaction.id
                 })
             );
+
+            this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
+
+            // todo transaction details page
+            await this.router.navigate(['/transactions']);
 
             // todo transaction details page
         } catch (e) {

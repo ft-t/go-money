@@ -5,7 +5,7 @@ services:
     container_name: app
     restart: always
     env_file: .env
-    pull_policy: always
+    pull_policy: ${PULL_POLICY}
     networks:
       - go-money
     ports:

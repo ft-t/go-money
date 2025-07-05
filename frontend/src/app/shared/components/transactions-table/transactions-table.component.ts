@@ -43,7 +43,7 @@ export class FilterWrapper {
 })
 export class TransactionsTableComponent implements OnInit, OnChanges {
     private transactionsService;
-    public loading = false;
+    public loading = true;
     public transactions: Transaction[] = [];
     public accountsService;
     public tagsService;
