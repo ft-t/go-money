@@ -9,23 +9,20 @@ import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/
 import { ErrorHelper } from '../../helpers/error.helper';
 import { MessageService } from 'primeng/api';
 import { Account, AccountSchema, AccountType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { create } from '@bufbuild/protobuf';
 import { EnumService } from '../../services/enum.service';
 import { NgIf } from '@angular/common';
 import { Textarea } from 'primeng/textarea';
-import {
-    AccountsService,
-    CreateAccountRequestSchema,
-    UpdateAccountRequestSchema
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { AccountsService, CreateAccountRequestSchema, UpdateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Message } from 'primeng/message';
 
 @Component({
     selector: 'app-account-upsert',
     templateUrl: 'accounts-upsert.component.html',
-    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea]
+    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea, Message, ReactiveFormsModule]
 })
 export class AccountsUpsertComponent implements OnInit {
     private currencyService;
@@ -36,6 +33,8 @@ export class AccountsUpsertComponent implements OnInit {
     public account: Account = create(AccountSchema, {});
     public accountTypes = EnumService.getAccountTypes();
     public isEdit: boolean = false;
+    public form: FormGroup = new FormGroup({});
+    public isFormReady: boolean = false;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -84,6 +83,48 @@ export class AccountsUpsertComponent implements OnInit {
                 this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             }
         }
+
+        this.form = new FormGroup({
+            id: new FormControl(this.account.id),
+            name: new FormControl(this.account.name, Validators.required),
+            type: new FormControl(this.account.type, Validators.min(1)),
+            currency: new FormControl(this.account.currency, Validators.required),
+            note: new FormControl(this.account.note),
+            iban: new FormControl(this.account.iban),
+            accountNumber: new FormControl(this.account.accountNumber),
+            liabilityPercent: new FormControl(this.account.liabilityPercent),
+            displayOrder: new FormControl(this.account.displayOrder),
+            extra: new FormControl(this.account.extra ?? {})
+        });
+
+        this.isFormReady = true;
+    }
+
+    get name() {
+        return this.form.get('name')!;
+    }
+
+    get type() {
+        return this.form.get('type')!;
+    }
+
+    get currency() {
+        return this.form.get('currency')!;
+    }
+
+    async submit() {
+        this.form.markAllAsTouched();
+
+        this.account = this.form.value as Account;
+        if (!this.form.valid) {
+            return;
+        }
+
+        if (this.isEdit) {
+            await this.update();
+        } else {
+            await this.create();
+        }
     }
 
     async update() {
@@ -122,7 +163,7 @@ export class AccountsUpsertComponent implements OnInit {
                     note: this.account.note,
                     liabilityPercent: this.account.liabilityPercent,
                     displayOrder: this.account.displayOrder,
-                    extra: this.account.extra ?? {},
+                    extra: this.account.extra ?? {}
                 })
             );
 

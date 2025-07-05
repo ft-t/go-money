@@ -3,7 +3,7 @@ WITH date_series AS (SELECT generate_series(
                                     GREATEST(NOW()::DATE, (select max(transaction_date_only)
                                                            from transactions
                                                            where source_account_id = @accountID
-                                                              or destination_account_id = @accountID)),
+                                                              or destination_account_id = @accountID)) + 1, -- 1 day to get current
                                     '1 day'::INTERVAL
                             ) ::DATE AS date),
      daily_sums as (select coalesce(sum(coalesce(
@@ -29,7 +29,7 @@ WITH date_series AS (SELECT generate_series(
                           left join daily_sums s
                                     on s.tx_date = d.date
                  order by d.date asc),
-     lastestRunning as (select coalesce(amount,0) + coalesce((select * from lastestValue), 0) as amount
+     lastestRunning as (select coalesce(amount, 0) + coalesce((select * from lastestValue), 0) as amount
                         from running
                         where date = (select max(date) from running)),
      udpatedCurrentBalance as (update accounts set
