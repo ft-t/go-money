@@ -7,6 +7,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -32,14 +33,34 @@ func TestBaseAmountService(t *testing.T) {
 		}
 		assert.NoError(t, gormDB.Create(&rates).Error)
 
+		acc := []*database.Account{
+			{
+				Name:     "PLN",
+				Currency: "PLN",
+				Extra:    make(map[string]string),
+			},
+			{
+				Name:     "USD",
+				Currency: "USD",
+				Extra:    make(map[string]string),
+			},
+			{
+				Name:     "UAH",
+				Currency: "UAH",
+				Extra:    make(map[string]string),
+			},
+		}
+		assert.NoError(t, gormDB.Create(&acc).Error)
+
 		txs := []*database.Transaction{
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				SourceAccountID: lo.ToPtr(acc[0].ID),
 				SourceCurrency:  "PLN",
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-10)),
 
 				DestinationCurrency: configuration.BaseCurrency,
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)),
+				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-999)),
 				Extra:               make(map[string]string),
 
 				// should not be updated by script, because foreign currency is set to base
@@ -47,8 +68,9 @@ func TestBaseAmountService(t *testing.T) {
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
 				SourceCurrency:  "PLN",
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-10)),
 				Extra:           make(map[string]string),
+				SourceAccountID: lo.ToPtr(acc[0].ID),
 
 				// source to rate
 				// here dest should be null
@@ -56,7 +78,8 @@ func TestBaseAmountService(t *testing.T) {
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
 				SourceCurrency:  configuration.BaseCurrency,
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+				SourceAccountID: lo.ToPtr(acc[1].ID),
 				Extra:           make(map[string]string),
 
 				// source same,
@@ -67,36 +90,47 @@ func TestBaseAmountService(t *testing.T) {
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 				SourceCurrency:  configuration.BaseCurrency,
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+				SourceAccountID: &acc[1].ID,
 
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(9999)),
-				DestinationCurrency: "PLN",
-				Extra:               make(map[string]string),
+				DestinationAccountID: &acc[0].ID,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(9999)),
+				DestinationCurrency:  "PLN",
+				Extra:                make(map[string]string),
 
 				// source is in USD to should use 55,
 			},
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 				SourceCurrency:  "PLN",
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(9999)),
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-9999)),
+				SourceAccountID: &acc[0].ID,
 
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(55)),
-				DestinationCurrency: configuration.BaseCurrency,
-				Extra:               make(map[string]string),
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+				DestinationCurrency:  configuration.BaseCurrency,
+				DestinationAccountID: &acc[1].ID,
+				Extra:                make(map[string]string),
 
 				// destination is in USD to should use 55,
 			},
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 				SourceCurrency:  "PLN",
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-100)),
+				SourceAccountID: &acc[0].ID,
 
-				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)),
-				DestinationCurrency: "UAH",
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(999)),
+				DestinationCurrency:  "UAH",
+				DestinationAccountID: &acc[2].ID,
 
 				Extra: make(map[string]string),
 				// should convert to base currency with same amount from PLN
 			},
+		}
+
+		txSrv := transactions.NewService(&transactions.ServiceConfig{})
+		for _, tx := range txs {
+			assert.NoError(t, txSrv.ValidateTransaction(context.TODO(), gormDB, tx))
 		}
 
 		assert.NoError(t, gormDB.Create(&txs).Error)
@@ -109,24 +143,24 @@ func TestBaseAmountService(t *testing.T) {
 		var updatedTxs []*database.Transaction
 		assert.NoError(t, gormDB.Order("id asc").Find(&updatedTxs).Error)
 
-		assert.EqualValues(t, 999, updatedTxs[0].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 999, updatedTxs[0].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -999, updatedTxs[0].DestinationAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -999, updatedTxs[0].SourceAmountInBaseCurrency.Decimal.IntPart())
 
-		assert.EqualValues(t, 3, updatedTxs[1].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -3, updatedTxs[1].SourceAmountInBaseCurrency.Decimal.IntPart())
 		assert.EqualValues(t, false, updatedTxs[1].DestinationAmountInBaseCurrency.Valid)
 
-		assert.EqualValues(t, 55, updatedTxs[2].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -55, updatedTxs[2].SourceAmountInBaseCurrency.Decimal.IntPart())
 		assert.EqualValues(t, false, updatedTxs[2].DestinationAmountInBaseCurrency.Valid)
 
 		// transfers
 		assert.EqualValues(t, 55, updatedTxs[3].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 55, updatedTxs[3].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -55, updatedTxs[3].SourceAmountInBaseCurrency.Decimal.IntPart())
 
 		assert.EqualValues(t, 55, updatedTxs[4].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 55, updatedTxs[4].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -55, updatedTxs[4].SourceAmountInBaseCurrency.Decimal.IntPart())
 
 		assert.EqualValues(t, 26, updatedTxs[5].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 26, updatedTxs[5].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -26, updatedTxs[5].SourceAmountInBaseCurrency.Decimal.IntPart())
 	})
 
 	t.Run("success with partial update", func(t *testing.T) {
@@ -248,9 +282,9 @@ func TestBaseAmountService(t *testing.T) {
 
 		// transfers
 		assert.EqualValues(t, 55, updatedTxs[3].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 55, updatedTxs[3].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -55, updatedTxs[3].SourceAmountInBaseCurrency.Decimal.IntPart())
 		assert.EqualValues(t, 55, updatedTxs[3].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 55, updatedTxs[3].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -55, updatedTxs[3].SourceAmountInBaseCurrency.Decimal.IntPart())
 
 		assert.EqualValues(t, false, updatedTxs[4].DestinationAmountInBaseCurrency.Valid)
 		assert.EqualValues(t, false, updatedTxs[4].SourceAmountInBaseCurrency.Valid)

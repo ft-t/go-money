@@ -28,9 +28,12 @@ with upd as (select t.id,
 UPDATE transactions
 SET destination_amount_in_base_currency = case
                                               when transaction_type = 1
-                                                  then upd.sourceInBase -- for transaction lets use same value for both operations
+                                                  then abs(upd.sourceInBase) -- for transaction lets use same value for both operations but ensure its > 0
                                               else upd.destinationInBase end,
-    source_amount_in_base_currency      = upd.sourceInBase
+    source_amount_in_base_currency      = case
+                                              when transaction_type = 1
+                                                  then abs(upd.sourceInBase) * -1 -- ensure that source < 0 in transfers 
+                                              else upd.sourceInBase end
 FROM upd
 WHERE upd.id = transactions.id
 returning transactions.id, destination_amount_in_base_currency, source_amount_in_base_currency

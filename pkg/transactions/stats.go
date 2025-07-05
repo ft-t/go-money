@@ -65,17 +65,6 @@ func (s *StatService) HandleTransactions(
 		return nil // nothing to do
 	}
 
-	lowestDate := newTxs[0].TransactionDateTime
-
-	for _, newTx := range newTxs {
-		txDate := now.New(newTx.TransactionDateTime)
-		txDay := txDate.BeginningOfDay()
-
-		if txDay.Before(lowestDate) {
-			lowestDate = txDay
-		}
-	}
-
 	for accountID, txTime := range impactedAccounts {
 		if err := dbTx.Exec(dailyRecalculate,
 			sql.Named("startDate", txTime),
