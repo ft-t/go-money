@@ -25,5 +25,14 @@
     "extra": {},
     "iban": "",
     "account_number": null
+  },
+  {
+    "name": "Broker1 USD",
+    "currency": "USD",
+    "type": 2,
+    "note": null,
+    "extra": {},
+    "iban": "",
+    "account_number": null
   }
 ]
