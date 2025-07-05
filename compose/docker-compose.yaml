@@ -28,7 +28,7 @@ services:
     networks:
       - go-money
     volumes:
-      - db:/var/lib/postgresql/data
+      - ./db_data:/var/lib/postgresql/data
   db-init:
     image: postgres:latest
     container_name: db-init
@@ -71,7 +71,7 @@ services:
     networks:
       - go-money
     volumes:
-      - grafana_data:/var/lib/grafana
+      - ./grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
   
   traefik:
@@ -91,10 +91,6 @@ services:
 #      - "127.0.0.1:8080:8080"
     networks:
       - go-money
-
-volumes:
-  db:
-  grafana_data:
 
 networks:
   go-money:
