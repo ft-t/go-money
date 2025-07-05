@@ -13,7 +13,7 @@ It enables customizations through Lua scripting and external reporting with Graf
 
 ## Key Features
 
-- Good support for multi currency transactions
+- Support for multi currency transactions
 - Custom Lua hooks to process transactions
 - Grafana-based reporting (bring your own dashboards)
 - Import data from other finance apps (Firefly for now)
@@ -27,6 +27,9 @@ For detailed installation instructions, please refer to the [Installation guide]
 
 ## UI
 GO Money provides a simple web UI for managing transactions, accounts, and other financial data.
+
+## API
+Go Money provides multi-protocol API (gRPC, JSON-RPC) for more details and documentation, please refer to the [API documentation](https://github.com/ft-t/go-money/wiki/Api)
 
 ## Reporting
 Go Money does not come with built-in reports. Instead, it allows you to use Grafana to create custom dashboards and reports based on your transaction data.
@@ -42,6 +45,8 @@ Go Money does not come with built-in reports. Instead, it allows you to use Graf
 Go Money allows you to write Lua scripts to process transactions. This makes it highly flexible and adaptable to your specific needs.
 
 [Lua scripting guide](https://github.com/ft-t/go-money/wiki/Lua)
+
+[Lua scripts examples](https://github.com/ft-t/go-money/tree/master/docs/lua)
 
 ## Documentation
 
