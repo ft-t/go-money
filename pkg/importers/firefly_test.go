@@ -46,6 +46,15 @@ var ffOpenBalanceDebtByteData []byte
 //go:embed testdata/ff_open_balance.csv
 var ffOpenBalanceByteData []byte
 
+//go:embed testdata/ff_reconciliation.csv
+var ffReconciliationByteData []byte
+
+//go:embed testdata/ff_reconciliation_plus.csv
+var ffReconciliationPlusByteData []byte
+
+//go:embed testdata/ff_transfer.csv
+var ffTransferByteData []byte
+
 //go:embed testdata/rates.json
 var ratesByteData []byte
 
@@ -180,6 +189,135 @@ func TestFireflyImport(t *testing.T) {
 
 		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
 			Data:     ffOpenBalanceByteData,
+			Accounts: accountsData,
+			Tags: map[string]*database.Tag{
+				"Grocery": {
+					ID: 1,
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("reconciliation (minus)", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+				assert.Len(t, requests, 1)
+
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Reconciliation)
+
+				assert.EqualValues(t, "USD", tx.Reconciliation.DestinationCurrency)
+
+				assert.EqualValues(t, "-296", tx.Reconciliation.DestinationAmount)
+
+				assert.EqualValues(t, accountsData[2].ID, tx.Reconciliation.DestinationAccountId)
+
+				assert.EqualValues(t, "firefly_2848", *requests[0].Req.InternalReferenceNumber)
+
+				return []*transactionsv1.CreateTransactionResponse{
+					{
+						Transaction: &v1.Transaction{
+							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
+						},
+					},
+				}, nil
+			})
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     ffReconciliationByteData,
+			Accounts: accountsData,
+			Tags: map[string]*database.Tag{
+				"Grocery": {
+					ID: 1,
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("reconciliation (plus)", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+				assert.Len(t, requests, 1)
+
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Reconciliation)
+
+				assert.EqualValues(t, "USD", tx.Reconciliation.DestinationCurrency)
+
+				assert.EqualValues(t, "49.37", tx.Reconciliation.DestinationAmount)
+
+				assert.EqualValues(t, accountsData[2].ID, tx.Reconciliation.DestinationAccountId)
+
+				assert.EqualValues(t, "firefly_2830", *requests[0].Req.InternalReferenceNumber)
+
+				return []*transactionsv1.CreateTransactionResponse{
+					{
+						Transaction: &v1.Transaction{
+							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
+						},
+					},
+				}, nil
+			})
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     ffReconciliationPlusByteData,
+			Accounts: accountsData,
+			Tags: map[string]*database.Tag{
+				"Grocery": {
+					ID: 1,
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("transfer (same currency)", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+				assert.Len(t, requests, 1)
+
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
+
+				assert.EqualValues(t, accountsData[2].ID, tx.TransferBetweenAccounts.SourceAccountId)
+				assert.EqualValues(t, "-1000", tx.TransferBetweenAccounts.SourceAmount)
+				assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.SourceCurrency)
+
+				assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.DestinationCurrency)
+				assert.EqualValues(t, "1000", tx.TransferBetweenAccounts.DestinationAmount)
+
+				assert.EqualValues(t, accountsData[3].ID, tx.TransferBetweenAccounts.DestinationAccountId)
+
+				assert.EqualValues(t, "firefly_2856", *requests[0].Req.InternalReferenceNumber)
+
+				return []*transactionsv1.CreateTransactionResponse{
+					{
+						Transaction: &v1.Transaction{
+							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
+						},
+					},
+				}, nil
+			})
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     ffTransferByteData,
 			Accounts: accountsData,
 			Tags: map[string]*database.Tag{
 				"Grocery": {
