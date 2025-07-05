@@ -33,3 +33,5 @@ go.work.sum
 .DS_Store
 
 pkg/auth/test_key.pem
+
+compose/db_data/
