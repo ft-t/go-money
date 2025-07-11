@@ -234,5 +234,16 @@ alter table transactions
 				)
 			},
 		},
+		{
+			ID: "2025-07-12-AddTxIndexes",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create index if not exists ix_source_dest_tx on transactions (source_account_id, destination_account_id, transaction_date_only) include (source_amount, destination_amount);
+							create index if not exists ix_source_tx on transactions (source_account_id, transaction_date_only) include (source_amount, destination_amount);
+							create index if not exists ix_dest_tx on transactions (destination_account_id, transaction_date_only) include (source_amount, destination_amount);
+							create index if not exists ix_latest_stat on daily_stat(account_id, date desc);`,
+				)
+			},
+		},
 	}
 }
