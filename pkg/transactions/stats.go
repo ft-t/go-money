@@ -40,12 +40,8 @@ func (s *StatService) getAccountsForTx(tx *database.Transaction) []int32 {
 	return accounts
 }
 
-func (s *StatService) HandleTransactions(
-	ctx context.Context,
-	dbTx *gorm.DB,
-	newTxs []*database.Transaction,
-) error {
-	impactedAccounts := map[int32]time.Time{} // tx with lowest date
+func (s *StatService) BuildImpactedAccounts(newTxs []*database.Transaction) map[int32]time.Time {
+	impactedAccounts := map[int32]time.Time{} // tx with the lowest date
 
 	for _, newTx := range newTxs {
 		for _, accountID := range s.getAccountsForTx(newTx) {
@@ -58,6 +54,16 @@ func (s *StatService) HandleTransactions(
 			}
 		}
 	}
+
+	return impactedAccounts
+}
+
+func (s *StatService) HandleTransactions(
+	ctx context.Context,
+	dbTx *gorm.DB,
+	newTxs []*database.Transaction,
+) error {
+	impactedAccounts := s.BuildImpactedAccounts(newTxs)
 
 	if len(impactedAccounts) == 0 {
 		return nil // nothing to do

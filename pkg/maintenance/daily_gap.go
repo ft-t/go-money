@@ -13,8 +13,7 @@ func (s *Service) FixDailyGaps(
 
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
 
-	if err := tx.Table("accounts").
-		Where("deleted_at IS NULL").Find(&accounts).Error; err != nil {
+	if err := tx.Find(&accounts).Error; err != nil {
 		return err
 	}
 
