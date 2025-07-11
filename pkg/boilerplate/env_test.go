@@ -15,7 +15,7 @@ func TestGetCurrentEnv(t *testing.T) {
 		{"ci", boilerplate.Ci},
 		{"prod", boilerplate.Prod},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.val, func(t *testing.T) {
 			t.Setenv("ENVIRONMENT", tc.val)

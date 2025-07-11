@@ -50,7 +50,7 @@ func (j *Service) ValidateToken(
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse token")
 	}
-	
+
 	return j.CheckClaims(token)
 }
 

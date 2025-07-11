@@ -24,7 +24,7 @@ func (s *Executor) cloneTx(input *database.Transaction) (*database.Transaction, 
 	if err := deepcopy.Copy(&clonedTx, input); err != nil {
 		return nil, errors.Wrap(err, "failed to deep clone transaction")
 	}
-	
+
 	return &clonedTx, nil
 }
 
