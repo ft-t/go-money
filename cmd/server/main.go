@@ -143,6 +143,15 @@ func main() {
 		StatsSvc: statsSvc,
 	})
 
+	go func() {
+		if jobErr := maintenanceSvc.FixDailyGaps(context.TODO()); jobErr != nil {
+			logger.Err(jobErr).Msg("cannot fix daily gaps")
+			return
+		}
+
+		logger.Info().Msg("daily gaps fixed successfully")
+	}()
+
 	jobScheduler, err := jobs.NewJobScheduler(&jobs.Config{
 		Configuration:          *config,
 		ExchangeRatesUpdateSvc: exchangeRateUpdater,
