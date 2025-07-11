@@ -10,7 +10,7 @@ import (
 )
 
 func TestUpdateCurrencyRates(t *testing.T) {
-	sync := NewMockCurrencySyncerSvc(gomock.NewController(t))
+	sync := NewMockExchangeRatesUpdateSvc(gomock.NewController(t))
 
 	scheduler, err := jobs.NewJobScheduler(&jobs.Config{
 		ExchangeRatesUpdateSvc: sync,
