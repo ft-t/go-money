@@ -75,6 +75,8 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 }
 
 func TestUpdateTransaction(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
@@ -368,4 +370,86 @@ func TestBasicCalc(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
+}
+
+func TestBasicCalcWithGap(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
+			assert.Len(t, i, 1)
+
+			return nil
+		}).AnyTimes()
+
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 1)
+			return i, nil
+		}).AnyTimes()
+
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		Return(&gomoneypbv1.Transaction{}).AnyTimes()
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
+		RuleSvc:           ruleEngine,
+	})
+
+	accounts := []*database.Account{
+		{
+			Name:     "BNP Paribas [USD]",
+			Currency: "USD",
+			Extra:    map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	txDate := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
+		TransactionDate: timestamppb.New(txDate),
+		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
+			Deposit: &transactionsv1.Deposit{
+				DestinationAmount:    "500",
+				DestinationCurrency:  "USD",
+				DestinationAccountId: accounts[0].ID,
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	var stats []database.DailyStat
+	assert.NoError(t, gormDB.
+		Where("date >= ?", txDate).
+		Order("date asc").Find(&stats).Error)
+
+	assert.EqualValues(t, "500", stats[0].Amount.String()) // day of transaction
+	assert.EqualValues(t, "500", stats[1].Amount.String()) // new day
+	assert.EqualValues(t, "500", stats[2].Amount.String()) // new day
+	assert.EqualValues(t, "500", stats[3].Amount.String()) // new day
+	assert.EqualValues(t, "500", stats[4].Amount.String()) // new day
+
+	assert.NoError(t, gormDB.Exec("delete from daily_stat where date > ?", txDate).Error)
+
+	assert.NoError(t, statsSvc.CalculateDailyStat(context.TODO(), gormDB, transactions.CalculateDailyStatRequest{
+		StartDate: txDate.AddDate(0, 0, 1),
+		AccountID: accounts[0].ID,
+	}))
+
+	assert.NoError(t, gormDB.
+		Where("date >= ?", txDate).
+		Order("date asc").Find(&stats).Error)
+
+	assert.EqualValues(t, "500", stats[0].Amount.String()) // day of transaction
+	assert.EqualValues(t, "500", stats[1].Amount.String()) // new day
+	assert.EqualValues(t, "500", stats[2].Amount.String()) // new day
+	assert.EqualValues(t, "500", stats[3].Amount.String()) // new day
+	assert.EqualValues(t, "500", stats[4].Amount.String()) // new day
 }
