@@ -30,7 +30,7 @@ func (s *Service) FixDailyGaps(
 		if latestDailyStat.Date.IsZero() { // should not happen, but just in case
 			var fistTransaction database.Transaction
 
-			if err := tx.Where("account_id = ?", account.ID).
+			if err := tx.Where("source_account_id = ? or destination_account_id = ?", account.ID, account.ID).
 				Order("transaction_date_time ASC").
 				Limit(1).Find(&fistTransaction).Error; err != nil {
 				return err
