@@ -7,7 +7,9 @@ import (
 )
 
 type Config struct {
-	Configuration configuration.Configuration
+	Configuration          configuration.Configuration
+	ExchangeRatesUpdateSvc ExchangeRatesUpdateSvc
+	MaintenanceSvc         MaintenanceSvc
 }
 
 type JobScheduler struct {
@@ -28,12 +30,23 @@ func NewJobScheduler(cfg *Config) (*JobScheduler, error) {
 
 	if _, err = scheduler.NewJob(
 		gocron.CronJob("20 0 * * *", false), // Rates are updated daily at 00:10 UTC by main server
-		gocron.NewTask(j.currencyRateUpdater),
+		gocron.NewTask(j.UpdateCurrencyRates),
+	); err != nil {
+		return nil, errors.Wrap(err, "failed to create currency rate updater job")
+	}
+
+	if _, err = scheduler.NewJob(
+		gocron.CronJob("1 0 * * *", false), // run on day start, so it will generate daily stats for current day
+		gocron.NewTask(j.FixDailyGap),
 	); err != nil {
 		return nil, errors.Wrap(err, "failed to create currency rate updater job")
 	}
 
 	return j, nil
+}
+
+func (j *JobScheduler) GetScheduler() gocron.Scheduler {
+	return j.scheduler
 }
 
 func (j *JobScheduler) StartAsync() error {

@@ -11,9 +11,6 @@ import (
 	"time"
 )
 
-//go:embed scripts/daily_gap_detect.sql
-var dailyGapDetect string
-
 //go:embed scripts/daily_recalculate.sql
 var dailyRecalculate string
 
