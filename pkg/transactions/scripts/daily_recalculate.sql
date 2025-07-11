@@ -1,5 +1,16 @@
-WITH date_series AS (SELECT generate_series(
-                                    @startDate,
+WITH minDate as (select least(coalesce(
+                                (select (@startDate)::date -- if we dont have any daily_stat its an edge case, we should fallback to latest date 
+                                 from daily_stat st2
+                                 where st2.account_id = @accountID
+                                   and st2.date < (@startDate)::date
+                                 order by date desc
+                                 limit 1)::date, (select min(transaction_date_only)
+                                                  from transactions
+                                                  where source_account_id = @accountID
+                                                     or destination_account_id = @accountID
+                                                  limit 1)::date, (@startDate)::date),(@startDate)::date) as minDate), -- last fallback to startDate from backend
+     date_series AS (SELECT generate_series(
+                                    (select * from minDate),
                                     GREATEST(NOW()::DATE, (select max(transaction_date_only)
                                                            from transactions
                                                            where source_account_id = @accountID
@@ -18,15 +29,14 @@ WITH date_series AS (SELECT generate_series(
      lastestValue as (select st2.amount
                       from daily_stat st2
                       where st2.account_id = @accountID
-                        and st2.date < @startDate
+                        and st2.date < (select * from minDate)
                       order by date desc
                       limit 1),
-     initialValue as (
-         select (select min(date) from date_series d) as date, (select coalesce(amount,0) from lastestValue) as amount
-     ),
+     initialValue as (select (select min(date) from date_series d)          as date,
+                             (select coalesce(amount, 0) from lastestValue) as amount),
      running as (select d.date,
                         1,
-                        sum(coalesce(s.amount, 0) + coalesce(initial.amount,0)) over (
+                        sum(coalesce(s.amount, 0) + coalesce(initial.amount, 0)) over (
                             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                             ) as amount
                  from date_series d
