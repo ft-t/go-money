@@ -1,26 +1,57 @@
 package transactions_test
 
 import (
+	"context"
+	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
-func TestNoGapDaily(t *testing.T) {
-	t.Run("single wallet with gap and date in past", func(t *testing.T) {
-		s := transactions.NewStatService()
+func TestHandleTransactionFail(t *testing.T) {
+	stat := transactions.NewStatService()
 
-		dateNow := time.Now().UTC()
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
 
-		gamMeta, err := s.CheckDailyGapForAccount(
-			gormDB,
-			123,
-			dateNow.AddDate(0, 0, -3),
-			dateNow.AddDate(0, 0, -3),
-		)
+	assert.ErrorContains(t, stat.HandleTransactions(ctx, gormDB.WithContext(ctx), []*database.Transaction{
+		{
+			TransactionDateTime: time.Now().UTC(),
+			SourceAccountID:     lo.ToPtr(int32(1)),
+		},
+	}), "context canceled")
+}
 
-		assert.NoError(t, err)
-		assert.NotEmpty(t, gamMeta)
+func TestBuildImpactedAccounts(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		stat := transactions.NewStatService()
+
+		txs := []*database.Transaction{
+			{
+				TransactionDateTime: time.Now().UTC(),
+				SourceAccountID:     lo.ToPtr(int32(1)),
+			},
+			{
+				TransactionDateTime: time.Now().UTC().Add(-time.Hour * 24 * 2),
+				SourceAccountID:     lo.ToPtr(int32(1)),
+			},
+		}
+
+		impacted := stat.BuildImpactedAccounts(txs)
+
+		assert.Len(t, impacted, 1)
+		assert.EqualValues(t, txs[1].TransactionDateTime, impacted[int32(1)])
 	})
+}
+
+func TestNoData(t *testing.T) {
+	stat := transactions.NewStatService()
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
+
+	err := stat.HandleTransactions(ctx, gormDB.WithContext(ctx), nil)
+	assert.NoError(t, err)
 }

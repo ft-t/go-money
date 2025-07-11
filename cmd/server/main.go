@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/ft-t/go-money/cmd/server/internal/handlers"
+	"github.com/ft-t/go-money/cmd/server/internal/jobs"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/appcfg"
@@ -11,6 +12,7 @@ import (
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
 	"github.com/ft-t/go-money/pkg/importers"
+	"github.com/ft-t/go-money/pkg/maintenance"
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
@@ -102,8 +104,9 @@ func main() {
 		DecimalSvc:           decimalSvc,
 	}))
 
+	statsSvc := transactions.NewStatService()
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
-		StatsSvc:             transactions.NewStatService(),
+		StatsSvc:             statsSvc,
 		MapperSvc:            mapper,
 		CurrencyConverterSvc: currencyConverter,
 		BaseAmountService:    baseAmountSvc,
@@ -126,15 +129,34 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create import handler")
 	}
 
+	exchangeRateUpdater := currency.NewSyncer(http.DefaultClient, baseAmountSvc, config.CurrencyConfig)
+
 	go func() {
 		if len(config.ExchangeRatesUrl) > 0 {
-			sync := currency.NewSyncer(http.DefaultClient, baseAmountSvc, config.CurrencyConfig)
-
-			if currencyErr := sync.Sync(context.TODO(), config.ExchangeRatesUrl); currencyErr != nil {
-				logger.Err(err).Msg("cannot sync exchange rates")
+			if currencyErr := exchangeRateUpdater.Sync(context.TODO(), config.ExchangeRatesUrl); currencyErr != nil {
+				logger.Err(err).Msg("cannot update exchange rates")
 			}
 		}
 	}()
+
+	maintenanceSvc := maintenance.NewService(&maintenance.Config{
+		StatsSvc: statsSvc,
+	})
+
+	jobScheduler, err := jobs.NewJobScheduler(&jobs.Config{
+		Configuration:          *config,
+		ExchangeRatesUpdateSvc: exchangeRateUpdater,
+		MaintenanceSvc:         maintenanceSvc,
+	})
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create job scheduler")
+	}
+
+	if err = jobScheduler.StartAsync(); err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to start job scheduler")
+	}
+
+	logger.Info().Msg("job scheduler started")
 
 	go func() {
 		grpcServer.ServeAsync(config.GrpcPort)
@@ -148,6 +170,11 @@ func main() {
 	log.Logger.Info().Msgf("[Graceful Shutdown] GOT SIGNAL %v", sg.String())
 
 	log.Logger.Info().Msgf("[Graceful Shutdown] Shutting down webservers")
+	if err = jobScheduler.Stop(); err != nil {
+		log.Logger.Error().Err(err).Msg("failed to stop job scheduler")
+	} else {
+		log.Logger.Info().Msg("job scheduler stopped")
+	}
 
 	cancel()
 	_ = grpcServer.Shutdown(context.TODO())
