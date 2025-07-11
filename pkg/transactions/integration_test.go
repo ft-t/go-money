@@ -241,6 +241,14 @@ func TestUpdateTransaction(t *testing.T) {
 	assert.EqualValues(t, "-20.5", stats[0].Amount.String()) // day of transaction
 	assert.EqualValues(t, "-20.5", stats[1].Amount.String()) // from tx2 update
 	assert.EqualValues(t, "-20.5", stats[2].Amount.String()) // new transaction
+
+	var updatedAccounts []database.Account
+	assert.NoError(t, gormDB.Order("id asc").Find(&updatedAccounts).Error)
+
+	assert.Len(t, updatedAccounts, 2)
+
+	assert.EqualValues(t, "-100", updatedAccounts[0].CurrentBalance.String())
+	assert.EqualValues(t, "-20.5", updatedAccounts[1].CurrentBalance.String())
 }
 
 func TestBasicCalc(t *testing.T) {
