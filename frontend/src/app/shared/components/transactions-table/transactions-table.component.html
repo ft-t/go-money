@@ -82,9 +82,9 @@
             </tr>
             <tr>
                 <th>
-<!--                    <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="id"-->
-<!--                                    showMenu="false"-->
-<!--                                    placeholder="Search by ID" ariaLabel="Filter Name"></p-columnFilter>-->
+                    <!--                    <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="id"-->
+                    <!--                                    showMenu="false"-->
+                    <!--                                    placeholder="Search by ID" ariaLabel="Filter Name"></p-columnFilter>-->
                 </th>
                 <th>
                     <p-columnFilter type="text" showAddButton="false" showMatchModes="false" field="title"
@@ -96,7 +96,7 @@
                         <ng-template #filter let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="transactionTypes"
-                                           selectedItemsLabel="{{value.length}} items"
+                                           selectedItemsLabel="{{value?.length}} items"
                                            [maxSelectedLabels]="maxSelectedLabels"
                                            optionValue="value" optionLabel="name" (onChange)="filter($event.value)"
                                            placeholder="Select" [showClear]="false">
@@ -144,17 +144,20 @@
             </tr>
         </ng-template>
         <ng-template #body let-transactionItem>
-            <tr [routerLink]="getTransactionLink(transactionItem.id)">
+            <tr [routerLink]="getTransactionLink(transactionItem.id)" href="https://test">
                 <td>
                     <p class="text-wrap break-all" style="min-width: 3rem; max-width: 5rem">
-                        <a>
+                        <a [href]="getTransactionLink(transactionItem.id)"
+                           [routerLink]="getTransactionLink(transactionItem.id)">
                             {{ transactionItem.id }}
                         </a>
                     </p>
                 </td>
                 <td style="max-width: 20rem;">
                     <p class="text-wrap break-all">
-                        {{ transactionItem.title }}
+                        <a [href]="getTransactionLink(transactionItem.id)">
+                            {{ transactionItem.title }}
+                        </a>
                     </p>
                 </td>
                 <td style="max-width: 20rem;">
