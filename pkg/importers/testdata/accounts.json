@@ -34,5 +34,14 @@
     "extra": {},
     "iban": "",
     "account_number": null
+  },
+  {
+    "name": "Contractor account",
+    "currency": "USD",
+    "type": 4,
+    "note": null,
+    "extra": {},
+    "iban": "",
+    "account_number": null
   }
 ]

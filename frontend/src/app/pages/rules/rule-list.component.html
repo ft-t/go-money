@@ -84,17 +84,17 @@
                 <ng-template #body let-accountItem>
                     <tr>
                         <td>
-                            <a [href]="getAccountUrl(accountItem)" [routerLink]="getAccountUrl(accountItem)">
+                            <a [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
                                 {{ accountItem.id }}
                             </a>
                         </td>
                         <td>
-                            <a [href]="getAccountUrl(accountItem)" [routerLink]="getAccountUrl(accountItem)">
+                            <a [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
                                 {{ accountItem.title }}
                             </a>
                         </td>
                         <td>
-                            <a [href]="getAccountUrl(accountItem)" [routerLink]="getAccountUrl(accountItem)">
+                            <a [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
                                 {{ accountItem.isFinalRule }}
                             </a>
                         </td>

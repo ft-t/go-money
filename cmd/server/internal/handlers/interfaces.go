@@ -2,6 +2,7 @@ package handlers
 
 import (
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
+	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
@@ -136,4 +137,26 @@ type RulesSvc interface {
 
 type DryRunSvc interface {
 	DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest) (*rulesv1.DryRunRuleResponse, error)
+}
+
+type CategoriesSvc interface {
+	ListCategories(
+		ctx context.Context,
+		req *categoriesv1.ListCategoriesRequest,
+	) (*categoriesv1.ListCategoriesResponse, error)
+
+	DeleteCategory(
+		ctx context.Context,
+		req *categoriesv1.DeleteCategoryRequest,
+	) (*categoriesv1.DeleteCategoryResponse, error)
+
+	CreateCategory(
+		ctx context.Context,
+		req *categoriesv1.CreateCategoryRequest,
+	) (*categoriesv1.CreateCategoryResponse, error)
+
+	UpdateCategory(
+		ctx context.Context,
+		req *categoriesv1.UpdateCategoryRequest,
+	) (*categoriesv1.UpdateCategoryResponse, error)
 }

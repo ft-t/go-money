@@ -245,5 +245,25 @@ alter table transactions
 				)
 			},
 		},
+		{
+			ID: "2025-07-13-AddCategories",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table if not exists categories
+(
+    id         serial
+        constraint categories_pk
+            primary key,
+    name       text      not null,
+    created_at timestamp not null,
+    deleted_at timestamp
+);
+create unique index if not exists categories__uindex
+    on categories (name) where (deleted_at is null);
+alter table transactions
+    add column if not exists category_id int null;
+`)
+			},
+		},
 	}
 }

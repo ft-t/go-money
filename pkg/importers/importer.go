@@ -9,14 +9,16 @@ import (
 )
 
 type Importer struct {
-	impl       map[importv1.ImportSource]Implementation
-	accountSvc AccountSvc
-	tagSvc     TagSvc
+	impl          map[importv1.ImportSource]Implementation
+	accountSvc    AccountSvc
+	tagSvc        TagSvc
+	categoriesSvc CategoriesSvc
 }
 
 func NewImporter(
 	accountSvc AccountSvc,
 	tagSvc TagSvc,
+	categoriesSvc CategoriesSvc,
 	impl ...Implementation,
 ) *Importer {
 	implementations := make(map[importv1.ImportSource]Implementation)
@@ -25,9 +27,10 @@ func NewImporter(
 	}
 
 	return &Importer{
-		impl:       implementations,
-		accountSvc: accountSvc,
-		tagSvc:     tagSvc,
+		impl:          implementations,
+		accountSvc:    accountSvc,
+		tagSvc:        tagSvc,
+		categoriesSvc: categoriesSvc,
 	}
 }
 
@@ -60,11 +63,22 @@ func (i *Importer) Import(
 		tagMap[tag.Name] = tag
 	}
 
+	categories, err := i.categoriesSvc.GetAllCategories(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get categories")
+	}
+
+	categoryMap := make(map[string]*database.Category)
+	for _, category := range categories {
+		categoryMap[category.Name] = category
+	}
+
 	resp, err := impl.Import(ctx, &ImportRequest{
-		Data:      decoded,
-		Accounts:  accounts,
-		Tags:      tagMap,
-		SkipRules: req.SkipRules,
+		Data:       decoded,
+		Accounts:   accounts,
+		Tags:       tagMap,
+		SkipRules:  req.SkipRules,
+		Categories: categoryMap,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "import failed")

@@ -59,8 +59,8 @@ export class RuleListComponent implements OnInit {
         this.ruleService = createClient(RulesService, this.transport);
     }
 
-    getAccountUrl(rule: Rule): string {
-        return this.router.createUrlTree(['/', 'rules', rule!.id.toString()]).toString();
+    getRuleUrl(rule: Rule): string {
+        return this.router.createUrlTree(['/', 'rules', 'edit', rule!.id.toString()]).toString();
     }
 
     async ngOnInit() {
@@ -87,7 +87,7 @@ export class RuleListComponent implements OnInit {
                 };
             });
 
-            console.log(this.ruleGroups)
+            console.log(this.ruleGroups);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {

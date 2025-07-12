@@ -36,6 +36,12 @@ func (w *LuaTransactionWrapper) SourceAccountID(l *lua.LState) int {
 	})
 }
 
+func (w *LuaTransactionWrapper) CategoryID(l *lua.LState) int {
+	return w.getSetNullInt32Field(l, w.tx.CategoryID, func(val *int32) {
+		w.tx.CategoryID = val
+	})
+}
+
 func (w *LuaTransactionWrapper) DestinationAccountID(l *lua.LState) int {
 	return w.getSetNullInt32Field(l, w.tx.DestinationAccountID, func(val *int32) {
 		w.tx.DestinationAccountID = val

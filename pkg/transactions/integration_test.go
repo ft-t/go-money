@@ -121,13 +121,15 @@ func TestUpdateTransaction(t *testing.T) {
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
 			return &gomoneypbv1.Transaction{
-				Id: transaction.ID,
+				Id:         transaction.ID,
+				CategoryId: transaction.CategoryID,
 			}
 		}).AnyTimes()
 
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	tx1Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
+		CategoryId:      lo.ToPtr(int32(55)),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
 			Withdrawal: &transactionsv1.Withdrawal{
 				SourceAmount:    "-765.76",
@@ -140,6 +142,7 @@ func TestUpdateTransaction(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, tx1Result)
+	assert.EqualValues(t, 55, *tx1Result.Transaction.CategoryId)
 
 	expenseDate2 := time.Date(2025, 6, 5, 0, 0, 0, 0, time.UTC)
 	tx2Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
@@ -180,6 +183,7 @@ func TestUpdateTransaction(t *testing.T) {
 	tx3Result, err := srv.Update(context.TODO(), &transactionsv1.UpdateTransactionRequest{
 		Id: tx2Result.Transaction.Id,
 		Transaction: &transactionsv1.CreateTransactionRequest{
+			CategoryId:      lo.ToPtr(int32(53)),
 			TransactionDate: timestamppb.New(expenseDate3),
 			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
 				Withdrawal: &transactionsv1.Withdrawal{
@@ -194,6 +198,7 @@ func TestUpdateTransaction(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, tx3Result)
+	assert.EqualValues(t, 53, *tx3Result.Transaction.CategoryId)
 
 	assert.NoError(t, gormDB.
 		Where("date >= ?", expenseDate).

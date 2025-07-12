@@ -211,10 +211,10 @@ export class RulesUpsertComponent implements OnInit {
             kind: kind,
             insertText: `helpers:convertCurrency("from", "to", value)`,
             insertTextRules: snippet,
-            documentation: `Convert currency from one to another using exchange rate`,
+            documentation: `Convert currency from one to another using exchange rate`
         });
 
-        const simpleFields = ['title', 'destinationAmount', 'sourceAmount', 'sourceCurrency', 'destinationCurrency', 'sourceAccountID', 'destinationAccountID', 'notes', 'transactionType', 'referenceNumber', 'internalReferenceNumber'];
+        const simpleFields = ['title', 'categoryID', 'destinationAmount', 'sourceAmount', 'sourceCurrency', 'destinationCurrency', 'sourceAccountID', 'destinationAccountID', 'notes', 'transactionType', 'referenceNumber', 'internalReferenceNumber'];
 
         const intFields = new Set(['sourceAmount', 'destinationAmount', 'sourceAccountID', 'destinationAccountID', 'transactionType']);
 
@@ -290,8 +290,7 @@ export class RulesUpsertComponent implements OnInit {
     onEditorInit($event: IStandaloneCodeEditor) {
         let monaco = (window as any).monaco;
 
-        if (this.monacoRegistered)
-            return;
+        if (this.monacoRegistered) return;
 
         this.monacoRegistered = true;
         monaco.languages.registerCompletionItemProvider('lua', {

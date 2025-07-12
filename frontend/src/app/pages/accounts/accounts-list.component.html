@@ -34,7 +34,7 @@
                         Name <p-sortIcon field="account.name" />
                     </div>
                 </th>
-                <th style="max-width: 5rem">
+                <th>
                     <div class="flex justify-between items-center">
                         Type
                     </div>
@@ -77,6 +77,7 @@
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="accountTypes"
                                            field="account.type"
+                                           selectedItemsLabel="{{value?.length}} items"
                                            maxSelectedLabels="1"
                                            optionLabel="name" optionValue="value" (onChange)="filter($event.value)"
                                            placeholder="Select" [showClear]="false">
@@ -123,7 +124,7 @@
                         {{ accountItem.account.name }}
                     </a>
                 </td>
-                <td>
+                <td style="max-width: 2rem;">
                     {{ this.accountTypesMap[accountItem.account.type].name }}
                 </td>
                 <td>

@@ -224,6 +224,7 @@ func (s *Service) CreateBulkInternal(
 			Title:                   req.Req.Title,
 			ReferenceNumber:         req.Req.ReferenceNumber,
 			InternalReferenceNumber: req.Req.InternalReferenceNumber,
+			CategoryID:              req.Req.CategoryId,
 		}
 
 		if req.OriginalTx != nil {
@@ -520,6 +521,17 @@ func (s *Service) ensureCurrencyExists(
 	ctx context.Context,
 	currency string,
 ) error {
+	return nil // todo
+}
+
+func (s *Service) ensureCategoryExists(
+	ctx context.Context,
+	tx *database.Transaction,
+) error {
+	if tx.CategoryID == nil {
+		return nil
+	}
+	
 	return nil // todo
 }
 
