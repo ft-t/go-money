@@ -9,6 +9,7 @@ import (
 	"github.com/ft-t/go-money/pkg/appcfg"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
+	"github.com/ft-t/go-money/pkg/categories"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
 	"github.com/ft-t/go-money/pkg/importers"
@@ -116,13 +117,15 @@ func main() {
 	srv := rules.NewService(mapper)
 
 	tagSvc := tags.NewService(mapper)
+	categoriesSvc := categories.NewService(mapper)
 
 	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper)
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
 	_ = handlers.NewRulesApi(grpcServer, srv, dryRunSvc)
+	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 
-	importSvc := importers.NewImporter(accountSvc, tagSvc, importers.NewFireflyImporter(transactionSvc))
+	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(transactionSvc))
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)
 	if err != nil {

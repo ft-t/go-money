@@ -18,6 +18,7 @@ type Importer struct {
 func NewImporter(
 	accountSvc AccountSvc,
 	tagSvc TagSvc,
+	categoriesSvc CategoriesSvc,
 	impl ...Implementation,
 ) *Importer {
 	implementations := make(map[importv1.ImportSource]Implementation)
@@ -26,9 +27,10 @@ func NewImporter(
 	}
 
 	return &Importer{
-		impl:       implementations,
-		accountSvc: accountSvc,
-		tagSvc:     tagSvc,
+		impl:          implementations,
+		accountSvc:    accountSvc,
+		tagSvc:        tagSvc,
+		categoriesSvc: categoriesSvc,
 	}
 }
 
