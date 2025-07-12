@@ -33,18 +33,16 @@ import {
 export class TagsImportComponent {
     public clientData: string = '';
     public migrationScript = `select json_agg(name order by name) as names
-                              from (
-                                  select distinct name
-                                  from (
-                                  select name from categories where deleted_at is null
+                              from (select distinct name
+                                  from (select tag as name
+                                  from tags
+                                  where deleted_at is null
                                   union
-                                  select tag as name from tags where deleted_at is null
+                                  select name
+                                  from budgets
                                   union
-                                  select name from budgets
-                                  union
-                                  select name from bills
-                                  ) as cntt
-                                  ) as distinct_names;
+                                  select name
+                                  from bills) as cntt) as distinct_names;
     `;
 
     private tagsService;

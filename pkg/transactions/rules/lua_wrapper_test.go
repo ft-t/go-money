@@ -146,6 +146,26 @@ func TestBasicFields(t *testing.T) {
 		assert.Equal(t, int32(67890), *tx.SourceAccountID)
 	})
 
+	t.Run("category ID", func(t *testing.T) {
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
+
+		script := `
+		if tx:categoryID() == 12345 then
+			tx:categoryID(67890)
+		end
+	`
+
+		tx := &database.Transaction{
+			CategoryID: lo.ToPtr(int32(12345)),
+		}
+
+		result, err := interpreter.Run(context.TODO(), script, tx)
+		assert.NoError(t, err)
+
+		assert.True(t, result)
+		assert.Equal(t, int32(67890), *tx.CategoryID)
+	})
+
 	t.Run("source account ID nil", func(t *testing.T) {
 		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
