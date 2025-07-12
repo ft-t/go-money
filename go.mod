@@ -7,6 +7,7 @@ require (
 	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.6-20250712095210-e33e8cd6ee75.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/cockroachdb/errors v1.12.0
 	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/go-gormigrate/gormigrate/v2 v2.1.4

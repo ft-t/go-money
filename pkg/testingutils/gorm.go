@@ -3,10 +3,13 @@ package testingutils
 import (
 	"context"
 	"fmt"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/jackc/pgx/v5"
 	"github.com/juju/fslock"
 	"github.com/rs/zerolog/log"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"os"
 	"path"
 	"strings"
@@ -14,6 +17,22 @@ import (
 
 func getLock() *fslock.Lock {
 	return fslock.New(path.Join(os.TempDir(), "go_fs_lock"))
+}
+
+func GormMock() (*gorm.DB, sqlmock.Sqlmock) {
+	mockDB, mock, err := sqlmock.New()
+	if err != nil {
+		panic(err)
+	}
+
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		Conn: mockDB,
+	}), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	return db, mock
 }
 
 func FlushAllTables(config boilerplate.DbConfig) error {

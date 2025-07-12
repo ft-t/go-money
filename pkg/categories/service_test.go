@@ -4,6 +4,8 @@ import (
 	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/categories"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
@@ -95,6 +97,26 @@ func TestCreateCategory(t *testing.T) {
 		assert.Nil(t, resp)
 		assert.Contains(t, err.Error(), "context canceled")
 	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, sql := testingutils.GormMock()
+
+		mapper := NewMockMapper(gomock.NewController(t))
+		srv := categories.NewService(mapper)
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		sql.ExpectQuery("SELECT .*").WillReturnRows(sqlmock.NewRows([]string{}))
+		sql.ExpectQuery("INSERT .*").WillReturnError(errors.New("db error"))
+
+		_, err := srv.CreateCategory(ctx, &categoriesv1.CreateCategoryRequest{
+			Category: &gomoneypbv1.Category{
+				Name: "Test Category",
+			},
+		})
+
+		assert.ErrorContains(t, err, "db error")
+	})
 }
 
 func TestUpdateCategory(t *testing.T) {
@@ -171,6 +193,33 @@ func TestUpdateCategory(t *testing.T) {
 		assert.Nil(t, resp)
 		assert.ErrorContains(t, err, "duplicated key not allowed")
 	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, sql := testingutils.GormMock()
+
+		mapper := NewMockMapper(gomock.NewController(t))
+		srv := categories.NewService(mapper)
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		rows := sqlmock.NewRows([]string{"id", "name"}).
+			AddRow(1, "Test Category")
+
+		sql.ExpectQuery("SELECT .*").WillReturnRows(rows)
+		sql.ExpectQuery("SELECT .*").WillReturnRows(sqlmock.NewRows([]string{})) // ensure no duplicates
+
+		sql.ExpectExec("UPDATE .*").WillReturnError(errors.New("db error"))
+
+		resp, err := srv.UpdateCategory(ctx, &categoriesv1.UpdateCategoryRequest{
+			Category: &gomoneypbv1.Category{
+				Id:   1,
+				Name: "Updated Category",
+			},
+		})
+
+		assert.ErrorContains(t, err, "db error")
+		assert.Nil(t, resp)
+	})
 }
 
 func TestDelete(t *testing.T) {
@@ -218,6 +267,29 @@ func TestDelete(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, resp)
 		assert.ErrorContains(t, err, "record not found")
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, sql := testingutils.GormMock()
+
+		mapper := NewMockMapper(gomock.NewController(t))
+		srv := categories.NewService(mapper)
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		rows := sqlmock.NewRows([]string{"id", "name"}).
+			AddRow(1, "Test Category")
+
+		sql.ExpectQuery("SELECT .*").WillReturnRows(rows)
+
+		sql.ExpectExec("DELETE .*").WillReturnError(errors.New("db error"))
+
+		resp, err := srv.DeleteCategory(ctx, &categoriesv1.DeleteCategoryRequest{
+			Id: 1,
+		})
+
+		assert.ErrorContains(t, err, "db error")
+		assert.Nil(t, resp)
 	})
 }
 
@@ -275,5 +347,61 @@ func TestListing(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, resp.Categories, 1)
 		assert.EqualValues(t, cats[0].ID, resp.Categories[0].Id)
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, sql := testingutils.GormMock()
+
+		mapper := NewMockMapper(gomock.NewController(t))
+		srv := categories.NewService(mapper)
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		sql.ExpectQuery("SELECT .*").WillReturnError(errors.New("db error"))
+
+		resp, err := srv.ListCategories(ctx, &categoriesv1.ListCategoriesRequest{
+			IncludeDeleted: true,
+		})
+
+		assert.ErrorContains(t, err, "db error")
+		assert.Nil(t, resp)
+	})
+}
+
+func TestGetAllCategories(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		cats := []*database.Category{
+			{
+				Name: "Category 1",
+			},
+			{
+				Name: "Category 2",
+			},
+		}
+		assert.NoError(t, gormDB.Create(&cats).Error)
+
+		srv := categories.NewService(NewMockMapper(gomock.NewController(t)))
+
+		result, err := srv.GetAllCategories(context.TODO())
+
+		assert.NoError(t, err)
+		assert.Len(t, result, 2)
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, sql := testingutils.GormMock()
+
+		srv := categories.NewService(NewMockMapper(gomock.NewController(t)))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		sql.ExpectQuery("SELECT .*").WillReturnError(errors.New("db error"))
+
+		result, err := srv.GetAllCategories(ctx)
+
+		assert.ErrorContains(t, err, "db error")
+		assert.Nil(t, result)
 	})
 }

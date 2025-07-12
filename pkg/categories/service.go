@@ -26,7 +26,7 @@ func (s *Service) ListCategories(
 ) (*categoriesv1.ListCategoriesResponse, error) {
 	var categories []*database.Category
 
-	query := database.GetDbWithContext(ctx, database.DbTypeReadonly)
+	query := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
 
 	if req.IncludeDeleted {
 		query = query.Unscoped()
@@ -51,9 +51,11 @@ func (s *Service) ListCategories(
 }
 
 func (s *Service) GetAllCategories(ctx context.Context) ([]*database.Category, error) {
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly))
+
 	var categories []*database.Category
 
-	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).Find(&categories).Error; err != nil {
+	if err := db.Find(&categories).Error; err != nil {
 		return nil, err
 	}
 
@@ -66,7 +68,7 @@ func (s *Service) DeleteCategory(
 ) (*categoriesv1.DeleteCategoryResponse, error) {
 	var category database.Category
 
-	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
 
 	if err := db.Where("id = ?", req.Id).First(&category).Error; err != nil {
 		return nil, err
@@ -89,7 +91,7 @@ func (s *Service) CreateCategory(
 		Name: req.Category.Name,
 	}
 
-	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
 
 	if err := s.ensureNotExists(db, category.Name); err != nil {
 		return nil, err
@@ -106,7 +108,7 @@ func (s *Service) CreateCategory(
 
 func (s *Service) ensureNotExists(db *gorm.DB, name string) error {
 	var existingCategory database.Category
-	if err := db.Where("name = ?", name).Find(&existingCategory).Error; err != nil {
+	if err := db.Debug().Where("name = ?", name).Find(&existingCategory).Error; err != nil {
 		return err
 	}
 
@@ -123,7 +125,7 @@ func (s *Service) UpdateCategory(
 ) (*categoriesv1.UpdateCategoryResponse, error) {
 	var category database.Category
 
-	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
 
 	if err := db.Where("id = ?", req.Category.Id).
 		First(&category).Error; err != nil {
