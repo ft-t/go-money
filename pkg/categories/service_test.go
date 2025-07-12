@@ -99,7 +99,7 @@ func TestCreateCategory(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		mockGorm, sql := testingutils.GormMock()
+		mockGorm, _, sql := testingutils.GormMock()
 
 		mapper := NewMockMapper(gomock.NewController(t))
 		srv := categories.NewService(mapper)
@@ -195,7 +195,7 @@ func TestUpdateCategory(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		mockGorm, sql := testingutils.GormMock()
+		mockGorm, _, sql := testingutils.GormMock()
 
 		mapper := NewMockMapper(gomock.NewController(t))
 		srv := categories.NewService(mapper)
@@ -270,7 +270,7 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		mockGorm, sql := testingutils.GormMock()
+		mockGorm, _, sql := testingutils.GormMock()
 
 		mapper := NewMockMapper(gomock.NewController(t))
 		srv := categories.NewService(mapper)
@@ -350,7 +350,7 @@ func TestListing(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		mockGorm, sql := testingutils.GormMock()
+		mockGorm, _, sql := testingutils.GormMock()
 
 		mapper := NewMockMapper(gomock.NewController(t))
 		srv := categories.NewService(mapper)
@@ -391,7 +391,7 @@ func TestGetAllCategories(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		mockGorm, sql := testingutils.GormMock()
+		mockGorm, _, sql := testingutils.GormMock()
 
 		srv := categories.NewService(NewMockMapper(gomock.NewController(t)))
 

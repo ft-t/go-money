@@ -2,6 +2,7 @@ package testingutils
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ft-t/go-money/pkg/boilerplate"
@@ -19,7 +20,7 @@ func getLock() *fslock.Lock {
 	return fslock.New(path.Join(os.TempDir(), "go_fs_lock"))
 }
 
-func GormMock() (*gorm.DB, sqlmock.Sqlmock) {
+func GormMock() (*gorm.DB, *sql.DB, sqlmock.Sqlmock) {
 	mockDB, mock, err := sqlmock.New()
 	if err != nil {
 		panic(err)
@@ -32,7 +33,7 @@ func GormMock() (*gorm.DB, sqlmock.Sqlmock) {
 		panic(err)
 	}
 
-	return db, mock
+	return db, mockDB, mock
 }
 
 func FlushAllTables(config boilerplate.DbConfig) error {

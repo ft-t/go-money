@@ -378,7 +378,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		svc := transactions.NewBaseAmountService()
 
-		gormMock, sql := testingutils.GormMock()
+		gormMock, _, sql := testingutils.GormMock()
 
 		sql.ExpectQuery("with upd as .*").WithArgs(
 			"USD",
