@@ -24,6 +24,10 @@ type TagSvc interface {
 	GetAllTags(ctx context.Context) ([]*database.Tag, error)
 }
 
+type CategoriesSvc interface {
+	GetAllCategories(ctx context.Context) ([]*database.Category, error)
+}
+
 type TransactionSvc interface {
 	CreateBulkInternal(
 		ctx context.Context,

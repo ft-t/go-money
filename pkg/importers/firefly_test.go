@@ -55,6 +55,9 @@ var ffReconciliationPlusByteData []byte
 //go:embed testdata/ff_transfer.csv
 var ffTransferByteData []byte
 
+//go:embed testdata/ff_withdrawal_debt.csv
+var ffWithdrawalDebt []byte
+
 //go:embed testdata/rates.json
 var ratesByteData []byte
 
@@ -329,6 +332,53 @@ func TestFireflyImport(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 	})
+
+	t.Run("debt withdrawal -> transfer", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+				assert.Len(t, requests, 1)
+
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
+
+				assert.EqualValues(t, 55, *requests[0].Req.CategoryId)
+				assert.EqualValues(t, accountsData[2].ID, tx.TransferBetweenAccounts.SourceAccountId)
+				assert.EqualValues(t, "-200", tx.TransferBetweenAccounts.SourceAmount)
+				assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.SourceCurrency)
+
+				assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.DestinationCurrency)
+				assert.EqualValues(t, "200", tx.TransferBetweenAccounts.DestinationAmount)
+				assert.EqualValues(t, accountsData[4].ID, tx.TransferBetweenAccounts.DestinationAccountId)
+
+				assert.EqualValues(t, "firefly_2004", *requests[0].Req.InternalReferenceNumber)
+
+				return []*transactionsv1.CreateTransactionResponse{
+					{
+						Transaction: &v1.Transaction{
+							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
+						},
+					},
+				}, nil
+			})
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     ffWithdrawalDebt,
+			Accounts: accountsData,
+			Categories: map[string]*database.Category{
+				"Debt repayment": {
+					ID:   55,
+					Name: "Debt repayment",
+				},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
 }
 
 func TestSkipDuplicate(t *testing.T) {
@@ -368,6 +418,24 @@ func TestSkipDuplicate(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.EqualValues(t, result.DuplicateCount, 1)
+	})
+}
+
+func TestFireflyNoData(t *testing.T) {
+	t.Run("no data", func(t *testing.T) {
+		txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc)
+
+		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte{},
+			Accounts: nil,
+			Tags:     nil,
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.EqualError(t, err, "no records found in CSV data")
 	})
 }
 

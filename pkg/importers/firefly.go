@@ -32,10 +32,11 @@ func NewFireflyImporter(
 }
 
 type ImportRequest struct {
-	Data      []byte
-	Accounts  []*database.Account
-	Tags      map[string]*database.Tag
-	SkipRules bool
+	Data       []byte
+	Accounts   []*database.Account
+	Tags       map[string]*database.Tag
+	Categories map[string]*database.Category
+	SkipRules  bool
 }
 
 func (f *FireflyImporter) Type() importv1.ImportSource {
@@ -83,7 +84,9 @@ func (f *FireflyImporter) Import(
 		destinationName := record[16]
 		destinationAccountType := record[18]
 
-		possibleTags := f.toTag(record[20], "category:")
+		categoryName := record[20]
+
+		possibleTags := f.toTag(categoryName, "category:")
 		possibleTags = append(possibleTags, f.toTag(record[21], "budget:")...)
 		possibleTags = append(possibleTags, f.toTag(record[22], "bill:")...)
 
@@ -110,6 +113,10 @@ func (f *FireflyImporter) Import(
 			Transaction:             nil,
 			InternalReferenceNumber: lo.ToPtr(fmt.Sprintf("firefly_%v", journalID)),
 			SkipRules:               req.SkipRules,
+		}
+
+		if v, ok := req.Categories[categoryName]; ok {
+			targetTx.CategoryId = &v.ID
 		}
 
 		if len(req.Tags) > 0 {
