@@ -39,17 +39,17 @@
                         ID
                     </div>
                 </th>
-                <th style="min-width: 12rem">
+                <th style="min-width: 10rem">
                     <div class="flex justify-between items-center">
                         Title
                     </div>
                 </th>
-                <th style="min-width: 12rem">
+                <th style="min-width: 5rem">
                     <div class="flex justify-between items-center">
                         Types
                     </div>
                 </th>
-                <th style="min-width: 5rem">
+                <th style="min-width: 8rem">
                     <div class="flex justify-between items-center">
                         Amount
                     </div>
@@ -96,6 +96,7 @@
                         <ng-template #filter let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="transactionTypes"
+                                           selectedItemsLabel="{{value.length}} items"
                                            [maxSelectedLabels]="maxSelectedLabels"
                                            optionValue="value" optionLabel="name" (onChange)="filter($event.value)"
                                            placeholder="Select" [showClear]="false">
