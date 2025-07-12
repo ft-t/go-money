@@ -1,13 +1,13 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { MessageService } from 'primeng/api';
 import { Tag, TagSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { create } from '@bufbuild/protobuf';
-import { AccountSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
+import { Account, AccountSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { CreateTagRequestSchema, TagsService, UpdateTagRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,15 +17,17 @@ import { Toast } from 'primeng/toast';
 import { UpdateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
+import { Message } from 'primeng/message';
 
 @Component({
     selector: 'app-tags-upsert',
-    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule],
+    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Message],
     templateUrl: './tags-upsert.component.html'
 })
 export class TagsUpsertComponent implements OnInit {
     public tag: Tag = create(TagSchema, {});
     private tagService;
+    public form: FormGroup | undefined = undefined;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -56,6 +58,32 @@ export class TagsUpsertComponent implements OnInit {
                 this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             }
         }
+
+        this.form = new FormGroup({
+            id: new FormControl(this.tag.id, { nonNullable: false }),
+            name: new FormControl(this.tag.name, Validators.required),
+            icon: new FormControl(this.tag.icon),
+            color: new FormControl(this.tag.color ?? '#a35050', Validators.required)
+        });
+    }
+
+    async submit() {
+        this.form!.markAllAsTouched();
+
+        this.tag = this.form!.value as Tag;
+        if (!this.form!.valid) {
+            return;
+        }
+
+        if (this.tag.id) {
+            await this.update();
+        } else {
+            await this.create();
+        }
+    }
+
+    get name() {
+        return this.form!.get('name')!;
     }
 
     async update() {

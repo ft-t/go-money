@@ -1,40 +1,50 @@
 <p-fluid>
-    <div class="flex flex-col md:flex-row gap-8">
-        <div class="md:w-1/2">
-            <div class="card flex flex-col gap-4">
-                <div class="font-semibold text-xl">Base fields</div>
-                <div class="flex flex-col gap-2" *ngIf="tag.id">
-                    <label for="accountName">ID</label>
-                    <input pInputText id="accountName" type="number" [(ngModel)]="tag.id" disabled />
+    <form [formGroup]="form" (ngSubmit)="submit()" *ngIf="form">
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="md:w-1/2">
+                <div class="card flex flex-col gap-4">
+                    <div class="font-semibold text-xl">Required fields</div>
+                    <div class="flex flex-col gap-2" *ngIf="tag.id">
+                        <label for="accountName">ID</label>
+                        <input pInputText id="accountName" type="number" formControlName="id" [readOnly]="true" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="accountName">Name</label>
+                        <input pInputText id="accountName" type="text" formControlName="name" />
+                        @if (name.invalid && (name.dirty || name.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Name is required</p-message>
+                        }
+                    </div>
                 </div>
-                <div class="flex flex-col gap-2">
-                    <label for="accountName">Name</label>
-                    <input pInputText id="accountName" type="text" [(ngModel)]="tag.name" />
+            </div>
+            <div class="w-1/2">
+                <div class="card flex flex-col gap-4">
+                    <div class="font-semibold text-xl">Optional fields</div>
+                    <div class="flex flex-row justify-between gap-4">
+                        <div class="flex flex-col gap-2">
+                            <label for="accountName">Icon</label>
+                            <input placeholder="pi pi-fw pi-address-book" pInputText id="accountName" type="text"
+                                   formControlName="icon" />
+                            <a href="https://primeng.org/icons#list" target="_blank">
+                                <p-button label="Navigate to icon list" link />
+                            </a>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="accountName">Color</label>
+                            <p-colorpicker formControlName="color" inputId="cp-hex"></p-colorpicker>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
-        <div class="md:w-1/2">
-            <div class="card flex flex-col gap-4">
-                <div class="font-semibold text-xl">Optional fields</div>
-                <div class="flex flex-col gap-2">
-                    <label for="accountName">Icon</label>
-                    <a href="https://primeng.org/icons#list" target="_blank">Icon List</a>
-                    <input placeholder="pi pi-fw pi-address-book" pInputText id="accountName" type="text" [(ngModel)]="tag.icon" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label for="accountName">Color</label>
-                    <p-colorpicker [(ngModel)]="tag.color" inputId="cp-hex"></p-colorpicker>
-                </div>
+
+        <div class="flex mt-8">
+            <div class="card flex flex-wrap gap-6 w-full justify-end">
+                <p-button *ngIf="!tag.id" label="Create" [fluid]="false" (click)="submit()"></p-button>
+                <p-button *ngIf="tag.id" label="Update" [fluid]="false" (click)="submit()"></p-button>
             </div>
         </div>
-    </div>
-
-    <div class="flex mt-8">
-        <div class="card flex flex-wrap gap-6 w-full justify-end">
-            <p-button *ngIf="!tag.id" label="Create" [fluid]="false" (click)="create()"></p-button>
-            <p-button *ngIf="tag.id" label="Update" [fluid]="false" (click)="update()"></p-button>
-        </div>
-    </div>
-
+    </form>
     <p-toast />
 </p-fluid>
