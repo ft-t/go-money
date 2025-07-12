@@ -28,6 +28,10 @@ func TestStruct(t *testing.T) {
 			val:      lo.ToPtr(database.DailyStat{}).TableName(),
 			expected: "daily_stat",
 		},
+		{
+			val:      lo.ToPtr(database.Category{}).TableName(),
+			expected: "categories",
+		},
 	}
 
 	for _, tc := range testCases {
