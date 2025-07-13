@@ -74,7 +74,6 @@ func TestImport(t *testing.T) {
 
 		tag1 := NewMockTagSvc(gomock.NewController(t))
 		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
-		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
 
 		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
 
@@ -95,7 +94,6 @@ func TestImport(t *testing.T) {
 
 		tag1 := NewMockTagSvc(gomock.NewController(t))
 		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
-		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
 
 		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
 
@@ -120,7 +118,6 @@ func TestImport(t *testing.T) {
 
 		tag1 := NewMockTagSvc(gomock.NewController(t))
 		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
-		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
 
 		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
 

@@ -21,7 +21,7 @@
             <div class="flex flex-col w-1/2">
                 <div class="flex flex-col gap-2">
                     <label for="currency">Source Account *</label>
-                    <p-dropdown
+                    <p-select
                         [options]="accounts"
                         [(ngModel)]="transaction.sourceAccountId"
                         [filter]="true"
@@ -53,7 +53,7 @@
             <div class="flex flex-col w-1/2" *ngIf="isForeignCurrencyActive()">
                 <div class="flex flex-col gap-2">
                     <label for="currency">Foreign Currency (optional)</label>
-                    <p-dropdown
+                    <p-select
                         [options]="currencies"
                         [(ngModel)]="transaction.destinationCurrency"
                         [filter]="true"
@@ -76,7 +76,7 @@
             </div>
             <div class="flex flex-col gap-2 w-1/2" *ngIf="isDestinationAccountActive()">
                 <label for="currency">Destination Account *</label>
-                <p-dropdown
+                <p-select
                     [options]="accounts"
                     [(ngModel)]="transaction.destinationAccountId"
                     [filter]="true"
@@ -125,7 +125,16 @@
             </div>
         </div>
         <div class="flex gap-4">
-            <div class="flex flex-col gap-4 w-1/2">
+            <div class="flex flex-col gap-2 w-1/2">
+                <div class="flex flex-col gap-2">
+                    <label>Category</label>
+                    <p-select [options]="categories" [(ngModel)]="transaction.categoryId" placeholder="Select Category"
+                              optionLabel="name" optionValue="id"
+                              filter="true"
+                              [disabled]="false"
+                              (onChange)="log()">
+                    </p-select>
+                </div>
                 <div class="flex flex-col gap-2">
                     <label>Tags</label>
                     <p-multiselect [options]="tags" [(ngModel)]="transaction.tagIds" placeholder="Select Tags"
@@ -141,7 +150,6 @@
                             }
                         }
                     </div>
-
                 </div>
             </div>
             <div class="flex flex-col gap-4 w-1/2">

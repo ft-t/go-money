@@ -72,10 +72,12 @@
                 </th>
                 <th style="min-width: 3rem">
                     <div class="flex justify-between items-center">
+                        Category
+                    </div>
+                </th>
+                <th style="min-width: 3rem">
+                    <div class="flex justify-between items-center">
                         Tags
-                        <p-columnFilter type="text" field="account.accountNumber" display="menu"
-                                        multiple="true"
-                                        placeholder="Search by account number"></p-columnFilter>
                     </div>
                 </th>
                 <th></th>
@@ -124,6 +126,18 @@
                                            optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
                                            [maxSelectedLabels]="maxSelectedLabels"
                                            placeholder="Select" [showClear]="true">
+                            </p-multiselect>
+                        </ng-template>
+                    </p-columnFilter>
+                </th>
+                <th>
+                    <p-columnFilter field="categories" matchMode="equals" [showMenu]="false">
+                        <ng-template #filter let-value let-filter="filterCallback">
+                            <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
+                                           [options]="categories"
+                                           [maxSelectedLabels]="maxSelectedLabels"
+                                           optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
+                                           placeholder="Select" [showClear]="false">
                             </p-multiselect>
                         </ng-template>
                     </p-columnFilter>
@@ -198,6 +212,11 @@
                             {{ this.getAccountName(transactionItem.destinationAccountId) }}
                         </a>
                     </p>
+                </td>
+                <td>
+                    <label *ngIf="getCategory(transactionItem.categoryId)">
+                        {{ getCategory(transactionItem.categoryId).name }}
+                    </label>
                 </td>
                 <td>
                     @for (tagID of transactionItem.tagIds; track tagID) {

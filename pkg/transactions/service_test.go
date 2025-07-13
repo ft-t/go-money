@@ -54,12 +54,13 @@ func TestListTransactions(t *testing.T) {
 			SourceCurrency:      "EUR",
 			Extra:               map[string]string{},
 			TagIDs:              []int32{5},
+			CategoryID:          lo.ToPtr(int32(5)),
 		},
 	}
 
 	assert.NoError(t, gormDB.Create(&txs).Error)
 
-	t.Run("list list withdrawals", func(t *testing.T) {
+	t.Run("list withdrawals", func(t *testing.T) {
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 		srv := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:  nil,
@@ -116,6 +117,42 @@ func TestListTransactions(t *testing.T) {
 			TextQuery: nil,
 			Skip:      0,
 			Limit:     10,
+			Sort: []*transactionsv1.ListTransactionsRequest_Sort{
+				{
+					Field:     transactionsv1.SortField_SORT_FIELD_TRANSACTION_DATE,
+					Ascending: false,
+				},
+			},
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		assert.Len(t, resp.Transactions, 1)
+		assert.EqualValues(t, 1, resp.TotalCount)
+		assert.EqualValues(t, txs[1].ID, resp.Transactions[0].Id)
+	})
+
+	t.Run("list by category", func(t *testing.T) {
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+		srv := transactions.NewService(&transactions.ServiceConfig{
+			StatsSvc:  nil,
+			MapperSvc: mapper,
+		})
+
+		mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
+				return &gomoneypbv1.Transaction{
+					Id: transaction.ID,
+				}
+			})
+
+		resp, err := srv.List(context.TODO(), &transactionsv1.ListTransactionsRequest{
+			FromDate:    timestamppb.New(time.Now().Add(-24 * time.Hour)),
+			ToDate:      nil,
+			CategoryIds: []int32{5},
+			TextQuery:   nil,
+			Skip:        0,
+			Limit:       10,
 			Sort: []*transactionsv1.ListTransactionsRequest_Sort{
 				{
 					Field:     transactionsv1.SortField_SORT_FIELD_TRANSACTION_DATE,

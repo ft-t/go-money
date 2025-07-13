@@ -22,6 +22,7 @@ import { DashboardComponent } from './app/pages/dashboard/dashboard.component';
 import { TransactionsDetailsComponent } from './app/pages/transactions/transactions-details.component';
 import { CategoriesListComponent } from './app/pages/categories/categories-list.component';
 import { CategoriesUpsertComponent } from './app/pages/categories/categories-upsert.component';
+import { CategoriesDetailComponent } from './app/pages/categories/categories-detail.component';
 
 export const appRoutes: Routes = [
     {
@@ -190,6 +191,11 @@ export const appRoutes: Routes = [
             {
                 path: 'categories/new',
                 component: CategoriesUpsertComponent,
+                data: {}
+            },
+            {
+                path: 'categories/:id',
+                component: CategoriesDetailComponent,
                 data: {}
             },
             {

@@ -108,6 +108,10 @@ func (s *Service) List(
 		}))
 	}
 
+	if len(req.CategoryIds) > 0 {
+		query = query.Where("category_id IN ?", req.CategoryIds)
+	}
+
 	if len(req.TagIds) > 0 {
 		var tagIds []string
 		for _, tagId := range req.TagIds {
@@ -531,7 +535,7 @@ func (s *Service) ensureCategoryExists(
 	if tx.CategoryID == nil {
 		return nil
 	}
-	
+
 	return nil // todo
 }
 
