@@ -20,10 +20,6 @@ func (w *LuaTransactionWrapper) TransactionDateTimeAddDate(l *lua.LState) int {
 	w.tx.TransactionDateTime = w.tx.TransactionDateTime.AddDate(year, month, day)
 	w.tx.TransactionDateOnly = w.tx.TransactionDateTime
 
-	time.Date(w.tx.TransactionDateTime.Year(), w.tx.TransactionDateTime.Month(),
-		w.tx.TransactionDateTime.Day(), 0, 0, 0, 0, w.tx.TransactionDateTime.Location(),
-	)
-
 	return 0
 }
 

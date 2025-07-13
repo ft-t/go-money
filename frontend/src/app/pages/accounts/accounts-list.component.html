@@ -1,3 +1,4 @@
+<script src="../transactions/modals/reconciliation-modal/reconciliation-modal.component.ts"></script>
 <div class="card accountListTable">
     <div class="font-semibold text-xl mb-4">Accounts List</div>
     <p-table #dt1
@@ -148,6 +149,9 @@
                     <p-button icon="pi pi-pencil"
                               (onClick)="this.router.navigate(['/', 'accounts', 'edit', accountItem.account.id])"
                               severity="secondary" rounded />
+                    <p-button icon="pi pi-pencil"
+                              (onClick)="showReconcile(accountItem)"
+                              severity="secondary" rounded />
                 </td>
             </tr>
         </ng-template>
@@ -162,4 +166,7 @@
             </tr>
         </ng-template>
     </p-table>
+    @if(selectedAccount && selectedAccount.account) {
+        <app-reconciliation-modal (closed)="reconciliationDialogVisible = false" [account]="selectedAccount.account" [visible]="reconciliationDialogVisible" ></app-reconciliation-modal>
+    }
 </div>

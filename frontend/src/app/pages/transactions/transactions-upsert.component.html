@@ -40,6 +40,8 @@
                     <p-inputgroup>
                         <p-inputnumber [disabled]="!isSourceAccountActive()" [(ngModel)]="transaction.sourceAmount"
                                        placeholder="Amount *"
+                                       mode="decimal"
+                                       [minFractionDigits]="0" [maxFractionDigits]="5"
                                        [ngClass]="{'ng-invalid': showValidation && !transaction.sourceAmount && isSourceAccountActive()}"
                         ></p-inputnumber>
                         <p-inputgroup-addon [style]="{'color': 'deepskyblue'}">{{ transaction.sourceCurrency }}
@@ -64,6 +66,8 @@
                     <div class="flex gap-2">
                         <p-inputgroup>
                             <p-inputnumber [(ngModel)]="transaction.destinationAmount"
+                                           mode="decimal"
+                                           [minFractionDigits]="0" [maxFractionDigits]="5"
                                            placeholder="Amount"></p-inputnumber>
                             <p-inputgroup-addon
                                 [style]="{'color': 'deepskyblue'}">{{ transaction.destinationCurrency }}
@@ -94,6 +98,8 @@
 
                 <p-inputgroup>
                     <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount *"
+                                   mode="decimal"
+                                   [minFractionDigits]="0" [maxFractionDigits]="5"
                                    [ngClass]="{'ng-invalid': showValidation && !transaction.destinationAmount && isDestinationAccountActive()}"
                     ></p-inputnumber>
                     <p-inputgroup-addon [style]="{'color': 'deepskyblue'}">{{ transaction.destinationCurrency }}

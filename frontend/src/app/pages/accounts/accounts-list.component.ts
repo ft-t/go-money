@@ -20,11 +20,35 @@ import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
 import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { create } from '@bufbuild/protobuf';
+import { DialogModule } from 'primeng/dialog';
+import { InputGroup } from 'primeng/inputgroup';
+import { InputGroupAddon } from 'primeng/inputgroupaddon';
+import { InputNumber } from 'primeng/inputnumber';
+import { ReconciliationModalComponent } from '../transactions/modals/reconciliation-modal/reconciliation-modal.component';
 
 @Component({
     selector: 'app-account-list',
     templateUrl: 'accounts-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    imports: [
+        OverlayModule,
+        FormsModule,
+        InputText,
+        ToastModule,
+        TableModule,
+        InputIcon,
+        IconField,
+        DatePipe,
+        Button,
+        MultiSelectModule,
+        SelectModule,
+        CommonModule,
+        RouterLink,
+        DialogModule,
+        InputGroup,
+        InputGroupAddon,
+        InputNumber,
+        ReconciliationModalComponent
+    ],
     styles: `
         :host ::ng-deep .accountListTable .p-datatable-header {
             border-width: 0 !important;
@@ -35,6 +59,7 @@ export class AccountsListComponent implements OnInit {
     statuses: any[] = [];
 
     loading: boolean = false;
+    public reconciliationDialogVisible = false;
 
     public accountTypesMap: { [id: string]: AccountTypeEnum } = {};
 
@@ -43,6 +68,7 @@ export class AccountsListComponent implements OnInit {
     public accountTypes = EnumService.getAccountTypes();
     public filters: { [s: string]: FilterMetadata } = {};
     public accountCurrencies: Currency[] = [];
+    public selectedAccount: ListAccountsResponse_AccountItem | undefined = undefined;
 
     @ViewChild('filter') filter!: ElementRef;
 
@@ -84,12 +110,13 @@ export class AccountsListComponent implements OnInit {
             for (let account of this.accounts) {
                 if (account.account && account.account.currency && !foundCurrencies[account.account.currency]) {
                     foundCurrencies[account.account.currency] = true;
-                    this.accountCurrencies.push(create(CurrencySchema, {
-                        id: account.account.currency
-                    }));
+                    this.accountCurrencies.push(
+                        create(CurrencySchema, {
+                            id: account.account.currency
+                        })
+                    );
                 }
             }
-
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {
@@ -104,6 +131,11 @@ export class AccountsListComponent implements OnInit {
     clear(table: Table) {
         table.clear();
         this.filter.nativeElement.value = '';
+    }
+
+    showReconcile(account: ListAccountsResponse_AccountItem) {
+        this.selectedAccount = account;
+        this.reconciliationDialogVisible = true;
     }
 
     protected readonly TimestampHelper = TimestampHelper;
