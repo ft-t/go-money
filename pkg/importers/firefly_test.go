@@ -8,7 +8,6 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
@@ -89,7 +88,6 @@ func TestFireflyImport(t *testing.T) {
 
 				txDate := requests[0].Req.TransactionDate.AsTime().Format(time.RFC3339)
 				assert.EqualValues(t, "2025-06-17T15:07:46Z", txDate)
-				fmt.Println(txDate)
 
 				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
 				assert.EqualValues(t, *tx.Withdrawal.ForeignCurrency, "PLN")
