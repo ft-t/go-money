@@ -23,8 +23,7 @@ export function authInterceptor(): Interceptor {
         }
 
         try {
-            let resp = await next(req);
-            return resp;
+            return await next(req);
         } catch (e) {
             console.log(e);
             messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
