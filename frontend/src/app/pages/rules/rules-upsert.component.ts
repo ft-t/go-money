@@ -282,6 +282,22 @@ export class RulesUpsertComponent implements OnInit {
             documentation: `Remove all tags from transaction`
         });
 
+        suggestions.push({
+            label: `tx:transactionDateTimeSetTime(12,5)`,
+            kind: kind,
+            insertText: `tx:transactionDateTimeSetTime(\${1:value},\${2:value})`,
+            insertTextRules: snippet,
+            documentation: `Set transaction time to 12:05`
+        });
+
+        suggestions.push({
+            label: `tx:transactionDateTimeAddDate(2,3,4)`,
+            kind: kind,
+            insertText: `tx:transactionDateTimeAddDate(\${1:value},\${2:value},\${2:value})`,
+            insertTextRules: snippet,
+            documentation: `Adds 2 years, 3 months and 4 days to transaction date`
+        });
+
         return suggestions;
     }
 

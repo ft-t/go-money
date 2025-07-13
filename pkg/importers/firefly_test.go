@@ -487,3 +487,60 @@ func TestFireflyIntegration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 }
+
+func TestFireflyImport_FailCases(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	var accountsData []*database.Account
+	assert.NoError(t, json.Unmarshal(accountsByteData, &accountsData))
+	assert.NoError(t, gormDB.Create(&accountsData).Error)
+
+	txSvc := NewMockTransactionSvc(gomock.NewController(t))
+	importer := importers.NewFireflyImporter(txSvc)
+
+	t.Run("missing source account", func(t *testing.T) {
+		// Withdrawal with unknown account name
+		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+1,2,3,4,5,6,Withdrawal,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,UnknownAccount,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
+		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte(csv),
+			Accounts: accountsData,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "source account not found")
+	})
+
+	t.Run("currency mismatch", func(t *testing.T) {
+		// Withdrawal with wrong currency
+		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+1,2,3,4,5,6,Withdrawal,100,50,PLN,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
+		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte(csv),
+			Accounts: accountsData,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "source account currency")
+	})
+
+	t.Run("unsupported operation type", func(t *testing.T) {
+		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+1,2,3,4,5,6,UnknownType,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
+		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte(csv),
+			Accounts: accountsData,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported operation type")
+	})
+
+	t.Run("invalid amount", func(t *testing.T) {
+		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+1,2,3,4,5,6,Withdrawal,notanumber,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
+		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte(csv),
+			Accounts: accountsData,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to parse amount")
+	})
+}
