@@ -28,7 +28,15 @@ func TestImport(t *testing.T) {
 
 		tag1.EXPECT().GetAllTags(gomock.Any()).Return(targetTags, nil)
 
-		imp := importers.NewImporter(accSvc, tag1, impl1)
+		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{
+			{
+				ID:   1,
+				Name: "Category1",
+			},
+		}, nil)
+
+		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
 
 		rawBytes := []byte{0x1, 0x2}
 		accounts := []*database.Account{
@@ -65,8 +73,9 @@ func TestImport(t *testing.T) {
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
 		tag1 := NewMockTagSvc(gomock.NewController(t))
+		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
 
-		imp := importers.NewImporter(accSvc, tag1, impl1)
+		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
 
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
 			FileContent: "test",
@@ -84,8 +93,9 @@ func TestImport(t *testing.T) {
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
 		tag1 := NewMockTagSvc(gomock.NewController(t))
+		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
 
-		imp := importers.NewImporter(accSvc, tag1, impl1)
+		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
 
 		rawBytes := []byte{0x1, 0x2}
 
@@ -107,8 +117,9 @@ func TestImport(t *testing.T) {
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
 		tag1 := NewMockTagSvc(gomock.NewController(t))
+		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
 
-		imp := importers.NewImporter(accSvc, tag1, impl1)
+		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
 
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
 			FileContent: "invalid_base64",
@@ -127,8 +138,10 @@ func TestImport(t *testing.T) {
 
 		tag1 := NewMockTagSvc(gomock.NewController(t))
 		tag1.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
 
-		imp := importers.NewImporter(accSvc, tag1, impl1)
+		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
 
 		rawBytes := []byte{0x1, 0x2}
 		accounts := []*database.Account{

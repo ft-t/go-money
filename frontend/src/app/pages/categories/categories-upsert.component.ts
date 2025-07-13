@@ -5,28 +5,26 @@ import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { MessageService } from 'primeng/api';
-import { Tag, TagSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { create } from '@bufbuild/protobuf';
-import { Account, AccountSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { ErrorHelper } from '../../helpers/error.helper';
-import { CreateTagRequestSchema, TagsService, UpdateTagRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIf } from '@angular/common';
 import { Button } from 'primeng/button';
 import { Toast } from 'primeng/toast';
-import { UpdateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { Message } from 'primeng/message';
+import { Category, CategorySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
+import { CategoriesService, CreateCategoryRequestSchema, UpdateCategoryRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
 
 @Component({
-    selector: 'app-tags-upsert',
+    selector: 'app-categories-upsert',
     imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Message],
-    templateUrl: './tags-upsert.component.html'
+    templateUrl: './categories-upsert.component.html'
 })
-export class TagsUpsertComponent implements OnInit {
-    public tag: Tag = create(TagSchema, {});
-    private tagService;
+export class CategoriesUpsertComponent implements OnInit {
+    public category: Category = create(CategorySchema, {});
+    private categoriesService;
     public form: FormGroup | undefined = undefined;
 
     constructor(
@@ -35,47 +33,45 @@ export class TagsUpsertComponent implements OnInit {
         routeSnapshot: ActivatedRoute,
         private router: Router
     ) {
-        this.tagService = createClient(TagsService, this.transport);
+        this.categoriesService = createClient(CategoriesService, this.transport);
 
         try {
-            this.tag.id = +routeSnapshot.snapshot.params['id'];
+            this.category.id = +routeSnapshot.snapshot.params['id'];
         } catch (e) {
-            this.tag.id = 0;
+            this.category.id = 0;
         }
     }
 
     async ngOnInit() {
-        if (this.tag.id) {
+        if (this.category.id) {
             try {
-                let response = await this.tagService.listTags({ ids: [+this.tag.id] });
-                if (response.tags && response.tags.length == 0) {
-                    this.messageService.add({ severity: 'error', detail: 'tag not found' });
+                let response = await this.categoriesService.listCategories({ ids: [+this.category.id] });
+                if (response.categories && response.categories.length == 0) {
+                    this.messageService.add({ severity: 'error', detail: 'category not found' });
                     return;
                 }
 
-                this.tag = response.tags[0].tag ?? create(TagSchema, {});
+                this.category = response.categories[0] ?? create(CategorySchema, {});
             } catch (e) {
                 this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             }
         }
 
         this.form = new FormGroup({
-            id: new FormControl(this.tag.id, { nonNullable: false }),
-            name: new FormControl(this.tag.name, Validators.required),
-            icon: new FormControl(this.tag.icon),
-            color: new FormControl(this.tag.color ?? '#a35050', Validators.required)
+            id: new FormControl(this.category.id, { nonNullable: false }),
+            name: new FormControl(this.category.name, Validators.required)
         });
     }
 
     async submit() {
         this.form!.markAllAsTouched();
 
-        this.tag = this.form!.value as Tag;
+        this.category = this.form!.value as Category;
         if (!this.form!.valid) {
             return;
         }
 
-        if (this.tag.id) {
+        if (this.category.id) {
             await this.update();
         } else {
             await this.create();
@@ -88,17 +84,14 @@ export class TagsUpsertComponent implements OnInit {
 
     async update() {
         try {
-            let response = await this.tagService.updateTag(
-                create(UpdateTagRequestSchema, {
-                    name: this.tag.name,
-                    icon: this.tag.icon,
-                    color: this.tag.color,
-                    id: this.tag.id
+            let response = await this.categoriesService.updateCategory(
+                create(UpdateCategoryRequestSchema, {
+                    category: this.category
                 })
             );
 
-            this.messageService.add({ severity: 'info', detail: 'Tag updated' });
-            await this.router.navigate(['/', 'tags', response.tag!.id.toString()]);
+            this.messageService.add({ severity: 'info', detail: 'Category updated' });
+            await this.router.navigate(['/', 'categories', response.category!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -107,16 +100,14 @@ export class TagsUpsertComponent implements OnInit {
 
     async create() {
         try {
-            let response = await this.tagService.createTag(
-                create(CreateTagRequestSchema, {
-                    name: this.tag.name,
-                    icon: this.tag.icon,
-                    color: this.tag.color
+            let response = await this.categoriesService.createCategory(
+                create(CreateCategoryRequestSchema, {
+                    category: this.category
                 })
             );
 
-            this.messageService.add({ severity: 'info', detail: 'Tag created' });
-            await this.router.navigate(['/', 'tags', response.tag!.id.toString()]);
+            this.messageService.add({ severity: 'info', detail: 'Category created' });
+            await this.router.navigate(['/', 'categories', response.category!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;

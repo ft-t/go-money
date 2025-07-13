@@ -62,6 +62,7 @@ func (l *LuaInterpreter) registerTransaction(state *lua.LState, wrapped *LuaTran
 		"sourceCurrency":          wrapped.SourceCurrency,
 		"destinationCurrency":     wrapped.DestinationCurrency,
 		"sourceAccountID":         wrapped.SourceAccountID,
+		"categoryID":              wrapped.CategoryID,
 		"destinationAccountID":    wrapped.DestinationAccountID,
 		"notes":                   wrapped.Notes,
 		"transactionType":         wrapped.TransactionType,

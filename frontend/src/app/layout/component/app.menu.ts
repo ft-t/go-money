@@ -143,6 +143,11 @@ export class AppMenu implements OnInit {
                         label: 'Tags',
                         icon: 'pi pi-fw pi-tag',
                         routerLink: ['/tags']
+                    },
+                    {
+                        label: 'Categories',
+                        icon: 'pi pi-fw pi-bookmark',
+                        routerLink: ['/categories']
                     }
                     // {
                     //     label: 'Currencies',

@@ -3,6 +3,7 @@ package maintenance_test
 import (
 	"context"
 	"fmt"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
@@ -145,5 +146,93 @@ func TestDailyGap(t *testing.T) {
 			})
 
 		assert.ErrorContains(t, srv.FixDailyGaps(context.TODO()), "failed to calculate daily stat")
+	})
+
+	t.Run("db error on account list", func(t *testing.T) {
+		statSvc := NewMockStatsSvc(gomock.NewController(t))
+		srv := maintenance.NewService(&maintenance.Config{
+			StatsSvc: statSvc,
+		})
+
+		mockGorm, _, sql := testingutils.GormMock()
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").WillReturnError(errors.New("failed to list accounts"))
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+		err := srv.FixDailyGaps(ctx)
+		assert.ErrorContains(t, err, "failed to list accounts")
+	})
+
+	t.Run("db error on get daily stats", func(t *testing.T) {
+		statSvc := NewMockStatsSvc(gomock.NewController(t))
+		srv := maintenance.NewService(&maintenance.Config{
+			StatsSvc: statSvc,
+		})
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		rows := sqlmock.NewRows([]string{"id", "name"}).
+			AddRow(1, "account")
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").
+			WillReturnRows(rows)
+
+		sql.ExpectQuery("SELECT \\* FROM \"daily_stat\" WHERE .*").
+			WillReturnError(errors.New("failed to get daily stats"))
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+		err := srv.FixDailyGaps(ctx)
+		assert.ErrorContains(t, err, "failed to get daily stats")
+	})
+
+	t.Run("db error on transaction lookup", func(t *testing.T) {
+		statSvc := NewMockStatsSvc(gomock.NewController(t))
+		srv := maintenance.NewService(&maintenance.Config{
+			StatsSvc: statSvc,
+		})
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		rows := sqlmock.NewRows([]string{"id", "name"}).
+			AddRow(1, "account")
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").
+			WillReturnRows(rows)
+		sql.ExpectQuery("SELECT .*").
+			WillReturnRows(sqlmock.NewRows([]string{"account_id"})) //empty set
+
+		sql.ExpectQuery("SELECT \\* FROM \"transactions\" WHERE .*").
+			WillReturnError(errors.New("failed to lookup transactions"))
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+		err := srv.FixDailyGaps(ctx)
+		assert.ErrorContains(t, err, "failed to lookup transactions")
+	})
+
+	t.Run("db error on commit", func(t *testing.T) {
+		statSvc := NewMockStatsSvc(gomock.NewController(t))
+		srv := maintenance.NewService(&maintenance.Config{
+			StatsSvc: statSvc,
+		})
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		rows := sqlmock.NewRows([]string{"id", "name"})
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").
+			WillReturnRows(rows)
+
+		sql.ExpectCommit().WillReturnError(errors.New("failed to commit transaction"))
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+		err := srv.FixDailyGaps(ctx)
+		assert.ErrorContains(t, err, "failed to commit transaction")
 	})
 }

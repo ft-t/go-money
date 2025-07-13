@@ -10,6 +10,7 @@ type Config struct {
 	Configuration          configuration.Configuration
 	ExchangeRatesUpdateSvc ExchangeRatesUpdateSvc
 	MaintenanceSvc         MaintenanceSvc
+	Opts                   []gocron.SchedulerOption
 }
 
 type JobScheduler struct {
@@ -18,7 +19,7 @@ type JobScheduler struct {
 }
 
 func NewJobScheduler(cfg *Config) (*JobScheduler, error) {
-	scheduler, err := gocron.NewScheduler()
+	scheduler, err := gocron.NewScheduler(cfg.Opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -25,6 +25,7 @@ func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *
 		Title:                   tx.Title,
 		InternalReferenceNumber: tx.InternalReferenceNumber,
 		ReferenceNumber:         tx.ReferenceNumber,
+		CategoryId:              tx.CategoryID,
 	}
 
 	if tx.SourceAmount.Valid {

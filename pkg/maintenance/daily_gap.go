@@ -11,7 +11,7 @@ func (s *Service) FixDailyGaps(
 ) error {
 	var accounts []*database.Account
 
-	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	tx := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Begin()
 
 	if err := tx.Find(&accounts).Error; err != nil {
 		return err

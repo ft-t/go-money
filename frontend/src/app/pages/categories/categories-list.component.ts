@@ -18,18 +18,15 @@ import { EnumService, AccountTypeEnum } from '../../services/enum.service';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
+import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
+import { create } from '@bufbuild/protobuf';
 import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
-import { RulesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
-import { Rule } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
-
-class RuleGroup {
-    title: string = 'Default';
-    rules: Rule[] = [];
-}
+import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
+import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 
 @Component({
-    selector: 'app-rule-list',
-    templateUrl: 'rule-list.component.html',
+    selector: 'app-categories-list',
+    templateUrl: 'categories-list.component.html',
     imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
     styles: `
         :host ::ng-deep .tagListingTable .p-datatable-header {
@@ -37,15 +34,13 @@ class RuleGroup {
         }
     `
 })
-export class RuleListComponent implements OnInit {
+export class CategoriesListComponent implements OnInit {
     statuses: any[] = [];
 
     loading: boolean = false;
 
-    public rules: Rule[] = [];
-    public ruleGroups: RuleGroup[] = [];
-
-    private ruleService;
+    public categories: Category[] = [];
+    private categoriesService;
 
     public filters: { [s: string]: FilterMetadata } = {};
 
@@ -54,40 +49,30 @@ export class RuleListComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        public router: Router
+        public router: Router,
+        route: ActivatedRoute
     ) {
-        this.ruleService = createClient(RulesService, this.transport);
+        this.categoriesService = createClient(CategoriesService, this.transport);
+
+        if (route.snapshot.data['filters']) {
+            for (let ob of route.snapshot.data['filters']) {
+                for (let [key, value] of Object.entries(ob)) {
+                    this.filters[key] = value as FilterMetadata;
+                }
+            }
+        }
     }
 
-    getRuleUrl(rule: Rule): string {
-        return this.router.createUrlTree(['/', 'rules', 'edit', rule!.id.toString()]).toString();
+    getDetailsUrl(entity: Category): string {
+        return this.router.createUrlTree(['/', 'categories', entity.id.toString()]).toString();
     }
 
     async ngOnInit() {
         this.loading = true;
 
         try {
-            let resp = await this.ruleService.listRules({});
-            this.rules = resp.rules || [];
-
-            let ruleMap: { [key: string]: Rule[] } = {};
-            for (const rule of this.rules) {
-                const groupName = rule.groupName || 'Default';
-                if (!ruleMap[groupName]) {
-                    ruleMap[groupName] = [];
-                }
-
-                ruleMap[groupName].push(rule);
-            }
-
-            this.ruleGroups = Object.keys(ruleMap).map((groupName) => {
-                return {
-                    title: groupName,
-                    rules: ruleMap[groupName]
-                };
-            });
-
-            console.log(this.ruleGroups);
+            let resp = await this.categoriesService.listCategories({});
+            this.categories = resp.categories || [];
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {

@@ -26,6 +26,8 @@ import { combineLatest, Observable, skip, Subscription, switchMap } from 'rxjs';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { FancyTagComponent } from '../fancy-tag/fancy-tag.component';
+import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
+import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
 
 export class FilterWrapper {
     public filters: { [s: string]: FilterMetadata } | undefined;
@@ -47,14 +49,17 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
     public transactions: Transaction[] = [];
     public accountsService;
     public tagsService;
+    public categoriesService;
     public transactionTypes: AccountTypeEnum[] = EnumService.getAllTransactionTypes();
     public transactionTypesMap: { [id: string]: AccountTypeEnum } = {};
 
     public filters: { [s: string]: FilterMetadata } = {};
     public accountMap: { [id: number]: Account } = {};
     public tagsMap: { [id: number]: Tag } = {};
+    public categoryMap: { [id: number]: Category } = {};
     public accounts: Account[] = [];
     public tags: Tag[] = [];
+    public categories: Category[] = [];
 
     public maxSelectedLabels = 1;
 
@@ -113,6 +118,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
         this.transactionsService = createClient(TransactionsService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
         this.tagsService = createClient(TagsService, this.transport);
+        this.categoriesService = createClient(CategoriesService, this.transport);
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -130,7 +136,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
     }
 
     async ngOnInit() {
-        await Promise.all([this.fetchAccounts(), this.fetchTags()]);
+        await Promise.all([this.fetchAccounts(), this.fetchTags(), this.fetchCategories()]);
 
         if (this.filtersWrapper && this.filtersWrapper.filters) {
             Object.assign(this.filters, this.filtersWrapper.filters);
@@ -155,6 +161,20 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             for (let account of resp.tags) {
                 this.tagsMap[account.tag!.id] = account.tag!;
                 this.tags.push(account.tag!);
+            }
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async fetchCategories() {
+        this.categories = [];
+
+        try {
+            let resp = await this.categoriesService.listCategories({});
+            this.categories = resp.categories || [];
+            for (let cat of resp.categories) {
+                this.categoryMap[cat.id] = cat!;
             }
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
@@ -208,6 +228,10 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     getTag(tagID: number): Tag | undefined {
         return this.tagsMap[tagID];
+    }
+
+    getCategory(tagID: number): Category | undefined {
+        return this.categoryMap[tagID];
     }
 
     paramsToQueryString(filters: { [s: string]: FilterMetadata }) {
@@ -271,6 +295,11 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
             let tags = event.filters['tags'] as FilterMetadata;
             if (tags && tags.value && Array.isArray(tags.value)) {
                 req.tagIds = tags.value.map((id) => parseInt(id as string));
+            }
+
+            let categories = event.filters['categories'] as FilterMetadata;
+            if (categories && categories.value && Array.isArray(categories.value)) {
+                req.categoryIds = categories.value.map((id) => parseInt(id as string));
             }
 
             // let idFilter = event.filters['id'] as FilterMetadata

@@ -40,6 +40,7 @@ type Transaction struct {
 
 	ReferenceNumber         *string
 	InternalReferenceNumber *string
+	CategoryID              *int32
 }
 
 type TransactionFlags int64
