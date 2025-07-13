@@ -1,0 +1,30 @@
+<p-fluid>
+    <form [formGroup]="form" (ngSubmit)="submit()" *ngIf="form">
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="md:w-1/2">
+                <div class="card flex flex-col gap-4">
+                    <div class="font-semibold text-xl">Required fields</div>
+                    <div class="flex flex-col gap-2" *ngIf="category.id">
+                        <label for="accountName">ID</label>
+                        <input pInputText id="accountName" type="number" formControlName="id" [readOnly]="true" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="accountName">Name</label>
+                        <input pInputText id="accountName" type="text" formControlName="name" />
+                        @if (name.invalid && (name.dirty || name.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Name is required</p-message>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex mt-8">
+            <div class="card flex flex-wrap gap-6 w-full justify-end">
+                <p-button *ngIf="!category.id" label="Create" [fluid]="false" (click)="submit()"></p-button>
+                <p-button *ngIf="category.id" label="Update" [fluid]="false" (click)="submit()"></p-button>
+            </div>
+        </div>
+    </form>
+    <p-toast />
+</p-fluid>

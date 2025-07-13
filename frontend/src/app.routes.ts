@@ -20,6 +20,8 @@ import { RuleListComponent } from './app/pages/rules/rule-list.component';
 import { RulesUpsertComponent } from './app/pages/rules/rules-upsert.component';
 import { DashboardComponent } from './app/pages/dashboard/dashboard.component';
 import { TransactionsDetailsComponent } from './app/pages/transactions/transactions-details.component';
+import { CategoriesListComponent } from './app/pages/categories/categories-list.component';
+import { CategoriesUpsertComponent } from './app/pages/categories/categories-upsert.component';
 
 export const appRoutes: Routes = [
     {
@@ -173,6 +175,21 @@ export const appRoutes: Routes = [
             {
                 path: 'tags',
                 component: TagsListComponent,
+                data: {}
+            },
+            {
+                path: 'categories',
+                component: CategoriesListComponent,
+                data: {}
+            },
+            {
+                path: 'categories/edit/:id',
+                component: CategoriesUpsertComponent,
+                data: {}
+            },
+            {
+                path: 'categories/new',
+                component: CategoriesUpsertComponent,
                 data: {}
             },
             {
