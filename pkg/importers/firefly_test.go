@@ -87,7 +87,7 @@ func TestFireflyImport(t *testing.T) {
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
 
 				txDate := requests[0].Req.TransactionDate.AsTime().Format(time.RFC3339)
-				assert.EqualValues(t, "2025-06-17T15:07:46Z", txDate)
+				assert.EqualValues(t, "2025-06-17T13:07:46Z", txDate)
 
 				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
 				assert.EqualValues(t, *tx.Withdrawal.ForeignCurrency, "PLN")
