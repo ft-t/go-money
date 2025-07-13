@@ -3,8 +3,8 @@ module github.com/ft-t/go-money
 go 1.23.5
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250712095210-e33e8cd6ee75.1
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.6-20250712095210-e33e8cd6ee75.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250713135621-46c6974b2a4d.1
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.6-20250713135621-46c6974b2a4d.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2

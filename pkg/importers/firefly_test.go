@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 )
 
 var gormDB *gorm.DB
@@ -84,6 +85,9 @@ func TestFireflyImport(t *testing.T) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+
+				txDate := requests[0].Req.TransactionDate.AsTime().Format(time.RFC3339)
+				assert.EqualValues(t, "2025-06-17T13:07:46Z", txDate)
 
 				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
 				assert.EqualValues(t, *tx.Withdrawal.ForeignCurrency, "PLN")
@@ -486,4 +490,78 @@ func TestFireflyIntegration(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
+}
+
+func TestFireflyImport_FailCases(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	var accountsData []*database.Account
+	assert.NoError(t, json.Unmarshal(accountsByteData, &accountsData))
+	assert.NoError(t, gormDB.Create(&accountsData).Error)
+
+	txSvc := NewMockTransactionSvc(gomock.NewController(t))
+	importer := importers.NewFireflyImporter(txSvc)
+
+	t.Run("missing source account", func(t *testing.T) {
+		// Withdrawal with unknown account name
+		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+1,2,3,4,5,6,Withdrawal,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,UnknownAccount,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
+		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte(csv),
+			Accounts: accountsData,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "source account not found")
+	})
+
+	t.Run("currency mismatch", func(t *testing.T) {
+		// Withdrawal with wrong currency
+		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+1,2,3,4,5,6,Withdrawal,100,50,PLN,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
+		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte(csv),
+			Accounts: accountsData,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "source account currency")
+	})
+
+	t.Run("unsupported operation type", func(t *testing.T) {
+		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+1,2,3,4,5,6,UnknownType,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
+		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte(csv),
+			Accounts: accountsData,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported operation type")
+	})
+
+	t.Run("invalid amount", func(t *testing.T) {
+		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+1,2,3,4,5,6,Withdrawal,notanumber,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
+		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
+			Data:     []byte(csv),
+			Accounts: accountsData,
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to parse amount")
+	})
+}
+
+func TestParseDate(t *testing.T) {
+	input := "2025-06-17T15:07:46+02:00"
+	ff := importers.NewFireflyImporter(nil)
+
+	t.Run("with local", func(t *testing.T) {
+		resp, err := ff.ParseDate(input, false)
+		assert.NoError(t, err)
+		assert.Equal(t, input, resp.Format(time.RFC3339))
+	})
+
+	t.Run("force utc", func(t *testing.T) {
+		resp, err := ff.ParseDate(input, true)
+		assert.NoError(t, err)
+		assert.Equal(t, "2025-06-17T15:07:46Z", resp.Format(time.RFC3339))
+	})
 }

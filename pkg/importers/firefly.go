@@ -32,15 +32,41 @@ func NewFireflyImporter(
 }
 
 type ImportRequest struct {
-	Data       []byte
-	Accounts   []*database.Account
-	Tags       map[string]*database.Tag
-	Categories map[string]*database.Category
-	SkipRules  bool
+	Data            []byte
+	Accounts        []*database.Account
+	Tags            map[string]*database.Tag
+	Categories      map[string]*database.Category
+	SkipRules       bool
+	TreatDatesAsUtc bool
 }
 
 func (f *FireflyImporter) Type() importv1.ImportSource {
 	return importv1.ImportSource_IMPORT_SOURCE_FIREFLY
+}
+
+func (f *FireflyImporter) ParseDate(
+	date string,
+	treatAsUtc bool,
+) (time.Time, error) {
+	parsedDate, err := time.Parse("2006-01-02T15:04:05-07:00", date)
+	if err != nil {
+		return time.Time{}, errors.Wrapf(err, "failed to parse date: %s", date)
+	}
+
+	if treatAsUtc {
+		parsedDate = time.Date(
+			parsedDate.Year(),
+			parsedDate.Month(),
+			parsedDate.Day(),
+			parsedDate.Hour(),
+			parsedDate.Minute(),
+			parsedDate.Second(),
+			parsedDate.Nanosecond(),
+			time.UTC,
+		)
+	}
+
+	return parsedDate, nil
 }
 
 func (f *FireflyImporter) Import(
@@ -94,9 +120,9 @@ func (f *FireflyImporter) Import(
 			possibleTags = append(possibleTags, f.toTag(remoteTag, "tag:")...)
 		}
 
-		parsedDate, err := time.Parse("2006-01-02T15:04:05-07:00", date)
+		parsedDate, err := f.ParseDate(date, req.TreatDatesAsUtc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse date: %s", date)
+			return nil, err
 		}
 
 		amountParsed, err := decimal.NewFromString(amount)

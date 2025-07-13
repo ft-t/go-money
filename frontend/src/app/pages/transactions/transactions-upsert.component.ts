@@ -42,6 +42,7 @@ import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
 import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { SelectChangeEvent, SelectModule } from 'primeng/select';
+import { Checkbox } from 'primeng/checkbox';
 
 @Component({
     selector: 'transaction-upsert',
@@ -64,7 +65,8 @@ import { SelectChangeEvent, SelectModule } from 'primeng/select';
         InputNumberModule,
         SelectButtonModule,
         ChipModule,
-        NgClass
+        NgClass,
+        Checkbox
     ]
 })
 export class TransactionUpsertComponent implements OnInit {
@@ -76,6 +78,7 @@ export class TransactionUpsertComponent implements OnInit {
     public tags: Tag[] = [];
     public categories: Category[] = [];
 
+    public skipRules: false = false;
     private accountService;
     public accounts: ListAccountsResponse_AccountItem[] = [];
 
@@ -314,7 +317,8 @@ export class TransactionUpsertComponent implements OnInit {
                 nanos: (this.transactionDate.getMilliseconds() % 1000) * 1_000_000
             }),
             title: this.transaction.title,
-            categoryId: this.transaction.categoryId
+            categoryId: this.transaction.categoryId,
+            skipRules: this.skipRules
         });
 
         switch (this.transaction.type) {
