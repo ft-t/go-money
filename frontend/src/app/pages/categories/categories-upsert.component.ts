@@ -16,6 +16,7 @@ import { ColorPickerModule } from 'primeng/colorpicker';
 import { Message } from 'primeng/message';
 import { Category, CategorySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { CategoriesService, CreateCategoryRequestSchema, UpdateCategoryRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
+import { CacheService } from '../../core/services/cache.service';
 
 @Component({
     selector: 'app-categories-upsert',
@@ -31,7 +32,8 @@ export class CategoriesUpsertComponent implements OnInit {
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         routeSnapshot: ActivatedRoute,
-        private router: Router
+        private router: Router,
+        private cache: CacheService
     ) {
         this.categoriesService = createClient(CategoriesService, this.transport);
 
@@ -70,6 +72,8 @@ export class CategoriesUpsertComponent implements OnInit {
         if (!this.form!.valid) {
             return;
         }
+
+        this.cache.clear(); // categories
 
         if (this.category.id) {
             await this.update();

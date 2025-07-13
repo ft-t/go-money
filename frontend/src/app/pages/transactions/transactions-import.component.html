@@ -21,6 +21,7 @@
                               accept="text/csv"
                               customUpload="true"
                               (uploadHandler)="onBasicUploadAuto($event)"
+                              [disabled]="isLoading"
                               [auto]="true" chooseLabel="Select file to import" />
 
 

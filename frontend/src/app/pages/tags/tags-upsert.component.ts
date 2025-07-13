@@ -18,6 +18,7 @@ import { UpdateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es
 import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { Message } from 'primeng/message';
+import { CacheService } from '../../core/services/cache.service';
 
 @Component({
     selector: 'app-tags-upsert',
@@ -25,7 +26,9 @@ import { Message } from 'primeng/message';
     templateUrl: './tags-upsert.component.html'
 })
 export class TagsUpsertComponent implements OnInit {
-    public tag: Tag = create(TagSchema, {});
+    public tag: Tag = create(TagSchema, {
+        color: '#11ff70'
+    });
     private tagService;
     public form: FormGroup | undefined = undefined;
 
@@ -33,7 +36,8 @@ export class TagsUpsertComponent implements OnInit {
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         routeSnapshot: ActivatedRoute,
-        private router: Router
+        private router: Router,
+        private cache: CacheService
     ) {
         this.tagService = createClient(TagsService, this.transport);
 
@@ -74,6 +78,8 @@ export class TagsUpsertComponent implements OnInit {
         if (!this.form!.valid) {
             return;
         }
+
+        this.cache.clear(); // tags svc
 
         if (this.tag.id) {
             await this.update();
