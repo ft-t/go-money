@@ -74,11 +74,12 @@ func (i *Importer) Import(
 	}
 
 	resp, err := impl.Import(ctx, &ImportRequest{
-		Data:       decoded,
-		Accounts:   accounts,
-		Tags:       tagMap,
-		SkipRules:  req.SkipRules,
-		Categories: categoryMap,
+		Data:            decoded,
+		Accounts:        accounts,
+		Tags:            tagMap,
+		SkipRules:       req.SkipRules,
+		TreatDatesAsUtc: req.TreatDatesAsUtc,
+		Categories:      categoryMap,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "import failed")

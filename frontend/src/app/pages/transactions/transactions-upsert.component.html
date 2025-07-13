@@ -168,12 +168,17 @@
                 <p-button *ngIf="isEdit" label="Refresh" severity="info" [fluid]="false" (click)="refresh()"></p-button>
             </div>
 
-            <div class="flex flex-col justify-end">
+            <div class="flex flex-row items-center gap-2">
+                <p-checkbox id="chkbox2" [(ngModel)]="skipRules" [binary]="true" />
+                <label for="chkbox2">Skip rules</label>
+            </div>
+
+            <div class="flex flex-col justify-end gap-2">
                 <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
                 <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
             </div>
-
         </div>
+
     </div>
 </p-fluid>
 <p-toast />

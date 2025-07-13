@@ -25,6 +25,7 @@ export class TransactionsImportComponent {
     public selectedSource: ImportSource = ImportSource.FIREFLY;
     public sources = EnumService.getImportTypes();
     public skipRules: boolean = false;
+    public treatDatesAsUtc: boolean = false;
     public isLoading: boolean = false;
 
     public importService;
@@ -52,6 +53,7 @@ export class TransactionsImportComponent {
                 let result = await this.importService.importTransactions(
                     create(ImportTransactionsRequestSchema, {
                         skipRules: this.skipRules,
+                        treatDatesAsUtc: this.treatDatesAsUtc,
                         source: this.selectedSource,
                         fileContent: btoa(unescape(encodeURIComponent(event2.target!.result as string)))
                     })

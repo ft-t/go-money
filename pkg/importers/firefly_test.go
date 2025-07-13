@@ -8,6 +8,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
@@ -22,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 )
 
 var gormDB *gorm.DB
@@ -84,6 +86,10 @@ func TestFireflyImport(t *testing.T) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+
+				txDate := requests[0].Req.TransactionDate.AsTime().Format(time.RFC3339)
+				assert.EqualValues(t, "2025-06-17T15:07:46Z", txDate)
+				fmt.Println(txDate)
 
 				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
 				assert.EqualValues(t, *tx.Withdrawal.ForeignCurrency, "PLN")
@@ -542,5 +548,22 @@ func TestFireflyImport_FailCases(t *testing.T) {
 		})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse amount")
+	})
+}
+
+func TestParseDate(t *testing.T) {
+	input := "2025-06-17T15:07:46+02:00"
+	ff := importers.NewFireflyImporter(nil)
+
+	t.Run("with local", func(t *testing.T) {
+		resp, err := ff.ParseDate(input, false)
+		assert.NoError(t, err)
+		assert.Equal(t, input, resp.Format(time.RFC3339))
+	})
+
+	t.Run("force utc", func(t *testing.T) {
+		resp, err := ff.ParseDate(input, true)
+		assert.NoError(t, err)
+		assert.Equal(t, "2025-06-17T15:07:46Z", resp.Format(time.RFC3339))
 	})
 }
