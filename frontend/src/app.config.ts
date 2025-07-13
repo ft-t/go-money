@@ -19,7 +19,9 @@ import { CookieService } from './app/services/cookie.service';
 import { CookieInstances } from './app/objects/cookie-instances';
 import { provideHighlightOptions } from 'ngx-highlightjs';
 import { BusService } from './app/core/services/bus.service';
-import { provideMonacoEditor } from 'ngx-monaco-editor-v2'
+import { provideMonacoEditor } from 'ngx-monaco-editor-v2';
+import { cacheInterceptor } from './app/core/interceptors/cache';
+import { CacheService } from './app/core/services/cache.service';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -33,7 +35,7 @@ export const appConfig: ApplicationConfig = {
             withEnabledBlockingInitialNavigation()
         ),
         provideHighlightOptions({
-            fullLibraryLoader: () => import('highlight.js'),
+            fullLibraryLoader: () => import('highlight.js')
         }),
 
         provideHttpClient(withFetch()),
@@ -43,6 +45,7 @@ export const appConfig: ApplicationConfig = {
         SelectedDateService,
         DatePipe,
         BusService,
+        CacheService,
         providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } }),
         {
             provide: TRANSPORT_TOKEN,
@@ -53,7 +56,7 @@ export const appConfig: ApplicationConfig = {
 
                 return createConnectTransport({
                     baseUrl: host,
-                    interceptors: [authInterceptor()]
+                    interceptors: [authInterceptor(), cacheInterceptor()]
                 });
             }
         },

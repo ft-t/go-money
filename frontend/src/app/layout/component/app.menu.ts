@@ -167,7 +167,5 @@ export class AppMenu implements OnInit {
                 ]
             }
         ];
-
-        console.log(this.model)
     }
 }

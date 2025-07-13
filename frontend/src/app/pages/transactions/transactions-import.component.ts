@@ -25,6 +25,7 @@ export class TransactionsImportComponent {
     public selectedSource: ImportSource = ImportSource.FIREFLY;
     public sources = EnumService.getImportTypes();
     public skipRules: boolean = false;
+    public isLoading: boolean = false;
 
     public importService;
 
@@ -45,6 +46,9 @@ export class TransactionsImportComponent {
             console.log(event2.target!.result);
 
             try {
+                this.isLoading = true;
+                this.messageService.add({ severity: 'info', detail: 'Importing...' });
+
                 let result = await this.importService.importTransactions(
                     create(ImportTransactionsRequestSchema, {
                         skipRules: this.skipRules,
@@ -60,6 +64,8 @@ export class TransactionsImportComponent {
                 this.messageService.add({ severity: 'info', detail: newText });
             } catch (e) {
                 this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            } finally {
+                this.isLoading = false;
             }
         };
 
