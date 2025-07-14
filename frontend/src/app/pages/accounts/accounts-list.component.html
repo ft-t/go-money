@@ -3,12 +3,15 @@
     <p-table #dt1
              dataKey="id"
              [value]="accounts"
+             [tableStyle]="{ 'min-width': '50rem' }"
              [rows]="1000"
              [loading]="loading"
              sortMode="multiple"
              [rowHover]="true"
              [showGridlines]="true"
              [filters]="filters"
+             [multiSortMeta]="multiSortMeta"
+             [resizableColumns]="true" columnResizeMode="expand"
              [paginator]="false"
              [globalFilterFields]="['account.name', 'account.number', 'account.currency']"
              responsiveLayout="scroll">
@@ -18,7 +21,8 @@
                     <p-inputicon>
                         <i class="pi pi-search"></i>
                     </p-inputicon>
-                    <input #filter pInputText type="text" (input)="onGlobalFilter(dt1, $event)" placeholder="Search keyword" />
+                    <input #filter pInputText type="text" (input)="onGlobalFilter(dt1, $event)"
+                           placeholder="Search keyword" />
                     <p-button class="p-button-outlined mb-2 " icon="pi pi-filter-slash"
                               (click)="clear(dt1)"></p-button>
                 </p-iconfield>
@@ -29,39 +33,39 @@
         </ng-template>
         <ng-template #header>
             <tr>
-                <th style="min-width: 15rem" pSortableColumn="account.name">
-                    <div class="flex justify-between items-center">
-                        Name <p-sortIcon field="account.name" />
-                    </div>
+                <th pSortableColumn="account.name">
+                    <p class="flex justify-between items-center text-left">
+                        Name
+                        <p-sortIcon field="account.name" />
+                    </p>
                 </th>
                 <th>
-                    <div class="flex justify-between items-center">
+                    <p class="text-left">
                         Type
-                    </div>
+                    </p>
                 </th>
-                <th style="min-width: 2rem">
-                    <div class="flex justify-between items-center">
+                <th>
+                    <p class="text-left">
                         Currency
-                    </div>
+                    </p>
                 </th>
-                <th style="min-width: 10rem">
-                    <div class="flex justify-between items-center">
+                <th>
+                    <p class="text-left">
                         Current Balance
-                    </div>
+                    </p>
                 </th>
-                <th style="min-width: 5rem" pSortableColumn="account.updatedAt.nanos">
-                    <div class="flex justify-between items-center">
-                        Updated date <p-sortIcon field="account.updatedAt.nanos" />
-                        <p-columnFilter type="date" field="date" display="menu"
-                                        placeholder="mm/dd/yyyy"></p-columnFilter>
-                    </div>
+                <th pSortableColumn="account.displayOrder">
+                    <p class="text-left">
+                        Order
+                        <p-sortIcon field="account.displayOrder" />
+                    </p>
                 </th>
-                <th style="min-width: 3rem; max-width: 5rem;">
-                    <div class="flex justify-between items-center">
+                <th>
+                    <p class="text-left">
                         Account number
-                    </div>
+                    </p>
                 </th>
-                <th style="width: 5rem"></th>
+                <th></th>
             </tr>
             <tr>
                 <th>
@@ -99,15 +103,17 @@
                     </p-columnFilter>
                 </th>
                 <th>
-                    <p-columnFilter type="numeric" showAddButton="true" showMatchModes="true" field="account.currentBalance"
-                                    showMenu="true"
+                    <p-columnFilter type="numeric" showAddButton="false" showMatchModes="true"
+                                    field="account.currentBalance"
+                        showMenu="true"
                                     [showApplyButton]="false"
                                     matchMode="between"
-                                    placeholder=""></p-columnFilter>
+                                    placeholder="Amount"></p-columnFilter>
                 </th>
                 <th></th>
                 <th>
-                    <p-columnFilter type="text" showAddButton="false" showMatchModes="false" field="account.accountNumber"
+                    <p-columnFilter type="text" showAddButton="false" showMatchModes="false"
+                                    field="account.accountNumber"
                                     showMenu="true"
                                     [showApplyButton]="false"
                                     matchMode="contains"
@@ -124,7 +130,7 @@
                         {{ accountItem.account.name }}
                     </a>
                 </td>
-                <td style="max-width: 2rem;">
+                <td>
                     {{ this.accountTypesMap[accountItem.account.type].name }}
                 </td>
                 <td>
@@ -132,12 +138,16 @@
                 </td>
                 <td>
                     <p class="{{accountItem.account.currentBalance < 0 ? 'text-red-500' : 'text-green-500'}}">
-                        <i class="pi" [ngClass]="{'pi-arrow-down': accountItem.account.currentBalance < 0, 'pi-arrow-up': accountItem.account.currentBalance >= 0}"></i>
-                        {{ accountItem.account.currentBalance }} ({{accountItem.account.currency}})
+                        <i class="pi"
+                           [ngClass]="{'pi-arrow-down': accountItem.account.currentBalance < 0, 'pi-arrow-up': accountItem.account.currentBalance >= 0}"></i>
+                        {{ accountItem.account.currentBalance }} ({{ accountItem.account.currency }})
                     </p>
                 </td>
                 <td>
-                    {{ TimestampHelper.timestampToDate(accountItem.account.updatedAt) | date: 'MM/dd/yyyy' }}
+                    <p class="text-left">
+                        {{ accountItem.account.displayOrder }}
+                    </p>
+                    <!--                    {{ TimestampHelper.timestampToDate(accountItem.account.updatedAt) | date: 'MM/dd/yyyy' }}-->
                 </td>
                 <td style="max-width: 10rem">
                     <p class="text-wrap break-all">
@@ -147,6 +157,11 @@
                 <td>
                     <p-button icon="pi pi-pencil"
                               (onClick)="this.router.navigate(['/', 'accounts', 'edit', accountItem.account.id])"
+                              pTooltip="Edit account" tooltipPosition="top" placeholder="Top"
+                              severity="secondary" rounded />
+                    <p-button icon="pi pi-receipt"
+                              (onClick)="showReconcile(accountItem)"
+                              pTooltip="Reconcile account" tooltipPosition="top" placeholder="Top"
                               severity="secondary" rounded />
                 </td>
             </tr>
@@ -162,4 +177,9 @@
             </tr>
         </ng-template>
     </p-table>
+    @if (selectedAccount && selectedAccount.account) {
+        <app-reconciliation-modal (closed)="reconciliationDialogVisible = false; this.refreshTable()"
+                                  [account]="selectedAccount.account"
+                                  [visible]="reconciliationDialogVisible"></app-reconciliation-modal>
+    }
 </div>

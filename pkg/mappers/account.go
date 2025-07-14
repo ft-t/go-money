@@ -38,6 +38,7 @@ func (m *Mapper) MapAccount(ctx context.Context, acc *database.Account) *v1.Acco
 		LiabilityPercent: nil,
 		Iban:             acc.Iban,
 		AccountNumber:    acc.AccountNumber,
+		DisplayOrder:     acc.DisplayOrder,
 	}
 
 	if acc.LiabilityPercent.Valid {
