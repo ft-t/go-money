@@ -11,13 +11,19 @@ import { ErrorHelper } from '../../../../helpers/error.helper';
 import { TRANSPORT_TOKEN } from '../../../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { MessageService } from 'primeng/api';
-import { CreateTransactionRequestSchema, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import {
+    CreateTransactionRequestSchema,
+    ReconciliationSchema,
+    TransactionsService
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { create } from '@bufbuild/protobuf';
+import { InputText } from 'primeng/inputtext';
+import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 
 @Component({
     selector: 'app-reconciliation-modal',
-    imports: [ButtonModule, InputGroupModule, InputGroupAddonModule, DialogModule, NgIf, InputNumber, FormsModule, ReactiveFormsModule],
+    imports: [ButtonModule, InputGroupModule, InputGroupAddonModule, DialogModule, NgIf, InputNumber, FormsModule, ReactiveFormsModule, InputText],
     templateUrl: './reconciliation-modal.component.html'
 })
 export class ReconciliationModalComponent implements OnChanges {
@@ -49,7 +55,7 @@ export class ReconciliationModalComponent implements OnChanges {
     }
 
     setForm() {
-        let title = `Reconciliation at ${this.transactionDate.toLocaleDateString()} ${this.transactionDate.toLocaleTimeString()}`;
+        let title = `Account reconciliation at ${this.transactionDate.toLocaleDateString()} ${this.transactionDate.toLocaleTimeString()}`;
         this.form = new FormGroup({
             currentBalance: new FormControl(parseFloat(this.account?.currentBalance || '0')),
             newBalance: new FormControl(undefined, Validators.required),
@@ -78,6 +84,12 @@ export class ReconciliationModalComponent implements OnChanges {
     }
 
     async save() {
+        this.form!.markAllAsTouched();
+
+        if (!this.form!.valid) {
+            return;
+        }
+
         try {
             let baseRequest = create(CreateTransactionRequestSchema, {
                 notes: this.form!.get('title')!.value,
@@ -88,6 +100,13 @@ export class ReconciliationModalComponent implements OnChanges {
                     nanos: (this.transactionDate.getMilliseconds() % 1000) * 1_000_000
                 }),
                 title: this.form!.get('title')!.value
+            });
+
+            baseRequest.transaction.case = 'reconciliation';
+            baseRequest.transaction.value = create(ReconciliationSchema, {
+                destinationAccountId: this.account!.id,
+                destinationAmount: this.form!.get('difference')!.value.toString(),
+                destinationCurrency: this.account!.currency
             });
 
             let resp = await this.transactionService.createTransaction(baseRequest);

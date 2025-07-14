@@ -1,19 +1,19 @@
 import { Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
 import { Table, TableModule } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
-import { InputText } from 'primeng/inputtext';
+import { InputText, InputTextModule } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
-import { InputIcon } from 'primeng/inputicon';
-import { IconField } from 'primeng/iconfield';
+import { InputIcon, InputIconModule } from 'primeng/inputicon';
+import { IconField, IconFieldModule } from 'primeng/iconfield';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { ErrorHelper } from '../../helpers/error.helper';
-import { FilterMetadata, MessageService } from 'primeng/api';
+import { FilterMetadata, MessageService, SortMeta } from 'primeng/api';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Button } from 'primeng/button';
+import { Button, ButtonModule } from 'primeng/button';
 import { EnumService, AccountTypeEnum } from '../../services/enum.service';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
@@ -25,6 +25,7 @@ import { InputGroup } from 'primeng/inputgroup';
 import { InputGroupAddon } from 'primeng/inputgroupaddon';
 import { InputNumber } from 'primeng/inputnumber';
 import { ReconciliationModalComponent } from '../transactions/modals/reconciliation-modal/reconciliation-modal.component';
+import { TooltipModule } from 'primeng/tooltip';
 
 @Component({
     selector: 'app-account-list',
@@ -32,22 +33,19 @@ import { ReconciliationModalComponent } from '../transactions/modals/reconciliat
     imports: [
         OverlayModule,
         FormsModule,
-        InputText,
+        InputTextModule,
         ToastModule,
         TableModule,
-        InputIcon,
-        IconField,
-        DatePipe,
-        Button,
+        InputIconModule,
+        IconFieldModule,
+        ButtonModule,
         MultiSelectModule,
         SelectModule,
         CommonModule,
         RouterLink,
         DialogModule,
-        InputGroup,
-        InputGroupAddon,
-        InputNumber,
-        ReconciliationModalComponent
+        ReconciliationModalComponent,
+        TooltipModule,
     ],
     styles: `
         :host ::ng-deep .accountListTable .p-datatable-header {
@@ -56,6 +54,8 @@ import { ReconciliationModalComponent } from '../transactions/modals/reconciliat
     `
 })
 export class AccountsListComponent implements OnInit {
+    @ViewChild('dt1', { static: false }) table!: Table;
+
     statuses: any[] = [];
 
     loading: boolean = false;
@@ -69,7 +69,12 @@ export class AccountsListComponent implements OnInit {
     public filters: { [s: string]: FilterMetadata } = {};
     public accountCurrencies: Currency[] = [];
     public selectedAccount: ListAccountsResponse_AccountItem | undefined = undefined;
-
+    public multiSortMeta: SortMeta[] = [
+        {
+            field: 'account.displayOrder',
+            order: 0
+        }
+    ];
     @ViewChild('filter') filter!: ElementRef;
 
     constructor(
@@ -94,6 +99,10 @@ export class AccountsListComponent implements OnInit {
     }
 
     async ngOnInit() {
+        await this.loadAccounts();
+    }
+
+    async loadAccounts() {
         this.loading = true;
 
         for (let type of this.accountTypes) {
@@ -137,6 +146,18 @@ export class AccountsListComponent implements OnInit {
         this.selectedAccount = account;
         this.reconciliationDialogVisible = true;
     }
+
+    async refreshTable() {
+        if (!this.table) {
+            return;
+        }
+
+        await this.loadAccounts();
+        console.log("Refreshing table data");
+
+        this.table.filter('', '', '');
+    }
+
 
     protected readonly TimestampHelper = TimestampHelper;
 }

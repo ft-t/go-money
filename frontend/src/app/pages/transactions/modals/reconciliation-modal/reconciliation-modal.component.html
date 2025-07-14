@@ -1,8 +1,8 @@
-<p-dialog header="Reconcile account balance" [modal]="true" [(visible)]="visible" *ngIf="account" (onHide)="onHide()">
+<p-dialog header="Reconcile account balance" [modal]="true" [(visible)]="visible" *ngIf="account" (onHide)="onHide()" [style]="{ width: '50rem' }" [breakpoints]="{ '1199px': '75vw', '575px': '90vw' }" [maximizable]="true">
     <form [formGroup]="form" (ngSubmit)="submit()" *ngIf="form">
         <span class="p-text-secondary block mb-8">Selected account: {{ account.name }} (#{{ account.id }})</span>
-        <div class="flex items-center gap-4 mb-4">
-            <label for="balance1" class="font-semibold w-24">Current balance</label>
+        <div class="flex items-center gap-4 mb-4 text-balance">
+            <label for="balance1" class="font-semibold w-24">Current</label>
             <p-inputgroup>
                 <p-inputnumber formControlName="currentBalance"
                                readonly="true"
@@ -13,7 +13,7 @@
             </p-inputgroup>
         </div>
         <div class="flex items-center gap-4 mb-8">
-            <label for="balance2" class="font-semibold w-24">New balance</label>
+            <label for="balance2" class="font-semibold w-24">New</label>
             <p-inputgroup>
                 <p-inputnumber formControlName="newBalance"
                                mode="decimal"
@@ -32,6 +32,13 @@
                 <p-inputgroup-addon
                     [style]="{'color': 'deepskyblue'}">{{ account.currency }}
                 </p-inputgroup-addon>
+            </p-inputgroup>
+        </div>
+        <div class="flex items-center gap-4 mb-8">
+            <label for="balance2" class="font-semibold w-24">Title</label>
+            <p-inputgroup>
+                <input pInputText  type="text" formControlName="title"
+                               placeholder="title"/>
             </p-inputgroup>
         </div>
         <div class="flex justify-end gap-2">
