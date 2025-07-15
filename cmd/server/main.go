@@ -81,7 +81,7 @@ func main() {
 	}
 
 	decimalSvc := currency.NewDecimalService()
-	currencyConverter := currency.NewConverter(config.BaseCurrency)
+	currencyConverter := currency.NewConverter(config.CurrencyConfig.BaseCurrency)
 
 	_, err = handlers.NewCurrencyApi(grpcServer, currency.NewService(), currencyConverter, decimalSvc)
 	if err != nil {
@@ -103,7 +103,7 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create accounts handler")
 	}
 
-	baseAmountSvc := transactions.NewBaseAmountService(config.BaseCurrency)
+	baseAmountSvc := transactions.NewBaseAmountService(config.CurrencyConfig.BaseCurrency)
 	ruleEngine := rules.NewExecutor(rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{
 		AccountsSvc:          accountSvc,
 		CurrencyConverterSvc: currencyConverter,
