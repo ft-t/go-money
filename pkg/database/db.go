@@ -53,6 +53,12 @@ func InitDb() error {
 }
 
 func GetDb(t DbType) *gorm.DB {
+	if masterGormDb == nil {
+		if err := InitDb(); err != nil {
+			panic(err)
+		}
+	}
+	
 	switch t {
 	case DbTypeMaster:
 		return masterGormDb
