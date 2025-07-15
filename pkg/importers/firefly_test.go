@@ -471,10 +471,12 @@ func TestFireflyIntegration(t *testing.T) {
 	var allAccounts []*database.Account
 	assert.NoError(t, gormDB.Find(&allAccounts).Error)
 
-	cur := currency.NewSyncer(http.DefaultClient, transactions.NewBaseAmountService(), configuration.CurrencyConfig{})
+	cur := currency.NewSyncer(http.DefaultClient, transactions.NewBaseAmountService("USD"), configuration.CurrencyConfig{
+		BaseCurrency: "USD",
+	})
 	assert.NoError(t, cur.Sync(context.TODO(), "http://go-money-exchange-rates.s3-website.eu-north-1.amazonaws.com/latest.json"))
 
-	converter := currency.NewConverter()
+	converter := currency.NewConverter("USD")
 
 	txSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             transactions.NewStatService(),

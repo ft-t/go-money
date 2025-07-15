@@ -14,7 +14,8 @@ type Configuration struct {
 }
 
 type CurrencyConfig struct {
-	UpdateTransactionAmountInBaseCurrency bool `env:"UPDATE_TRANSACTION_AMOUNT_IN_BASE_CURRENCY, default=false"`
+	UpdateTransactionAmountInBaseCurrency bool   `env:"UPDATE_TRANSACTION_AMOUNT_IN_BASE_CURRENCY, default=false"`
+	BaseCurrency                          string `env:"BASE_CURRENCY, default=USD"`
 }
 
 type GrafanaConfig struct {

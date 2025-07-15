@@ -11,12 +11,16 @@ import (
 )
 
 type Converter struct {
-	cache *expirable.LRU[string, decimal.Decimal]
+	cache        *expirable.LRU[string, decimal.Decimal]
+	baseCurrency string
 }
 
-func NewConverter() *Converter {
+func NewConverter(
+	baseCurrency string,
+) *Converter {
 	return &Converter{
-		cache: expirable.NewLRU[string, decimal.Decimal](100, nil, configuration.DefaultCacheTTL),
+		cache:        expirable.NewLRU[string, decimal.Decimal](100, nil, configuration.DefaultCacheTTL),
+		baseCurrency: baseCurrency,
 	}
 }
 
@@ -30,7 +34,7 @@ func (c *Converter) Convert(
 		return amount, nil
 	}
 
-	rates, err := c.fetchRates(ctx, []string{fromCurrency, toCurrency, configuration.BaseCurrency})
+	rates, err := c.fetchRates(ctx, []string{fromCurrency, toCurrency, c.baseCurrency})
 	if err != nil {
 		return decimal.Zero, err
 	}

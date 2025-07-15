@@ -4,7 +4,6 @@ import (
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/cockroachdb/errors"
-	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
@@ -16,6 +15,7 @@ import (
 )
 
 func TestBaseAmountService(t *testing.T) {
+	baseCurrency := "USD"
 	t.Run("success with full update", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
@@ -61,7 +61,7 @@ func TestBaseAmountService(t *testing.T) {
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-10)),
 
-				DestinationCurrency: configuration.BaseCurrency,
+				DestinationCurrency: baseCurrency,
 				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-999)),
 				Extra:               make(map[string]string),
 
@@ -79,7 +79,7 @@ func TestBaseAmountService(t *testing.T) {
 			},
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-				SourceCurrency:  configuration.BaseCurrency,
+				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 				SourceAccountID: lo.ToPtr(acc[1].ID),
 				Extra:           make(map[string]string),
@@ -91,7 +91,7 @@ func TestBaseAmountService(t *testing.T) {
 			// transfers
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-				SourceCurrency:  configuration.BaseCurrency,
+				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 				SourceAccountID: &acc[1].ID,
 
@@ -109,7 +109,7 @@ func TestBaseAmountService(t *testing.T) {
 				SourceAccountID: &acc[0].ID,
 
 				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
-				DestinationCurrency:  configuration.BaseCurrency,
+				DestinationCurrency:  baseCurrency,
 				DestinationAccountID: &acc[1].ID,
 				Extra:                make(map[string]string),
 
@@ -137,7 +137,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		assert.NoError(t, gormDB.Create(&txs).Error)
 
-		svc := transactions.NewBaseAmountService()
+		svc := transactions.NewBaseAmountService("USD")
 
 		err := svc.RecalculateAmountInBaseCurrencyForAll(context.TODO(), gormDB)
 		assert.NoError(t, err)
@@ -190,7 +190,7 @@ func TestBaseAmountService(t *testing.T) {
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
 
-				DestinationCurrency: configuration.BaseCurrency,
+				DestinationCurrency: baseCurrency,
 				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)),
 				Extra:               make(map[string]string),
 
@@ -207,7 +207,7 @@ func TestBaseAmountService(t *testing.T) {
 			},
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-				SourceCurrency:  configuration.BaseCurrency,
+				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 				Extra:           make(map[string]string),
 
@@ -218,7 +218,7 @@ func TestBaseAmountService(t *testing.T) {
 			// transfers
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-				SourceCurrency:  configuration.BaseCurrency,
+				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 
 				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(9999)),
@@ -233,7 +233,7 @@ func TestBaseAmountService(t *testing.T) {
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(9999)),
 
 				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(55)),
-				DestinationCurrency: configuration.BaseCurrency,
+				DestinationCurrency: baseCurrency,
 				Extra:               make(map[string]string),
 
 				// destination is in USD to should use 55,
@@ -253,7 +253,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		assert.NoError(t, gormDB.Create(&txs).Error)
 
-		svc := transactions.NewBaseAmountService()
+		svc := transactions.NewBaseAmountService("USD")
 
 		err := svc.RecalculateAmountInBaseCurrency(context.TODO(), gormDB,
 			[]*database.Transaction{
@@ -324,7 +324,7 @@ func TestBaseAmountService(t *testing.T) {
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
 
-				DestinationCurrency: configuration.BaseCurrency,
+				DestinationCurrency: baseCurrency,
 				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(999)),
 				Extra:               make(map[string]string),
 
@@ -341,7 +341,7 @@ func TestBaseAmountService(t *testing.T) {
 			},
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-				SourceCurrency:  configuration.BaseCurrency,
+				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 				Extra:           make(map[string]string),
 
@@ -352,7 +352,7 @@ func TestBaseAmountService(t *testing.T) {
 			// transfers
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-				SourceCurrency:  configuration.BaseCurrency,
+				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 
 				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(9999)),
@@ -367,7 +367,7 @@ func TestBaseAmountService(t *testing.T) {
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(9999)),
 
 				DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(55)),
-				DestinationCurrency: configuration.BaseCurrency,
+				DestinationCurrency: baseCurrency,
 				Extra:               make(map[string]string),
 
 				// destination is in USD to should use 55,
@@ -376,7 +376,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		assert.NoError(t, gormDB.Create(&txs).Error)
 
-		svc := transactions.NewBaseAmountService()
+		svc := transactions.NewBaseAmountService("USD")
 
 		gormMock, _, sql := testingutils.GormMock()
 

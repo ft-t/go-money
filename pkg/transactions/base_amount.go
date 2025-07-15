@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	_ "embed"
 	"github.com/cockroachdb/errors"
-	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
@@ -16,10 +15,15 @@ import (
 var updateAmountInBaseCurrency string
 
 type BaseAmountService struct {
+	baseCurrency string
 }
 
-func NewBaseAmountService() *BaseAmountService {
-	return &BaseAmountService{}
+func NewBaseAmountService(
+	baseCurrency string,
+) *BaseAmountService {
+	return &BaseAmountService{
+		baseCurrency: baseCurrency,
+	}
 }
 
 func (s *BaseAmountService) RecalculateAmountInBaseCurrencyForAll(
@@ -56,7 +60,7 @@ func (s *BaseAmountService) RecalculateAmountInBaseCurrency(
 	}
 
 	if err := tx.Raw(updateAmountInBaseCurrency,
-		sql.Named("baseCurrency", configuration.BaseCurrency),
+		sql.Named("baseCurrency", s.baseCurrency),
 		sql.Named("specificTxIDs", target),
 	).Find(&results).Error; err != nil {
 		return errors.Wrap(err, "failed to recalculate")

@@ -19,14 +19,17 @@ func TestGetConfiguration(t *testing.T) {
 
 		srv := appcfg.NewService(&appcfg.ServiceConfig{
 			UserSvc: userSvc,
-			AppCfg:  &configuration.Configuration{},
+			AppCfg: &configuration.Configuration{
+				CurrencyConfig: configuration.CurrencyConfig{
+					BaseCurrency: "USD",
+				},
+			},
 		})
 
 		resp, err := srv.GetConfiguration(context.TODO(), &configurationv1.GetConfigurationRequest{})
 		assert.NoError(t, err)
 		assert.True(t, resp.ShouldCreateAdmin)
 		assert.Equal(t, "USD", resp.BaseCurrency)
-		assert.Equal(t, configuration.BaseCurrency, resp.BaseCurrency)
 	})
 
 	t.Run("fail", func(t *testing.T) {
