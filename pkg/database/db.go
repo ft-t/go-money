@@ -22,20 +22,20 @@ const (
 var masterGormDb *gorm.DB
 var readonlyGormDb *gorm.DB
 
-func init() {
+func InitDb() error {
 	config := configuration.GetConfiguration()
 
 	log.Info().Msg("setup postgres database")
 
 	if boilerplate.GetCurrentEnvironment() == boilerplate.Ci {
 		if err := testingutils.EnsurePostgresDbExists(config.Db); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
 	mainDb, err := boilerplate.GetGormConnection(config.Db)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	masterGormDb = mainDb
@@ -45,12 +45,20 @@ func init() {
 	if len(migrations) > 0 {
 		log.Info().Msg("[Db] start migrations")
 		if err = gormigrate.New(mainDb, gormigrate.DefaultOptions, migrations).Migrate(); err != nil {
-			panic(err)
+			return err
 		}
 	}
+
+	return nil
 }
 
 func GetDb(t DbType) *gorm.DB {
+	if masterGormDb == nil {
+		if err := InitDb(); err != nil {
+			panic(err)
+		}
+	}
+	
 	switch t {
 	case DbTypeMaster:
 		return masterGormDb

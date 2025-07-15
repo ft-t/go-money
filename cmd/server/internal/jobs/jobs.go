@@ -30,7 +30,7 @@ func NewJobScheduler(cfg *Config) (*JobScheduler, error) {
 	}
 
 	if _, err = scheduler.NewJob(
-		gocron.CronJob("20 0 * * *", false), // Rates are updated daily at 00:10 UTC by main server
+		gocron.CronJob("10 12 * * *", false), // should be in sync with sync-exchange-rates service
 		gocron.NewTask(j.UpdateCurrencyRates),
 	); err != nil {
 		return nil, errors.Wrap(err, "failed to create currency rate updater job")

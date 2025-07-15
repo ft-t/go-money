@@ -1,8 +1,12 @@
 package currency
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/shopspring/decimal"
+	"time"
+)
 
-type remoteRates struct {
-	Base  string                     `json:"b"`
-	Rates map[string]decimal.Decimal `json:"r"`
+type RemoteRates struct {
+	Base      string                     `json:"b"`
+	Rates     map[string]decimal.Decimal `json:"r"`
+	UpdatedAt time.Time                  `json:"u"`
 }

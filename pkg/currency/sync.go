@@ -50,7 +50,7 @@ func (s *Syncer) Sync(
 		}()
 	}
 
-	var parsed remoteRates
+	var parsed RemoteRates
 	if err = json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return err
 	}
