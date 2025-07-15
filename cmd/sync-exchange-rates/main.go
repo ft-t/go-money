@@ -2,30 +2,40 @@ package main
 
 import (
 	"context"
-	"github.com/ft-t/go-money/pkg/configuration"
-	"github.com/ft-t/go-money/pkg/currency"
-	"github.com/ft-t/go-money/pkg/transactions"
+	"encoding/json"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	fetcher2 "github.com/ft-t/go-money/cmd/sync-exchange-rates/internal/fetcher"
+	uploader2 "github.com/ft-t/go-money/cmd/sync-exchange-rates/internal/uploader"
+
 	"net/http"
 	"os"
 )
 
-const (
-	defaultExchangeRatesURL = "http://go-money-exchange-rates.s3-website.eu-north-1.amazonaws.com/latest.json"
-)
-
 func main() {
-	fetchURL := defaultExchangeRatesURL
-
-	if v := os.Getenv("CUSTOM_EXCHANGE_RATES_URL"); v != "" {
-		fetchURL = v
+	ctx := context.Background()
+	sdkConfig, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		panic(err)
 	}
 
-	cfg := configuration.GetConfiguration()
+	s3Client := s3.NewFromConfig(sdkConfig)
+	uploader := uploader2.NewS3(s3Client, os.Getenv("EXCHANGE_RATES_BUCKET_NAME"))
 
-	ctx := context.TODO()
+	apiURL := os.Getenv("EXCHANGE_RATES_API_URL")
 
-	sync := currency.NewSyncer(http.DefaultClient, transactions.NewBaseAmountService(), cfg.CurrencyConfig)
-	if err := sync.Sync(ctx, fetchURL); err != nil {
+	fetcher := fetcher2.NewFetcher(http.DefaultClient, apiURL)
+	baseRates, err := fetcher.Fetch(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	data, err := json.Marshal(baseRates)
+	if err != nil {
+		panic(err)
+	}
+
+	if err = uploader.Upload(ctx, "/latest2.json", data); err != nil {
 		panic(err)
 	}
 }

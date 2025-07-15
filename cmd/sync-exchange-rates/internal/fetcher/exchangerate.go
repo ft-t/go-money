@@ -13,7 +13,7 @@ type Fetcher struct {
 	httpClient *http.Client
 }
 
-func New(
+func NewFetcher(
 	client *http.Client,
 	apiURL string,
 ) *Fetcher {
