@@ -12,6 +12,7 @@ import (
 	"github.com/ft-t/go-money/pkg/categories"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
+	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/ft-t/go-money/pkg/maintenance"
 	"github.com/ft-t/go-money/pkg/mappers"
@@ -35,6 +36,10 @@ func main() {
 	_, cancel := context.WithCancel(context.Background())
 
 	logger := log.Logger
+
+	if err := database.InitDb(); err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to initialize database")
+	}
 
 	if config.JwtPrivateKey == "" {
 		logger.Warn().Msgf("jwt private key is empty. Will create a new temporary key")
