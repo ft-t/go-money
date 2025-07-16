@@ -34,7 +34,7 @@ func (s *Service) GetConfiguration(
 
 	return &configurationv1.GetConfigurationResponse{
 		ShouldCreateAdmin: shouldCreatedAdmin,
-		BaseCurrency:      configuration.BaseCurrency,
+		BaseCurrency:      s.cfg.AppCfg.CurrencyConfig.BaseCurrency,
 		GrafanaUrl:        s.cfg.AppCfg.GrafanaConfig.Url,
 	}, nil
 }

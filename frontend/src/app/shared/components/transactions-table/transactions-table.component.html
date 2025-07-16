@@ -219,9 +219,11 @@
                     </label>
                 </td>
                 <td>
-                    @for (tagID of transactionItem.tagIds; track tagID) {
-                        <fancy-tag [tag]="getTag(tagID)"></fancy-tag>
-                    }
+                    <div class="flex gap-2">
+                        @for (tagID of transactionItem.tagIds; track tagID) {
+                            <fancy-tag [tag]="getTag(tagID)"></fancy-tag>
+                        }
+                    </div>
                 </td>
                 <td>
                     <p-button icon="pi pi-pencil"

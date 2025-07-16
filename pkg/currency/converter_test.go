@@ -34,7 +34,7 @@ func TestConvert(t *testing.T) {
 	}
 	assert.NoError(t, gormDB.Create(eur).Error)
 
-	cv := currency.NewConverter()
+	cv := currency.NewConverter("USD")
 
 	t.Run("USD -> PLN", func(t *testing.T) {
 		resp, err := cv.Convert(
@@ -76,7 +76,7 @@ func TestConvert(t *testing.T) {
 func TestMissingBase(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-	cv := currency.NewConverter()
+	cv := currency.NewConverter("USD")
 
 	resp, err := cv.Convert(
 		context.TODO(),
