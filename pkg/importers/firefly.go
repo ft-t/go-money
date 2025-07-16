@@ -130,6 +130,8 @@ func (f *FireflyImporter) Import(
 			return nil, errors.Wrapf(err, "failed to parse amount: %s", amount)
 		}
 
+		key := fmt.Sprintf("firefly_%v", journalID)
+
 		targetTx := &transactionsv1.CreateTransactionRequest{
 			Notes:                   notes,
 			Extra:                   make(map[string]string),
@@ -137,7 +139,7 @@ func (f *FireflyImporter) Import(
 			TransactionDate:         timestamppb.New(parsedDate.UTC()),
 			Title:                   description,
 			Transaction:             nil,
-			InternalReferenceNumber: lo.ToPtr(fmt.Sprintf("firefly_%v", journalID)),
+			InternalReferenceNumber: &key,
 			SkipRules:               req.SkipRules,
 		}
 
@@ -344,7 +346,7 @@ func (f *FireflyImporter) Import(
 			return nil, errors.Errorf("unsupported operation type: %s", operationType)
 		}
 
-		newTxs[journalID] = targetTx
+		newTxs[key] = targetTx
 	}
 
 	journalIDs := lo.Keys(newTxs)

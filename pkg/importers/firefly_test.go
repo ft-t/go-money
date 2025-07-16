@@ -405,7 +405,7 @@ func TestSkipDuplicate(t *testing.T) {
 
 		tx := &database.ImportDeduplication{
 			ImportSource: importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
-			Key:          "2805",
+			Key:          "firefly_2805",
 		}
 		assert.NoError(t, gormDB.Create(&tx).Error)
 
