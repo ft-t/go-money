@@ -136,8 +136,8 @@ jobs:
             FULL_TAG="${DOCKER_FULL_IMAGE_NAME}:${TAG}"
           
             docker manifest create "${FULL_TAG}" \
-              "${DOCKER_TEMP_FULL_IMAGE_NAME}:linux-amd64" \
-              "${DOCKER_TEMP_FULL_IMAGE_NAME}:linux-arm64"
+              "${DOCKER_TEMP_FULL_IMAGE_NAME}-linux-amd64" \
+              "${DOCKER_TEMP_FULL_IMAGE_NAME}-linux-arm64"
           
             docker manifest push "${FULL_TAG}"
           done
