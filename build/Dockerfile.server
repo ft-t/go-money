@@ -3,7 +3,7 @@ RUN apk update && apk add openssh-client git
 ARG SOURCE_PATH=""
 ADD . /src
 WORKDIR /src/$SOURCE_PATH
-RUN GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o /src/dist/app
+RUN go build -ldflags "-s -w" -o /src/dist/app
 
 FROM alpine:latest as done
 COPY --from=builder /src/dist /opt/app
