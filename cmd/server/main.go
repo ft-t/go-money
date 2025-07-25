@@ -35,6 +35,8 @@ func main() {
 	config := configuration.GetConfiguration()
 	_, cancel := context.WithCancel(context.Background())
 
+	boilerplate.SetupZeroLog()
+	
 	logger := log.Logger
 
 	if err := database.InitDb(); err != nil {
@@ -83,7 +85,12 @@ func main() {
 	decimalSvc := currency.NewDecimalService()
 	currencyConverter := currency.NewConverter(config.CurrencyConfig.BaseCurrency)
 
-	_, err = handlers.NewCurrencyApi(grpcServer, currency.NewService(), currencyConverter, decimalSvc)
+	_, err = handlers.NewCurrencyApi(
+		grpcServer,
+		currency.NewService(config.CurrencyConfig),
+		currencyConverter,
+		decimalSvc,
+	)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
 	}

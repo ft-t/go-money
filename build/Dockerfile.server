@@ -1,9 +1,16 @@
 FROM golang:1.24-alpine as builder
 RUN apk update && apk add openssh-client git
+
 ARG SOURCE_PATH=""
+ARG VERSION=""
+ARG COMMIT_SHA=""
+
 ADD . /src
 WORKDIR /src/$SOURCE_PATH
-RUN go build -ldflags "-s -w" -o /src/dist/app
+RUN go build -ldflags "-s -w \
+    -X github.com/ft-t/go-money/pkg/boilerplate.version=${VERSION} \
+    -X github.com/ft-t/go-money/pkg/boilerplate.commitSHA=${COMMIT_SHA}" \
+    -o /src/dist/app
 
 FROM alpine:latest as done
 COPY --from=builder /src/dist /opt/app

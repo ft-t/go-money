@@ -3,6 +3,7 @@ package appcfg
 import (
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	"context"
+	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 )
 
@@ -36,5 +37,7 @@ func (s *Service) GetConfiguration(
 		ShouldCreateAdmin: shouldCreatedAdmin,
 		BaseCurrency:      s.cfg.AppCfg.CurrencyConfig.BaseCurrency,
 		GrafanaUrl:        s.cfg.AppCfg.GrafanaConfig.Url,
+		BackendVersion:    boilerplate.GetVersion(),
+		CommitSha:         boilerplate.GetCommit(),
 	}, nil
 }

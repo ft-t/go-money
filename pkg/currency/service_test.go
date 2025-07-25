@@ -5,6 +5,7 @@ import (
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
@@ -43,7 +44,7 @@ func TestGetCurrencies(t *testing.T) {
 		assert.NoError(t, gormDB.Create(cur2).Error)
 		assert.NoError(t, gormDB.Create(cur3).Error)
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 
 		resp, err := srv.GetCurrencies(context.TODO(), &currencyv1.GetCurrenciesRequest{
 			IncludeDisabled: true,
@@ -88,7 +89,7 @@ func TestGetCurrencies(t *testing.T) {
 		assert.NoError(t, gormDB.Create(cur2).Error)
 		assert.NoError(t, gormDB.Create(cur3).Error)
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 
 		resp, err := srv.GetCurrencies(context.TODO(), &currencyv1.GetCurrenciesRequest{
 			IncludeDisabled: false,
@@ -125,7 +126,7 @@ func TestGetCurrencies(t *testing.T) {
 		assert.NoError(t, gormDB.Create(cur2).Error)
 		assert.NoError(t, gormDB.Create(cur3).Error)
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 
 		resp, err := srv.GetCurrencies(context.TODO(), &currencyv1.GetCurrenciesRequest{
 			Ids: []string{
@@ -146,7 +147,7 @@ func TestGetCurrencies(t *testing.T) {
 		mockGorm, _, sql := testingutils.GormMock()
 		ctx := database.WithContext(context.TODO(), mockGorm)
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 
 		sql.ExpectQuery("SELECT .*").WillReturnError(errors.New("unexpected err"))
 
@@ -166,7 +167,7 @@ func TestCreateCurrency(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 		resp, err := srv.CreateCurrency(context.TODO(), &currencyv1.CreateCurrencyRequest{
 			Currency: &v1.Currency{
 				Id:            "USD",
@@ -191,7 +192,7 @@ func TestCreateCurrency(t *testing.T) {
 	t.Run("fail duplicate", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 		resp, err := srv.CreateCurrency(context.TODO(), &currencyv1.CreateCurrencyRequest{
 			Currency: &v1.Currency{
 				Id:            "USD",
@@ -220,7 +221,7 @@ func TestCreateCurrency(t *testing.T) {
 	t.Run("fail rate", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 		resp, err := srv.CreateCurrency(context.TODO(), &currencyv1.CreateCurrencyRequest{
 			Currency: &v1.Currency{
 				Id:            "USD",
@@ -248,7 +249,7 @@ func TestUpdateCurrency(t *testing.T) {
 
 		assert.NoError(t, gormDB.Create(cur).Error)
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 		resp, err := srv.UpdateCurrency(context.TODO(), &currencyv1.UpdateCurrencyRequest{
 			Id:            "USD",
 			Rate:          "5.21",
@@ -268,10 +269,44 @@ func TestUpdateCurrency(t *testing.T) {
 		assert.EqualValues(t, 2, cur2.DecimalPlaces)
 	})
 
+	t.Run("success base currency", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		cur := &database.Currency{
+			ID:            "USD",
+			Rate:          decimal.NewFromInt(2),
+			IsActive:      true,
+			DecimalPlaces: 4,
+		}
+
+		assert.NoError(t, gormDB.Create(cur).Error)
+
+		srv := currency.NewService(configuration.CurrencyConfig{
+			BaseCurrency: "USD",
+		})
+		resp, err := srv.UpdateCurrency(context.TODO(), &currencyv1.UpdateCurrencyRequest{
+			Id:            "USD",
+			Rate:          "5.21",
+			IsActive:      false,
+			DecimalPlaces: 2,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		var cur2 database.Currency
+		assert.NoError(t, gormDB.Where("id = ?", "USD").First(&cur2).Error)
+
+		assert.Equal(t, "USD", cur2.ID)
+		assert.EqualValues(t, "1", cur2.Rate.String())
+		assert.False(t, cur2.IsActive)
+		assert.EqualValues(t, 2, cur2.DecimalPlaces)
+	})
+
 	t.Run("fail not found", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 		resp, err := srv.UpdateCurrency(context.TODO(), &currencyv1.UpdateCurrencyRequest{
 			Id:            "USD",
 			Rate:          "5.21",
@@ -295,7 +330,7 @@ func TestUpdateCurrency(t *testing.T) {
 
 		assert.NoError(t, gormDB.Create(cur).Error)
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 		resp, err := srv.UpdateCurrency(context.TODO(), &currencyv1.UpdateCurrencyRequest{
 			Id:            "USD",
 			Rate:          "x5.21",
@@ -320,7 +355,7 @@ func TestDeleteCurrency(t *testing.T) {
 		}
 		assert.NoError(t, gormDB.Create(cur).Error)
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 
 		resp, err := srv.DeleteCurrency(context.TODO(), &currencyv1.DeleteCurrencyRequest{
 			Id: "USD",
@@ -349,7 +384,7 @@ func TestDeleteCurrency(t *testing.T) {
 		}
 		assert.NoError(t, gormDB.Create(cur).Error)
 
-		srv := currency.NewService()
+		srv := currency.NewService(configuration.CurrencyConfig{})
 
 		resp, err := srv.DeleteCurrency(context.TODO(), &currencyv1.DeleteCurrencyRequest{
 			Id: "USD",
