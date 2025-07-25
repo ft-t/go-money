@@ -40,13 +40,23 @@ func (s *Service) DeleteCurrency(
 
 func (s *Service) GetCurrencies(
 	ctx context.Context,
-	_ *currencyv1.GetCurrenciesRequest,
+	req *currencyv1.GetCurrenciesRequest,
 ) (*currencyv1.GetCurrenciesResponse, error) {
 	var currencies []*database.Currency
 
 	db := database.FromContext(ctx, database.GetDb(database.DbTypeReadonly))
 
-	if err := db.Unscoped().Order("is_active desc, id desc").Find(&currencies).Error; err != nil {
+	query := db.Unscoped().Order("is_active desc, id desc")
+
+	if len(req.Ids) > 0 {
+		query = query.Where("id in ?", req.Ids)
+	}
+
+	if !req.IncludeDisabled {
+		query = query.Where("is_active = true")
+	}
+
+	if err := query.Find(&currencies).Error; err != nil {
 		return nil, err
 	}
 

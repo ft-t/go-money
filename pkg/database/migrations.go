@@ -265,5 +265,25 @@ alter table transactions
 `)
 			},
 		},
+		{
+			ID: "2025-07-25-ActivateCurrencies",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`with currencies as (select currency
+                    from accounts
+                    union
+                    select source_currency
+                    from transactions
+                    where coalesce(source_currency, '') != ''
+                    union
+                    select destination_currency
+                    from transactions
+                    where coalesce(destination_currency, '') != '')
+update currencies
+set is_active = true
+where id in (select * from currencies)`,
+				)
+			},
+		},
 	}
 }

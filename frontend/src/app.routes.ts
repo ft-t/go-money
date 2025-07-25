@@ -23,6 +23,8 @@ import { TransactionsDetailsComponent } from './app/pages/transactions/transacti
 import { CategoriesListComponent } from './app/pages/categories/categories-list.component';
 import { CategoriesUpsertComponent } from './app/pages/categories/categories-upsert.component';
 import { CategoriesDetailComponent } from './app/pages/categories/categories-detail.component';
+import { CurrenciesListComponent } from './app/pages/currencies/currencies-list.component';
+import { CurrenciesUpsertComponent } from './app/pages/currencies/currencies-upsert.component';
 
 export const appRoutes: Routes = [
     {
@@ -198,6 +200,30 @@ export const appRoutes: Routes = [
                 component: CategoriesDetailComponent,
                 data: {}
             },
+
+            {
+                path: 'currencies',
+                component: CurrenciesListComponent,
+                data: {}
+            },
+            {
+                path: 'currencies/edit/:id',
+                component: CurrenciesUpsertComponent,
+                data: {}
+            },
+            {
+                path: 'currencies/new',
+                component: CurrenciesUpsertComponent,
+                data: {
+                    isCreate: true
+                }
+            },
+            {
+                path: 'currencies/:id',
+                component: CurrenciesUpsertComponent,
+                data: {}
+            },
+
             {
                 path: 'rules',
                 component: RuleListComponent,
