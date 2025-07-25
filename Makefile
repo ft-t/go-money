@@ -1,5 +1,9 @@
 AWS_DEFAULT_REGION ?= eu-north-1
 AWS_EXCHANGE_RATES_BUCKET ?= go-money-exchange-rates
+DOCKER_SERVER_IMAGE_NAME ?= "go-money-server:latest"
+
+VERSION ?= $(shell git describe --tags --always --dirty)
+COMMIT_SHA ?= $(shell git rev-parse --short HEAD)
 
 .PHONY: lint
 lint:
@@ -26,11 +30,9 @@ test:
 	AUTO_CREATE_CI_DB=true go test ./...
 
 
-DOCKER_SERVER_IMAGE_NAME ?= "go-money-server:latest"
-
 .PHONY: build-docker
 build-docker:
-	docker build -f ./build/Dockerfile.server --build-arg="SOURCE_PATH=cmd/server" -t ${DOCKER_SERVER_IMAGE_NAME} .
+	docker build -f ./build/Dockerfile.server --build-arg="SOURCE_PATH=cmd/server" --build-arg="VERSION=${VERSION}" --build-arg="COMMIT_SHA=${COMMIT_SHA}" -t ${DOCKER_SERVER_IMAGE_NAME} .
 
 .PHONY: sam-deploy
 sam-deploy:

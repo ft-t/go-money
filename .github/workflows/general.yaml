@@ -2,7 +2,7 @@ on:
   push:
     branches:
       - master
-      - ci-changes
+      - base-currency-check
 
 env:
   version: 0.0.0.${{github.run_number}}
@@ -12,8 +12,15 @@ jobs:
     outputs:
       versionOut: ${{ steps.generateVersion.outputs.version }}
     steps:
-      - id: generateVersion
-        run: echo "version=0.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+      - uses: paulhatch/semantic-version@v5.4.0
+        id: generateVersion
+        with:
+          tag_prefix: "v"
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
+          bump_each_commit: true
+          enable_prerelease_mode: true
+          version_format: "${major}.${minor}.${patch}"
   backend:
     strategy:
       matrix:
@@ -35,8 +42,8 @@ jobs:
       - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - uses: actions/checkout@v4
-      - run: make build-docker
-      - run: docker push ${DOCKER_SERVER_IMAGE_NAME}
+      - run: VERSION=${{needs.version.outputs.versionOut}} COMMIT_SHA=${GITHUB_SHA::7} make build-docker
+#      - run: docker push ${DOCKER_SERVER_IMAGE_NAME}
   
   backend-multi-arch:
     runs-on: ubuntu-latest

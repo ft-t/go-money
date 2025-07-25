@@ -35,6 +35,8 @@ func main() {
 	config := configuration.GetConfiguration()
 	_, cancel := context.WithCancel(context.Background())
 
+	boilerplate.SetupZeroLog()
+	
 	logger := log.Logger
 
 	if err := database.InitDb(); err != nil {
