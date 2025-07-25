@@ -2,10 +2,7 @@ on:
   push:
     branches:
       - master
-      - base-currency-check
 
-env:
-  version: 0.0.0.${{github.run_number}}
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -47,7 +44,7 @@ jobs:
 
       - uses: actions/checkout@v4
       - run: VERSION=${{needs.version.outputs.versionOut}} COMMIT_SHA=${GITHUB_SHA::7} make build-docker
-#      - run: docker push ${DOCKER_SERVER_IMAGE_NAME}
+      - run: docker push ${DOCKER_SERVER_IMAGE_NAME}
   
   backend-multi-arch:
     runs-on: ubuntu-latest
