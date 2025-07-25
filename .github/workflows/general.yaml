@@ -12,6 +12,10 @@ jobs:
     outputs:
       versionOut: ${{ steps.generateVersion.outputs.version }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: paulhatch/semantic-version@v5.4.0
         id: generateVersion
         with:
