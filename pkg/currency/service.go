@@ -4,6 +4,7 @@ import (
 	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -12,10 +13,13 @@ import (
 )
 
 type Service struct {
+	configuration configuration.CurrencyConfig
 }
 
-func NewService() *Service {
-	return &Service{}
+func NewService(cfg configuration.CurrencyConfig) *Service {
+	return &Service{
+		configuration: cfg,
+	}
 }
 
 func (s *Service) DeleteCurrency(
@@ -122,6 +126,10 @@ func (s *Service) UpdateCurrency(
 	currency.UpdatedAt = time.Now().UTC()
 	currency.DeletedAt = gorm.DeletedAt{
 		Valid: false,
+	}
+
+	if currency.ID == s.configuration.BaseCurrency {
+		currency.Rate = decimal.NewFromInt(1) // always 1
 	}
 
 	if err = db.Save(&currency).Error; err != nil {
