@@ -8,7 +8,7 @@ import { IconField } from 'primeng/iconfield';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
-import { FilterMetadata, MessageService } from 'primeng/api';
+import { FilterMetadata, MessageService, SortMeta } from 'primeng/api';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -38,6 +38,12 @@ export class CurrenciesListComponent implements OnInit {
 
     public currencies: Currency[] = [];
     private currenciesService;
+    public multiSortMeta: SortMeta[] = [
+        {
+            field: 'isActive',
+            order: -1
+        }
+    ];
 
     public filters: { [s: string]: FilterMetadata } = {};
 
@@ -70,7 +76,7 @@ export class CurrenciesListComponent implements OnInit {
         try {
             let resp = await this.currenciesService.getCurrencies(
                 create(GetCurrenciesRequestSchema, {
-                    includeDeleted: true
+                    includeDisabled: true
                 })
             );
 

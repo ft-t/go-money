@@ -1,0 +1,50 @@
+<p-fluid>
+    <form [formGroup]="form" (ngSubmit)="submit()" *ngIf="form">
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="md:w-1/2">
+                <div class="card flex flex-col gap-4">
+                    <div class="font-semibold text-xl">Required fields</div>
+                    <div class="flex flex-col gap-2">
+                        <label for="accountName">ID</label>
+                        <input pInputText id="accountName" type="text" formControlName="id" />
+                        @if (id.invalid && (id.dirty || id.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Id is required</p-message>
+                        }
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="accountName">Is Active</label>
+                        <p-checkbox formControlName="isActive" [binary]="true" />
+                    </div>
+                </div>
+            </div>
+            <div class="md:w-1/2">
+                <div class="card flex flex-col gap-4">
+                    <div class="font-semibold text-xl">Configuration</div>
+                    <div class="flex flex-col gap-2">
+                        <label for="accountName">Rate</label>
+                        <input pInputText id="accountName" type="number" formControlName="rate" />
+                        @if (rate.invalid && (rate.dirty || rate.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Rate is required</p-message>
+                        }
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="accountName">Decimal places</label>
+                        <input pInputText id="accountName" type="number" formControlName="decimalPlaces" />
+                        @if (decimalPlaces.invalid && (decimalPlaces.dirty || decimalPlaces.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Decimal places are required (min
+                                1)
+                            </p-message>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex mt-8">
+            <div class="card flex flex-wrap gap-6 w-full justify-end">
+                <p-button *ngIf="isCreate" label="Create" [fluid]="false" (click)="submit()"></p-button>
+                <p-button *ngIf="!isCreate" label="Update" [fluid]="false" (click)="submit()"></p-button>
+            </div>
+        </div>
+    </form>
+    <p-toast />
+</p-fluid>

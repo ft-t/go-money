@@ -24,6 +24,7 @@ import { CategoriesListComponent } from './app/pages/categories/categories-list.
 import { CategoriesUpsertComponent } from './app/pages/categories/categories-upsert.component';
 import { CategoriesDetailComponent } from './app/pages/categories/categories-detail.component';
 import { CurrenciesListComponent } from './app/pages/currencies/currencies-list.component';
+import { CurrenciesUpsertComponent } from './app/pages/currencies/currencies-upsert.component';
 
 export const appRoutes: Routes = [
     {
@@ -207,17 +208,19 @@ export const appRoutes: Routes = [
             },
             {
                 path: 'currencies/edit/:id',
-                component: CategoriesUpsertComponent,
+                component: CurrenciesUpsertComponent,
                 data: {}
             },
             {
                 path: 'currencies/new',
-                component: CategoriesUpsertComponent,
-                data: {}
+                component: CurrenciesUpsertComponent,
+                data: {
+                    isCreate: true
+                }
             },
             {
                 path: 'currencies/:id',
-                component: CategoriesDetailComponent,
+                component: CurrenciesUpsertComponent,
                 data: {}
             },
 

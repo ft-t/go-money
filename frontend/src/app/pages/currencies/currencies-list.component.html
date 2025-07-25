@@ -9,6 +9,7 @@
              [showGridlines]="true"
              [filters]="filters"
              [paginator]="false"
+             [multiSortMeta]="multiSortMeta"
              [globalFilterFields]="['id']"
              responsiveLayout="scroll">
         <ng-template #caption>
@@ -47,7 +48,7 @@
                 <th pSortableColumn="name">
                     <div class="flex justify-between items-center">
                         Is Active
-                        <p-sortIcon field="rate" />
+                        <p-sortIcon field="isActive" />
                     </div>
                 </th>
                 <th>
