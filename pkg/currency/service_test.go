@@ -44,7 +44,9 @@ func TestGetCurrencies(t *testing.T) {
 
 		srv := currency.NewService()
 
-		resp, err := srv.GetCurrencies(context.TODO(), nil)
+		resp, err := srv.GetCurrencies(context.TODO(), &currencyv1.GetCurrenciesRequest{
+			IncludeDisabled: true,
+		})
 		assert.NoError(t, err)
 
 		assert.Len(t, resp.Currencies, 3)
