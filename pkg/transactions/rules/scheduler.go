@@ -1,25 +1,85 @@
 package rules
 
-import "github.com/go-co-op/gocron/v2"
+import (
+	"context"
+	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/pkg/database"
+	"github.com/go-co-op/gocron/v2"
+)
 
 type Scheduler struct {
-	cfg *SchedulerConfig
+	cfg       *SchedulerConfig
+	scheduler gocron.Scheduler
 }
 
 type SchedulerConfig struct {
-	Opts []gocron.SchedulerOption
+	Opts               []gocron.SchedulerOption
+	CronValidationOpts []gocron.SchedulerOption
 }
 
 func NewScheduler(
 	cfg *SchedulerConfig,
-) *Scheduler {
-	return &Scheduler{
-		cfg: cfg,
+) (*Scheduler, error) {
+	sh, err := gocron.NewScheduler(cfg.Opts...)
+	if err != nil {
+		return nil, err
 	}
+
+	return &Scheduler{
+		cfg:       cfg,
+		scheduler: sh,
+	}, nil
+}
+
+func (s *Scheduler) Reinit(ctx context.Context) error {
+	var rules []database.ScheduleRule
+
+	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
+		Where("is_active = true").
+		Find(&rules).Error; err != nil {
+		return err
+	}
+
+	sh, err := gocron.NewScheduler(s.cfg.Opts...)
+	if err != nil {
+		return err
+	}
+
+	for _, rule := range rules {
+		ruleRef := rule
+
+		_, err = sh.NewJob(
+			gocron.CronJob(rule.CronExpression, false),
+			gocron.NewTask(func(
+				innerCtx context.Context,
+			) error {
+				return s.ExecuteTask(innerCtx, ruleRef)
+			}),
+		)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create job for rule_id: %d", rule.ID)
+		}
+	}
+
+	if s.scheduler != nil {
+		_ = s.scheduler.Shutdown()
+	}
+
+	s.scheduler = sh
+	sh.Start()
+
+	return nil
+}
+
+func (s *Scheduler) ExecuteTask(
+	ctx context.Context,
+	rule database.ScheduleRule,
+) error {
+
 }
 
 func (s *Scheduler) ValidateCronExpression(cron string) error {
-	sh, err := gocron.NewScheduler(s.cfg.Opts...)
+	sh, err := gocron.NewScheduler(s.cfg.CronValidationOpts...)
 	if err != nil {
 		return err
 	}

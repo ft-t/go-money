@@ -51,10 +51,8 @@ func (j *JobScheduler) GetScheduler() gocron.Scheduler {
 }
 
 func (j *JobScheduler) StartAsync() error {
-	go func() {
-		j.scheduler.Start()
-	}()
-
+	j.scheduler.Start()
+	
 	return nil
 }
 
