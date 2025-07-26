@@ -10,7 +10,7 @@ import { create } from '@bufbuild/protobuf';
     template: `
         <div class="layout-footer flex justify-end">
             <div class="flex flex-col">
-                <a target="_blank" href="https://github.com/ft-t/go-money"> Go Money {{ config.backendVersion }}
+                <a target="_blank" href="https://github.com/ft-t/go-money"> Go Money v{{ config.backendVersion }}
                     <a [href]="getLink()" target="_blank">({{ config.commitSha }})</a>
                 </a>
             </div>
