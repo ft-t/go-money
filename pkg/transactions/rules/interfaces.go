@@ -1,6 +1,7 @@
 package rules
 
 import (
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
@@ -50,6 +51,11 @@ type TransactionSvc interface {
 		dbTx *gorm.DB,
 		tx *database.Transaction,
 	) error
+
+	CreateRawTransaction(
+		ctx context.Context,
+		newTx *database.Transaction,
+	) (*transactionsv1.CreateTransactionResponse, error)
 }
 
 type CurrencyConverterSvc interface {

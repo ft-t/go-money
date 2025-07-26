@@ -15,6 +15,8 @@ type Scheduler struct {
 type SchedulerConfig struct {
 	Opts               []gocron.SchedulerOption
 	CronValidationOpts []gocron.SchedulerOption
+	RuleInterpreter    Interpreter
+	TransactionSvc     TransactionSvc
 }
 
 func NewScheduler(
@@ -75,7 +77,16 @@ func (s *Scheduler) ExecuteTask(
 	ctx context.Context,
 	rule database.ScheduleRule,
 ) error {
+	tx := &database.Transaction{}
 
+	_, err := s.cfg.RuleInterpreter.Run(ctx, rule.Script, tx)
+	if err != nil {
+		return errors.Wrapf(err, "failed to run rule script for rule_id: %d", rule.ID)
+	}
+
+	_, err = s.cfg.TransactionSvc.CreateRawTransaction(ctx, tx)
+	
+	return err
 }
 
 func (s *Scheduler) ValidateCronExpression(cron string) error {

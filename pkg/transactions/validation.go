@@ -18,7 +18,6 @@ func (s *Service) ValidateTransaction(
 	if err := s.ensureCategoryExists(ctx, tx); err != nil {
 		return err
 	}
-	
 	switch tx.TransactionType {
 	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS:
 		return s.validateTransferBetweenAccounts(ctx, dbTx, tx)

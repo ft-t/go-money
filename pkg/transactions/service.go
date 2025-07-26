@@ -303,6 +303,39 @@ func (s *Service) CreateBulkInternal(
 
 	created := append(transactionWithRules, transactionWithoutRules...)
 
+	return s.FinalizeTransactions(ctx, tx, created, originalTxs)
+}
+
+func (s *Service) CreateRawTransaction(
+	ctx context.Context,
+	newTx *database.Transaction,
+) (*transactionsv1.CreateTransactionResponse, error) {
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+	ctx = database.WithContext(ctx, tx)
+
+	if err := tx.Create(newTx).Error; err != nil {
+		return nil, errors.Wrapf(err, "failed to create transaction: %v", newTx)
+	}
+
+	resp, err := s.FinalizeTransactions(ctx, tx, []*database.Transaction{newTx}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return resp[0], nil
+}
+
+func (s *Service) FinalizeTransactions(
+	ctx context.Context,
+	tx *gorm.DB,
+	created []*database.Transaction,
+	originalTxs []*database.Transaction,
+) ([]*transactionsv1.CreateTransactionResponse, error) {
 	for _, createdTx := range created {
 		if err := s.ValidateTransaction(ctx, tx, createdTx); err != nil {
 			return nil, errors.Wrapf(err, "failed to validate transaction")
