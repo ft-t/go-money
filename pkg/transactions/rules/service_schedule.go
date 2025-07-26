@@ -29,7 +29,7 @@ func (s *ScheduleService) DeleteRule(
 ) (*rulesv1.DeleteScheduleRuleResponse, error) {
 	var rule database.ScheduleRule
 
-	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
 
 	if err := db.Where("id = ?", req.Id).First(&rule).Error; err != nil {
 		return nil, err
@@ -62,7 +62,8 @@ func (s *ScheduleService) CreateRule(
 		return nil, err
 	}
 
-	if err := database.GetDbWithContext(ctx, database.DbTypeMaster).Create(newRule).Error; err != nil {
+	if err := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).
+		Create(newRule).Error; err != nil {
 		return nil, err
 	}
 
@@ -81,7 +82,8 @@ func (s *ScheduleService) ListRules(
 ) (*rulesv1.ListScheduleRulesResponse, error) {
 	var rules []*database.ScheduleRule
 
-	query := database.GetDbWithContext(ctx, database.DbTypeMaster).Order("sort_order")
+	query := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).
+		Order("id desc")
 
 	if req.IncludeDeleted {
 		query = query.Unscoped()
@@ -117,7 +119,7 @@ func (s *ScheduleService) UpdateRule(
 		return nil, err
 	}
 
-	if err := database.GetDbWithContext(ctx, database.DbTypeMaster).Save(updatedRule).Error; err != nil {
+	if err := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Save(updatedRule).Error; err != nil {
 		return nil, err
 	}
 

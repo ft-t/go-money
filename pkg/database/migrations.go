@@ -285,5 +285,27 @@ where id in (select * from currencies)`,
 				)
 			},
 		},
+		{
+			ID: "2025-07-26-AddScheduleRules",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table if not exists schedule_rules
+(
+    id               serial,
+    script           text      not null,
+    interpreter_type integer   not null,
+    created_at       timestamp not null,
+    updated_at       timestamp not null,
+    enabled          bool      not null,
+    deleted_at       timestamp,
+    group_name       text      not null,
+	last_run_at     timestamp,
+	cron_expression text not null,
+	title text not null
+);
+`,
+				)
+			},
+		},
 	}
 }
