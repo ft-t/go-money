@@ -20,6 +20,7 @@ type Interpreter interface {
 
 type MapperSvc interface {
 	MapRule(rule *database.Rule) *gomoneypbv1.Rule
+	MapScheduleRule(rule *database.ScheduleRule) *gomoneypbv1.ScheduleRule
 	MapTransaction(ctx context.Context, tx *database.Transaction) *gomoneypbv1.Transaction
 }
 
@@ -62,4 +63,9 @@ type CurrencyConverterSvc interface {
 
 type DecimalSvc interface {
 	GetCurrencyDecimals(ctx context.Context, currency string) int32
+}
+
+type SchedulerSvc interface {
+	Reinit() error
+	ValidateCronExpression(cronExpression string) error
 }
