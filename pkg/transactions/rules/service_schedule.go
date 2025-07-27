@@ -39,7 +39,7 @@ func (s *ScheduleService) DeleteRule(
 		return nil, err
 	}
 
-	if err := s.scheduler.Reinit(); err != nil {
+	if err := s.scheduler.Reinit(ctx); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +67,7 @@ func (s *ScheduleService) CreateRule(
 		return nil, err
 	}
 
-	if err := s.scheduler.Reinit(); err != nil {
+	if err := s.scheduler.Reinit(ctx); err != nil {
 		return nil, err
 	}
 

@@ -72,6 +72,6 @@ type DecimalSvc interface {
 }
 
 type SchedulerSvc interface {
-	Reinit() error
+	Reinit(ctx context.Context) error
 	ValidateCronExpression(cronExpression string) error
 }

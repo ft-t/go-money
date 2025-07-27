@@ -36,7 +36,7 @@ func main() {
 	_, cancel := context.WithCancel(context.Background())
 
 	boilerplate.SetupZeroLog()
-	
+
 	logger := log.Logger
 
 	if err := database.InitDb(); err != nil {
@@ -126,15 +126,25 @@ func main() {
 		RuleSvc:              ruleEngine,
 	})
 
-	srv := rules.NewService(mapper)
+	ruleScheduler, err := rules.NewScheduler(&rules.SchedulerConfig{})
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create rule scheduler")
+	}
 
+	rulesSvc := rules.NewService(mapper)
+	rulesScheduleSvc := rules.NewScheduleService(mapper, ruleScheduler)
 	tagSvc := tags.NewService(mapper)
 	categoriesSvc := categories.NewService(mapper)
 
 	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper)
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
-	_ = handlers.NewRulesApi(grpcServer, srv, dryRunSvc)
+	_ = handlers.NewRulesApi(grpcServer, &handlers.RulesApiConfig{
+		RulesScheduleSvc: rulesScheduleSvc,
+		RuleSvc:          rulesSvc,
+		DryRunSvc:        dryRunSvc,
+		SchedulerSvc:     ruleScheduler,
+	})
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 
 	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(transactionSvc))

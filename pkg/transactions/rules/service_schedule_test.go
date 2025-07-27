@@ -26,7 +26,7 @@ func TestScheduleService_Create(t *testing.T) {
 			})
 
 		scheduler.EXPECT().ValidateCronExpression(gomock.Any()).Return(nil)
-		scheduler.EXPECT().Reinit().Return(nil)
+		scheduler.EXPECT().Reinit(gomock.Any()).Return(nil)
 
 		svc := rules.NewScheduleService(mapper, scheduler)
 
@@ -71,7 +71,7 @@ func TestScheduleService_Create(t *testing.T) {
 		scheduler := NewMockSchedulerSvc(gomock.NewController(t))
 
 		scheduler.EXPECT().ValidateCronExpression(gomock.Any()).Return(nil)
-		scheduler.EXPECT().Reinit().Return(assert.AnError)
+		scheduler.EXPECT().Reinit(gomock.Any()).Return(assert.AnError)
 
 		svc := rules.NewScheduleService(mapper, scheduler)
 
@@ -125,7 +125,7 @@ func TestScheduleService_DeleteRule_Error(t *testing.T) {
 
 	rule := &database.ScheduleRule{Title: "t"}
 	assert.NoError(t, gormDB.Create(rule).Error)
-	scheduler.EXPECT().Reinit().Return(assert.AnError)
+	scheduler.EXPECT().Reinit(gomock.Any()).Return(assert.AnError)
 	_, err = svc.DeleteRule(context.TODO(), &rulesv1.DeleteScheduleRuleRequest{Id: rule.ID})
 	assert.Error(t, err)
 }
@@ -246,7 +246,7 @@ func TestDelete(t *testing.T) {
 		assert.NoError(t, gormDB.Create(rule).Error)
 
 		mapper.EXPECT().MapScheduleRule(gomock.Any()).Return(&gomoneypbv1.ScheduleRule{Id: rule.ID})
-		scheduler.EXPECT().Reinit().Return(nil)
+		scheduler.EXPECT().Reinit(gomock.Any()).Return(nil)
 
 		svc := rules.NewScheduleService(mapper, scheduler)
 		_, err := svc.DeleteRule(context.TODO(), &rulesv1.DeleteScheduleRuleRequest{Id: rule.ID})
@@ -265,7 +265,7 @@ func TestDelete(t *testing.T) {
 		rule := &database.ScheduleRule{Title: "to delete"}
 		assert.NoError(t, gormDB.Create(rule).Error)
 
-		scheduler.EXPECT().Reinit().Return(assert.AnError)
+		scheduler.EXPECT().Reinit(gomock.Any()).Return(assert.AnError)
 
 		svc := rules.NewScheduleService(mapper, scheduler)
 		_, err := svc.DeleteRule(context.TODO(), &rulesv1.DeleteScheduleRuleRequest{Id: rule.ID})
