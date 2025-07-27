@@ -14,6 +14,42 @@ import (
 	"testing"
 )
 
+func TestReorder(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
+
+		app, err := handlers.NewAccountsApi(grpc, accountSvc)
+		assert.NoError(t, err)
+		assert.NotNil(t, app)
+
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{
+			UserID: 123,
+		})
+
+		req := connect.NewRequest(&accountsv1.ReorderAccountsRequest{})
+		assert.Panics(t, func() {
+			_, _ = app.ReorderAccounts(ctx, req)
+		})
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
+
+		app, err := handlers.NewAccountsApi(grpc, accountSvc)
+		assert.NoError(t, err)
+		assert.NotNil(t, app)
+
+		req := connect.NewRequest(&accountsv1.ReorderAccountsRequest{})
+
+		resp, err := app.ReorderAccounts(context.TODO(), req)
+
+		assert.ErrorIs(t, err, auth.ErrInvalidToken)
+		assert.Nil(t, resp)
+	})
+}
+
 func TestAccountsCreateBulk(t *testing.T) {
 	t.Run("Create account bulk", func(t *testing.T) {
 		t.Run("success", func(t *testing.T) {
