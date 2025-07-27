@@ -19,6 +19,10 @@ import (
 	"time"
 )
 
+const (
+	chunkSize = 5000
+)
+
 type FireflyImporter struct {
 	transactionService TransactionSvc
 }
@@ -355,25 +359,30 @@ func (f *FireflyImporter) Import(
 	}
 
 	journalIDs := lo.Keys(newTxs)
+	duplicateCount := 0
+	
+	for _, chunk := range lo.Chunk(journalIDs, chunkSize) {
+		var existingRecords []string
 
-	var existingRecords []string
+		if err = database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+			Model(&database.ImportDeduplication{}).
+			Where("import_source = ?", f.Type().Number()).
+			Where("key in ?", chunk).
+			Pluck("key", &existingRecords).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to check existing transactions")
+		}
 
-	if err = database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
-		Model(&database.ImportDeduplication{}).
-		Where("import_source = ?", f.Type().Number()).
-		Where("key in ?", journalIDs).
-		Pluck("key", &existingRecords).Error; err != nil {
-		return nil, errors.Wrap(err, "failed to check existing transactions")
-	}
+		for _, record := range existingRecords {
+			delete(newTxs, record)
 
-	for _, record := range existingRecords {
-		delete(newTxs, record)
+			duplicateCount += 1
+		}
 	}
 
 	if len(newTxs) == 0 {
 		return &importv1.ImportTransactionsResponse{
 			ImportedCount:  0,
-			DuplicateCount: int32(len(existingRecords)),
+			DuplicateCount: int32(duplicateCount),
 		}, nil
 	}
 
@@ -407,8 +416,10 @@ func (f *FireflyImporter) Import(
 		})
 	}
 
-	if err = tx.Create(&deduplicationRecords).Error; err != nil {
-		return nil, errors.Wrap(err, "failed to create deduplication records")
+	for _, chunk := range lo.Chunk(deduplicationRecords, chunkSize) {
+		if err = tx.Create(&chunk).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to create deduplication records")
+		}
 	}
 
 	if err = tx.Commit().Error; err != nil {
@@ -417,7 +428,7 @@ func (f *FireflyImporter) Import(
 
 	return &importv1.ImportTransactionsResponse{
 		ImportedCount:  int32(len(allTransactions)),
-		DuplicateCount: int32(len(existingRecords)),
+		DuplicateCount: int32(duplicateCount),
 	}, nil
 }
 
