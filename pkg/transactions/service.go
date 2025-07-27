@@ -314,6 +314,10 @@ func (s *Service) CreateRawTransaction(
 	defer tx.Rollback()
 	ctx = database.WithContext(ctx, tx)
 
+	if newTx.Extra == nil {
+		newTx.Extra = map[string]string{}
+	}
+
 	if err := tx.Create(newTx).Error; err != nil {
 		return nil, errors.Wrapf(err, "failed to create transaction: %v", newTx)
 	}
