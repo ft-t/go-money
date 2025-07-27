@@ -11,13 +11,33 @@ func (m *Mapper) MapRule(rule *database.Rule) *gomoneypbv1.Rule {
 		Id:          rule.ID,
 		Title:       rule.Title,
 		Script:      rule.Script,
-		Interpreter: gomoneypbv1.RuleInterpreterType(rule.InterpreterType),
+		Interpreter: rule.InterpreterType,
 		SortOrder:   rule.SortOrder,
 		CreatedAt:   timestamppb.New(rule.CreatedAt),
 		UpdatedAt:   timestamppb.New(rule.UpdatedAt),
 		Enabled:     rule.Enabled,
 		IsFinalRule: rule.IsFinalRule,
 		GroupName:   rule.GroupName,
+	}
+
+	if rule.DeletedAt.Valid {
+		mapped.DeletedAt = timestamppb.New(rule.DeletedAt.Time)
+	}
+
+	return mapped
+}
+
+func (m *Mapper) MapScheduleRule(rule *database.ScheduleRule) *gomoneypbv1.ScheduleRule {
+	mapped := &gomoneypbv1.ScheduleRule{
+		Id:             rule.ID,
+		Title:          rule.Title,
+		Script:         rule.Script,
+		CronExpression: rule.CronExpression,
+		Interpreter:    rule.InterpreterType,
+		CreatedAt:      timestamppb.New(rule.CreatedAt),
+		UpdatedAt:      timestamppb.New(rule.UpdatedAt),
+		Enabled:        rule.Enabled,
+		GroupName:      rule.GroupName,
 	}
 
 	if rule.DeletedAt.Valid {

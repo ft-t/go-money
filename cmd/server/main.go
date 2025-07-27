@@ -36,7 +36,7 @@ func main() {
 	_, cancel := context.WithCancel(context.Background())
 
 	boilerplate.SetupZeroLog()
-	
+
 	logger := log.Logger
 
 	if err := database.InitDb(); err != nil {
@@ -111,11 +111,13 @@ func main() {
 	}
 
 	baseAmountSvc := transactions.NewBaseAmountService(config.CurrencyConfig.BaseCurrency)
-	ruleEngine := rules.NewExecutor(rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{
+	ruleInterpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{
 		AccountsSvc:          accountSvc,
 		CurrencyConverterSvc: currencyConverter,
 		DecimalSvc:           decimalSvc,
-	}))
+	})
+
+	ruleEngine := rules.NewExecutor(ruleInterpreter)
 
 	statsSvc := transactions.NewStatService()
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
@@ -126,15 +128,29 @@ func main() {
 		RuleSvc:              ruleEngine,
 	})
 
-	srv := rules.NewService(mapper)
+	ruleScheduler := rules.NewScheduler(&rules.SchedulerConfig{
+		RuleInterpreter: ruleInterpreter,
+		TransactionSvc:  transactionSvc,
+	})
 
+	if err = ruleScheduler.Reinit(context.TODO()); err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to reinitialize rule scheduler")
+	}
+
+	rulesSvc := rules.NewService(mapper)
+	rulesScheduleSvc := rules.NewScheduleService(mapper, ruleScheduler)
 	tagSvc := tags.NewService(mapper)
 	categoriesSvc := categories.NewService(mapper)
 
 	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper)
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
-	_ = handlers.NewRulesApi(grpcServer, srv, dryRunSvc)
+	_ = handlers.NewRulesApi(grpcServer, &handlers.RulesApiConfig{
+		RulesScheduleSvc: rulesScheduleSvc,
+		RuleSvc:          rulesSvc,
+		DryRunSvc:        dryRunSvc,
+		SchedulerSvc:     ruleScheduler,
+	})
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 
 	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(transactionSvc))

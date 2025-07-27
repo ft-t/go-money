@@ -20,7 +20,10 @@ func newRulesApiWithMock(t *testing.T) (*handlers.RulesApi, *MockRulesSvc, *Mock
 	dryRunSvc := NewMockDryRunSvc(ctrl)
 
 	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
-	api := handlers.NewRulesApi(grpc, ruleSvc, dryRunSvc)
+	api := handlers.NewRulesApi(grpc, &handlers.RulesApiConfig{
+		RuleSvc:   ruleSvc,
+		DryRunSvc: dryRunSvc,
+	})
 	return api, ruleSvc, dryRunSvc
 }
 

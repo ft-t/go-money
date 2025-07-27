@@ -11,18 +11,22 @@ import (
 )
 
 type RulesApi struct {
-	ruleSvc   RulesSvc
-	dryRunSvc DryRunSvc
+	cfg *RulesApiConfig
+}
+
+type RulesApiConfig struct {
+	RulesScheduleSvc RulesScheduleSvc
+	RuleSvc          RulesSvc
+	DryRunSvc        DryRunSvc
+	SchedulerSvc     SchedulerSvc
 }
 
 func NewRulesApi(
 	mux *boilerplate.DefaultGrpcServer,
-	ruleSvc RulesSvc,
-	dryRunSvc DryRunSvc,
+	cfg *RulesApiConfig,
 ) *RulesApi {
 	res := &RulesApi{
-		ruleSvc:   ruleSvc,
-		dryRunSvc: dryRunSvc,
+		cfg: cfg,
 	}
 
 	mux.GetMux().Handle(
@@ -38,7 +42,7 @@ func (r *RulesApi) ListRules(ctx context.Context, c *connect.Request[rulesv1.Lis
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
-	rules, err := r.ruleSvc.ListRules(ctx, c.Msg)
+	rules, err := r.cfg.RuleSvc.ListRules(ctx, c.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -52,7 +56,7 @@ func (r *RulesApi) CreateRule(ctx context.Context, c *connect.Request[rulesv1.Cr
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
-	rule, err := r.ruleSvc.CreateRule(ctx, c.Msg)
+	rule, err := r.cfg.RuleSvc.CreateRule(ctx, c.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -66,7 +70,7 @@ func (r *RulesApi) UpdateRule(ctx context.Context, c *connect.Request[rulesv1.Up
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
-	rule, err := r.ruleSvc.UpdateRule(ctx, c.Msg)
+	rule, err := r.cfg.RuleSvc.UpdateRule(ctx, c.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -80,7 +84,7 @@ func (r *RulesApi) DeleteRule(ctx context.Context, c *connect.Request[rulesv1.De
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
-	resp, err := r.ruleSvc.DeleteRule(ctx, c.Msg)
+	resp, err := r.cfg.RuleSvc.DeleteRule(ctx, c.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -94,7 +98,7 @@ func (r *RulesApi) DryRunRule(ctx context.Context, c *connect.Request[rulesv1.Dr
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
-	resp, err := r.dryRunSvc.DryRunRule(ctx, c.Msg)
+	resp, err := r.cfg.DryRunSvc.DryRunRule(ctx, c.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

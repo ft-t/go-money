@@ -59,6 +59,88 @@ func TestDryRun(t *testing.T) {
 		assert.Equal(t, "modified", resp.After.Title)
 	})
 
+	t.Run("success with tx id = 0", func(t *testing.T) {
+		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
+		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
+		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+
+		transactionSvc.EXPECT().ValidateTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+
+		executorSvc.EXPECT().ProcessSingleRule(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, transaction *database.Transaction, rule *database.Rule) (bool, *database.Transaction, error) {
+				return false, &database.Transaction{
+					Title: "modified",
+				}, nil
+			})
+
+		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
+
+				return &gomoneypbv1.Transaction{
+					Title: transaction.Title,
+				}
+			}).Times(2)
+
+		resp, err := dry.DryRunRule(context.TODO(), &rulesv1.DryRunRuleRequest{
+			Rule: &gomoneypbv1.Rule{
+				Script: "tx:title(modified)",
+			},
+			TransactionId: 0,
+		})
+		assert.NoError(t, err)
+
+		assert.Equal(t, "", resp.Before.Title)
+		assert.Equal(t, "modified", resp.After.Title)
+	})
+
+	t.Run("transaction not found", func(t *testing.T) {
+		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
+		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
+		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+
+		transactionSvc.EXPECT().GetTransactionByIDs(gomock.Any(), []int64{1}).
+			Return([]*database.Transaction{
+				{},
+				{},
+			}, nil)
+
+		resp, err := dry.DryRunRule(context.TODO(), &rulesv1.DryRunRuleRequest{
+			Rule: &gomoneypbv1.Rule{
+				Script: "hello world",
+			},
+			TransactionId: 1,
+		})
+
+		assert.ErrorContains(t, err, "transaction not found")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("get transaction error", func(t *testing.T) {
+		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
+		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
+		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+
+		transactionSvc.EXPECT().GetTransactionByIDs(gomock.Any(), gomock.Any()).
+			Return(nil, assert.AnError)
+
+		resp, err := dry.DryRunRule(context.TODO(), &rulesv1.DryRunRuleRequest{
+			Rule: &gomoneypbv1.Rule{
+				Script: "hello world",
+			},
+			TransactionId: 1,
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
 	t.Run("validate transaction error", func(t *testing.T) {
 		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
 		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))

@@ -56,13 +56,13 @@ export class AppMenu implements OnInit {
                                 event.originalEvent.preventDefault();
                             }
 
-                            if(this.config.grafanaUrl) {
-                                window.open(this.config.grafanaUrl, "_blank");
+                            if (this.config.grafanaUrl) {
+                                window.open(this.config.grafanaUrl, '_blank');
                                 return;
                             }
 
-                            this.router.navigateByUrl('/dashboard')
-                        },
+                            this.router.navigateByUrl('/dashboard');
+                        }
                     }
                 ]
             },
@@ -133,6 +133,11 @@ export class AppMenu implements OnInit {
                         label: 'Rules',
                         icon: 'pi pi-fw pi-file-import',
                         routerLink: ['/rules']
+                    },
+                    {
+                        label: 'Scheduled Transactions',
+                        icon: 'pi pi-fw pi-calendar-clock',
+                        routerLink: ['/schedules']
                     }
                 ]
             },
@@ -153,7 +158,7 @@ export class AppMenu implements OnInit {
                         label: 'Currencies',
                         icon: 'pi pi-fw pi-euro',
                         routerLink: ['/currencies']
-                    },
+                    }
                     // {
                     //     label: 'Users',
                     //     icon: 'pi pi-fw pi-table',

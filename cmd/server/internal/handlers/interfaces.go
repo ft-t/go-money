@@ -135,6 +135,32 @@ type RulesSvc interface {
 	UpdateRule(ctx context.Context, req *rulesv1.UpdateRuleRequest) (*rulesv1.UpdateRuleResponse, error)
 }
 
+type RulesScheduleSvc interface {
+	DeleteRule(
+		ctx context.Context,
+		req *rulesv1.DeleteScheduleRuleRequest,
+	) (*rulesv1.DeleteScheduleRuleResponse, error)
+
+	CreateRule(
+		ctx context.Context,
+		req *rulesv1.CreateScheduleRuleRequest,
+	) (*rulesv1.CreateScheduleRuleResponse, error)
+
+	ListRules(
+		ctx context.Context,
+		req *rulesv1.ListScheduleRulesRequest,
+	) (*rulesv1.ListScheduleRulesResponse, error)
+
+	UpdateRule(
+		ctx context.Context,
+		req *rulesv1.UpdateScheduleRuleRequest,
+	) (*rulesv1.UpdateScheduleRuleResponse, error)
+}
+
+type SchedulerSvc interface {
+	ValidateCronExpression(cronExpression string) error
+}
+
 type DryRunSvc interface {
 	DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest) (*rulesv1.DryRunRuleResponse, error)
 }

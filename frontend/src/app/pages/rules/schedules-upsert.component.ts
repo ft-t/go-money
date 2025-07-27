@@ -13,20 +13,21 @@ import { Button } from 'primeng/button';
 import { Toast } from 'primeng/toast';
 import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
-import { Rule, RuleSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
-import { CreateRuleRequestSchema, DryRunRuleRequestSchema, RulesService, UpdateRuleRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
+import { Rule, RuleSchema, ScheduleRule, ScheduleRuleSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
+import { CreateRuleRequestSchema, CreateScheduleRuleRequestSchema, DryRunRuleRequestSchema, RulesService, UpdateRuleRequestSchema, UpdateScheduleRuleRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
 import { Checkbox } from 'primeng/checkbox';
 import { TextareaModule } from 'primeng/textarea';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ScriptEditorComponent } from '../../shared/components/script-editor/script-editor.component';
+import { Message } from 'primeng/message';
 
 @Component({
-    selector: 'app-rules-upsert',
-    imports: [InputNumberModule, TextareaModule, Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Checkbox, ScriptEditorComponent],
-    templateUrl: './rules-upsert.component.html'
+    selector: 'app-schedules-upsert',
+    imports: [InputNumberModule, TextareaModule, Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Checkbox, ScriptEditorComponent, Message],
+    templateUrl: './schedules-upsert.component.html'
 })
-export class RulesUpsertComponent implements OnInit {
-    public rule: Rule = create(RuleSchema, {});
+export class SchedulesUpsertComponent implements OnInit {
+    public rule: ScheduleRule = create(ScheduleRuleSchema, {});
     private rulesService;
 
     @ViewChild('scriptEditorComponent') scriptEditor!: ScriptEditorComponent;
@@ -49,7 +50,7 @@ export class RulesUpsertComponent implements OnInit {
     async ngOnInit() {
         if (this.rule.id) {
             try {
-                let response = await this.rulesService.listRules({ ids: [+this.rule.id] });
+                let response = await this.rulesService.listScheduleRules({ ids: [+this.rule.id] });
                 if (response.rules && response.rules.length == 0) {
                     this.messageService.add({ severity: 'error', detail: 'tag not found' });
                     return;
@@ -66,14 +67,14 @@ export class RulesUpsertComponent implements OnInit {
         this.rule.script = await this.scriptEditor.dryRun();
 
         try {
-            let response = await this.rulesService.updateRule(
-                create(UpdateRuleRequestSchema, {
+            let response = await this.rulesService.updateScheduleRule(
+                create(UpdateScheduleRuleRequestSchema, {
                     rule: this.rule
                 })
             );
 
             this.messageService.add({ severity: 'info', detail: 'Rule updated' });
-            await this.router.navigate(['/', 'rules']);
+            await this.router.navigate(['/', 'schedules']);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -84,14 +85,14 @@ export class RulesUpsertComponent implements OnInit {
         this.rule.script = await this.scriptEditor.dryRun();
 
         try {
-            let response = await this.rulesService.createRule(
-                create(CreateRuleRequestSchema, {
+            let response = await this.rulesService.createScheduleRule(
+                create(CreateScheduleRuleRequestSchema, {
                     rule: this.rule
                 })
             );
 
             this.messageService.add({ severity: 'info', detail: 'Rule created' });
-            await this.router.navigate(['/', 'rules']);
+            await this.router.navigate(['/', 'schedules']);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;

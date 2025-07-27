@@ -3,6 +3,7 @@ package rules
 import (
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
+	libs "github.com/vadv/gopher-lua-libs"
 	"github.com/yuin/gopher-lua"
 )
 
@@ -91,6 +92,7 @@ func (l *LuaInterpreter) Run(
 ) (bool, error) {
 	state := lua.NewState()
 	defer state.Close()
+	libs.Preload(state)
 
 	wrapped := &LuaTransactionWrapper{
 		tx: tx,

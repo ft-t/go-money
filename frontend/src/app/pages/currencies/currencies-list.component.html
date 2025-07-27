@@ -91,7 +91,7 @@
                     </a>
                 </td>
                 <td>
-                    <a [href]="getDetailsUrl(accountItem)" [routerLink]="getDetailsUrl(accountItem)">
+                    <a [style]="{color : accountItem.isActive ? 'green' : ''}" [href]="getDetailsUrl(accountItem)" [routerLink]="getDetailsUrl(accountItem)">
                         {{ accountItem.isActive }}
                     </a>
                 </td>

@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"time"
 )
 
 type DryRun struct {
@@ -26,16 +27,23 @@ func NewDryRun(
 }
 
 func (s *DryRun) DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest) (*rulesv1.DryRunRuleResponse, error) {
-	dbRecord, err := s.transactionSvc.GetTransactionByIDs(ctx, []int64{req.TransactionId})
-	if err != nil {
-		return nil, err
-	}
+	var tx *database.Transaction
+	if req.TransactionId != 0 {
+		dbRecord, err := s.transactionSvc.GetTransactionByIDs(ctx, []int64{req.TransactionId})
+		if err != nil {
+			return nil, err
+		}
 
-	if len(dbRecord) != 1 {
-		return nil, errors.New("transaction not found")
-	}
+		if len(dbRecord) != 1 {
+			return nil, errors.New("transaction not found")
+		}
 
-	tx := dbRecord[0]
+		tx = dbRecord[0]
+	} else {
+		tx = &database.Transaction{
+			CreatedAt: time.Now().UTC(),
+		} // scheduled transaction
+	}
 
 	finalResp := &rulesv1.DryRunRuleResponse{
 		Before:      s.mapperSvc.MapTransaction(ctx, tx),
@@ -51,7 +59,7 @@ func (s *DryRun) DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest)
 		return nil, ruleErr
 	}
 
-	if err = s.transactionSvc.ValidateTransaction(
+	if err := s.transactionSvc.ValidateTransaction(
 		ctx,
 		database.FromContext(ctx, database.GetDb(database.DbTypeReadonly)),
 		updated,

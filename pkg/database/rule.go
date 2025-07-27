@@ -19,3 +19,17 @@ type Rule struct {
 	DeletedAt       gorm.DeletedAt
 	GroupName       string
 }
+
+type ScheduleRule struct {
+	ID              int32
+	Title           string
+	Script          string
+	InterpreterType gomoneypbv1.RuleInterpreterType
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Enabled         bool
+	DeletedAt       gorm.DeletedAt
+	CronExpression  string
+	LastRunAt       *time.Time
+	GroupName       string
+}

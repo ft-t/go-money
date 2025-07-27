@@ -48,3 +48,34 @@ func TestMapRule(t *testing.T) {
 	assert.Equal(t, source.GroupName, dest.GroupName)
 	assert.EqualValues(t, source.DeletedAt.Time, source.DeletedAt.Time)
 }
+
+func TestMapScheduleRule(t *testing.T) {
+	mapper := mappers.NewMapper(&mappers.MapperConfig{})
+
+	rule := &database.ScheduleRule{
+		ID:             123,
+		Title:          "test",
+		Script:         "script1",
+		CreatedAt:      time.Now().UTC(),
+		UpdatedAt:      time.Now().UTC(),
+		Enabled:        true,
+		CronExpression: "0 0 * * *",
+		LastRunAt:      nil,
+		GroupName:      "abcd",
+		DeletedAt: gorm.DeletedAt{
+			Valid: true,
+			Time:  time.Now().UTC().Add(1 * time.Hour),
+		},
+	}
+
+	resp := mapper.MapScheduleRule(rule)
+
+	assert.EqualValues(t, rule.ID, resp.Id)
+	assert.Equal(t, rule.Title, resp.Title)
+	assert.Equal(t, rule.Script, resp.Script)
+	assert.Equal(t, rule.CreatedAt, resp.CreatedAt.AsTime())
+	assert.Equal(t, rule.UpdatedAt, resp.UpdatedAt.AsTime())
+	assert.Equal(t, rule.Enabled, resp.Enabled)
+	assert.Equal(t, rule.CronExpression, resp.CronExpression)
+	assert.Equal(t, rule.GroupName, resp.GroupName)
+}

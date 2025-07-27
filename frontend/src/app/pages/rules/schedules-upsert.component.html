@@ -27,14 +27,22 @@
                             <p-checkbox [(ngModel)]="rule.enabled" [binary]="true" />
                         </div>
                         <div class="flex flex-col gap-2">
-                            <label for="accountName">Is Final Rule</label>
-                            <p-checkbox [(ngModel)]="rule.isFinalRule" [binary]="true" />
+                            <label for="accountName">Crontab expression</label>
+                            <p-message severity="warn"><a target="_blank" href="https://crontab.guru/">https://crontab.guru/
+                                can help you to write your crontab expression.</a></p-message>
+                            <p-message severity="info">Examples: <br>*/5 * * * * - execute every 5 minutes<br>
+                                * */1 * * * - execute every hour<br>
+                                0 0 * * * - execute every day at midnight<br>
+                                0 0 1 * * - execute every month on the first day<br>
+                                0 0 * * 2,3 - execute every Tuesday and Wednesday at midnight<br>
+                            </p-message>
+                            <input pInputText id="accountName" type="text" [(ngModel)]="rule.cronExpression" />
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <app-script-editor #scriptEditorComponent [script]="this.rule.script"></app-script-editor>
+        <app-script-editor #scriptEditorComponent [script]="this.rule.script" [useEmptyTx]="true"></app-script-editor>
     </div>
 
 

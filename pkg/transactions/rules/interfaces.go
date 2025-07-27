@@ -1,6 +1,7 @@
 package rules
 
 import (
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"github.com/ft-t/go-money/pkg/database"
@@ -20,6 +21,7 @@ type Interpreter interface {
 
 type MapperSvc interface {
 	MapRule(rule *database.Rule) *gomoneypbv1.Rule
+	MapScheduleRule(rule *database.ScheduleRule) *gomoneypbv1.ScheduleRule
 	MapTransaction(ctx context.Context, tx *database.Transaction) *gomoneypbv1.Transaction
 }
 
@@ -49,6 +51,11 @@ type TransactionSvc interface {
 		dbTx *gorm.DB,
 		tx *database.Transaction,
 	) error
+
+	CreateRawTransaction(
+		ctx context.Context,
+		newTx *database.Transaction,
+	) (*transactionsv1.CreateTransactionResponse, error)
 }
 
 type CurrencyConverterSvc interface {
@@ -62,4 +69,9 @@ type CurrencyConverterSvc interface {
 
 type DecimalSvc interface {
 	GetCurrencyDecimals(ctx context.Context, currency string) int32
+}
+
+type SchedulerSvc interface {
+	Reinit(ctx context.Context) error
+	ValidateCronExpression(cronExpression string) error
 }

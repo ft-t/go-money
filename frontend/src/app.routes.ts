@@ -25,6 +25,8 @@ import { CategoriesUpsertComponent } from './app/pages/categories/categories-ups
 import { CategoriesDetailComponent } from './app/pages/categories/categories-detail.component';
 import { CurrenciesListComponent } from './app/pages/currencies/currencies-list.component';
 import { CurrenciesUpsertComponent } from './app/pages/currencies/currencies-upsert.component';
+import { SchedulesListComponent } from './app/pages/rules/schedules-list.component';
+import { SchedulesUpsertComponent } from './app/pages/rules/schedules-upsert.component';
 
 export const appRoutes: Routes = [
     {
@@ -37,8 +39,8 @@ export const appRoutes: Routes = [
         canActivate: [authGuard],
         children: [
             {
-              path: '',
-              component: DashboardComponent,
+                path: '',
+                component: DashboardComponent
             },
             {
                 path: 'accounts',
@@ -239,6 +241,22 @@ export const appRoutes: Routes = [
                 component: RulesUpsertComponent,
                 data: {}
             },
+
+            {
+                path: 'schedules',
+                component: SchedulesListComponent,
+                data: {}
+            },
+            {
+                path: 'schedules/edit/:id',
+                component: SchedulesUpsertComponent,
+                data: {}
+            },
+            {
+                path: 'schedules/new',
+                component: SchedulesUpsertComponent,
+                data: {}
+            }
         ]
     },
 

@@ -1,0 +1,133 @@
+<div class="flex flex-col card gap-4">
+    <div class="flex flex-row justify-between">
+        <div class="font-semibold text-xl mb-4">Schedules List</div>
+        <p-button label="Create new schedule" class="p-button-link"
+                  (click)="this.router.navigate(['/schedules', 'new'])" />
+    </div>
+    @for (group of this.ruleGroups; track group) {
+        <div class="flex flex-col">
+            <p-table #dt1
+                     dataKey="id"
+                     [value]="group.rules"
+                     [rows]="1000"
+                     [loading]="loading"
+                     sortMode="multiple"
+                     [rowHover]="true"
+                     [showGridlines]="true"
+                     [filters]="filters"
+                     [paginator]="false"
+                     [globalFilterFields]="['id', 'title']"
+                     responsiveLayout="scroll">
+                <ng-template #caption>
+                    <div class="flex flex-column sm:flex-row gap-2 justify-between">
+                        <div class="flex flex-col justify-items-start">
+                            <p class="font-semibold text-xl mb-4">{{ group.title }}</p>
+                        </div>
+                        <p-iconfield iconPosition="left" class="ml-auto">
+                            <p-inputicon>
+                                <i class="pi pi-search"></i>
+                            </p-inputicon>
+                            <input #filter pInputText type="text" (input)="onGlobalFilter(dt1, $event)"
+                                   placeholder="Search keyword" />
+                            <p-button class="p-button-outlined mb-2 " icon="pi pi-filter-slash"
+                                      (click)="clear(dt1)"></p-button>
+                        </p-iconfield>
+                    </div>
+                </ng-template>
+                <ng-template #header>
+                    <tr>
+                        <th style="min-width: 3rem" pSortableColumn="id">
+                            <div class="flex justify-between items-center">
+                                ID
+                                <p-sortIcon field="id" />
+                            </div>
+                        </th>
+                        <th style="min-width: 15rem" pSortableColumn="title">
+                            <div class="flex justify-between items-center">
+                                Title
+                                <p-sortIcon field="title" />
+                            </div>
+                        </th>
+                        <th pSortableColumn="title">
+                            <div class="flex justify-between items-center">
+                                Cron Expression
+                                <p-sortIcon field="cronExpresssion" />
+                            </div>
+                        </th>
+                        <th pSortableColumn="title">
+                            <div class="flex justify-between items-center">
+                                Is Enabled
+                                <p-sortIcon field="enabled" />
+                            </div>
+                        </th>
+                        <th>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th style="max-width: 7rem">
+                            <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="id"
+                                            showMenu="true"
+                                            placeholder="ID" ariaLabel="Filter Name"></p-columnFilter>
+                        </th>
+                        <th>
+                            <p-columnFilter field="tag.name" matchMode="in" [showMenu]="false">
+                                <ng-template #filter let-value let-filter="filterCallback">
+                                    <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
+                                                   [options]="group.rules"
+                                                   field="title"
+                                                   maxSelectedLabels="1"
+                                                   optionLabel="title" optionValue="title"
+                                                   (onChange)="filter($event.value)"
+                                                   placeholder="Select" [showClear]="false">
+                                    </p-multiselect>
+                                </ng-template>
+                            </p-columnFilter>
+                        </th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </ng-template>
+                <ng-template #body let-accountItem>
+                    <tr>
+                        <td>
+                            <a [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
+                                {{ accountItem.id }}
+                            </a>
+                        </td>
+                        <td>
+                            <a [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
+                                {{ accountItem.title }}
+                            </a>
+                        </td>
+                        <td>
+                            <a [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
+                                {{ accountItem.cronExpression }}
+                            </a>
+                        </td>
+                        <td>
+                            <a [style]="{color : accountItem.enabled ? 'green' : ''}" [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
+                                {{ accountItem.enabled }}
+                            </a>
+                        </td>
+                        <td style="max-width: 1rem">
+                            <p-button icon="pi pi-pencil"
+                                      (onClick)="this.router.navigate(['/', 'schedules', 'edit', accountItem.id])"
+                                      severity="secondary" rounded />
+                        </td>
+                    </tr>
+                </ng-template>
+                <ng-template #emptymessage>
+                    <tr>
+                        <td colspan="8">No tags found.</td>
+                    </tr>
+                </ng-template>
+                <ng-template #loadingbody>
+                    <tr>
+                        <td colspan="8">Loading accounts data. Please wait.</td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+    }
+</div>
