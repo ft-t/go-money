@@ -447,7 +447,7 @@ func TestFireflyIntegration(t *testing.T) {
 	t.Skip("todo")
 
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
-	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_06_26_transaction_export.csv")
+	data, err := os.ReadFile("E:\\extra-data\\first.csv")
 	assert.NoError(t, err)
 
 	accountsData, err := os.ReadFile("C:\\Users\\iqpir\\Result_17.json")
@@ -506,7 +506,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 
 	t.Run("missing source account", func(t *testing.T) {
 		// Withdrawal with unknown account name
-		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+		csv := `user_id,group_id,journal_id,created_at,updated_at,group_title,type,amount,foreign_amount,currency_code,foreign_currency_code,description,date,source_name,source_iban,source_type,destination_name,destination_iban,destination_type,reconciled,category,budget,bill,tags,notes,sepa_cc,sepa_ct_op,sepa_ct_id,sepa_db,sepa_country,sepa_ep,sepa_ci,sepa_batch_id,external_url,interest_date,book_date,process_date,due_date,payment_date,invoice_date,recurrence_id,internal_reference,bunq_payment_id,import_hash,import_hash_v2,external_id,original_source,recurrence_total,recurrence_count,recurrence_date
 1,2,3,4,5,6,Withdrawal,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,UnknownAccount,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
 		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
 			Data:     []byte(csv),
@@ -518,7 +518,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 
 	t.Run("currency mismatch", func(t *testing.T) {
 		// Withdrawal with wrong currency
-		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+		csv := `user_id,group_id,journal_id,created_at,updated_at,group_title,type,amount,foreign_amount,currency_code,foreign_currency_code,description,date,source_name,source_iban,source_type,destination_name,destination_iban,destination_type,reconciled,category,budget,bill,tags,notes,sepa_cc,sepa_ct_op,sepa_ct_id,sepa_db,sepa_country,sepa_ep,sepa_ci,sepa_batch_id,external_url,interest_date,book_date,process_date,due_date,payment_date,invoice_date,recurrence_id,internal_reference,bunq_payment_id,import_hash,import_hash_v2,external_id,original_source,recurrence_total,recurrence_count,recurrence_date
 1,2,3,4,5,6,Withdrawal,100,50,PLN,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
 		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
 			Data:     []byte(csv),
@@ -529,7 +529,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 	})
 
 	t.Run("unsupported operation type", func(t *testing.T) {
-		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+		csv := `user_id,group_id,journal_id,created_at,updated_at,group_title,type,amount,foreign_amount,currency_code,foreign_currency_code,description,date,source_name,source_iban,source_type,destination_name,destination_iban,destination_type,reconciled,category,budget,bill,tags,notes,sepa_cc,sepa_ct_op,sepa_ct_id,sepa_db,sepa_country,sepa_ep,sepa_ci,sepa_batch_id,external_url,interest_date,book_date,process_date,due_date,payment_date,invoice_date,recurrence_id,internal_reference,bunq_payment_id,import_hash,import_hash_v2,external_id,original_source,recurrence_total,recurrence_count,recurrence_date
 1,2,3,4,5,6,UnknownType,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
 		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
 			Data:     []byte(csv),
@@ -540,7 +540,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 	})
 
 	t.Run("invalid amount", func(t *testing.T) {
-		csv := `h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,h24,h25
+		csv := `user_id,group_id,journal_id,created_at,updated_at,group_title,type,amount,foreign_amount,currency_code,foreign_currency_code,description,date,source_name,source_iban,source_type,destination_name,destination_iban,destination_type,reconciled,category,budget,bill,tags,notes,sepa_cc,sepa_ct_op,sepa_ct_id,sepa_db,sepa_country,sepa_ep,sepa_ci,sepa_batch_id,external_url,interest_date,book_date,process_date,due_date,payment_date,invoice_date,recurrence_id,internal_reference,bunq_payment_id,import_hash,import_hash_v2,external_id,original_source,recurrence_total,recurrence_count,recurrence_date
 1,2,3,4,5,6,Withdrawal,notanumber,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
 		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
 			Data:     []byte(csv),
