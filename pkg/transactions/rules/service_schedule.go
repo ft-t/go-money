@@ -115,11 +115,15 @@ func (s *ScheduleService) UpdateRule(
 
 	updatedRule.UpdatedAt = time.Now().UTC()
 
-	if err := s.scheduler.ValidateCronExpression(updatedRule.Script); err != nil {
+	if err := s.scheduler.ValidateCronExpression(updatedRule.CronExpression); err != nil {
 		return nil, err
 	}
 
 	if err := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Save(updatedRule).Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.scheduler.Reinit(ctx); err != nil {
 		return nil, err
 	}
 

@@ -5,6 +5,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/go-co-op/gocron/v2"
+	"time"
 )
 
 type Scheduler struct {
@@ -71,7 +72,13 @@ func (s *Scheduler) ExecuteTask(
 	ctx context.Context,
 	rule database.ScheduleRule,
 ) error {
-	tx := &database.Transaction{}
+	timeNow := time.Now().UTC()
+
+	tx := &database.Transaction{
+		Extra:               map[string]string{},
+		TransactionDateTime: timeNow,
+		TransactionDateOnly: timeNow,
+	}
 
 	_, err := s.cfg.RuleInterpreter.Run(ctx, rule.Script, tx)
 	if err != nil {

@@ -141,14 +141,20 @@ func TestScheduleService_UpdateRule(t *testing.T) {
 			DoAndReturn(func(rule *database.ScheduleRule) *gomoneypbv1.ScheduleRule {
 				return &gomoneypbv1.ScheduleRule{Id: rule.ID}
 			})
-		scheduler.EXPECT().ValidateCronExpression(gomock.Any()).Return(nil)
+		scheduler.EXPECT().ValidateCronExpression("* * * * */1").Return(nil)
+		scheduler.EXPECT().Reinit(gomock.Any()).Return(nil)
 
 		rule := &database.ScheduleRule{Title: "old", Script: "old"}
 		assert.NoError(t, gormDB.Create(rule).Error)
 
 		svc := rules.NewScheduleService(mapper, scheduler)
 		resp, err := svc.UpdateRule(context.TODO(), &rulesv1.UpdateScheduleRuleRequest{
-			Rule: &gomoneypbv1.ScheduleRule{Id: rule.ID, Title: "new", Script: "new"},
+			Rule: &gomoneypbv1.ScheduleRule{
+				Id:             rule.ID,
+				Title:          "new",
+				Script:         "new",
+				CronExpression: "* * * * */1",
+			},
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, rule.ID, resp.Rule.Id)
@@ -157,6 +163,25 @@ func TestScheduleService_UpdateRule(t *testing.T) {
 		assert.NoError(t, gormDB.Find(&updated, rule.ID).Error)
 		assert.Equal(t, "new", updated.Title)
 		assert.Equal(t, "new", updated.Script)
+	})
+
+	t.Run("reinit error", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+		scheduler := NewMockSchedulerSvc(gomock.NewController(t))
+
+		scheduler.EXPECT().ValidateCronExpression(gomock.Any()).Return(nil)
+		scheduler.EXPECT().Reinit(gomock.Any()).Return(assert.AnError)
+
+		rule := &database.ScheduleRule{Title: "old", Script: "old"}
+		assert.NoError(t, gormDB.Create(rule).Error)
+
+		svc := rules.NewScheduleService(mapper, scheduler)
+		_, err := svc.UpdateRule(context.TODO(), &rulesv1.UpdateScheduleRuleRequest{
+			Rule: &gomoneypbv1.ScheduleRule{Id: rule.ID, Title: "new", Script: "new"},
+		})
+		assert.Error(t, err)
 	})
 
 	t.Run("save error", func(t *testing.T) {

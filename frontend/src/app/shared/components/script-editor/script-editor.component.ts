@@ -23,7 +23,7 @@ import { RuleSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/ru
 
 @Component({
     selector: 'app-script-editor',
-    imports: [InputNumberModule, TextareaModule, Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Checkbox, EditorComponent, DiffEditorComponent, ScriptEditorComponent],
+    imports: [InputNumberModule, TextareaModule, InputText, ReactiveFormsModule, FormsModule, Button, ColorPickerModule, EditorComponent, DiffEditorComponent, NgIf],
     templateUrl: './script-editor.component.html'
 })
 export class ScriptEditorComponent {
@@ -51,6 +51,7 @@ export class ScriptEditorComponent {
     private rulesService;
 
     @Input() script: string = '';
+    @Input() useEmptyTx: boolean = false;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -92,6 +93,11 @@ export class ScriptEditorComponent {
 
     async ensureTxSet() {
         if (this.dryRunTransactionId) return;
+
+        if (this.useEmptyTx) {
+            this.dryRunTransactionId = 0;
+            return;
+        }
 
         try {
             let txs = await this.transactionService.listTransactions({

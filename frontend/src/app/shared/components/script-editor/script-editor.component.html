@@ -19,8 +19,8 @@
     <div class="flex flex-col card gap-4 w-full">
         <div class="font-semibold text-xl">Dry run</div>
         <div class="flex flex-row gap-4">
-            <div class="flex flex-col gap-2 w-1/2">
-                <div class="flex flex-row gap-2">
+            <div class="flex flex-col gap-2 w-full" *ngIf="!useEmptyTx">
+                <div class="flex flex-row gap-2 " >
                     <div class="flex flex-col w-full gap-2">
                         <label for="accountName">Transaction ID</label>
                         <input  pInputText id="accountName" type="number" [(ngModel)]="dryRunTransactionId"/>
@@ -32,8 +32,7 @@
                 </div>
             </div>
 
-            <div class="flex flex-col gap-2 w-1/2">
-
+            <div class="flex flex-col gap-2 w-full">
                 <label for="accountName">Dry run</label>
                 <p-button label="Test script" (onClick)="dryRun()" />
             </div>
