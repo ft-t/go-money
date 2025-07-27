@@ -85,6 +85,11 @@ func (f *FireflyImporter) Import(
 		return nil, errors.New("no records found in CSV data")
 	}
 
+	headerMap := map[string]int{}
+	for i, header := range records[0] {
+		headerMap[header] = i
+	}
+
 	records = records[1:] // Skip header row
 	mutable.Reverse(records)
 
@@ -95,28 +100,28 @@ func (f *FireflyImporter) Import(
 	}
 
 	for _, record := range records {
-		operationType := record[6]
-		amount := record[7]
-		foreignAmount := record[8]
-		currencyCode := record[9]
-		foreignCurrencyCode := record[10]
-		description := record[11]
-		date := record[12]
-		sourceName := record[13]
-		notes := record[24]
-		sourceType := record[15]
-		journalID := record[2]
+		operationType := record[headerMap["type"]]
+		amount := record[headerMap["amount"]]
+		foreignAmount := record[headerMap["foreign_amount"]]
+		currencyCode := record[headerMap["currency_code"]]
+		foreignCurrencyCode := record[headerMap["foreign_currency_code"]]
+		description := record[headerMap["description"]]
+		date := record[headerMap["date"]]
+		sourceName := record[headerMap["source_name"]]
+		sourceType := record[headerMap["source_type"]]
+		notes := record[headerMap["notes"]]
+		journalID := record[headerMap["journal_id"]]
 
-		destinationName := record[16]
-		destinationAccountType := record[18]
+		destinationName := record[headerMap["destination_name"]]
+		destinationAccountType := record[headerMap["destination_type"]]
 
-		categoryName := record[20]
+		categoryName := record[headerMap["category"]]
 
 		possibleTags := f.toTag(categoryName, "category:")
-		possibleTags = append(possibleTags, f.toTag(record[21], "budget:")...)
-		possibleTags = append(possibleTags, f.toTag(record[22], "bill:")...)
+		possibleTags = append(possibleTags, f.toTag(record[headerMap["budget"]], "budget:")...)
+		possibleTags = append(possibleTags, f.toTag(record[headerMap["bill"]], "bill:")...)
 
-		for _, remoteTag := range strings.Split(record[23], ",") {
+		for _, remoteTag := range strings.Split(record[headerMap["tags"]], ",") {
 			possibleTags = append(possibleTags, f.toTag(remoteTag, "tag:")...)
 		}
 
