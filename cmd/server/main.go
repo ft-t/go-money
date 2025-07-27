@@ -111,11 +111,13 @@ func main() {
 	}
 
 	baseAmountSvc := transactions.NewBaseAmountService(config.CurrencyConfig.BaseCurrency)
-	ruleEngine := rules.NewExecutor(rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{
+	ruleInterpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{
 		AccountsSvc:          accountSvc,
 		CurrencyConverterSvc: currencyConverter,
 		DecimalSvc:           decimalSvc,
-	}))
+	})
+
+	ruleEngine := rules.NewExecutor(ruleInterpreter)
 
 	statsSvc := transactions.NewStatService()
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
@@ -126,9 +128,13 @@ func main() {
 		RuleSvc:              ruleEngine,
 	})
 
-	ruleScheduler, err := rules.NewScheduler(&rules.SchedulerConfig{})
-	if err != nil {
-		log.Logger.Fatal().Err(err).Msg("failed to create rule scheduler")
+	ruleScheduler := rules.NewScheduler(&rules.SchedulerConfig{
+		RuleInterpreter: ruleInterpreter,
+		TransactionSvc:  transactionSvc,
+	})
+
+	if err = ruleScheduler.Reinit(context.TODO()); err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to reinitialize rule scheduler")
 	}
 
 	rulesSvc := rules.NewService(mapper)

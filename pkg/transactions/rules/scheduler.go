@@ -21,23 +21,17 @@ type SchedulerConfig struct {
 
 func NewScheduler(
 	cfg *SchedulerConfig,
-) (*Scheduler, error) {
-	sh, err := gocron.NewScheduler(cfg.Opts...)
-	if err != nil {
-		return nil, err
-	}
-
+) *Scheduler {
 	return &Scheduler{
-		cfg:       cfg,
-		scheduler: sh,
-	}, nil
+		cfg: cfg,
+	}
 }
 
 func (s *Scheduler) Reinit(ctx context.Context) error {
 	var rules []database.ScheduleRule
 
 	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
-		Where("is_active = true").
+		Where("enabled = true").
 		Find(&rules).Error; err != nil {
 		return err
 	}
@@ -85,7 +79,7 @@ func (s *Scheduler) ExecuteTask(
 	}
 
 	_, err = s.cfg.TransactionSvc.CreateRawTransaction(ctx, tx)
-	
+
 	return err
 }
 
