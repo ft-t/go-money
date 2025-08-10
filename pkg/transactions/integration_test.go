@@ -63,11 +63,11 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 		TransactionDate: timestamppb.New(expenseDate),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
 			Withdrawal: &transactionsv1.Withdrawal{
-				SourceAmount:    "-765.76",
-				SourceCurrency:  "UAH",
-				SourceAccountId: accounts[0].ID,
-				ForeignAmount:   lo.ToPtr("-67.54"),
-				ForeignCurrency: lo.ToPtr("PLN"),
+				SourceAmount:     "-765.76",
+				SourceCurrency:   "UAH",
+				SourceAccountId:  accounts[0].ID,
+				FxSourceAmount:   lo.ToPtr("-67.54"),
+				FxSourceCurrency: lo.ToPtr("PLN"),
 			},
 		},
 	})
@@ -132,11 +132,11 @@ func TestUpdateTransaction(t *testing.T) {
 		CategoryId:      lo.ToPtr(int32(55)),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
 			Withdrawal: &transactionsv1.Withdrawal{
-				SourceAmount:    "-765.76",
-				SourceCurrency:  "UAH",
-				SourceAccountId: accounts[0].ID,
-				ForeignAmount:   lo.ToPtr("-67.54"),
-				ForeignCurrency: lo.ToPtr("PLN"),
+				SourceAmount:     "-765.76",
+				SourceCurrency:   "UAH",
+				SourceAccountId:  accounts[0].ID,
+				FxSourceAmount:   lo.ToPtr("-67.54"),
+				FxSourceCurrency: lo.ToPtr("PLN"),
 			},
 		},
 	})
@@ -149,11 +149,11 @@ func TestUpdateTransaction(t *testing.T) {
 		TransactionDate: timestamppb.New(expenseDate2),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
 			Withdrawal: &transactionsv1.Withdrawal{
-				SourceAmount:    "-200.76",
-				SourceCurrency:  "UAH",
-				SourceAccountId: accounts[0].ID,
-				ForeignAmount:   lo.ToPtr("-20.54"),
-				ForeignCurrency: lo.ToPtr("PLN"),
+				SourceAmount:     "-200.76",
+				SourceCurrency:   "UAH",
+				SourceAccountId:  accounts[0].ID,
+				FxSourceAmount:   lo.ToPtr("-20.54"),
+				FxSourceCurrency: lo.ToPtr("PLN"),
 			},
 		},
 	})
@@ -187,11 +187,11 @@ func TestUpdateTransaction(t *testing.T) {
 			TransactionDate: timestamppb.New(expenseDate3),
 			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
 				Withdrawal: &transactionsv1.Withdrawal{
-					SourceAmount:    "-100.0",
-					SourceCurrency:  "UAH",
-					SourceAccountId: accounts[0].ID,
-					ForeignAmount:   lo.ToPtr("-20.54"),
-					ForeignCurrency: lo.ToPtr("PLN"),
+					SourceAmount:     "-100.0",
+					SourceCurrency:   "UAH",
+					SourceAccountId:  accounts[0].ID,
+					FxSourceAmount:   lo.ToPtr("-20.54"),
+					FxSourceCurrency: lo.ToPtr("PLN"),
 				},
 			},
 		},
@@ -216,11 +216,11 @@ func TestUpdateTransaction(t *testing.T) {
 			TransactionDate: timestamppb.New(expenseDate),
 			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
 				Withdrawal: &transactionsv1.Withdrawal{
-					SourceAmount:    "-20.5",
-					SourceCurrency:  "USD",
-					SourceAccountId: accounts[1].ID,
-					ForeignAmount:   lo.ToPtr("-4.54"),
-					ForeignCurrency: lo.ToPtr("PLN"),
+					SourceAmount:     "-20.5",
+					SourceCurrency:   "USD",
+					SourceAccountId:  accounts[1].ID,
+					FxSourceAmount:   lo.ToPtr("-4.54"),
+					FxSourceCurrency: lo.ToPtr("PLN"),
 				},
 			},
 		},

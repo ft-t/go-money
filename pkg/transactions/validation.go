@@ -107,6 +107,13 @@ func (s *Service) validateWithdrawal(
 			return err
 		}
 
+		if tx.DestinationAccountID == nil {
+			return errors.Newf(
+				"destination_account_id is required for %s when destination_amount is provided",
+				txType,
+			)
+		}
+
 		accountsToCheck[*tx.DestinationAccountID] = tx.DestinationCurrency
 	}
 

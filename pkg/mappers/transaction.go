@@ -26,6 +26,7 @@ func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *
 		InternalReferenceNumber: tx.InternalReferenceNumber,
 		ReferenceNumber:         tx.ReferenceNumber,
 		CategoryId:              tx.CategoryID,
+		FxSourceCurrency:        lo.EmptyableToPtr(tx.FxSourceCurrency),
 	}
 
 	if tx.SourceAmount.Valid {
@@ -34,6 +35,10 @@ func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *
 
 	if tx.DestinationAmount.Valid {
 		mapped.DestinationAmount = lo.ToPtr(m.cfg.DecimalSvc.ToString(ctx, tx.DestinationAmount.Decimal, tx.DestinationCurrency))
+	}
+
+	if tx.FxSourceAmount.Valid {
+		mapped.FxSourceAmount = lo.ToPtr(m.cfg.DecimalSvc.ToString(ctx, tx.FxSourceAmount.Decimal, tx.FxSourceCurrency))
 	}
 
 	return mapped

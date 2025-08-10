@@ -474,28 +474,54 @@ func (s *Service) fillWithdrawal(
 	newTx.SourceAccountID = &req.SourceAccountId
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL
 
-	if req.ForeignCurrency != nil {
-		if err = s.ensureCurrencyExists(ctx, *req.ForeignCurrency); err != nil {
+	// fx
+	if req.FxSourceCurrency != nil {
+		if err = s.ensureCurrencyExists(ctx, *req.FxSourceCurrency); err != nil {
 			return nil, errors.Wrap(err, "foreign currency does not exist")
 		}
 
-		newTx.DestinationCurrency = *req.ForeignCurrency
+		newTx.FxSourceCurrency = *req.FxSourceCurrency
 	}
 
-	if req.ForeignAmount != nil {
-		destinationAmount, destinationErr := decimal.NewFromString(*req.ForeignAmount)
+	if req.FxSourceAmount != nil {
+		fxAmount, destinationErr := decimal.NewFromString(*req.FxSourceAmount)
 		if destinationErr != nil {
 			return nil, errors.Wrap(destinationErr, "invalid foreign amount")
 		}
 
-		if destinationAmount.IsPositive() || destinationAmount.IsZero() {
-			return nil, errors.New("foreign amount must be begative")
+		if fxAmount.IsPositive() || fxAmount.IsZero() {
+			return nil, errors.New("foreign amount must be negative")
+		}
+
+		newTx.FxSourceAmount = decimal.NewNullDecimal(fxAmount)
+
+		if newTx.FxSourceCurrency == "" {
+			return nil, errors.New("foreign currency is required when foreign amount is provided")
+		}
+	}
+
+	// dest
+	if req.DestinationCurrency != nil {
+		if err = s.ensureCurrencyExists(ctx, *req.DestinationCurrency); err != nil {
+			return nil, errors.Wrap(err, "destination currency does not exist")
+		}
+
+		newTx.DestinationCurrency = *req.DestinationCurrency
+	}
+
+	if req.DestinationAmount != nil {
+		destinationAmount, destinationErr := decimal.NewFromString(*req.DestinationAmount)
+		if destinationErr != nil {
+			return nil, errors.Wrap(destinationErr, "invalid destination amount")
+		}
+
+		if destinationAmount.IsNegative() || destinationAmount.IsZero() {
+			return nil, errors.New("destination amount must be positive")
 		}
 
 		newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
-
 		if newTx.DestinationCurrency == "" {
-			return nil, errors.New("foreign currency is required when foreign amount is provided")
+			return nil, errors.New("destination currency is required when destination amount is provided")
 		}
 	}
 
