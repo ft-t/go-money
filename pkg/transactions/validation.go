@@ -66,10 +66,33 @@ func (s *Service) validateWithdrawal(
 		return err
 	}
 
-	if tx.DestinationAmount.Valid { // foreign amount is optional
+	accountsToCheck := map[int32]string{
+		*tx.SourceAccountID: tx.SourceCurrency,
+	}
+
+	if tx.FxSourceAmount.Valid { // foreign amount is optional
+		if err := s.validateAmount(
+			tx.FxSourceAmount,
+			false,
+			txType,
+			"fx_source_amount",
+		); err != nil {
+			return err
+		}
+
+		if err := s.validateCurrency(
+			tx.FxSourceCurrency,
+			txType,
+			"fx_source_currency",
+		); err != nil {
+			return err
+		}
+	}
+
+	if tx.DestinationAmount.Valid { // destination amount is optional
 		if err := s.validateAmount(
 			tx.DestinationAmount,
-			false,
+			true,
 			txType,
 			"destination_amount",
 		); err != nil {
@@ -83,11 +106,11 @@ func (s *Service) validateWithdrawal(
 		); err != nil {
 			return err
 		}
+
+		accountsToCheck[*tx.DestinationAccountID] = tx.DestinationCurrency
 	}
 
-	if _, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
-		*tx.SourceAccountID: tx.SourceCurrency,
-	}); err != nil {
+	if _, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, accountsToCheck); err != nil {
 		return err
 	}
 

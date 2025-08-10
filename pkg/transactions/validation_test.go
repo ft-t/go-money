@@ -130,23 +130,39 @@ func TestValidateWithdrawal(t *testing.T) {
 		assert.ErrorContains(t, err, "has currency USD, expected EUR")
 	})
 
-	t.Run("invalid - foreign amount without foreign currency", func(t *testing.T) {
+	t.Run("invalid - fx amount without fx currency", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-			SourceAmount:        decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-			SourceCurrency:      acc[0].Currency,
-			SourceAccountID:     &acc[0].ID,
-			DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-100)),
-			DestinationCurrency: "",
+			TransactionType:  gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			SourceAmount:     decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+			SourceCurrency:   acc[0].Currency,
+			SourceAccountID:  &acc[0].ID,
+			FxSourceAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-100)),
+			FxSourceCurrency: "",
 		})
 
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "destination_currency is required")
+		assert.ErrorContains(t, err, "fx_source_currency is required")
 	})
 
-	t.Run("invalid - foreign amount with foreign currency", func(t *testing.T) {
+	t.Run("invalid - fx amount with fx currency", func(t *testing.T) {
+		srv := transactions.NewService(nil)
+
+		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
+			TransactionType:  gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			SourceAmount:     decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+			SourceCurrency:   acc[0].Currency,
+			SourceAccountID:  &acc[0].ID,
+			FxSourceAmount:   decimal.NewNullDecimal(decimal.NewFromInt(100)),
+			FxSourceCurrency: acc[1].Currency,
+		})
+
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "fx_source_amount must be negative for TRANSACTION_TYPE_WITHDRAWAL")
+	})
+
+	t.Run("invalid - destination amount without destination currency", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
@@ -155,11 +171,27 @@ func TestValidateWithdrawal(t *testing.T) {
 			SourceCurrency:      acc[0].Currency,
 			SourceAccountID:     &acc[0].ID,
 			DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(100)),
+			DestinationCurrency: "",
+		})
+
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "destination_currency is required")
+	})
+
+	t.Run("invalid - destination amount with destination currency", func(t *testing.T) {
+		srv := transactions.NewService(nil)
+
+		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			SourceAmount:        decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+			SourceCurrency:      acc[0].Currency,
+			SourceAccountID:     &acc[0].ID,
+			DestinationAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationCurrency: acc[1].Currency,
 		})
 
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "destination_amount must be negative for TRANSACTION_TYPE_WITHDRAWAL")
+		assert.ErrorContains(t, err, "destination_amount must be positive for TRANSACTION_TYPE_WITHDRAWAL")
 	})
 }
 

@@ -14,6 +14,9 @@ type Transaction struct {
 	SourceCurrency             string
 	SourceAmountInBaseCurrency decimal.NullDecimal
 
+	FxSourceAmount   decimal.NullDecimal // withdrawals only
+	FxSourceCurrency string              // withdrawals only
+
 	DestinationAmount               decimal.NullDecimal
 	DestinationCurrency             string
 	DestinationAmountInBaseCurrency decimal.NullDecimal
