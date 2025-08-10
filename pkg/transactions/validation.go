@@ -70,7 +70,7 @@ func (s *Service) validateWithdrawal(
 		*tx.SourceAccountID: tx.SourceCurrency,
 	}
 
-	if tx.FxSourceAmount.Valid { // foreign amount is optional
+if tx.FxSourceAmount.Valid { // fx source amount is optional
 		if err := s.validateAmount(
 			tx.FxSourceAmount,
 			false,
