@@ -317,7 +317,7 @@ where id in (select * from currencies)`,
 update transactions set fx_source_currency = destination_currency where transaction_type = 3 and destination_currency != '';
 update transactions set destination_currency = '' where transaction_type = 3;
 
-update transactions set fx_source_amount = abs(destination_amount) where transaction_type = 3 and destination_amount != 0;
+update transactions set fx_source_amount = -abs(destination_amount) where transaction_type = 3 and destination_amount != 0;
 update transactions set destination_amount = 0 where transaction_type = 3;
 commit ;
 `,
