@@ -5,9 +5,12 @@ import (
 	"context"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"time"
+)
+
+const (
+	roundPlaces = 18
 )
 
 type DoubleEntryConfig struct {
@@ -27,64 +30,48 @@ func NewDoubleEntryService(
 	}
 }
 
-func (s *DoubleEntryService) Record(
-	ctx context.Context,
-	tx *database.Transaction,
-) error {
+func (s *DoubleEntryService) Record(ctx context.Context, tx *database.Transaction) ([]*database.DoubleEntry, error) {
 	if tx.SourceAccountID == nil {
-		return errors.New("source_account_id is required for double entry transactions")
+		return nil, errors.New("source_account_id is required for double entry transactions")
 	}
 
 	if tx.DestinationAccountID == nil {
-		return errors.New("destination_account_id is required for double entry transactions")
+		return nil, errors.New("destination_account_id is required for double entry transactions")
 	}
 
-	if tx.SourceAmountInBaseCurrency.Decimal.Abs().String() != tx.DestinationAmountInBaseCurrency.Decimal.Abs().String() {
-		return errors.New("source and destination amounts in base currency must be equal for double entry transactions")
+	if !tx.SourceAmountInBaseCurrency.Decimal.Abs().Round(roundPlaces).Equal(
+		tx.DestinationAmountInBaseCurrency.Decimal.Abs().Round(roundPlaces),
+	) {
+		return nil, errors.New("source and destination amounts in base currency must be equal for double entry transactions")
+	}
+
+	if tx.SourceAmountInBaseCurrency.Decimal.Sign() == tx.DestinationAmountInBaseCurrency.Decimal.Sign() {
+		return nil, errors.New("source and destination amounts must have opposite signs for double entry transactions")
 	}
 
 	sourceAcc, err := s.cfg.AccountSvc.GetAccount(ctx, *tx.SourceAccountID)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get source account")
+		return nil, errors.Wrapf(err, "failed to get source account")
 	}
 
 	baseAmount := tx.SourceAmountInBaseCurrency.Decimal
 
-	isDebitNormal := func(t gomoneypbv1.AccountType) bool {
-		switch t {
-		case gomoneypbv1.AccountType_ACCOUNT_TYPE_REGULAR,
-			gomoneypbv1.AccountType_ACCOUNT_TYPE_SAVINGS,
-			gomoneypbv1.AccountType_ACCOUNT_TYPE_BROKERAGE,
-			gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE:
-			return true
-		default:
-			return false
-		}
-	} // true
-
 	switch {
-	case isDebitNormal(sourceAcc.Type):
+	case s.isDebitNormal(sourceAcc.Type):
 		// Debit-normal credit => DECREASE => expect negative input
 		if tx.SourceAmountInBaseCurrency.Decimal.IsPositive() {
-			return errors.New("source (debit-normal) must be negative for a credit")
+			return nil, errors.New("source (debit-normal) must be negative for a credit")
 		}
 	default:
 		// Credit-normal credit => INCREASE => expect positive input
-		if !tx.SourceAmountInBaseCurrency.Decimal.IsPositive() {
-			return errors.New("source (credit-normal) must be positive for a credit")
-		}
+		//if !tx.SourceAmountInBaseCurrency.Decimal.IsPositive() {
+		//	return nil, errors.New("source (credit-normal) must be positive for a credit")
+		//}
 	}
 
-	isDebitFn := func(t gomoneypbv1.AccountType, amt decimal.Decimal) bool {
-		if isDebitNormal(t) {
-			return amt.IsPositive() // debit-normal: + => debit, - => credit
-		}
-		return amt.IsNegative() // credit-normal: - => debit, + => credit
-	}
+	isDebit := s.isDebit(sourceAcc.Type, baseAmount)
 
-	isDebit := isDebitFn(sourceAcc.Type, baseAmount)
-
-	entiries := []*database.DoubleEntry{
+	entries := []*database.DoubleEntry{
 		{
 			TransactionID:        tx.ID,
 			IsDebit:              isDebit,
@@ -103,5 +90,24 @@ func (s *DoubleEntryService) Record(
 		},
 	}
 
-	return nil
+	return entries, nil
+}
+
+func (s *DoubleEntryService) isDebitNormal(accountType gomoneypbv1.AccountType) bool {
+	switch accountType {
+	case gomoneypbv1.AccountType_ACCOUNT_TYPE_REGULAR,
+		gomoneypbv1.AccountType_ACCOUNT_TYPE_SAVINGS,
+		gomoneypbv1.AccountType_ACCOUNT_TYPE_BROKERAGE,
+		gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *DoubleEntryService) isDebit(accountType gomoneypbv1.AccountType, amount decimal.Decimal) bool {
+	if s.isDebitNormal(accountType) {
+		return amount.IsPositive() // debit-normal: + => debit, - => credit
+	}
+	return amount.IsNegative() // credit-normal: - => debit, + => credit
 }
