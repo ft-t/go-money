@@ -56,19 +56,6 @@ func (s *DoubleEntryService) Record(ctx context.Context, tx *database.Transactio
 
 	baseAmount := tx.SourceAmountInBaseCurrency.Decimal
 
-	switch {
-	case s.isDebitNormal(sourceAcc.Type):
-		// Debit-normal credit => DECREASE => expect negative input
-		if tx.SourceAmountInBaseCurrency.Decimal.IsPositive() {
-			return nil, errors.New("source (debit-normal) must be negative for a credit")
-		}
-	default:
-		// Credit-normal credit => INCREASE => expect positive input
-		//if !tx.SourceAmountInBaseCurrency.Decimal.IsPositive() {
-		//	return nil, errors.New("source (credit-normal) must be positive for a credit")
-		//}
-	}
-
 	isDebit := s.isDebit(sourceAcc.Type, baseAmount)
 
 	entries := []*database.DoubleEntry{
