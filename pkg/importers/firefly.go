@@ -191,8 +191,8 @@ func (f *FireflyImporter) Import(
 					return nil, errors.Wrapf(err, "failed to parse foreign amount: %s", foreignAmount)
 				}
 
-				withdrawal.ForeignCurrency = &foreignCurrencyCode
-				withdrawal.ForeignAmount = lo.ToPtr(foreignAmountParsed.Abs().Mul(decimal.NewFromInt(-1)).String())
+				withdrawal.FxSourceCurrency = &foreignCurrencyCode
+				withdrawal.FxSourceAmount = lo.ToPtr(foreignAmountParsed.Abs().Mul(decimal.NewFromInt(-1)).String())
 			}
 
 			targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Withdrawal{
@@ -360,7 +360,7 @@ func (f *FireflyImporter) Import(
 
 	journalIDs := lo.Keys(newTxs)
 	duplicateCount := 0
-	
+
 	for _, chunk := range lo.Chunk(journalIDs, chunkSize) {
 		var existingRecords []string
 

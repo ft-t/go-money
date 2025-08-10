@@ -90,10 +90,10 @@ func TestFireflyImport(t *testing.T) {
 				assert.EqualValues(t, "2025-06-17T13:07:46Z", txDate)
 
 				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
-				assert.EqualValues(t, *tx.Withdrawal.ForeignCurrency, "PLN")
+				assert.EqualValues(t, *tx.Withdrawal.FxSourceCurrency, "PLN")
 
 				assert.EqualValues(t, "-964.44", tx.Withdrawal.SourceAmount)
-				assert.EqualValues(t, "-83.81", *tx.Withdrawal.ForeignAmount)
+				assert.EqualValues(t, "-83.81", *tx.Withdrawal.FxSourceAmount)
 
 				assert.EqualValues(t, accountsData[0].ID, tx.Withdrawal.SourceAccountId)
 
