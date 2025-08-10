@@ -75,6 +75,16 @@ export class AppMenu implements OnInit {
                         routerLink: ['/accounts']
                     },
                     {
+                        label: 'Income',
+                        icon: 'pi pi-fw pi-money-bill',
+                        routerLink: ['/accounts/income']
+                    },
+                    {
+                        label: 'Expense',
+                        icon: 'pi pi-fw pi-cart-minus',
+                        routerLink: ['/accounts/expense']
+                    },
+                    {
                         label: 'Liabilities',
                         icon: 'pi pi-fw pi-credit-card',
                         routerLink: ['/accounts/liabilities']

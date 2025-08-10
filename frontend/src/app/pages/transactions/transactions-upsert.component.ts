@@ -1,22 +1,29 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { Fluid, FluidModule } from 'primeng/fluid';
-import { InputText, InputTextModule } from 'primeng/inputtext';
+import { FluidModule } from 'primeng/fluid';
+import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { Transaction, TransactionSchema, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import {
+    Transaction,
+    TransactionSchema,
+    TransactionType
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { create } from '@bufbuild/protobuf';
 import { AccountTypeEnum, EnumService } from '../../services/enum.service';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
-import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import {
+    AccountsService,
+    ListAccountsResponse_AccountItem
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { MessageService } from 'primeng/api';
-import { Toast, ToastModule } from 'primeng/toast';
-import { DatePicker, DatePickerModule } from 'primeng/datepicker';
+import { ToastModule } from 'primeng/toast';
+import { DatePickerModule } from 'primeng/datepicker';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { NgClass, NgIf } from '@angular/common';
-import { Textarea, TextareaModule } from 'primeng/textarea';
-import { Button, ButtonModule } from 'primeng/button';
-import { MultiSelect, MultiSelectModule } from 'primeng/multiselect';
+import { TextareaModule } from 'primeng/textarea';
+import { ButtonModule } from 'primeng/button';
+import { MultiSelectModule } from 'primeng/multiselect';
 import {
     CreateTransactionRequest,
     CreateTransactionRequestSchema,
@@ -27,16 +34,19 @@ import {
     UpdateTransactionRequestSchema,
     WithdrawalSchema
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
-import { CurrencyService, ExchangeRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
+import {
+    CurrencyService,
+    ExchangeRequestSchema
+} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
-import { InputGroup, InputGroupModule } from 'primeng/inputgroup';
-import { InputGroupAddon, InputGroupAddonModule } from 'primeng/inputgroupaddon';
-import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
+import { InputGroupModule } from 'primeng/inputgroup';
+import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
-import { SelectButton, SelectButtonModule } from 'primeng/selectbutton';
-import { Chip, ChipModule } from 'primeng/chip';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { ChipModule } from 'primeng/chip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
@@ -125,6 +135,12 @@ export class TransactionUpsertComponent implements OnInit {
 
     async ngOnInit() {
         await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags(), this.fetchCategories()]);
+    }
+
+    buildForm() {
+        // this.form = new FormGroup({
+        //
+        // });
     }
 
     async editTransaction(id: number) {
@@ -335,8 +351,8 @@ export class TransactionUpsertComponent implements OnInit {
                     sourceAmount: this.toNegativeNumber(this.transaction.sourceAmount),
                     sourceCurrency: this.transaction.sourceCurrency,
                     sourceAccountId: this.transaction.sourceAccountId,
-                    foreignAmount: this.toNegativeNumber(this.transaction.destinationAmount),
-                    foreignCurrency: this.transaction.destinationCurrency
+                    fxSourceAmount: this.toNegativeNumber(this.transaction.destinationAmount), // todo
+                    fxSourceCurrency: this.transaction.destinationCurrency // todo
                 });
                 req.transaction.case = 'withdrawal';
                 break;

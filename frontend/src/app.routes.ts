@@ -71,6 +71,34 @@ export const appRoutes: Routes = [
                 }
             },
             {
+                path: 'accounts/income',
+                component: AccountsListComponent,
+                data: {
+                    filters: [
+                        {
+                            'account.type': {
+                                matchMode: 'in',
+                                value: [6]
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                path: 'accounts/expense',
+                component: AccountsListComponent,
+                data: {
+                    filters: [
+                        {
+                            'account.type': {
+                                matchMode: 'in',
+                                value: [5]
+                            }
+                        }
+                    ]
+                }
+            },
+            {
                 path: 'accounts/new',
                 component: AccountsUpsertComponent,
                 data: {

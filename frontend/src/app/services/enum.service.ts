@@ -43,6 +43,16 @@ export class EnumService {
                 name: 'Liability',
                 value: AccountType.LIABILITY,
                 icon: ''
+            },
+            {
+                name: 'Income',
+                value: AccountType.INCOME,
+                icon: ''
+            },
+            {
+                name: 'Expense',
+                value: AccountType.EXPENSE,
+                icon: ''
             }
         ];
     }
