@@ -96,5 +96,6 @@ func (s *DoubleEntryService) isDebit(accountType gomoneypbv1.AccountType, amount
 	if s.isDebitNormal(accountType) {
 		return amount.IsPositive() // debit-normal: + => debit, - => credit
 	}
+	
 	return amount.IsNegative() // credit-normal: - => debit, + => credit
 }
