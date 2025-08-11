@@ -35,60 +35,6 @@ func (s *Service) ValidateTransaction(
 	}
 }
 
-type possibleAccount struct {
-	SourceAccounts      []*database.Account
-	DestinationAccounts []*database.Account
-}
-
-func (s *Service) getPossibleAccountsForTransactionType(
-	ctx context.Context,
-	accounts []*database.Account,
-) (map[gomoneypbv1.TransactionType]*possibleAccount, error) {
-	txTypes := []gomoneypbv1.TransactionType{
-		gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-		gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-		gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
-	}
-	finalRes := map[gomoneypbv1.TransactionType]*possibleAccount{}
-
-	assetAccounts := []gomoneypbv1.AccountType{
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_REGULAR,
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_SAVINGS,
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_BROKERAGE,
-	}
-
-	assetAndLiabilityAccounts := append(assetAccounts, gomoneypbv1.AccountType_ACCOUNT_TYPE_LIABILITY)
-
-	for _, txType := range txTypes {
-		res := &possibleAccount{}
-		finalRes[txType] = res
-
-		for _, account := range accounts {
-			switch txType {
-			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS:
-				if lo.Contains(assetAndLiabilityAccounts, account.Type) {
-					res.SourceAccounts = append(res.SourceAccounts, account)
-					res.DestinationAccounts = append(res.DestinationAccounts, account)
-				}
-			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT:
-				if account.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME {
-					res.SourceAccounts = append(res.SourceAccounts, account)
-				} else if lo.Contains(assetAccounts, account.Type) {
-					res.DestinationAccounts = append(res.DestinationAccounts, account)
-				}
-			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL:
-				if account.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE { // dest always expense
-					res.DestinationAccounts = append(res.DestinationAccounts, account)
-				} else if lo.Contains(assetAndLiabilityAccounts, account.Type) {
-					res.SourceAccounts = append(res.SourceAccounts, account)
-				}
-			}
-		}
-	}
-
-	return finalRes, nil
-}
-
 func (s *Service) validateWithdrawal(
 	ctx context.Context,
 	dbTx *gorm.DB,

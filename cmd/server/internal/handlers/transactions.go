@@ -11,7 +11,17 @@ import (
 )
 
 type TransactionApi struct {
-	transactionsSvc TransactionsSvc
+	transactionsSvc      TransactionsSvc
+	applicableAccountSvc ApplicableAccountSvc
+}
+
+func (a *TransactionApi) GetApplicableAccounts(ctx context.Context, c *connect.Request[transactionsv1.GetApplicableAccountsRequest]) (*connect.Response[transactionsv1.GetApplicableAccountsResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	// todo
 }
 
 func (a *TransactionApi) ListTransactions(ctx context.Context, c *connect.Request[transactionsv1.ListTransactionsRequest]) (*connect.Response[transactionsv1.ListTransactionsResponse], error) {
@@ -62,9 +72,11 @@ func (a *TransactionApi) UpdateTransaction(ctx context.Context, c *connect.Reque
 func NewTransactionApi(
 	mux *boilerplate.DefaultGrpcServer,
 	transactionsSvc TransactionsSvc,
+	applicableAccountSvc ApplicableAccountSvc,
 ) *TransactionApi {
 	res := &TransactionApi{
-		transactionsSvc: transactionsSvc,
+		transactionsSvc:      transactionsSvc,
+		applicableAccountSvc: applicableAccountSvc,
 	}
 
 	mux.GetMux().Handle(

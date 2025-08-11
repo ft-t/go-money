@@ -34,6 +34,9 @@ type TransactionsSvc interface {
 	) (*transactionsv1.UpdateTransactionResponse, error)
 }
 
+type ApplicableAccountSvc interface {
+}
+
 type UserSvc interface {
 	Login(
 		ctx context.Context,

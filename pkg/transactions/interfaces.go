@@ -29,6 +29,7 @@ type MapperSvc interface {
 
 type AccountSvc interface {
 	GetAccount(ctx context.Context, id int32) (*database.Account, error)
+	GetAll(ctx context.Context) ([]*database.Account, error)
 }
 
 type CurrencyConverterSvc interface {
