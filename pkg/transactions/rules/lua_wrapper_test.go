@@ -2,11 +2,12 @@ package rules_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestBasicFields(t *testing.T) {
@@ -136,14 +137,14 @@ func TestBasicFields(t *testing.T) {
 	`
 
 		tx := &database.Transaction{
-			SourceAccountID: lo.ToPtr(int32(12345)),
+			SourceAccountID: int32(12345),
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Equal(t, int32(67890), *tx.SourceAccountID)
+		assert.Equal(t, int32(67890), tx.SourceAccountID)
 	})
 
 	t.Run("category ID", func(t *testing.T) {
@@ -176,14 +177,14 @@ func TestBasicFields(t *testing.T) {
 	`
 
 		tx := &database.Transaction{
-			SourceAccountID: nil,
+			SourceAccountID: 0,
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Equal(t, int32(67890), *tx.SourceAccountID)
+		assert.Equal(t, int32(67890), tx.SourceAccountID)
 	})
 
 	t.Run("set source account ID to nil", func(t *testing.T) {
@@ -196,7 +197,7 @@ func TestBasicFields(t *testing.T) {
 	`
 
 		tx := &database.Transaction{
-			SourceAccountID: lo.ToPtr(int32(12345)),
+			SourceAccountID: int32(12345),
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
@@ -216,14 +217,14 @@ func TestBasicFields(t *testing.T) {
 	`
 
 		tx := &database.Transaction{
-			DestinationAccountID: lo.ToPtr(int32(12345)),
+			DestinationAccountID: int32(12345),
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Equal(t, int32(67890), *tx.DestinationAccountID)
+		assert.Equal(t, int32(67890), tx.DestinationAccountID)
 	})
 
 	t.Run("transaction type", func(t *testing.T) {

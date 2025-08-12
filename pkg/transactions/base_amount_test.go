@@ -63,7 +63,7 @@ func TestBaseAmountService(t *testing.T) {
 		txs := []*database.Transaction{
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-				SourceAccountID: lo.ToPtr(acc[0].ID),
+				SourceAccountID: acc[0].ID,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-10)),
 
@@ -100,9 +100,9 @@ func TestBaseAmountService(t *testing.T) {
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-				SourceAccountID: &acc[1].ID,
+				SourceAccountID: acc[1].ID,
 
-				DestinationAccountID: &acc[0].ID,
+				DestinationAccountID: acc[0].ID,
 				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(9999)),
 				DestinationCurrency:  "PLN",
 				Extra:                make(map[string]string),
@@ -113,11 +113,11 @@ func TestBaseAmountService(t *testing.T) {
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-9999)),
-				SourceAccountID: &acc[0].ID,
+				SourceAccountID: acc[0].ID,
 
 				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 				DestinationCurrency:  baseCurrency,
-				DestinationAccountID: &acc[1].ID,
+				DestinationAccountID: acc[1].ID,
 				Extra:                make(map[string]string),
 
 				// destination is in USD to should use 55,
@@ -126,11 +126,11 @@ func TestBaseAmountService(t *testing.T) {
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-100)),
-				SourceAccountID: &acc[0].ID,
+				SourceAccountID: acc[0].ID,
 
 				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(999)),
 				DestinationCurrency:  "UAH",
-				DestinationAccountID: &acc[2].ID,
+				DestinationAccountID: acc[2].ID,
 
 				Extra: make(map[string]string),
 				// should convert to base currency with same amount from PLN
@@ -142,7 +142,7 @@ func TestBaseAmountService(t *testing.T) {
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  acc[0].Currency, // pln
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-				SourceAccountID: lo.ToPtr(acc[0].ID),
+				SourceAccountID: acc[0].ID,
 				Extra:           make(map[string]string),
 
 				FxSourceAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-10)),
@@ -157,7 +157,7 @@ func TestBaseAmountService(t *testing.T) {
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  acc[0].Currency, // pln
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-				SourceAccountID: lo.ToPtr(acc[0].ID),
+				SourceAccountID: acc[0].ID,
 				Extra:           make(map[string]string),
 
 				FxSourceAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-10)),
@@ -165,7 +165,7 @@ func TestBaseAmountService(t *testing.T) {
 
 				DestinationCurrency:  acc[1].Currency,
 				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(30)),
-				DestinationAccountID: &acc[1].ID,
+				DestinationAccountID: acc[1].ID,
 
 				// source different,
 				// fx different
@@ -176,7 +176,7 @@ func TestBaseAmountService(t *testing.T) {
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  acc[0].Currency, // pln
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-				SourceAccountID: lo.ToPtr(acc[0].ID),
+				SourceAccountID: acc[0].ID,
 				Extra:           make(map[string]string),
 
 				FxSourceAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-10)),
@@ -184,7 +184,7 @@ func TestBaseAmountService(t *testing.T) {
 
 				DestinationCurrency:  acc[3].Currency,
 				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(30)),
-				DestinationAccountID: &acc[3].ID,
+				DestinationAccountID: acc[3].ID,
 
 				// source different,
 				// fx different

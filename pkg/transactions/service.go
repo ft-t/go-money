@@ -29,6 +29,7 @@ type ServiceConfig struct {
 	CurrencyConverterSvc CurrencyConverterSvc
 	BaseAmountService    BaseAmountSvc
 	RuleSvc              RuleSvc
+	ValidationSvc        ValidationSvc
 }
 
 func NewService(
@@ -218,8 +219,8 @@ func (s *Service) CreateBulkInternal(
 			SourceCurrency:          "",
 			DestinationAmount:       decimal.NullDecimal{},
 			DestinationCurrency:     "",
-			SourceAccountID:         nil,
-			DestinationAccountID:    nil,
+			SourceAccountID:         0,
+			DestinationAccountID:    0,
 			TagIDs:                  req.Req.TagIds,
 			CreatedAt:               time.Now().UTC(),
 			Notes:                   req.Req.Notes,
@@ -341,14 +342,16 @@ func (s *Service) FinalizeTransactions(
 	created []*database.Transaction,
 	originalTxs []*database.Transaction,
 ) ([]*transactionsv1.CreateTransactionResponse, error) {
-	// todo validate
+	if err := s.cfg.ValidationSvc.Validate(ctx, tx, created); err != nil {
+		return nil, errors.Wrap(err, "failed to validate transactions")
+	}
 
 	// include original as we need to ensure previous history is correct now
-	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
+	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
 		return nil, err
 	}
 
-	if err = s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
 		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
 	}
 
@@ -433,7 +436,7 @@ func (s *Service) fillDeposit(
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
-	newTx.DestinationAccountID = &req.DestinationAccountId
+	newTx.DestinationAccountID = req.DestinationAccountId
 
 	return &fillResponse{}, nil
 }
@@ -451,13 +454,13 @@ func (s *Service) fillReconciliation(
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
-	newTx.DestinationAccountID = &req.DestinationAccountId
+	newTx.DestinationAccountID = req.DestinationAccountId
 
 	return &fillResponse{}, nil
 }
 
 func (s *Service) fillWithdrawal(
-	ctx context.Context,
+	_ context.Context,
 	req *transactionsv1.Withdrawal,
 	newTx *database.Transaction,
 ) (*fillResponse, error) {
@@ -468,15 +471,11 @@ func (s *Service) fillWithdrawal(
 
 	newTx.SourceAmount = decimal.NewNullDecimal(sourceAmount)
 	newTx.SourceCurrency = req.SourceCurrency
-	newTx.SourceAccountID = &req.SourceAccountId
+	newTx.SourceAccountID = req.SourceAccountId
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE
 
 	// fx
 	if req.FxSourceCurrency != nil {
-		if err = s.ensureCurrencyExists(ctx, *req.FxSourceCurrency); err != nil {
-			return nil, errors.Wrap(err, "foreign currency does not exist")
-		}
-
 		newTx.FxSourceCurrency = *req.FxSourceCurrency
 	}
 
@@ -499,10 +498,6 @@ func (s *Service) fillWithdrawal(
 
 	// dest
 	if req.DestinationCurrency != nil {
-		if err = s.ensureCurrencyExists(ctx, *req.DestinationCurrency); err != nil {
-			return nil, errors.Wrap(err, "destination currency does not exist")
-		}
-
 		newTx.DestinationCurrency = *req.DestinationCurrency
 	}
 
@@ -526,8 +521,8 @@ func (s *Service) fillWithdrawal(
 }
 
 func (s *Service) fillTransferBetweenAccounts(
-	ctx context.Context,
-	dbTx *gorm.DB,
+	_ context.Context,
+	_ *gorm.DB,
 	req *transactionsv1.TransferBetweenAccounts,
 	newTx *database.Transaction,
 ) (*fillResponse, error) {
@@ -537,14 +532,6 @@ func (s *Service) fillTransferBetweenAccounts(
 
 	if req.DestinationAccountId <= 0 {
 		return nil, errors.New("destination account id is required")
-	}
-
-	accounts, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
-		req.SourceAccountId:      req.SourceCurrency,
-		req.DestinationAccountId: req.DestinationCurrency,
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	sourceAmount, err := decimal.NewFromString(req.SourceAmount)
@@ -570,13 +557,11 @@ func (s *Service) fillTransferBetweenAccounts(
 	newTx.SourceAmount = decimal.NewNullDecimal(sourceAmount)
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 
-	newTx.SourceAccountID = &req.SourceAccountId
-	newTx.DestinationAccountID = &req.DestinationAccountId
+	newTx.SourceAccountID = req.SourceAccountId
+	newTx.DestinationAccountID = req.DestinationAccountId
 
 	newTx.SourceCurrency = req.SourceCurrency
 	newTx.DestinationCurrency = req.DestinationCurrency
 
-	return &fillResponse{
-		Accounts: accounts,
-	}, nil
+	return &fillResponse{}, nil
 }

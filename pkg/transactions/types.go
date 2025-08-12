@@ -19,3 +19,8 @@ type PossibleAccount struct {
 	SourceAccounts      map[int32]*database.Account
 	DestinationAccounts map[int32]*database.Account
 }
+
+type DoubleEntryRequest struct {
+	Transaction   *database.Transaction
+	SourceAccount *database.Account
+}

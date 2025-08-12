@@ -1,9 +1,13 @@
 package transactions_test
 
 import (
+	"context"
+	"os"
+	"testing"
+	"time"
+
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
@@ -16,9 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
-	"os"
-	"testing"
-	"time"
 )
 
 var gormDB *gorm.DB
@@ -41,7 +42,7 @@ func TestListTransactions(t *testing.T) {
 			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			TransactionDateTime:  time.Now(),
 			Title:                "Test Deposit",
-			DestinationAccountID: lo.ToPtr(int32(123)),
+			DestinationAccountID: int32(123),
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(11)),
 			DestinationCurrency:  "USD",
 			Extra:                map[string]string{},
@@ -50,7 +51,7 @@ func TestListTransactions(t *testing.T) {
 			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			TransactionDateTime: time.Now().Add(1 * time.Hour),
 			Title:               "Test Withdrawal",
-			SourceAccountID:     lo.ToPtr(int32(456)),
+			SourceAccountID:     int32(456),
 			SourceAmount:        decimal.NewNullDecimal(decimal.NewFromInt(22)),
 			SourceCurrency:      "EUR",
 			Extra:               map[string]string{},
@@ -410,7 +411,7 @@ func TestCreateReconciliation(t *testing.T) {
 	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx.TransactionType)
 	assert.EqualValues(t, 556, createdTx.DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx.DestinationCurrency)
-	assert.EqualValues(t, accounts[0].ID, *createdTx.DestinationAccountID)
+	assert.EqualValues(t, accounts[0].ID, createdTx.DestinationAccountID)
 }
 
 func TestCreateBulk(t *testing.T) {
@@ -499,12 +500,12 @@ func TestCreateBulk(t *testing.T) {
 	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx[0].TransactionType)
 	assert.EqualValues(t, 556, createdTx[0].DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx[0].DestinationCurrency)
-	assert.EqualValues(t, accounts[0].ID, *createdTx[0].DestinationAccountID)
+	assert.EqualValues(t, accounts[0].ID, createdTx[0].DestinationAccountID)
 
 	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx[1].TransactionType)
 	assert.EqualValues(t, 777, createdTx[1].DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx[1].DestinationCurrency)
-	assert.EqualValues(t, accounts[0].ID, *createdTx[1].DestinationAccountID)
+	assert.EqualValues(t, accounts[0].ID, createdTx[1].DestinationAccountID)
 }
 
 func TestGetTransactionsByIDs(t *testing.T) {
@@ -565,7 +566,7 @@ func TestCreateRawTransaction(t *testing.T) {
 
 		newTx := &database.Transaction{
 			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}
@@ -591,7 +592,7 @@ func TestCreateRawTransaction(t *testing.T) {
 
 		newTx := &database.Transaction{
 			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 		}
 		resp, err := svc.CreateRawTransaction(context.TODO(), newTx)
@@ -616,7 +617,7 @@ func TestCreateRawTransaction(t *testing.T) {
 
 		newTx := &database.Transaction{
 			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}
@@ -645,7 +646,7 @@ func TestCreateRawTransaction(t *testing.T) {
 
 		newTx := &database.Transaction{
 			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}
@@ -668,7 +669,7 @@ func TestCreateRawTransaction(t *testing.T) {
 
 		newTx := &database.Transaction{
 			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}

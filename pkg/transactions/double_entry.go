@@ -16,7 +16,6 @@ const (
 
 type DoubleEntryConfig struct {
 	BaseCurrency string
-	AccountSvc   AccountSvc
 }
 
 type DoubleEntryService struct {
@@ -31,12 +30,22 @@ func NewDoubleEntryService(
 	}
 }
 
-func (s *DoubleEntryService) Record(ctx context.Context, tx *database.Transaction) ([]*database.DoubleEntry, error) {
-	if tx.SourceAccountID == nil {
+func (s *DoubleEntryService) Record(
+	_ context.Context,
+	req *DoubleEntryRequest,
+) ([]*database.DoubleEntry, error) {
+	tx := req.Transaction
+
+	sourceAcc := req.SourceAccount
+	if sourceAcc == nil {
+		return nil, errors.New("source account is required for double entry transactions")
+	}
+
+	if tx.SourceAccountID == 0 {
 		return nil, errors.New("source_account_id is required for double entry transactions")
 	}
 
-	if tx.DestinationAccountID == nil {
+	if tx.DestinationAccountID == 0 {
 		return nil, errors.New("destination_account_id is required for double entry transactions")
 	}
 
@@ -50,11 +59,6 @@ func (s *DoubleEntryService) Record(ctx context.Context, tx *database.Transactio
 		return nil, errors.New("source and destination amounts must have opposite signs for double entry transactions")
 	}
 
-	sourceAcc, err := s.cfg.AccountSvc.GetAccountByID(ctx, *tx.SourceAccountID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get source account")
-	}
-
 	baseAmount := tx.SourceAmountInBaseCurrency.Decimal
 
 	isDebit := s.isDebit(sourceAcc.Type, baseAmount)
@@ -63,7 +67,7 @@ func (s *DoubleEntryService) Record(ctx context.Context, tx *database.Transactio
 		{
 			TransactionID:        tx.ID,
 			IsDebit:              isDebit,
-			AccountID:            *tx.SourceAccountID,
+			AccountID:            tx.SourceAccountID,
 			BaseCurrency:         s.cfg.BaseCurrency,
 			AmountInBaseCurrency: baseAmount.Abs(),
 			CreatedAt:            time.Now().UTC(),
@@ -71,7 +75,7 @@ func (s *DoubleEntryService) Record(ctx context.Context, tx *database.Transactio
 		{
 			TransactionID:        tx.ID,
 			IsDebit:              !isDebit,
-			AccountID:            *tx.DestinationAccountID,
+			AccountID:            tx.DestinationAccountID,
 			BaseCurrency:         s.cfg.BaseCurrency,
 			AmountInBaseCurrency: baseAmount.Abs(),
 			CreatedAt:            time.Now().UTC(),

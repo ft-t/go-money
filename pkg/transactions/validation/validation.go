@@ -1,4 +1,4 @@
-package transactions
+package validation
 
 import (
 	"context"
@@ -6,28 +6,27 @@ import (
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/samber/lo"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
-type ValidationService struct {
-	cfg *ValidationServiceConfig
+type Service struct {
+	cfg *ServiceConfig
 }
 
-type ValidationServiceConfig struct {
+type ServiceConfig struct {
 	AccountSvc           AccountSvc
 	ApplicableAccountSvc ApplicableAccountSvc
 }
 
-func NewValidationService(cfg *ValidationServiceConfig) *ValidationService {
-	return &ValidationService{
+func NewValidationService(cfg *ServiceConfig) *Service {
+	return &Service{
 		cfg: cfg,
 	}
 }
 
-func (s *ValidationService) ValidateTransactions(
+func (s *Service) Validate(
 	ctx context.Context,
 	dbTx *gorm.DB,
 	txs []*database.Transaction,
@@ -35,6 +34,11 @@ func (s *ValidationService) ValidateTransactions(
 	accounts, err := s.cfg.AccountSvc.GetAllAccounts(ctx) // todo filter by ids
 	if err != nil {
 		return errors.Wrap(err, "failed to get accounts")
+	}
+
+	accMap := map[int32]*database.Account{}
+	for _, acc := range accounts {
+		accMap[acc.ID] = acc
 	}
 
 	applicableAccounts := s.cfg.ApplicableAccountSvc.GetApplicableAccounts(ctx, accounts)
@@ -47,13 +51,33 @@ func (s *ValidationService) ValidateTransactions(
 		if err = s.ValidateTransactionAccounts(ctx, applicableAccounts, createdTx); err != nil {
 			return errors.Wrapf(err, "failed to validate transaction accounts")
 		}
+
+		if err = s.ensureCurrencyExists(ctx, createdTx.SourceCurrency); err != nil {
+			return errors.Wrapf(err, "failed to ensure source currency exists: %s",
+				createdTx.SourceCurrency)
+		}
+
+		if err = s.ensureCurrencyExists(ctx, createdTx.DestinationCurrency); err != nil {
+			return errors.Wrapf(err, "failed to ensure destination currency exists: %s",
+				createdTx.DestinationCurrency)
+		}
+
+		if err = s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, accMap, map[int32]string{
+			createdTx.SourceAccountID:      createdTx.SourceCurrency,
+			createdTx.DestinationAccountID: createdTx.DestinationCurrency,
+		}); err != nil {
+			return errors.Wrapf(err,
+				"failed to ensure accounts exist and have correct currency for transaction id: %d",
+				createdTx.ID,
+			)
+		}
 	}
 
 	return nil
 }
 
-func (s *ValidationService) ensureCategoryExists(
-	ctx context.Context,
+func (s *Service) ensureCategoryExists(
+	_ context.Context,
 	tx *database.Transaction,
 ) error {
 	if tx.CategoryID == nil {
@@ -63,7 +87,7 @@ func (s *ValidationService) ensureCategoryExists(
 	return nil // todo
 }
 
-func (s *ValidationService) ValidateTransactionData(
+func (s *Service) ValidateTransactionData(
 	ctx context.Context,
 	dbTx *gorm.DB,
 	tx *database.Transaction,
@@ -88,9 +112,9 @@ func (s *ValidationService) ValidateTransactionData(
 	}
 }
 
-func (s *ValidationService) ValidateTransactionAccounts(
+func (s *Service) ValidateTransactionAccounts(
 	_ context.Context,
-	possible map[gomoneypbv1.TransactionType]*PossibleAccount,
+	possible map[gomoneypbv1.TransactionType]*transactions.PossibleAccount,
 	tx *database.Transaction,
 ) error {
 	possibleAccounts, ok := possible[tx.TransactionType]
@@ -101,18 +125,18 @@ func (s *ValidationService) ValidateTransactionAccounts(
 		)
 	}
 
-	if _, ok = possibleAccounts.SourceAccounts[*tx.SourceAccountID]; !ok {
+	if _, ok = possibleAccounts.SourceAccounts[tx.SourceAccountID]; !ok {
 		return errors.Newf(
 			"source account %d is not applicable for transaction type: %s",
-			*tx.SourceAccountID,
+			tx.SourceAccountID,
 			tx.TransactionType,
 		)
 	}
 
-	if _, ok = possibleAccounts.DestinationAccounts[*tx.DestinationAccountID]; !ok {
+	if _, ok = possibleAccounts.DestinationAccounts[tx.DestinationAccountID]; !ok {
 		return errors.Newf(
 			"destination account %d is not applicable for transaction type: %s",
-			*tx.DestinationAccountID,
+			tx.DestinationAccountID,
 			tx.TransactionType,
 		)
 	}
@@ -120,14 +144,14 @@ func (s *ValidationService) ValidateTransactionAccounts(
 	return nil
 }
 
-func (s *ValidationService) validateWithdrawal(
+func (s *Service) validateWithdrawal(
 	ctx context.Context,
 	dbTx *gorm.DB,
 	tx *database.Transaction,
 ) error {
 	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE
 
-	if lo.FromPtr(tx.SourceAccountID) == 0 {
+	if tx.SourceAccountID == 0 {
 		return errors.Newf(
 			"source_account_id is required for %s",
 			txType,
@@ -149,10 +173,6 @@ func (s *ValidationService) validateWithdrawal(
 		"source_amount",
 	); err != nil {
 		return err
-	}
-
-	accountsToCheck := map[int32]string{
-		*tx.SourceAccountID: tx.SourceCurrency,
 	}
 
 	if tx.FxSourceAmount.Valid { // fx source amount is optional
@@ -192,31 +212,25 @@ func (s *ValidationService) validateWithdrawal(
 			return err
 		}
 
-		if tx.DestinationAccountID == nil {
+		if tx.DestinationAccountID == 0 {
 			return errors.Newf(
 				"destination_account_id is required for %s when destination_amount is provided",
 				txType,
 			)
 		}
-
-		accountsToCheck[*tx.DestinationAccountID] = tx.DestinationCurrency
-	}
-
-	if _, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, accountsToCheck); err != nil {
-		return err
 	}
 
 	return nil
 }
 
-func (s *ValidationService) validateDeposit(
+func (s *Service) validateDeposit(
 	ctx context.Context,
 	dbTx *gorm.DB,
 	tx *database.Transaction,
 ) error {
 	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME
 
-	if lo.FromPtr(tx.DestinationAccountID) == 0 {
+	if tx.DestinationAccountID == 0 {
 		return errors.Newf(
 			"destination_account_id is required for %s",
 			txType,
@@ -240,23 +254,17 @@ func (s *ValidationService) validateDeposit(
 		return err
 	}
 
-	if _, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
-		*tx.DestinationAccountID: tx.DestinationCurrency,
-	}); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (s *ValidationService) validateReconciliation(
+func (s *Service) validateReconciliation(
 	ctx context.Context,
 	dbTx *gorm.DB,
 	tx *database.Transaction,
 ) error {
 	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT
 
-	if lo.FromPtr(tx.DestinationAccountID) == 0 {
+	if tx.DestinationAccountID == 0 {
 		return errors.Newf(
 			"destination_account_id is required for %s",
 			txType,
@@ -278,29 +286,23 @@ func (s *ValidationService) validateReconciliation(
 		return err
 	}
 
-	if _, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
-		*tx.DestinationAccountID: tx.DestinationCurrency,
-	}); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (s *ValidationService) validateTransferBetweenAccounts(
+func (s *Service) validateTransferBetweenAccounts(
 	ctx context.Context,
 	dbTx *gorm.DB,
 	tx *database.Transaction,
 ) error {
 	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS
 
-	if lo.FromPtr(tx.SourceAccountID) == 0 {
+	if tx.SourceAccountID == 0 {
 		return errors.Newf(
 			"source_account_id is required for %s",
 			txType,
 		)
 	}
-	if lo.FromPtr(tx.DestinationAccountID) == 0 {
+	if tx.DestinationAccountID == 0 {
 		return errors.Newf(
 			"destination_account_id is required for %s",
 			txType,
@@ -341,18 +343,10 @@ func (s *ValidationService) validateTransferBetweenAccounts(
 		return err
 	}
 
-	_, err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, map[int32]string{
-		*tx.SourceAccountID:      tx.SourceCurrency,
-		*tx.DestinationAccountID: tx.DestinationCurrency,
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (s *ValidationService) validateCurrency(
+func (s *Service) validateCurrency(
 	currency string,
 	txType gomoneypbv1.TransactionType,
 	fieldName string,
@@ -368,7 +362,7 @@ func (s *ValidationService) validateCurrency(
 	return nil
 }
 
-func (s *ValidationService) validateAmount(
+func (s *Service) validateAmount(
 	amount decimal.NullDecimal,
 	shouldBePositive bool,
 	txType gomoneypbv1.TransactionType,
@@ -401,31 +395,21 @@ func (s *ValidationService) validateAmount(
 	return nil
 }
 
-func (s *ValidationService) ensureCurrencyExists(
+func (s *Service) ensureCurrencyExists(
 	ctx context.Context,
 	currency string,
 ) error {
 	return nil // todo
 }
 
-func (s *ValidationService) ensureAccountsExistAndCurrencyCorrect(
+func (s *Service) ensureAccountsExistAndCurrencyCorrect(
 	_ context.Context,
 	dbTx *gorm.DB,
+	accMap map[int32]*database.Account,
 	expectedAccounts map[int32]string,
-) (map[int32]*database.Account, error) {
-	var accounts []*database.Account
-
-	if err := dbTx.
-		Where("id IN ?", lo.Keys(expectedAccounts)).
-		Clauses(&clause.Locking{Strength: "UPDATE"}).
-		Find(&accounts).Error; err != nil {
-		return nil, errors.WithStack(err)
-	}
-
+) error {
 	accCurrencies := map[int32]string{}
-	accMap := map[int32]*database.Account{}
-	for _, acc := range accounts {
-		accMap[acc.ID] = acc
+	for _, acc := range accMap {
 		accCurrencies[acc.ID] = acc.Currency
 	}
 
@@ -433,13 +417,13 @@ func (s *ValidationService) ensureAccountsExistAndCurrencyCorrect(
 		existingCurrency, ok := accCurrencies[id]
 
 		if !ok {
-			return nil, errors.Newf("account with id %d not found", id)
+			return errors.Newf("account with id %d not found", id)
 		}
 
 		if existingCurrency != expectedCurrency {
-			return nil, errors.Newf("account with id %d has currency %s, expected %s", id, existingCurrency, expectedCurrency)
+			return errors.Newf("account with id %d has currency %s, expected %s", id, existingCurrency, expectedCurrency)
 		}
 	}
 
-	return accMap, nil
+	return nil
 }

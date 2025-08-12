@@ -22,7 +22,6 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 
 		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
@@ -30,8 +29,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Coffee",
@@ -47,7 +46,6 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 
 		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
@@ -55,8 +53,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Coffee",
@@ -72,7 +70,6 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 
 		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
@@ -80,8 +77,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			Title:                           "Salary",
@@ -97,7 +94,6 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 
 		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
@@ -105,8 +101,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Transfer",
@@ -122,7 +118,6 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 
 		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
@@ -130,8 +125,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Transfer to credit account",
@@ -147,7 +142,6 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 
 		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
@@ -155,8 +149,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Transfer from credit account",
@@ -178,11 +172,10 @@ func TestDoubleEntry(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 		_, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(200)),
 			Title:                           "Test",
@@ -196,11 +189,10 @@ func TestDoubleEntry(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 		_, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Test",
@@ -214,10 +206,9 @@ func TestDoubleEntry(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 		_, err := srv.Record(context.TODO(), &database.Transaction{
-			DestinationAccountID:            &destinationAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Test",
@@ -227,14 +218,11 @@ func TestDoubleEntry(t *testing.T) {
 	})
 
 	t.Run("destination account is not set", func(t *testing.T) {
-		accSvc := NewMockAccountSvc(gomock.NewController(t))
-
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 		_, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
+			SourceAccountID:                 sourceAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Test",
@@ -248,14 +236,13 @@ func TestDoubleEntry(t *testing.T) {
 
 		srv := transactions.NewDoubleEntryService(&transactions.DoubleEntryConfig{
 			BaseCurrency: baseCurrency,
-			AccountSvc:   accSvc,
 		})
 
 		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(nil, assert.AnError)
 
 		_, err := srv.Record(context.TODO(), &database.Transaction{
-			SourceAccountID:                 &sourceAccountID,
-			DestinationAccountID:            &destinationAccountID,
+			SourceAccountID:                 sourceAccountID,
+			DestinationAccountID:            destinationAccountID,
 			SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			Title:                           "Test",

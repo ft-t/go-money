@@ -28,18 +28,6 @@ type MapperSvc interface {
 	MapTransaction(ctx context.Context, tx *database.Transaction) *v1.Transaction
 }
 
-type AccountSvc interface {
-	GetAccountByID(ctx context.Context, id int32) (*database.Account, error)
-	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
-}
-
-type ApplicableAccountSvc interface {
-	GetApplicableAccounts(
-		_ context.Context,
-		accounts []*database.Account,
-	) map[v1.TransactionType]*PossibleAccount
-}
-
 type CurrencyConverterSvc interface {
 	Convert(
 		ctx context.Context,
@@ -62,4 +50,16 @@ type RuleSvc interface {
 		ctx context.Context,
 		inputTxs []*database.Transaction,
 	) ([]*database.Transaction, error)
+}
+
+type ValidationSvc interface {
+	Validate(
+		ctx context.Context,
+		dbTx *gorm.DB,
+		txs []*database.Transaction,
+	) error
+}
+
+type AccountSvc interface {
+	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
 }

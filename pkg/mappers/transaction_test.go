@@ -1,16 +1,17 @@
 package mappers_test
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"testing"
+	"time"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/golang/mock/gomock"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestTransactionMapper(t *testing.T) {
@@ -31,8 +32,8 @@ func TestTransactionMapper(t *testing.T) {
 		SourceCurrency:        "PLN",
 		DestinationAmount:     decimal.NewNullDecimal(decimal.NewFromInt(22)),
 		DestinationCurrency:   "USD",
-		SourceAccountID:       lo.ToPtr(int32(1)),
-		DestinationAccountID:  lo.ToPtr(int32(2)),
+		SourceAccountID:       int32(1),
+		DestinationAccountID:  int32(2),
 		TagIDs:                []int32{1, 2, 3},
 		CreatedAt:             time.Now(),
 		UpdatedAt:             time.Now(),
