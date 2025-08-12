@@ -1,190 +1,206 @@
 <!--suppress TypeScriptValidateTypes -->
 <p-fluid>
-    <div class="flex flex-col card gap-4">
-        <div class="flex flex-row">
-            <div class="font-semibold text-xl">{{ getTitle() }}</div>
-        </div>
-        <div class="flex flex-col w-full">
-            <p-selectbutton size="small" styleClass="w-full" [options]="transactionTypes"
-                            [(ngModel)]="transaction.type" optionLabel="name" (onChange)="onTransactionTypeChange()"
-                            optionValue="value">
-                <ng-template #item let-item>
-                    <div class="flex flex-col items-center gap-4">
-                        <i [class]="item.icon"></i>
-                        <label>{{ item.name }}</label>
-                    </div>
-                </ng-template>
-            </p-selectbutton>
-        </div>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="flex flex-col card gap-4">
+            <div class="flex flex-row">
+                <div class="font-semibold text-xl">{{ getTitle() }}</div>
+            </div>
+            <div class="flex flex-col w-full">
+                <p-selectbutton size="small" styleClass="w-full" [options]="transactionTypes"
+                                formControlName="type" optionLabel="name"
+                                optionValue="value">
+                    <ng-template #item let-item>
+                        <div class="flex flex-col items-center gap-4">
+                            <i [class]="item.icon"></i>
+                            <label>{{ item.name }}</label>
+                        </div>
+                    </ng-template>
+                </p-selectbutton>
+            </div>
 
-        <div class="flex gap-4">
-            <div class="flex flex-col w-1/2">
-                <div class="flex flex-col gap-2">
-                    <label for="currency">Source Account *</label>
-                    <p-select
-                        [options]="accounts"
-                        [(ngModel)]="transaction.sourceAccountId"
-                        [filter]="true"
-                        [disabled]="!isSourceAccountActive()"
-                        (onChange)="onSourceAccountChange($event)"
-                        filterBy="account.name"
-                        optionLabel="account.name"
-                        optionValue="account.id"
-                        placeholder="Select source account"
-                        [ngClass]="{'ng-invalid': showValidation && !transaction.sourceAccountId && isSourceAccountActive()}"
-                    />
-                    <div *ngIf="showValidation && !transaction.sourceAccountId && isSourceAccountActive()"
-                         class="text-red-500 text-xs">Source account is required.
-                    </div>
+            <div class="flex gap-4">
+                <div class="flex flex-col w-1/2">
+                    <div class="flex flex-col gap-2">
+                        <label for="currency">Source Account *</label>
+                        <p-select
+                            [options]="getApplicableAccounts(true)"
+                            formControlName="sourceAccountId"
+                            [filter]="true"
+                            filterBy="name"
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select source account"
+                        />
+                        <!--                        <div *ngIf="showValidation && !transaction.sourceAccountId"-->
+                        <!--                             class="text-red-500 text-xs">Source account is required.-->
+                        <!--                        </div>-->
 
-                    <p-inputgroup>
-                        <p-inputnumber [disabled]="!isSourceAccountActive()" [(ngModel)]="transaction.sourceAmount"
-                                       placeholder="Amount *"
-                                       mode="decimal"
-                                       [minFractionDigits]="0" [maxFractionDigits]="5"
-                                       [ngClass]="{'ng-invalid': showValidation && !transaction.sourceAmount && isSourceAccountActive()}"
-                        ></p-inputnumber>
-                        <p-inputgroup-addon [style]="{'color': 'deepskyblue'}">{{ transaction.sourceCurrency }}
-                        </p-inputgroup-addon>
-                    </p-inputgroup>
-                    <div *ngIf="showValidation && !transaction.sourceAmount && isSourceAccountActive()"
-                         class="text-red-500 text-xs">Amount is required.
+                        <div class="flex gap-2">
+                            <p-inputgroup>
+                                <p-inputnumber formControlName="sourceAmount"
+                                               placeholder="Amount *"
+                                               mode="decimal"
+                                               [minFractionDigits]="0" [maxFractionDigits]="5"
+                                ></p-inputnumber>
+                                <p-inputgroup-addon
+                                    [style]="{'color': 'deepskyblue'}">{{ form.get('sourceCurrency')?.value ?? '' }}
+                                </p-inputgroup-addon>
+                            </p-inputgroup>
+                            <p-button [disabled]="!canConvert()" severity="info" label="Convert"
+                                      icon="pi pi-arrow-right"
+                                      iconPos="left"
+                                      (onClick)="convertAmount(this.form.get('sourceAmount')!.value, this.form.get('sourceCurrency')!.value,convertFromSourceSetTo())"
+                            />
+                        </div>
+                        <!--                        <div *ngIf="showValidation && !transaction.sourceAmount"-->
+                        <!--                             class="text-red-500 text-xs">Amount is required.-->
+                        <!--                        </div>-->
                     </div>
                 </div>
-            </div>
-            <div class="flex flex-col w-1/2" *ngIf="isForeignCurrencyActive()">
-                <div class="flex flex-col gap-2">
-                    <label for="currency">Foreign Currency (optional)</label>
+                <div class="flex flex-col w-1/2" *ngIf="isForeignCurrencyActive()">
+                    <div class="flex flex-col gap-2">
+                        <label for="currency">Foreign Currency (optional)</label>
+                        <p-select
+                            [options]="currencies"
+                            formControlName="fxSourceCurrency"
+                            [filter]="true"
+                            filterBy="id"
+                            optionLabel="id"
+                            optionValue="id"
+                            placeholder="Select foreign currency" />
+                        <div class="flex gap-2">
+                            <p-inputgroup>
+                                <p-inputnumber formControlName="destinationAmount"
+                                               mode="decimal"
+                                               [minFractionDigits]="0" [maxFractionDigits]="5"
+                                               placeholder="Amount"></p-inputnumber>
+                                <p-inputgroup-addon
+                                    [style]="{'color': 'deepskyblue'}">{{ this.form.get('destinationCurrency')?.value ?? '' }}
+                                </p-inputgroup-addon>
+                            </p-inputgroup>
+                            <p-button [disabled]="!canConvert()" severity="info" label="Convert"
+                                      icon="pi pi-search"
+                                      iconPos="left"
+                                      (onClick)="convertAmount(this.form.get('destinationAmount')!.value, this.form.get('destinationCurrency')!.value,'source')"
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2 w-1/2">
+                    <label for="currency">Destination Account *</label>
                     <p-select
-                        [options]="currencies"
-                        [(ngModel)]="transaction.destinationCurrency"
+                        [options]="getApplicableAccounts(false)"
+                        formControlName="destinationAccountId"
                         [filter]="true"
-                        filterBy="id"
-                        optionLabel="id"
+                        filterBy="name"
+                        optionLabel="name"
                         optionValue="id"
-                        placeholder="Select foreign currency" />
+                        placeholder="Select destination account"
+                    />
+                    <!--                    <div *ngIf="showValidation && !transaction.destinationAccountId && isDestinationAccountActive()"-->
+                    <!--                         class="text-red-500 text-xs">Destination account is required.-->
+                    <!--                    </div>-->
+
                     <div class="flex gap-2">
+                        <p-button [disabled]="!canConvert()" severity="info" label="Convert"
+                                  icon="pi pi-arrow-left"
+                                  iconPos="left"
+                                  (onClick)="convertAmount(this.form.get('destinationAmount')!.value, this.form.get('destinationCurrency')!.value,'source')"
+                        />
                         <p-inputgroup>
-                            <p-inputnumber [(ngModel)]="transaction.destinationAmount"
+                            <p-inputnumber formControlName="destinationAmount" placeholder="Amount *"
                                            mode="decimal"
                                            [minFractionDigits]="0" [maxFractionDigits]="5"
-                                           placeholder="Amount"></p-inputnumber>
+                            ></p-inputnumber>
                             <p-inputgroup-addon
-                                [style]="{'color': 'deepskyblue'}">{{ transaction.destinationCurrency }}
+                                [style]="{'color': 'deepskyblue'}">{{ form.get('destinationCurrency')?.value ?? '' }}
                             </p-inputgroup-addon>
                         </p-inputgroup>
-                        <p-button [disabled]="!canConvertAmount()" severity="info" label="Convert" icon="pi pi-search"
-                                  iconPos="left" (onClick)="convertAmount()" />
+                    </div>
+                    <!--                    <div *ngIf="showValidation && !transaction.destinationAmount && isDestinationAccountActive()"-->
+                    <!--                         class="text-red-500 text-xs">Amount is required.-->
+                    <!--                    </div>-->
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex flex-col gap-4 w-1/2">
+                    <div class="flex flex-col gap-2">
+                        <label for="accountName">Transaction title *</label>
+                        <input pInputText id="accountName" type="text" formControlName="title" required
+                        />
+                        <!--                        <div *ngIf="showValidation && !transaction.title" class="text-red-500 text-xs">Title is-->
+                        <!--                            required.-->
+                        <!--                        </div>-->
+                    </div>
+                </div>
+                <div class="flex flex-col gap-4 w-1/2">
+                    <div class="flex flex-col gap-2">
+                        <label>Date *</label>
+                        <p-datepicker formControlName="transactionDate" [hourFormat]="'24'"
+                                      [showTime]="true"></p-datepicker>
+                        <!--                        <div *ngIf="showValidation && !transactionDate" class="text-red-500 text-xs">Date is required.-->
+                        <!--                        </div>-->
                     </div>
                 </div>
             </div>
-            <div class="flex flex-col gap-2 w-1/2" *ngIf="isDestinationAccountActive()">
-                <label for="currency">Destination Account *</label>
-                <p-select
-                    [options]="accounts"
-                    [(ngModel)]="transaction.destinationAccountId"
-                    [filter]="true"
-                    [disabled]="!isDestinationAccountActive()"
-                    (onChange)="onDestinationAccountChange($event)"
-                    filterBy="account.name"
-                    optionLabel="account.name"
-                    optionValue="account.id"
-                    placeholder="Select destination account"
-                    [ngClass]="{'ng-invalid': showValidation && !transaction.destinationAccountId && isDestinationAccountActive()}"
-                />
-                <div *ngIf="showValidation && !transaction.destinationAccountId && isDestinationAccountActive()"
-                     class="text-red-500 text-xs">Destination account is required.
-                </div>
-
-                <p-inputgroup>
-                    <p-inputnumber [(ngModel)]="transaction.destinationAmount" placeholder="Amount *"
-                                   mode="decimal"
-                                   [minFractionDigits]="0" [maxFractionDigits]="5"
-                                   [ngClass]="{'ng-invalid': showValidation && !transaction.destinationAmount && isDestinationAccountActive()}"
-                    ></p-inputnumber>
-                    <p-inputgroup-addon [style]="{'color': 'deepskyblue'}">{{ transaction.destinationCurrency }}
-                    </p-inputgroup-addon>
-                </p-inputgroup>
-                <div *ngIf="showValidation && !transaction.destinationAmount && isDestinationAccountActive()"
-                     class="text-red-500 text-xs">Amount is required.
-                </div>
-            </div>
-        </div>
-        <div class="flex gap-4">
-            <div class="flex flex-col gap-4 w-1/2">
-                <div class="flex flex-col gap-2">
-                    <label for="accountName">Transaction title *</label>
-                    <input pInputText id="accountName" type="text" [(ngModel)]="transaction.title" required
-                           [ngClass]="{'ng-invalid': showValidation && !transaction.title}"
-                    />
-                    <div *ngIf="showValidation && !transaction.title" class="text-red-500 text-xs">Title is required.
+            <div class="flex gap-4">
+                <div class="flex flex-col gap-2 w-1/2">
+                    <div class="flex flex-col gap-2">
+                        <label>Category</label>
+                        <p-select [options]="categories" formControlName="categoryId"
+                                  placeholder="Select Category"
+                                  optionLabel="name" optionValue="id"
+                                  filter="true"
+                                  [disabled]="false"
+                                  (onChange)="log()">
+                        </p-select>
                     </div>
-                </div>
-            </div>
-            <div class="flex flex-col gap-4 w-1/2">
-                <div class="flex flex-col gap-2">
-                    <label>Date *</label>
-                    <p-datepicker [(ngModel)]="transactionDate" [hourFormat]="'24'" [showTime]="true"
-                                  [ngClass]="{'ng-invalid': showValidation && !transactionDate}"></p-datepicker>
-                    <div *ngIf="showValidation && !transactionDate" class="text-red-500 text-xs">Date is required.</div>
-                </div>
-            </div>
-        </div>
-        <div class="flex gap-4">
-            <div class="flex flex-col gap-2 w-1/2">
-                <div class="flex flex-col gap-2">
-                    <label>Category</label>
-                    <p-select [options]="categories" [(ngModel)]="transaction.categoryId" placeholder="Select Category"
-                              optionLabel="name" optionValue="id"
-                              filter="true"
-                              [disabled]="false"
-                              (onChange)="log()">
-                    </p-select>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <label>Tags</label>
-                    <p-multiselect [options]="tags" [(ngModel)]="transaction.tagIds" placeholder="Select Tags"
-                                   optionLabel="name" optionValue="id" display="chip"
-                                   [maxSelectedLabels]="maxSelectedLabels"
-                                   styleClass="w-full"></p-multiselect>
-                    <div class="flex gap-2 flex-wrap">
-                        @for (tag of transaction.tagIds; track tag) {
-                            @let tagVal = tagById(tag);
-                            @if (tagVal) {
-                                <p-chip [label]="tagVal.name" [icon]="tagVal.icon" removable="true"
-                                        (onRemove)="removeTag(tagVal.id)" />
+                    <div class="flex flex-col gap-2">
+                        <label>Tags</label>
+                        <p-multiselect [options]="tags" formControlName="tagIds" placeholder="Select Tags"
+                                       optionLabel="name" optionValue="id" display="chip"
+                                       [maxSelectedLabels]="maxSelectedLabels"
+                                       styleClass="w-full"></p-multiselect>
+                        <div class="flex gap-2 flex-wrap">
+                            @for (tag of form.get('tagIds')!.value; track tag) {
+                                @let tagVal = tagById(tag);
+                                @if (tagVal) {
+                                    <p-chip [label]="tagVal.name" [icon]="tagVal.icon" removable="true"
+                                            (onRemove)="removeTag(tagVal.id)" />
+                                }
                             }
-                        }
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-4 w-1/2">
+                    <div class="flex flex-col gap-2">
+                        <label>Notes</label>
+                        <textarea rows="5" cols="30" formControlName="notes" pTextarea
+                                  [autoResize]="true"></textarea>
                     </div>
                 </div>
             </div>
-            <div class="flex flex-col gap-4 w-1/2">
-                <div class="flex flex-col gap-2">
-                    <label>Notes</label>
-                    <textarea rows="5" cols="30" [(ngModel)]="transaction.notes" pTextarea
-                              [autoResize]="true"></textarea>
+        </div>
+
+        <div class="flex mt-8">
+            <div class="card flex flex-wrap gap-6 w-full" [ngClass]="isEdit ? 'justify-between' : 'justify-end'">
+                <div class="flex flex-col w-1/2" *ngIf="isEdit">
+                    <p-button *ngIf="isEdit" label="Refresh" severity="info" [fluid]="false"
+                              (click)="refresh()"></p-button>
+                </div>
+
+                <div class="flex flex-row items-center gap-2">
+                    <p-checkbox id="chkbox2" formControlName="skipRules" [binary]="true" />
+                    <label for="chkbox2">Skip rules</label>
+                </div>
+
+                <div class="flex flex-col justify-end gap-2">
+                    <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
+                    <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
                 </div>
             </div>
+
         </div>
-    </div>
-
-    <div class="flex mt-8">
-        <div class="card flex flex-wrap gap-6 w-full" [ngClass]="isEdit ? 'justify-between' : 'justify-end'">
-            <div class="flex flex-col w-1/2" *ngIf="isEdit">
-                <p-button *ngIf="isEdit" label="Refresh" severity="info" [fluid]="false" (click)="refresh()"></p-button>
-            </div>
-
-            <div class="flex flex-row items-center gap-2">
-                <p-checkbox id="chkbox2" [(ngModel)]="skipRules" [binary]="true" />
-                <label for="chkbox2">Skip rules</label>
-            </div>
-
-            <div class="flex flex-col justify-end gap-2">
-                <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
-                <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
-            </div>
-        </div>
-
-    </div>
+    </form>
 </p-fluid>
 <p-toast />
