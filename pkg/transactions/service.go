@@ -433,10 +433,19 @@ func (s *Service) fillDeposit(
 		return nil, errors.Wrap(err, "invalid destination amount")
 	}
 
+	sourceAmount, err := decimal.NewFromString(req.SourceAmount)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid source amount")
+	}
+
 	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = req.DestinationAccountId
+
+	newTx.SourceAmount = decimal.NewNullDecimal(sourceAmount)
+	newTx.SourceCurrency = req.SourceCurrency
+	newTx.SourceAccountID = req.SourceAccountId
 
 	return &fillResponse{}, nil
 }
@@ -455,6 +464,7 @@ func (s *Service) fillReconciliation(
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = req.DestinationAccountId
+	// todo
 
 	return &fillResponse{}, nil
 }

@@ -137,10 +137,10 @@ export class TransactionUpsertComponent implements OnInit {
     buildForm(tx: Transaction) {
         const form = new FormGroup({
             id: new FormControl(tx.id, { nonNullable: false }),
-            sourceAmount: new FormControl(tx.sourceAmount, Validators.min(0)),
+            sourceAmount: new FormControl(this.toPositiveNumber(tx.sourceAmount), Validators.min(0)),
             sourceCurrency: new FormControl(tx.sourceCurrency, Validators.required),
             sourceAccountId: new FormControl(tx.sourceAccountId, Validators.required),
-            destinationAmount: new FormControl(tx.destinationAmount, Validators.min(0)),
+            destinationAmount: new FormControl(this.toPositiveNumber(tx.destinationAmount), Validators.min(0)),
             destinationCurrency: new FormControl(tx.destinationCurrency, Validators.required),
             destinationAccountId: new FormControl(tx.destinationAccountId, Validators.required),
             notes: new FormControl(tx.notes, { nonNullable: false }),
@@ -150,25 +150,32 @@ export class TransactionUpsertComponent implements OnInit {
             type: new FormControl(tx.type, Validators.required),
             tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
             skipRules: new FormControl(this.skipRules, { nonNullable: false }),
-            fxSourceAmount: new FormControl(tx.fxSourceAmount, { nonNullable: false }),
-            fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false })
+            fxSourceAmount: new FormControl(this.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
+            fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false }),
         });
 
         form.get('destinationAccountId')!.valueChanges.subscribe(async (newVal) => {
+            let curr = form.get('destinationCurrency');
+            curr?.setValue('', { emitEvent: false })
+
             let account = this.getAccountById(newVal!);
             if (!account) {
                 return;
             }
 
-            form.get('destinationCurrency')!.setValue(account.currency, { emitEvent: false });
+            curr?.setValue(account.currency, { emitEvent: false });
         });
 
         form.get('sourceAccountId')!.valueChanges.subscribe(async (newVal) => {
+            let curr = form.get('sourceCurrency');
+            curr?.setValue('', { emitEvent: false })
+
             let account = this.getAccountById(newVal!);
             if (!account) {
                 return;
             }
-            form.get('sourceCurrency')!.setValue(account.currency, { emitEvent: false });
+
+            curr?.setValue(account.currency, { emitEvent: false });
         });
 
         // handle amounts
@@ -183,6 +190,24 @@ export class TransactionUpsertComponent implements OnInit {
 
             form.get('destinationAmount')!.setValue(newVal, { emitEvent: false });
         });
+
+        form.get('type')!.valueChanges.subscribe((newVal) => {
+            if (newVal != TransactionType.EXPENSE) {
+                form.get('fxSourceAmount')?.setValue('')
+                form.get('fxSourceCurrency')!.setValue('');
+            }
+
+            let sourceAccountId = form.get('sourceAccountId')!.value;
+            let destinationAccountId = form.get('destinationAccountId')!.value;
+
+            if (!this.isAccountApplicable(newVal!, true, sourceAccountId!)) {
+                form.get('sourceAccountId')!.setValue(0);
+            }
+
+            if (!this.isAccountApplicable(newVal!, false, destinationAccountId!)) {
+                form.get('destinationAccountId')!.setValue(0);
+            }
+        })
 
         return form;
     }
@@ -214,6 +239,8 @@ export class TransactionUpsertComponent implements OnInit {
             if (tx.destinationAmount) tx.destinationAmount = this.toPositiveNumber(tx.destinationAmount)!;
 
             this.transactionDate = TimestampHelper.timestampToDate(tx.transactionDate!);
+
+            this.form = this.buildForm(tx);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -274,8 +301,17 @@ export class TransactionUpsertComponent implements OnInit {
         }
     }
 
-    getApplicableAccounts(isSource: boolean): Account[] {
-        const applicable = this.accounts[this.form.get('type')?.value];
+    isAccountApplicable(type: TransactionType, isSource: boolean, id: number): boolean {
+        let applicable = this.getApplicableAccounts(type, isSource);
+        if (!applicable) {
+            return false;
+        }
+
+        return applicable.some((a) => a.id == id);
+    }
+
+    getApplicableAccounts(type: TransactionType, isSource: boolean): Account[] {
+        const applicable = this.accounts[type];
 
         if (!applicable) {
             return [];
@@ -320,16 +356,6 @@ export class TransactionUpsertComponent implements OnInit {
 
     log() {
         console.log(this.form);
-    }
-
-    convertFromSourceSetTo(): possibleDestination {
-        let type = this.form.get('type')!.value;
-
-        if (type == TransactionType.EXPENSE) {
-            return 'fx';
-        }
-
-        return 'destination';
     }
 
     async convertAmount(amount: number, currency: string, setTo: possibleDestination) {
