@@ -120,6 +120,11 @@ func main() {
 	})
 
 	ruleEngine := rules.NewExecutor(ruleInterpreter)
+	applicableAccountSvc := transactions.NewApplicableAccountService(accountSvc)
+	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
+		AccountSvc:           accountSvc,
+		ApplicableAccountSvc: applicableAccountSvc,
+	})
 
 	statsSvc := transactions.NewStatService()
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
@@ -128,6 +133,7 @@ func main() {
 		CurrencyConverterSvc: currencyConverter,
 		BaseAmountService:    baseAmountSvc,
 		RuleSvc:              ruleEngine,
+		ValidationSvc:        validationSvc,
 	})
 
 	ruleScheduler := rules.NewScheduler(&rules.SchedulerConfig{
@@ -144,11 +150,6 @@ func main() {
 	tagSvc := tags.NewService(mapper)
 	categoriesSvc := categories.NewService(mapper)
 
-	applicableAccountSvc := transactions.NewApplicableAccountService(accountSvc)
-	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
-		AccountSvc:           accountSvc,
-		ApplicableAccountSvc: applicableAccountSvc,
-	})
 	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper, validationSvc)
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc, applicableAccountSvc, mapper)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)

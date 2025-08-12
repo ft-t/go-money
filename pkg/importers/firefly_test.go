@@ -85,18 +85,18 @@ func TestFireflyImport(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
 
 				txDate := requests[0].Req.TransactionDate.AsTime().Format(time.RFC3339)
 				assert.EqualValues(t, "2025-06-17T13:07:46Z", txDate)
 
-				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
-				assert.EqualValues(t, *tx.Withdrawal.FxSourceCurrency, "PLN")
+				assert.EqualValues(t, tx.Expense.SourceCurrency, "UAH")
+				assert.EqualValues(t, *tx.Expense.FxSourceCurrency, "PLN")
 
-				assert.EqualValues(t, "-964.44", tx.Withdrawal.SourceAmount)
-				assert.EqualValues(t, "-83.81", *tx.Withdrawal.FxSourceAmount)
+				assert.EqualValues(t, "-964.44", tx.Expense.SourceAmount)
+				assert.EqualValues(t, "-83.81", *tx.Expense.FxSourceAmount)
 
-				assert.EqualValues(t, accountsData[0].ID, tx.Withdrawal.SourceAccountId)
+				assert.EqualValues(t, accountsData[0].ID, tx.Expense.SourceAccountId)
 
 				assert.EqualValues(t, "firefly_2805", *requests[0].Req.InternalReferenceNumber)
 
@@ -134,13 +134,13 @@ func TestFireflyImport(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
 
-				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "PLN")
+				assert.EqualValues(t, tx.Expense.SourceCurrency, "PLN")
 
-				assert.EqualValues(t, "-3900", tx.Withdrawal.SourceAmount)
+				assert.EqualValues(t, "-3900", tx.Expense.SourceAmount)
 
-				assert.EqualValues(t, accountsData[1].ID, tx.Withdrawal.SourceAccountId)
+				assert.EqualValues(t, accountsData[1].ID, tx.Expense.SourceAccountId)
 
 				assert.EqualValues(t, "firefly_1869", *requests[0].Req.InternalReferenceNumber)
 
@@ -218,13 +218,13 @@ func TestFireflyImport(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Reconciliation)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
 
-				assert.EqualValues(t, "USD", tx.Reconciliation.DestinationCurrency)
+				assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
 
-				assert.EqualValues(t, "-296", tx.Reconciliation.DestinationAmount)
+				assert.EqualValues(t, "-296", tx.Adjustment.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[2].ID, tx.Reconciliation.DestinationAccountId)
+				assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_2848", *requests[0].Req.InternalReferenceNumber)
 
@@ -260,13 +260,13 @@ func TestFireflyImport(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Reconciliation)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
 
-				assert.EqualValues(t, "USD", tx.Reconciliation.DestinationCurrency)
+				assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
 
-				assert.EqualValues(t, "49.37", tx.Reconciliation.DestinationAmount)
+				assert.EqualValues(t, "49.37", tx.Adjustment.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[2].ID, tx.Reconciliation.DestinationAccountId)
+				assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_2830", *requests[0].Req.InternalReferenceNumber)
 

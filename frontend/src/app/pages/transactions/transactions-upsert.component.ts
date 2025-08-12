@@ -27,12 +27,12 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import {
     CreateTransactionRequest,
     CreateTransactionRequestSchema,
-    DepositSchema,
+    ExpenseSchema,
+    IncomeSchema,
     ListTransactionsRequestSchema,
     TransactionsService,
     TransferBetweenAccountsSchema,
     UpdateTransactionRequestSchema,
-    WithdrawalSchema
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import {
     CurrencyService,
@@ -110,7 +110,7 @@ export class TransactionUpsertComponent implements OnInit {
         this.transaction = create(TransactionSchema, {
             destinationAmount: undefined,
             sourceAmount: undefined,
-            type: TransactionType.WITHDRAWAL
+            type: TransactionType.EXPENSE
         });
 
         this.transactionTypes = EnumService.getBaseTransactionTypes();
@@ -161,9 +161,9 @@ export class TransactionUpsertComponent implements OnInit {
 
             this.transaction = resp.transactions[0];
 
-            if (this.transaction.sourceAmount) this.transaction.sourceAmount = this.toPositiveNumber(this.transaction.sourceAmount);
+            if (this.transaction.sourceAmount) this.transaction.sourceAmount = this.toPositiveNumber(this.transaction.sourceAmount)!;
 
-            if (this.transaction.destinationAmount) this.transaction.destinationAmount = this.toPositiveNumber(this.transaction.destinationAmount);
+            if (this.transaction.destinationAmount) this.transaction.destinationAmount = this.toPositiveNumber(this.transaction.destinationAmount)!;
 
             this.transactionDate = TimestampHelper.timestampToDate(this.transaction.transactionDate!);
         } catch (e) {
@@ -218,7 +218,7 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     isSourceAccountActive(): boolean {
-        if (this.transaction.type == TransactionType.WITHDRAWAL) return true;
+        if (this.transaction.type == TransactionType.EXPENSE) return true;
 
         if (this.transaction.type == TransactionType.TRANSFER_BETWEEN_ACCOUNTS) return true;
 
@@ -227,20 +227,20 @@ export class TransactionUpsertComponent implements OnInit {
 
     onTransactionTypeChange() {
         if (!this.isDestinationAccountActive()) {
-            this.transaction.destinationAccountId = undefined;
-            this.transaction.destinationCurrency = undefined;
-            this.transaction.destinationAmount = undefined;
+            this.transaction.destinationAccountId = 0;
+            this.transaction.destinationCurrency = '';
+            this.transaction.destinationAmount = '';
         }
 
         if (!this.isSourceAccountActive()) {
-            this.transaction.sourceAccountId = undefined;
-            this.transaction.sourceCurrency = undefined;
-            this.transaction.sourceAmount = undefined;
+            this.transaction.sourceAccountId = 0;
+            this.transaction.sourceCurrency = '';
+            this.transaction.sourceAmount = '';
         }
 
         if (!this.isForeignCurrencyActive()) {
-            this.transaction.destinationCurrency = undefined;
-            this.transaction.destinationAmount = undefined;
+            this.transaction.destinationCurrency = '';
+            this.transaction.destinationAmount = '';
         }
     }
 
@@ -310,7 +310,7 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     isDestinationAccountActive(): boolean {
-        if (this.transaction.type == TransactionType.DEPOSIT) return true;
+        if (this.transaction.type == TransactionType.INCOME) return true;
 
         if (this.transaction.type == TransactionType.TRANSFER_BETWEEN_ACCOUNTS) return true;
 
@@ -318,7 +318,7 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     isForeignCurrencyActive(): boolean {
-        if (this.transaction.type == TransactionType.WITHDRAWAL) return true;
+        if (this.transaction.type == TransactionType.EXPENSE) return true;
 
         return false;
     }
@@ -338,23 +338,23 @@ export class TransactionUpsertComponent implements OnInit {
         });
 
         switch (this.transaction.type) {
-            case TransactionType.DEPOSIT:
-                req.transaction.value = create(DepositSchema, {
+            case TransactionType.INCOME:
+                req.transaction.value = create(IncomeSchema, {
                     destinationAccountId: this.transaction.destinationAccountId,
                     destinationAmount: this.toPositiveNumber(this.transaction.destinationAmount),
                     destinationCurrency: this.transaction.destinationCurrency
                 });
-                req.transaction.case = 'deposit';
+                req.transaction.case = 'income';
                 break;
-            case TransactionType.WITHDRAWAL:
-                req.transaction.value = create(WithdrawalSchema, {
+            case TransactionType.EXPENSE:
+                req.transaction.value = create(ExpenseSchema, {
                     sourceAmount: this.toNegativeNumber(this.transaction.sourceAmount),
                     sourceCurrency: this.transaction.sourceCurrency,
                     sourceAccountId: this.transaction.sourceAccountId,
                     fxSourceAmount: this.toNegativeNumber(this.transaction.destinationAmount), // todo
                     fxSourceCurrency: this.transaction.destinationCurrency // todo
                 });
-                req.transaction.case = 'withdrawal';
+                req.transaction.case = 'expense';
                 break;
             case TransactionType.TRANSFER_BETWEEN_ACCOUNTS:
                 req.transaction.value = create(TransferBetweenAccountsSchema, {

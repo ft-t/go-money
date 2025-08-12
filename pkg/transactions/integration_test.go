@@ -62,8 +62,8 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Expense{
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
 				SourceAmount:     "-765.76",
 				SourceCurrency:   "UAH",
 				SourceAccountId:  accounts[0].ID,
@@ -131,8 +131,8 @@ func TestUpdateTransaction(t *testing.T) {
 	tx1Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
 		CategoryId:      lo.ToPtr(int32(55)),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Expense{
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
 				SourceAmount:     "-765.76",
 				SourceCurrency:   "UAH",
 				SourceAccountId:  accounts[0].ID,
@@ -148,8 +148,8 @@ func TestUpdateTransaction(t *testing.T) {
 	expenseDate2 := time.Date(2025, 6, 5, 0, 0, 0, 0, time.UTC)
 	tx2Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate2),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Expense{
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
 				SourceAmount:     "-200.76",
 				SourceCurrency:   "UAH",
 				SourceAccountId:  accounts[0].ID,
@@ -186,8 +186,8 @@ func TestUpdateTransaction(t *testing.T) {
 		Transaction: &transactionsv1.CreateTransactionRequest{
 			CategoryId:      lo.ToPtr(int32(53)),
 			TransactionDate: timestamppb.New(expenseDate3),
-			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-				Withdrawal: &transactionsv1.Expense{
+			Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+				Expense: &transactionsv1.Expense{
 					SourceAmount:     "-100.0",
 					SourceCurrency:   "UAH",
 					SourceAccountId:  accounts[0].ID,
@@ -215,8 +215,8 @@ func TestUpdateTransaction(t *testing.T) {
 		Id: tx1Result.Transaction.Id,
 		Transaction: &transactionsv1.CreateTransactionRequest{
 			TransactionDate: timestamppb.New(expenseDate),
-			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-				Withdrawal: &transactionsv1.Expense{
+			Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+				Expense: &transactionsv1.Expense{
 					SourceAmount:     "-20.5",
 					SourceCurrency:   "USD",
 					SourceAccountId:  accounts[1].ID,
@@ -334,8 +334,8 @@ func TestBasicCalc(t *testing.T) {
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Expense{
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
 				SourceAmount:    "-10",
 				SourceCurrency:  "USD",
 				SourceAccountId: accounts[0].ID,
@@ -347,8 +347,8 @@ func TestBasicCalc(t *testing.T) {
 	expenseDate2 := time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate2),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Expense{
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
 				SourceAmount:    "-15",
 				SourceCurrency:  "PLN",
 				SourceAccountId: accounts[1].ID,

@@ -253,16 +253,16 @@ func (s *Service) CreateBulkInternal(
 			if fillRes, err = s.fillTransferBetweenAccounts(ctx, tx, v.TransferBetweenAccounts, newTx); err != nil {
 				return nil, err
 			}
-		case *transactionsv1.CreateTransactionRequest_Withdrawal:
-			if fillRes, err = s.fillWithdrawal(ctx, v.Withdrawal, newTx); err != nil {
+		case *transactionsv1.CreateTransactionRequest_Expense:
+			if fillRes, err = s.fillWithdrawal(ctx, v.Expense, newTx); err != nil {
 				return nil, err
 			}
 		case *transactionsv1.CreateTransactionRequest_Income:
 			if fillRes, err = s.fillDeposit(ctx, v.Income, newTx); err != nil {
 				return nil, err
 			}
-		case *transactionsv1.CreateTransactionRequest_Reconciliation:
-			if fillRes, err = s.fillReconciliation(ctx, v.Reconciliation, newTx); err != nil {
+		case *transactionsv1.CreateTransactionRequest_Adjustment:
+			if fillRes, err = s.fillReconciliation(ctx, v.Adjustment, newTx); err != nil {
 				return nil, err
 			}
 		default:

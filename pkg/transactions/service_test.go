@@ -394,8 +394,8 @@ func TestCreateReconciliation(t *testing.T) {
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	resp, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
-			Reconciliation: &transactionsv1.Adjustment{
+		Transaction: &transactionsv1.CreateTransactionRequest_Adjustment{
+			Adjustment: &transactionsv1.Adjustment{
 				DestinationAmount:    "556",
 				DestinationCurrency:  accounts[0].Currency,
 				DestinationAccountId: accounts[0].ID,
@@ -463,8 +463,8 @@ func TestCreateBulk(t *testing.T) {
 	resp, err := srv.CreateBulk(context.TODO(), []*transactionsv1.CreateTransactionRequest{
 		{
 			TransactionDate: timestamppb.New(expenseDate),
-			Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
-				Reconciliation: &transactionsv1.Adjustment{
+			Transaction: &transactionsv1.CreateTransactionRequest_Adjustment{
+				Adjustment: &transactionsv1.Adjustment{
 					DestinationAmount:    "556",
 					DestinationCurrency:  accounts[0].Currency,
 					DestinationAccountId: accounts[0].ID,
@@ -473,8 +473,8 @@ func TestCreateBulk(t *testing.T) {
 		},
 		{
 			TransactionDate: timestamppb.New(expenseDate),
-			Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
-				Reconciliation: &transactionsv1.Adjustment{
+			Transaction: &transactionsv1.CreateTransactionRequest_Adjustment{
+				Adjustment: &transactionsv1.Adjustment{
 					DestinationAmount:    "777",
 					DestinationCurrency:  accounts[0].Currency,
 					DestinationAccountId: accounts[0].ID,

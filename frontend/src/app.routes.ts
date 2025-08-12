@@ -50,7 +50,7 @@ export const appRoutes: Routes = [
                         {
                             'account.type': {
                                 matchMode: 'in',
-                                value: [1, 2, 3]
+                                value: [1]
                             }
                         }
                     ]
@@ -133,10 +133,10 @@ export const appRoutes: Routes = [
                     preselectedFilter: {
                         transactionTypes: {
                             matchMode: 'in',
-                            value: [TransactionType.DEPOSIT]
+                            value: [TransactionType.INCOME]
                         }
                     },
-                    newTransactionType: TransactionType.DEPOSIT
+                    newTransactionType: TransactionType.INCOME
                 }
             },
             {
@@ -146,10 +146,10 @@ export const appRoutes: Routes = [
                     preselectedFilter: {
                         transactionTypes: {
                             matchMode: 'in',
-                            value: [TransactionType.WITHDRAWAL]
+                            value: [TransactionType.EXPENSE]
                         }
                     },
-                    newTransactionType: TransactionType.WITHDRAWAL
+                    newTransactionType: TransactionType.EXPENSE
                 }
             },
             {
@@ -159,7 +159,7 @@ export const appRoutes: Routes = [
                     preselectedFilter: {
                         transactionTypes: {
                             matchMode: 'in',
-                            value: [TransactionType.TRANSFER_BETWEEN_ACCOUNTS, TransactionType.RECONCILIATION]
+                            value: [TransactionType.TRANSFER_BETWEEN_ACCOUNTS, TransactionType.ADJUSTMENT]
                         }
                     },
                     newTransactionType: TransactionType.TRANSFER_BETWEEN_ACCOUNTS

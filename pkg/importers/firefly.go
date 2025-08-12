@@ -196,8 +196,8 @@ func (f *FireflyImporter) Import(
 				withdrawal.FxSourceAmount = lo.ToPtr(foreignAmountParsed.Abs().Mul(decimal.NewFromInt(-1)).String())
 			}
 
-			targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Withdrawal{
-				Withdrawal: withdrawal,
+			targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Expense{
+				Expense: withdrawal,
 			}
 		case "Opening balance", "Deposit":
 			if sourceType == "Debt" {
@@ -215,8 +215,8 @@ func (f *FireflyImporter) Import(
 					)
 				}
 
-				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Withdrawal{
-					Withdrawal: &transactionsv1.Expense{
+				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Expense{
+					Expense: &transactionsv1.Expense{
 						SourceAmount:    amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String(),
 						SourceCurrency:  currencyCode,
 						SourceAccountId: sourceAccount.ID,
@@ -246,15 +246,15 @@ func (f *FireflyImporter) Import(
 				}
 			}
 		case "Reconciliation":
-			rec := &transactionsv1.CreateTransactionRequest_Reconciliation{
-				Reconciliation: &transactionsv1.Adjustment{
+			rec := &transactionsv1.CreateTransactionRequest_Adjustment{
+				Adjustment: &transactionsv1.Adjustment{
 					DestinationAmount:    "",
 					DestinationCurrency:  currencyCode,
 					DestinationAccountId: 0,
 				},
 			}
 			if destinationAccountType == "Reconciliation account" {
-				rec.Reconciliation.DestinationAmount = amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String()
+				rec.Adjustment.DestinationAmount = amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String()
 
 				destAccount, ok := accountMap[sourceName] // yes, sourceName is used here as destination account
 				if !ok {
@@ -270,9 +270,9 @@ func (f *FireflyImporter) Import(
 					)
 				}
 
-				rec.Reconciliation.DestinationAccountId = destAccount.ID
+				rec.Adjustment.DestinationAccountId = destAccount.ID
 			} else {
-				rec.Reconciliation.DestinationAmount = amountParsed.Abs().String()
+				rec.Adjustment.DestinationAmount = amountParsed.Abs().String()
 
 				destAccount, ok := accountMap[destinationName]
 				if !ok {
@@ -288,7 +288,7 @@ func (f *FireflyImporter) Import(
 					)
 				}
 
-				rec.Reconciliation.DestinationAccountId = destAccount.ID
+				rec.Adjustment.DestinationAccountId = destAccount.ID
 			}
 
 			targetTx.Transaction = rec
