@@ -1,28 +1,32 @@
 package rules
 
 import (
-	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
 	"context"
+	"time"
+
+	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
-	"time"
 )
 
 type DryRun struct {
 	executor       ExecutorSvc
 	transactionSvc TransactionSvc
 	mapperSvc      MapperSvc
+	validationSvc  ValidationSvc
 }
 
 func NewDryRun(
 	executor ExecutorSvc,
 	transactionSvc TransactionSvc,
 	mapperSvc MapperSvc,
+	validationSvc ValidationSvc,
 ) *DryRun {
 	return &DryRun{
 		executor:       executor,
 		transactionSvc: transactionSvc,
 		mapperSvc:      mapperSvc,
+		validationSvc:  validationSvc,
 	}
 }
 
@@ -59,10 +63,10 @@ func (s *DryRun) DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest)
 		return nil, ruleErr
 	}
 
-	if err := s.transactionSvc.ValidateTransactionData(
+	if err := s.validationSvc.Validate(
 		ctx,
 		database.FromContext(ctx, database.GetDb(database.DbTypeReadonly)),
-		updated,
+		[]*database.Transaction{updated},
 	); err != nil {
 		return nil, errors.Wrap(err, "transaction validation failed after rule execution")
 	}

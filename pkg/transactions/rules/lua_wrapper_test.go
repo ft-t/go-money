@@ -171,7 +171,7 @@ func TestBasicFields(t *testing.T) {
 		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
-		if tx:sourceAccountID() == nil then
+		if tx:sourceAccountID() == 0 then
 			tx:sourceAccountID(67890)
 		end
 	`
@@ -187,12 +187,12 @@ func TestBasicFields(t *testing.T) {
 		assert.Equal(t, int32(67890), tx.SourceAccountID)
 	})
 
-	t.Run("set source account ID to nil", func(t *testing.T) {
+	t.Run("set source account ID to 0", func(t *testing.T) {
 		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:sourceAccountID() == 12345 then
-			tx:sourceAccountID(nil)
+			tx:sourceAccountID(0)
 		end
 	`
 
@@ -204,7 +204,7 @@ func TestBasicFields(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Nil(t, tx.SourceAccountID)
+		assert.EqualValues(t, 0, tx.SourceAccountID)
 	})
 
 	t.Run("destination account ID", func(t *testing.T) {

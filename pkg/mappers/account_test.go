@@ -1,16 +1,17 @@
 package mappers_test
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"testing"
+	"time"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/golang/mock/gomock"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"testing"
-	"time"
 )
 
 func TestMapper(t *testing.T) {

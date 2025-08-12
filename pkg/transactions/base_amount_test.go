@@ -9,8 +9,8 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/lib/pq"
-	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
@@ -78,7 +78,7 @@ func TestBaseAmountService(t *testing.T) {
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-10)),
 				Extra:           make(map[string]string),
-				SourceAccountID: lo.ToPtr(acc[0].ID),
+				SourceAccountID: acc[0].ID,
 
 				// source to rate
 				// here dest should be null
@@ -87,7 +87,7 @@ func TestBaseAmountService(t *testing.T) {
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-				SourceAccountID: lo.ToPtr(acc[1].ID),
+				SourceAccountID: acc[1].ID,
 				Extra:           make(map[string]string),
 
 				// [2]
@@ -192,7 +192,7 @@ func TestBaseAmountService(t *testing.T) {
 			},
 		}
 
-		txSrv := transactions.NewService(&transactions.ServiceConfig{})
+		txSrv := validation.NewValidationService(&validation.ServiceConfig{})
 		for _, tx := range txs {
 			assert.NoError(t, txSrv.ValidateTransactionData(context.TODO(), gormDB, tx))
 		}

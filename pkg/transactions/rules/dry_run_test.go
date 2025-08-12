@@ -17,11 +17,12 @@ func TestDryRun(t *testing.T) {
 		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
 		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		transactionSvc.EXPECT().ValidateTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
 
-		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc, validationSvc)
 
 		tx := &database.Transaction{
 			Title: "abcd",
@@ -64,11 +65,12 @@ func TestDryRun(t *testing.T) {
 		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
 		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		transactionSvc.EXPECT().ValidateTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
 
-		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc, validationSvc)
 
 		executorSvc.EXPECT().ProcessSingleRule(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, transaction *database.Transaction, rule *database.Rule) (bool, *database.Transaction, error) {
@@ -101,8 +103,9 @@ func TestDryRun(t *testing.T) {
 		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
 		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc, validationSvc)
 
 		transactionSvc.EXPECT().GetTransactionByIDs(gomock.Any(), []int64{1}).
 			Return([]*database.Transaction{
@@ -125,8 +128,9 @@ func TestDryRun(t *testing.T) {
 		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
 		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc, validationSvc)
 
 		transactionSvc.EXPECT().GetTransactionByIDs(gomock.Any(), gomock.Any()).
 			Return(nil, assert.AnError)
@@ -146,8 +150,9 @@ func TestDryRun(t *testing.T) {
 		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
 		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc, validationSvc)
 		tx := &database.Transaction{
 			Title: "abcd",
 		}
@@ -158,7 +163,7 @@ func TestDryRun(t *testing.T) {
 		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 			Return(&gomoneypbv1.Transaction{})
 
-		transactionSvc.EXPECT().ValidateTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(assert.AnError)
 
 		executorSvc.EXPECT().ProcessSingleRule(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -186,8 +191,9 @@ func TestDryRun(t *testing.T) {
 		executorSvc := NewMockExecutorSvc(gomock.NewController(t))
 		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc, validationSvc)
 
 		transactionSvc.EXPECT().GetTransactionByIDs(gomock.Any(), gomock.Any()).
 			Return(nil, assert.AnError)
@@ -208,7 +214,9 @@ func TestDryRun(t *testing.T) {
 		transactionSvc := NewMockTransactionSvc(gomock.NewController(t))
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
 
-		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc)
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+
+		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc, validationSvc)
 
 		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
