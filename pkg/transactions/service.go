@@ -433,7 +433,7 @@ func (s *Service) fillDeposit(
 		return nil, errors.Wrap(err, "invalid destination amount")
 	}
 
-	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT
+	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = &req.DestinationAccountId
@@ -451,7 +451,7 @@ func (s *Service) fillReconciliation(
 		return nil, errors.Wrap(err, "invalid destination amount")
 	}
 
-	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION
+	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = &req.DestinationAccountId
@@ -472,7 +472,7 @@ func (s *Service) fillWithdrawal(
 	newTx.SourceAmount = decimal.NewNullDecimal(sourceAmount)
 	newTx.SourceCurrency = req.SourceCurrency
 	newTx.SourceAccountID = &req.SourceAccountId
-	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL
+	newTx.TransactionType = gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE
 
 	// fx
 	if req.FxSourceCurrency != nil {

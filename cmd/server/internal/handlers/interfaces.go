@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
@@ -10,8 +12,9 @@ import (
 	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
-	"context"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/shopspring/decimal"
 )
 
@@ -35,6 +38,9 @@ type TransactionsSvc interface {
 }
 
 type ApplicableAccountSvc interface {
+	GetAll(
+		ctx context.Context,
+	) (map[gomoneypbv1.TransactionType]*transactions.PossibleAccount, error)
 }
 
 type UserSvc interface {
@@ -188,4 +194,8 @@ type CategoriesSvc interface {
 		ctx context.Context,
 		req *categoriesv1.UpdateCategoryRequest,
 	) (*categoriesv1.UpdateCategoryResponse, error)
+}
+
+type MapperSvc interface {
+	MapAccount(ctx context.Context, acc *database.Account) *gomoneypbv1.Account
 }

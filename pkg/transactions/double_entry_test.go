@@ -1,14 +1,15 @@
 package transactions_test
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"testing"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/golang/mock/gomock"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestDoubleEntry_Withdrawals(t *testing.T) {
@@ -24,8 +25,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			AccountSvc:   accSvc,
 		})
 
-		accSvc.EXPECT().GetAccount(gomock.Any(), sourceAccountID).Return(&database.Account{
-			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_REGULAR,
+		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
+			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
@@ -49,7 +50,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			AccountSvc:   accSvc,
 		})
 
-		accSvc.EXPECT().GetAccount(gomock.Any(), sourceAccountID).Return(&database.Account{
+		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_LIABILITY,
 		}, nil)
 
@@ -74,7 +75,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			AccountSvc:   accSvc,
 		})
 
-		accSvc.EXPECT().GetAccount(gomock.Any(), sourceAccountID).Return(&database.Account{
+		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME,
 		}, nil)
 
@@ -99,8 +100,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			AccountSvc:   accSvc,
 		})
 
-		accSvc.EXPECT().GetAccount(gomock.Any(), sourceAccountID).Return(&database.Account{
-			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_REGULAR,
+		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
+			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
@@ -124,8 +125,8 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			AccountSvc:   accSvc,
 		})
 
-		accSvc.EXPECT().GetAccount(gomock.Any(), sourceAccountID).Return(&database.Account{
-			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_REGULAR,
+		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
+			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		}, nil)
 
 		resp, err := srv.Record(context.TODO(), &database.Transaction{
@@ -149,7 +150,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			AccountSvc:   accSvc,
 		})
 
-		accSvc.EXPECT().GetAccount(gomock.Any(), sourceAccountID).Return(&database.Account{
+		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(&database.Account{
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_LIABILITY,
 		}, nil)
 
@@ -250,7 +251,7 @@ func TestDoubleEntry(t *testing.T) {
 			AccountSvc:   accSvc,
 		})
 
-		accSvc.EXPECT().GetAccount(gomock.Any(), sourceAccountID).Return(nil, assert.AnError)
+		accSvc.EXPECT().GetAccountByID(gomock.Any(), sourceAccountID).Return(nil, assert.AnError)
 
 		_, err := srv.Record(context.TODO(), &database.Transaction{
 			SourceAccountID:                 &sourceAccountID,

@@ -178,7 +178,7 @@ func TestCreateAccount(t *testing.T) {
 			Extra: map[string]string{
 				"a": "b",
 			},
-			Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 			Note:             "some note",
 			LiabilityPercent: nil,
 			Iban:             "some-iban",
@@ -196,7 +196,7 @@ func TestCreateAccount(t *testing.T) {
 		assert.EqualValues(t, "USD", rec.Currency)
 		assert.EqualValues(t, "0.000000000000", rec.CurrentBalance.StringFixed(12))
 		assert.EqualValues(t, map[string]string{"a": "b"}, rec.Extra)
-		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_REGULAR, rec.Type)
+		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_ASSET, rec.Type)
 		assert.EqualValues(t, "some note", rec.Note)
 	})
 
@@ -212,7 +212,7 @@ func TestCreateAccount(t *testing.T) {
 			Extra: map[string]string{
 				"a": "b",
 			},
-			Type: v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Type: v1.AccountType_ACCOUNT_TYPE_ASSET,
 			Note: "some note",
 		})
 
@@ -248,7 +248,7 @@ func TestCreateBulk(t *testing.T) {
 					Extra: map[string]string{
 						"a": "b",
 					},
-					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 					Note:             "some note",
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
@@ -260,7 +260,7 @@ func TestCreateBulk(t *testing.T) {
 					Extra: map[string]string{
 						"a": "b",
 					},
-					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 					Note:             "some note",
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
@@ -308,7 +308,7 @@ func TestCreateBulk(t *testing.T) {
 				{
 					Name:             "some-account",
 					Currency:         "USD",
-					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 					Note:             "some note",
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
@@ -320,7 +320,7 @@ func TestCreateBulk(t *testing.T) {
 					Extra: map[string]string{
 						"a": "b",
 					},
-					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 					Note:             "some note",
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
@@ -368,7 +368,7 @@ func TestCreateBulk(t *testing.T) {
 				{
 					Name:             "some-account",
 					Currency:         "USD",
-					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 					Note:             "some note",
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
@@ -396,7 +396,7 @@ func TestCreateBulk(t *testing.T) {
 				{
 					Name:             "some-account",
 					Currency:         "USD",
-					Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+					Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 					Note:             "some note",
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
@@ -452,7 +452,7 @@ func TestUpdate(t *testing.T) {
 			Extra: map[string]string{
 				"updated": "b",
 			},
-			Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 			Note:             "updated note",
 			LiabilityPercent: lo.ToPtr("12"),
 			Iban:             "iban",
@@ -469,7 +469,7 @@ func TestUpdate(t *testing.T) {
 		assert.EqualValues(t, "yy", rec.Name)
 		assert.EqualValues(t, "USD", rec.Currency)
 		assert.EqualValues(t, map[string]string{"updated": "b"}, rec.Extra)
-		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_REGULAR, rec.Type)
+		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_ASSET, rec.Type)
 		assert.EqualValues(t, "updated note", rec.Note)
 		assert.EqualValues(t, "111", rec.CurrentBalance.String())
 		assert.EqualValues(t, "12", rec.LiabilityPercent.Decimal.String())
@@ -488,7 +488,7 @@ func TestUpdate(t *testing.T) {
 			Extra: map[string]string{
 				"updated": "b",
 			},
-			Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 			Note:             "updated note",
 			LiabilityPercent: lo.ToPtr("12"),
 			Iban:             "iban",
@@ -529,7 +529,7 @@ func TestUpdate(t *testing.T) {
 			Id:    acc.ID,
 			Name:  "yy",
 			Extra: nil,
-			Type:  v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
 			Note:  "updated note",
 		})
 
@@ -544,7 +544,7 @@ func TestUpdate(t *testing.T) {
 		assert.EqualValues(t, "USD", rec.Currency)
 		assert.NotNil(t, rec.Extra)
 		assert.Len(t, rec.Extra, 0)
-		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_REGULAR, rec.Type)
+		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_ASSET, rec.Type)
 		assert.EqualValues(t, "updated note", rec.Note)
 		assert.EqualValues(t, "111", rec.CurrentBalance.String())
 	})
@@ -566,7 +566,7 @@ func TestUpdate(t *testing.T) {
 			Extra: map[string]string{
 				"updated": "b",
 			},
-			Type:             v1.AccountType_ACCOUNT_TYPE_REGULAR,
+			Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
 			Note:             "updated note",
 			LiabilityPercent: lo.ToPtr("-1-2"),
 			Iban:             "iban",

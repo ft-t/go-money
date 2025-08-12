@@ -40,7 +40,7 @@ func TestTransactionMapper(t *testing.T) {
 		Extra:                 map[string]string{"key": "value"},
 		TransactionDateTime:   txDate,
 		TransactionDateOnly:   txDate,
-		TransactionType:       gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+		TransactionType:       gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 		Flags:                 12,
 		VoidedByTransactionID: lo.ToPtr(int64(123)),
 		Title:                 "xxx",
@@ -58,7 +58,7 @@ func TestTransactionMapper(t *testing.T) {
 	assert.EqualValues(t, []int32{1, 2, 3}, mapped.TagIds)
 	assert.EqualValues(t, "Test transaction", mapped.Notes)
 	assert.EqualValues(t, map[string]string{"key": "value"}, mapped.Extra)
-	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT, mapped.Type)
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME, mapped.Type)
 	assert.NotNil(t, mapped.CreatedAt)
 	assert.EqualValues(t, txDate, mapped.TransactionDate.AsTime())
 }

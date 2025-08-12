@@ -38,7 +38,7 @@ func TestListTransactions(t *testing.T) {
 
 	txs := []*database.Transaction{
 		{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			TransactionDateTime:  time.Now(),
 			Title:                "Test Deposit",
 			DestinationAccountID: lo.ToPtr(int32(123)),
@@ -47,7 +47,7 @@ func TestListTransactions(t *testing.T) {
 			Extra:                map[string]string{},
 		},
 		{
-			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			TransactionDateTime: time.Now().Add(1 * time.Hour),
 			Title:               "Test Withdrawal",
 			SourceAccountID:     lo.ToPtr(int32(456)),
@@ -274,7 +274,7 @@ func TestListTransactions(t *testing.T) {
 
 		resp, err := srv.List(context.TODO(), &transactionsv1.ListTransactionsRequest{
 			TransactionTypes: []gomoneypbv1.TransactionType{
-				gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			},
 			FromDate:  timestamppb.New(time.Now().Add(-24 * time.Hour)),
 			ToDate:    nil,
@@ -407,7 +407,7 @@ func TestCreateReconciliation(t *testing.T) {
 	var createdTx *database.Transaction
 	assert.NoError(t, gormDB.Where("id = ?", resp.Transaction.Id).Find(&createdTx).Error)
 
-	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx.TransactionType)
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx.TransactionType)
 	assert.EqualValues(t, 556, createdTx.DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx.DestinationCurrency)
 	assert.EqualValues(t, accounts[0].ID, *createdTx.DestinationAccountID)
@@ -496,12 +496,12 @@ func TestCreateBulk(t *testing.T) {
 	assert.NoError(t, gormDB.Where("id in ?", ids).Order("id asc").Find(&createdTx).Error)
 	assert.Len(t, createdTx, 2)
 
-	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx[0].TransactionType)
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx[0].TransactionType)
 	assert.EqualValues(t, 556, createdTx[0].DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx[0].DestinationCurrency)
 	assert.EqualValues(t, accounts[0].ID, *createdTx[0].DestinationAccountID)
 
-	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx[1].TransactionType)
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx[1].TransactionType)
 	assert.EqualValues(t, 777, createdTx[1].DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx[1].DestinationCurrency)
 	assert.EqualValues(t, accounts[0].ID, *createdTx[1].DestinationAccountID)
@@ -512,7 +512,7 @@ func TestGetTransactionsByIDs(t *testing.T) {
 
 	txs := []*database.Transaction{
 		{
-			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			TransactionDateTime: time.Now(),
 			Title:               "Test Deposit",
 			Extra:               map[string]string{},
@@ -564,7 +564,7 @@ func TestCreateRawTransaction(t *testing.T) {
 			Return(nil)
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAccountID: lo.ToPtr(accounts[0].ID),
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
@@ -590,7 +590,7 @@ func TestCreateRawTransaction(t *testing.T) {
 		})
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAccountID: lo.ToPtr(accounts[0].ID),
 			DestinationCurrency:  accounts[0].Currency,
 		}
@@ -615,7 +615,7 @@ func TestCreateRawTransaction(t *testing.T) {
 			Return(errors.New("unexpected error"))
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAccountID: lo.ToPtr(accounts[0].ID),
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
@@ -644,7 +644,7 @@ func TestCreateRawTransaction(t *testing.T) {
 			Return(errors.New("unexpected error"))
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAccountID: lo.ToPtr(accounts[0].ID),
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
@@ -667,7 +667,7 @@ func TestCreateRawTransaction(t *testing.T) {
 		})
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAccountID: lo.ToPtr(accounts[0].ID),
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),

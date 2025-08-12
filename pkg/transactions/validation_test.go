@@ -1,14 +1,15 @@
 package transactions_test
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"testing"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestValidateWithdrawal(t *testing.T) {
@@ -39,7 +40,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		assert.NoError(t, srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:  acc[0].Currency,
 			SourceAccountID: &acc[0].ID,
@@ -50,7 +51,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 			SourceCurrency:  acc[0].Currency,
 			SourceAccountID: &acc[0].ID,
@@ -64,7 +65,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:  acc[0].Currency,
 			SourceAccountID: nil,
@@ -78,7 +79,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:    decimal.NullDecimal{},
 			SourceCurrency:  acc[0].Currency,
 			SourceAccountID: &acc[0].ID,
@@ -92,7 +93,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:  "",
 			SourceAccountID: &acc[0].ID,
@@ -106,7 +107,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:  acc[0].Currency,
 			SourceAccountID: nil,
@@ -120,7 +121,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:  acc[1].Currency,
 			SourceAccountID: &acc[0].ID,
@@ -134,7 +135,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:  gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType:  gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:     decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:   acc[0].Currency,
 			SourceAccountID:  &acc[0].ID,
@@ -150,7 +151,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:  gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType:  gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:     decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:   acc[0].Currency,
 			SourceAccountID:  &acc[0].ID,
@@ -166,7 +167,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:        decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:      acc[0].Currency,
 			SourceAccountID:     &acc[0].ID,
@@ -182,7 +183,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		srv := transactions.NewService(nil)
 
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			SourceAmount:        decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 			SourceCurrency:      acc[0].Currency,
 			SourceAccountID:     &acc[0].ID,
@@ -207,7 +208,7 @@ func TestValidateDeposit(t *testing.T) {
 	t.Run("valid deposit", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		assert.NoError(t, srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: &acc[0].ID,
@@ -217,7 +218,7 @@ func TestValidateDeposit(t *testing.T) {
 	t.Run("invalid - negative amount", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-100)),
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: &acc[0].ID,
@@ -229,7 +230,7 @@ func TestValidateDeposit(t *testing.T) {
 	t.Run("invalid - no destination account", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: nil,
@@ -241,7 +242,7 @@ func TestValidateDeposit(t *testing.T) {
 	t.Run("invalid - no destination amount", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			DestinationAmount:    decimal.NullDecimal{},
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: &acc[0].ID,
@@ -253,7 +254,7 @@ func TestValidateDeposit(t *testing.T) {
 	t.Run("invalid - no destination currency", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			DestinationCurrency:  "",
 			DestinationAccountID: &acc[0].ID,
@@ -265,7 +266,7 @@ func TestValidateDeposit(t *testing.T) {
 	t.Run("invalid - destination currency mismatch", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			DestinationCurrency:  acc[1].Currency,
 			DestinationAccountID: &acc[0].ID,
@@ -286,7 +287,7 @@ func TestValidateReconciliation(t *testing.T) {
 	t.Run("valid reconciliation", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		assert.NoError(t, srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(200)),
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: &acc[0].ID,
@@ -296,7 +297,7 @@ func TestValidateReconciliation(t *testing.T) {
 	t.Run("success - negative amount", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-200)),
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: &acc[0].ID,
@@ -308,7 +309,7 @@ func TestValidateReconciliation(t *testing.T) {
 	t.Run("invalid - no destination account", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(200)),
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: nil,
@@ -320,7 +321,7 @@ func TestValidateReconciliation(t *testing.T) {
 	t.Run("invalid - no destination amount", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAmount:    decimal.NullDecimal{},
 			DestinationCurrency:  acc[0].Currency,
 			DestinationAccountID: &acc[0].ID,
@@ -332,7 +333,7 @@ func TestValidateReconciliation(t *testing.T) {
 	t.Run("invalid - no destination currency", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(200)),
 			DestinationCurrency:  "",
 			DestinationAccountID: &acc[0].ID,
@@ -344,7 +345,7 @@ func TestValidateReconciliation(t *testing.T) {
 	t.Run("invalid - destination currency mismatch", func(t *testing.T) {
 		srv := transactions.NewService(nil)
 		err := srv.ValidateTransaction(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(200)),
 			DestinationCurrency:  "EUR",
 			DestinationAccountID: &acc[0].ID,

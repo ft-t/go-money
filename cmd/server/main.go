@@ -2,6 +2,12 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/ft-t/go-money/cmd/server/internal/handlers"
 	"github.com/ft-t/go-money/cmd/server/internal/jobs"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
@@ -21,11 +27,6 @@ import (
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 func main() {
@@ -142,8 +143,10 @@ func main() {
 	tagSvc := tags.NewService(mapper)
 	categoriesSvc := categories.NewService(mapper)
 
+	applicableAccountSvc := transactions.NewApplicableAccountService(accountSvc)
+
 	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper)
-	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
+	_ = handlers.NewTransactionApi(grpcServer, transactionSvc, applicableAccountSvc, mapper)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
 	_ = handlers.NewRulesApi(grpcServer, &handlers.RulesApiConfig{
 		RulesScheduleSvc: rulesScheduleSvc,

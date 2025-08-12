@@ -1,12 +1,13 @@
 package transactions
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"time"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
-	"time"
 )
 
 const (
@@ -49,7 +50,7 @@ func (s *DoubleEntryService) Record(ctx context.Context, tx *database.Transactio
 		return nil, errors.New("source and destination amounts must have opposite signs for double entry transactions")
 	}
 
-	sourceAcc, err := s.cfg.AccountSvc.GetAccount(ctx, *tx.SourceAccountID)
+	sourceAcc, err := s.cfg.AccountSvc.GetAccountByID(ctx, *tx.SourceAccountID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get source account")
 	}
@@ -82,9 +83,7 @@ func (s *DoubleEntryService) Record(ctx context.Context, tx *database.Transactio
 
 func (s *DoubleEntryService) isDebitNormal(accountType gomoneypbv1.AccountType) bool {
 	switch accountType {
-	case gomoneypbv1.AccountType_ACCOUNT_TYPE_REGULAR,
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_SAVINGS,
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_BROKERAGE,
+	case gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE:
 		return true
 	default:
@@ -96,6 +95,6 @@ func (s *DoubleEntryService) isDebit(accountType gomoneypbv1.AccountType, amount
 	if s.isDebitNormal(accountType) {
 		return amount.IsPositive() // debit-normal: + => debit, - => credit
 	}
-	
+
 	return amount.IsNegative() // credit-normal: - => debit, + => credit
 }

@@ -1,12 +1,16 @@
 package importers
 
 import (
-	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
-	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	"bytes"
 	"context"
 	"encoding/csv"
 	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
@@ -14,9 +18,6 @@ import (
 	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"sort"
-	"strings"
-	"time"
 )
 
 const (

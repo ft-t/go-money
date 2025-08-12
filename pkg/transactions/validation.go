@@ -1,8 +1,9 @@
 package transactions
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/samber/lo"
@@ -21,11 +22,11 @@ func (s *Service) ValidateTransaction(
 	switch tx.TransactionType {
 	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS:
 		return s.validateTransferBetweenAccounts(ctx, dbTx, tx)
-	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL:
+	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE:
 		return s.validateWithdrawal(ctx, dbTx, tx)
-	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT:
+	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME:
 		return s.validateDeposit(ctx, dbTx, tx)
-	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION:
+	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT:
 		return s.validateReconciliation(ctx, dbTx, tx)
 	default:
 		return errors.Newf(
@@ -40,7 +41,7 @@ func (s *Service) validateWithdrawal(
 	dbTx *gorm.DB,
 	tx *database.Transaction,
 ) error {
-	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL
+	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE
 
 	if lo.FromPtr(tx.SourceAccountID) == 0 {
 		return errors.Newf(
@@ -129,7 +130,7 @@ func (s *Service) validateDeposit(
 	dbTx *gorm.DB,
 	tx *database.Transaction,
 ) error {
-	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT
+	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME
 
 	if lo.FromPtr(tx.DestinationAccountID) == 0 {
 		return errors.Newf(
@@ -169,7 +170,7 @@ func (s *Service) validateReconciliation(
 	dbTx *gorm.DB,
 	tx *database.Transaction,
 ) error {
-	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION
+	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT
 
 	if lo.FromPtr(tx.DestinationAccountID) == 0 {
 		return errors.Newf(

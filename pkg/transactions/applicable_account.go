@@ -1,8 +1,9 @@
 package transactions
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/samber/lo"
 )
@@ -22,7 +23,7 @@ func NewApplicableAccountService(
 func (s *ApplicableAccountService) GetAll(
 	ctx context.Context,
 ) (map[gomoneypbv1.TransactionType]*PossibleAccount, error) {
-	accounts, err := s.accountSvc.GetAll(ctx)
+	accounts, err := s.accountSvc.GetAllAccounts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -36,15 +37,15 @@ func (s *ApplicableAccountService) GetApplicableAccounts(
 ) map[gomoneypbv1.TransactionType]*PossibleAccount {
 	txTypes := []gomoneypbv1.TransactionType{
 		gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-		gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
-		gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+		gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+		gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 	}
 	finalRes := map[gomoneypbv1.TransactionType]*PossibleAccount{}
 
 	assetAccounts := []gomoneypbv1.AccountType{
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_REGULAR,
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_SAVINGS,
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_BROKERAGE,
+		gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+		gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+		gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 	}
 
 	assetAndLiabilityAccounts := append(assetAccounts, gomoneypbv1.AccountType_ACCOUNT_TYPE_LIABILITY)
@@ -60,13 +61,13 @@ func (s *ApplicableAccountService) GetApplicableAccounts(
 					res.SourceAccounts = append(res.SourceAccounts, account)
 					res.DestinationAccounts = append(res.DestinationAccounts, account)
 				}
-			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT:
+			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME:
 				if account.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME {
 					res.SourceAccounts = append(res.SourceAccounts, account)
 				} else if lo.Contains(assetAccounts, account.Type) {
 					res.DestinationAccounts = append(res.DestinationAccounts, account)
 				}
-			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL:
+			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE:
 				if account.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE { // dest always expense
 					res.DestinationAccounts = append(res.DestinationAccounts, account)
 				} else if lo.Contains(assetAndLiabilityAccounts, account.Type) {

@@ -1,13 +1,18 @@
 package importers_test
 
 import (
+	"context"
+	_ "embed"
+	"encoding/json"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
-	_ "embed"
-	"encoding/json"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
@@ -19,10 +24,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"net/http"
-	"os"
-	"testing"
-	"time"
 )
 
 var gormDB *gorm.DB

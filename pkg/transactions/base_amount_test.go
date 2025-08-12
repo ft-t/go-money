@@ -1,8 +1,10 @@
 package transactions_test
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"testing"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
@@ -11,7 +13,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestBaseAmountService(t *testing.T) {
@@ -61,7 +62,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		txs := []*database.Transaction{
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceAccountID: lo.ToPtr(acc[0].ID),
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-10)),
@@ -73,7 +74,7 @@ func TestBaseAmountService(t *testing.T) {
 				// should not be updated by script, because foreign currency is set to base
 			},
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-10)),
 				Extra:           make(map[string]string),
@@ -83,7 +84,7 @@ func TestBaseAmountService(t *testing.T) {
 				// here dest should be null
 			},
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 				SourceAccountID: lo.ToPtr(acc[1].ID),
@@ -138,7 +139,7 @@ func TestBaseAmountService(t *testing.T) {
 			// withdrawal fx
 
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  acc[0].Currency, // pln
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 				SourceAccountID: lo.ToPtr(acc[0].ID),
@@ -153,7 +154,7 @@ func TestBaseAmountService(t *testing.T) {
 				// dest null
 			},
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  acc[0].Currency, // pln
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 				SourceAccountID: lo.ToPtr(acc[0].ID),
@@ -172,7 +173,7 @@ func TestBaseAmountService(t *testing.T) {
 			},
 
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  acc[0].Currency, // pln
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 				SourceAccountID: lo.ToPtr(acc[0].ID),
@@ -260,7 +261,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		txs := []*database.Transaction{
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
 
@@ -271,7 +272,7 @@ func TestBaseAmountService(t *testing.T) {
 				// should not be updated by script, because foreign currency is set to base
 			},
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
 				Extra:           make(map[string]string),
@@ -280,7 +281,7 @@ func TestBaseAmountService(t *testing.T) {
 				// here dest should be null
 			},
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 				Extra:           make(map[string]string),
@@ -382,7 +383,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		txs := []*database.Transaction{
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
 
@@ -393,7 +394,7 @@ func TestBaseAmountService(t *testing.T) {
 				// should not be updated by script, because foreign currency is set to base
 			},
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  "PLN",
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(10)),
 				Extra:           make(map[string]string),
@@ -402,7 +403,7 @@ func TestBaseAmountService(t *testing.T) {
 				// here dest should be null
 			},
 			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				SourceCurrency:  baseCurrency,
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
 				Extra:           make(map[string]string),

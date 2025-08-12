@@ -1,8 +1,9 @@
 package transactions
 
 import (
-	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+
+	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -28,8 +29,8 @@ type MapperSvc interface {
 }
 
 type AccountSvc interface {
-	GetAccount(ctx context.Context, id int32) (*database.Account, error)
-	GetAll(ctx context.Context) ([]*database.Account, error)
+	GetAccountByID(ctx context.Context, id int32) (*database.Account, error)
+	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
 }
 
 type CurrencyConverterSvc interface {
