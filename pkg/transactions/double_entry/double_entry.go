@@ -1,4 +1,4 @@
-package transactions
+package double_entry
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func NewDoubleEntryService(
 
 func (s *DoubleEntryService) Record(
 	_ context.Context,
-	req *DoubleEntryRequest,
+	req *RecordRequest,
 ) ([]*database.DoubleEntry, error) {
 	tx := req.Transaction
 
