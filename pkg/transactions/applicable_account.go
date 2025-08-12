@@ -51,27 +51,30 @@ func (s *ApplicableAccountService) GetApplicableAccounts(
 	assetAndLiabilityAccounts := append(assetAccounts, gomoneypbv1.AccountType_ACCOUNT_TYPE_LIABILITY)
 
 	for _, txType := range txTypes {
-		res := &PossibleAccount{}
+		res := &PossibleAccount{
+			SourceAccounts:      map[int32]*database.Account{},
+			DestinationAccounts: map[int32]*database.Account{},
+		}
 		finalRes[txType] = res
 
 		for _, account := range accounts {
 			switch txType {
 			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS:
 				if lo.Contains(assetAndLiabilityAccounts, account.Type) {
-					res.SourceAccounts = append(res.SourceAccounts, account)
-					res.DestinationAccounts = append(res.DestinationAccounts, account)
+					res.SourceAccounts[account.ID] = account
+					res.DestinationAccounts[account.ID] = account
 				}
 			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME:
 				if account.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME {
-					res.SourceAccounts = append(res.SourceAccounts, account)
+					res.SourceAccounts[account.ID] = account
 				} else if lo.Contains(assetAccounts, account.Type) {
-					res.DestinationAccounts = append(res.DestinationAccounts, account)
+					res.DestinationAccounts[account.ID] = account
 				}
 			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE:
-				if account.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE { // dest always expense
-					res.DestinationAccounts = append(res.DestinationAccounts, account)
+				if account.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE {
+					res.DestinationAccounts[account.ID] = account
 				} else if lo.Contains(assetAndLiabilityAccounts, account.Type) {
-					res.SourceAccounts = append(res.SourceAccounts, account)
+					res.SourceAccounts[account.ID] = account
 				}
 			}
 		}

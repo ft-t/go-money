@@ -194,7 +194,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		txSrv := transactions.NewService(&transactions.ServiceConfig{})
 		for _, tx := range txs {
-			assert.NoError(t, txSrv.ValidateTransaction(context.TODO(), gormDB, tx))
+			assert.NoError(t, txSrv.ValidateTransactionData(context.TODO(), gormDB, tx))
 		}
 
 		assert.NoError(t, gormDB.Create(&txs).Error)

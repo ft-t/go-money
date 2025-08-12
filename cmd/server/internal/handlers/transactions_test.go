@@ -130,8 +130,16 @@ func TestTransactionApi_GetApplicableAccounts(t *testing.T) {
 
 		mockResp := map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
 			gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME: {
-				SourceAccounts:      []*database.Account{{ID: 1}},
-				DestinationAccounts: []*database.Account{{ID: 2}},
+				SourceAccounts: map[int32]*database.Account{
+					1: {
+						ID: 1,
+					},
+				},
+				DestinationAccounts: map[int32]*database.Account{
+					2: {
+						ID: 2,
+					},
+				},
 			},
 		}
 		mockApplicableSvc.EXPECT().GetAll(gomock.Any()).Return(mockResp, nil)

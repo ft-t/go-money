@@ -46,7 +46,7 @@ type TransactionSvc interface {
 		ids []int64,
 	) ([]*database.Transaction, error)
 
-	ValidateTransaction(
+	ValidateTransactionData(
 		ctx context.Context,
 		dbTx *gorm.DB,
 		tx *database.Transaction,

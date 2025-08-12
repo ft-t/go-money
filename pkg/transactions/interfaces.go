@@ -33,6 +33,13 @@ type AccountSvc interface {
 	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
 }
 
+type ApplicableAccountSvc interface {
+	GetApplicableAccounts(
+		_ context.Context,
+		accounts []*database.Account,
+	) map[v1.TransactionType]*PossibleAccount
+}
+
 type CurrencyConverterSvc interface {
 	Convert(
 		ctx context.Context,

@@ -1,10 +1,13 @@
 package transactions
 
 import (
-	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
@@ -13,8 +16,6 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"strings"
-	"time"
 )
 
 type Service struct {
@@ -340,18 +341,14 @@ func (s *Service) FinalizeTransactions(
 	created []*database.Transaction,
 	originalTxs []*database.Transaction,
 ) ([]*transactionsv1.CreateTransactionResponse, error) {
-	for _, createdTx := range created {
-		if err := s.ValidateTransaction(ctx, tx, createdTx); err != nil {
-			return nil, errors.Wrapf(err, "failed to validate transaction")
-		}
-	}
+	// todo validate
 
 	// include original as we need to ensure previous history is correct now
-	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
+	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
 		return nil, err
 	}
 
-	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+	if err = s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
 		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
 	}
 
@@ -582,58 +579,4 @@ func (s *Service) fillTransferBetweenAccounts(
 	return &fillResponse{
 		Accounts: accounts,
 	}, nil
-}
-
-func (s *Service) ensureCurrencyExists(
-	ctx context.Context,
-	currency string,
-) error {
-	return nil // todo
-}
-
-func (s *Service) ensureCategoryExists(
-	ctx context.Context,
-	tx *database.Transaction,
-) error {
-	if tx.CategoryID == nil {
-		return nil
-	}
-
-	return nil // todo
-}
-
-func (s *Service) ensureAccountsExistAndCurrencyCorrect(
-	_ context.Context,
-	dbTx *gorm.DB,
-	expectedAccounts map[int32]string,
-) (map[int32]*database.Account, error) {
-	var accounts []*database.Account
-
-	if err := dbTx.
-		Where("id IN ?", lo.Keys(expectedAccounts)).
-		Clauses(&clause.Locking{Strength: "UPDATE"}).
-		Find(&accounts).Error; err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	accCurrencies := map[int32]string{}
-	accMap := map[int32]*database.Account{}
-	for _, acc := range accounts {
-		accMap[acc.ID] = acc
-		accCurrencies[acc.ID] = acc.Currency
-	}
-
-	for id, expectedCurrency := range expectedAccounts {
-		existingCurrency, ok := accCurrencies[id]
-
-		if !ok {
-			return nil, errors.Newf("account with id %d not found", id)
-		}
-
-		if existingCurrency != expectedCurrency {
-			return nil, errors.Newf("account with id %d has currency %s, expected %s", id, existingCurrency, expectedCurrency)
-		}
-	}
-
-	return accMap, nil
 }

@@ -59,7 +59,7 @@ func (s *DryRun) DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest)
 		return nil, ruleErr
 	}
 
-	if err := s.transactionSvc.ValidateTransaction(
+	if err := s.transactionSvc.ValidateTransactionData(
 		ctx,
 		database.FromContext(ctx, database.GetDb(database.DbTypeReadonly)),
 		updated,

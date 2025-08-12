@@ -6,6 +6,7 @@ import (
 
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/golang/mock/gomock"
+	"github.com/samber/lo"
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
@@ -33,8 +34,8 @@ func TestGetAll(t *testing.T) {
 		assert.NoError(t, err)
 
 		transfer := res[gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS]
-		assert.ElementsMatch(t, []int32{1, 2, 3, 4}, getIDs(transfer.SourceAccounts))
-		assert.ElementsMatch(t, []int32{1, 2, 3, 4}, getIDs(transfer.DestinationAccounts))
+		assert.ElementsMatch(t, []int32{1, 2, 3, 4}, lo.Keys(transfer.SourceAccounts))
+		assert.ElementsMatch(t, []int32{1, 2, 3, 4}, lo.Keys(transfer.DestinationAccounts))
 	})
 
 	t.Run("error", func(t *testing.T) {
@@ -65,22 +66,14 @@ func TestService_getPossibleAccountsForTransactionType(t *testing.T) {
 	res := svc.GetApplicableAccounts(context.TODO(), accounts)
 
 	transfer := res[gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS]
-	assert.ElementsMatch(t, []int32{1, 2, 3, 4}, getIDs(transfer.SourceAccounts))
-	assert.ElementsMatch(t, []int32{1, 2, 3, 4}, getIDs(transfer.DestinationAccounts))
+	assert.ElementsMatch(t, []int32{1, 2, 3, 4}, lo.Keys(transfer.SourceAccounts))
+	assert.ElementsMatch(t, []int32{1, 2, 3, 4}, lo.Keys(transfer.DestinationAccounts))
 
 	deposit := res[gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME]
-	assert.ElementsMatch(t, []int32{5}, getIDs(deposit.SourceAccounts))
-	assert.ElementsMatch(t, []int32{1, 2, 3}, getIDs(deposit.DestinationAccounts))
+	assert.ElementsMatch(t, []int32{5}, lo.Keys(deposit.SourceAccounts))
+	assert.ElementsMatch(t, []int32{1, 2, 3}, lo.Keys(deposit.DestinationAccounts))
 
 	withdrawal := res[gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE]
-	assert.ElementsMatch(t, []int32{1, 2, 3, 4}, getIDs(withdrawal.SourceAccounts))
-	assert.ElementsMatch(t, []int32{6}, getIDs(withdrawal.DestinationAccounts))
-}
-
-func getIDs(accs []*database.Account) []int32 {
-	ids := make([]int32, len(accs))
-	for i, a := range accs {
-		ids[i] = a.ID
-	}
-	return ids
+	assert.ElementsMatch(t, []int32{1, 2, 3, 4}, lo.Keys(withdrawal.SourceAccounts))
+	assert.ElementsMatch(t, []int32{6}, lo.Keys(withdrawal.DestinationAccounts))
 }
