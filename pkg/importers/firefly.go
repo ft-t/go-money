@@ -176,7 +176,7 @@ func (f *FireflyImporter) Import(
 				return nil, errors.Errorf("source account not found: %s", sourceName)
 			}
 
-			withdrawal := &transactionsv1.Withdrawal{
+			withdrawal := &transactionsv1.Expense{
 				SourceAccountId: sourceAccount.ID,
 				SourceAmount:    amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String(),
 				SourceCurrency:  currencyCode,
@@ -216,7 +216,7 @@ func (f *FireflyImporter) Import(
 				}
 
 				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Withdrawal{
-					Withdrawal: &transactionsv1.Withdrawal{
+					Withdrawal: &transactionsv1.Expense{
 						SourceAmount:    amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String(),
 						SourceCurrency:  currencyCode,
 						SourceAccountId: sourceAccount.ID,
@@ -237,8 +237,8 @@ func (f *FireflyImporter) Import(
 					)
 				}
 
-				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Deposit{
-					Deposit: &transactionsv1.Deposit{
+				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Income{
+					Income: &transactionsv1.Income{
 						DestinationCurrency:  currencyCode, // todo validate currency
 						DestinationAccountId: destAccount.ID,
 						DestinationAmount:    amountParsed.Abs().String(),
@@ -247,7 +247,7 @@ func (f *FireflyImporter) Import(
 			}
 		case "Reconciliation":
 			rec := &transactionsv1.CreateTransactionRequest_Reconciliation{
-				Reconciliation: &transactionsv1.Reconciliation{
+				Reconciliation: &transactionsv1.Adjustment{
 					DestinationAmount:    "",
 					DestinationCurrency:  currencyCode,
 					DestinationAccountId: 0,

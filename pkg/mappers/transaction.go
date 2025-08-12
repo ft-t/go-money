@@ -12,8 +12,8 @@ import (
 func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *v1.Transaction {
 	mapped := &v1.Transaction{
 		Id:                      tx.ID,
-		SourceCurrency:          lo.EmptyableToPtr(tx.SourceCurrency),
-		DestinationCurrency:     lo.EmptyableToPtr(tx.DestinationCurrency),
+		SourceCurrency:          tx.SourceCurrency,
+		DestinationCurrency:     tx.DestinationCurrency,
 		SourceAccountId:         tx.SourceAccountID,
 		DestinationAccountId:    tx.DestinationAccountID,
 		TagIds:                  tx.TagIDs,
@@ -31,11 +31,11 @@ func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *
 	}
 
 	if tx.SourceAmount.Valid {
-		mapped.SourceAmount = lo.ToPtr(m.cfg.DecimalSvc.ToString(ctx, tx.SourceAmount.Decimal, tx.SourceCurrency))
+		mapped.SourceAmount = m.cfg.DecimalSvc.ToString(ctx, tx.SourceAmount.Decimal, tx.SourceCurrency)
 	}
 
 	if tx.DestinationAmount.Valid {
-		mapped.DestinationAmount = lo.ToPtr(m.cfg.DecimalSvc.ToString(ctx, tx.DestinationAmount.Decimal, tx.DestinationCurrency))
+		mapped.DestinationAmount = m.cfg.DecimalSvc.ToString(ctx, tx.DestinationAmount.Decimal, tx.DestinationCurrency)
 	}
 
 	if tx.FxSourceAmount.Valid {

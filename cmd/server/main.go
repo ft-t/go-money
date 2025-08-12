@@ -25,6 +25,7 @@ import (
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
 )
@@ -144,8 +145,11 @@ func main() {
 	categoriesSvc := categories.NewService(mapper)
 
 	applicableAccountSvc := transactions.NewApplicableAccountService(accountSvc)
-
-	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper)
+	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
+		AccountSvc:           accountSvc,
+		ApplicableAccountSvc: applicableAccountSvc,
+	})
+	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper, validationSvc)
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc, applicableAccountSvc, mapper)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
 	_ = handlers.NewRulesApi(grpcServer, &handlers.RulesApiConfig{

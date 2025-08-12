@@ -1,9 +1,12 @@
 package transactions_test
 
 import (
+	"context"
+	"testing"
+	"time"
+
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
@@ -13,8 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
-	"testing"
-	"time"
 )
 
 func TestBasicExpenseWithMultiCurrency(t *testing.T) {
@@ -62,7 +63,7 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
+			Withdrawal: &transactionsv1.Expense{
 				SourceAmount:     "-765.76",
 				SourceCurrency:   "UAH",
 				SourceAccountId:  accounts[0].ID,
@@ -131,7 +132,7 @@ func TestUpdateTransaction(t *testing.T) {
 		TransactionDate: timestamppb.New(expenseDate),
 		CategoryId:      lo.ToPtr(int32(55)),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
+			Withdrawal: &transactionsv1.Expense{
 				SourceAmount:     "-765.76",
 				SourceCurrency:   "UAH",
 				SourceAccountId:  accounts[0].ID,
@@ -148,7 +149,7 @@ func TestUpdateTransaction(t *testing.T) {
 	tx2Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate2),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
+			Withdrawal: &transactionsv1.Expense{
 				SourceAmount:     "-200.76",
 				SourceCurrency:   "UAH",
 				SourceAccountId:  accounts[0].ID,
@@ -186,7 +187,7 @@ func TestUpdateTransaction(t *testing.T) {
 			CategoryId:      lo.ToPtr(int32(53)),
 			TransactionDate: timestamppb.New(expenseDate3),
 			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-				Withdrawal: &transactionsv1.Withdrawal{
+				Withdrawal: &transactionsv1.Expense{
 					SourceAmount:     "-100.0",
 					SourceCurrency:   "UAH",
 					SourceAccountId:  accounts[0].ID,
@@ -215,7 +216,7 @@ func TestUpdateTransaction(t *testing.T) {
 		Transaction: &transactionsv1.CreateTransactionRequest{
 			TransactionDate: timestamppb.New(expenseDate),
 			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-				Withdrawal: &transactionsv1.Withdrawal{
+				Withdrawal: &transactionsv1.Expense{
 					SourceAmount:     "-20.5",
 					SourceCurrency:   "USD",
 					SourceAccountId:  accounts[1].ID,
@@ -304,8 +305,8 @@ func TestBasicCalc(t *testing.T) {
 
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(txDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "500",
 				DestinationCurrency:  "USD",
 				DestinationAccountId: accounts[0].ID,
@@ -334,7 +335,7 @@ func TestBasicCalc(t *testing.T) {
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
+			Withdrawal: &transactionsv1.Expense{
 				SourceAmount:    "-10",
 				SourceCurrency:  "USD",
 				SourceAccountId: accounts[0].ID,
@@ -347,7 +348,7 @@ func TestBasicCalc(t *testing.T) {
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate2),
 		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
+			Withdrawal: &transactionsv1.Expense{
 				SourceAmount:    "-15",
 				SourceCurrency:  "PLN",
 				SourceAccountId: accounts[1].ID,
@@ -359,8 +360,8 @@ func TestBasicCalc(t *testing.T) {
 	depositDate2 := time.Date(2025, 6, 7, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(depositDate2),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "11",
 				DestinationCurrency:  "PLN",
 				DestinationAccountId: accounts[1].ID,
@@ -372,8 +373,8 @@ func TestBasicCalc(t *testing.T) {
 	depositDate3 := time.Date(2025, 6, 9, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(depositDate3),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "55",
 				DestinationCurrency:  "PLN",
 				DestinationAccountId: accounts[1].ID,
@@ -427,8 +428,8 @@ func TestBasicCalcWithGap(t *testing.T) {
 
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(txDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "500",
 				DestinationCurrency:  "USD",
 				DestinationAccountId: accounts[0].ID,
@@ -509,8 +510,8 @@ func TestNoDailyStatOnRecalculate(t *testing.T) {
 
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(txDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "500",
 				DestinationCurrency:  "USD",
 				DestinationAccountId: accounts[0].ID,

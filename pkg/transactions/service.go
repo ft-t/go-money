@@ -257,8 +257,8 @@ func (s *Service) CreateBulkInternal(
 			if fillRes, err = s.fillWithdrawal(ctx, v.Withdrawal, newTx); err != nil {
 				return nil, err
 			}
-		case *transactionsv1.CreateTransactionRequest_Deposit:
-			if fillRes, err = s.fillDeposit(ctx, v.Deposit, newTx); err != nil {
+		case *transactionsv1.CreateTransactionRequest_Income:
+			if fillRes, err = s.fillDeposit(ctx, v.Income, newTx); err != nil {
 				return nil, err
 			}
 		case *transactionsv1.CreateTransactionRequest_Reconciliation:
@@ -425,7 +425,7 @@ func (s *Service) Update(
 
 func (s *Service) fillDeposit(
 	_ context.Context,
-	req *transactionsv1.Deposit,
+	req *transactionsv1.Income,
 	newTx *database.Transaction,
 ) (*fillResponse, error) {
 	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
@@ -443,7 +443,7 @@ func (s *Service) fillDeposit(
 
 func (s *Service) fillReconciliation(
 	_ context.Context,
-	req *transactionsv1.Reconciliation,
+	req *transactionsv1.Adjustment,
 	newTx *database.Transaction,
 ) (*fillResponse, error) {
 	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
@@ -461,7 +461,7 @@ func (s *Service) fillReconciliation(
 
 func (s *Service) fillWithdrawal(
 	_ context.Context,
-	req *transactionsv1.Withdrawal,
+	req *transactionsv1.Expense,
 	newTx *database.Transaction,
 ) (*fillResponse, error) {
 	sourceAmount, err := decimal.NewFromString(req.SourceAmount)
@@ -497,24 +497,20 @@ func (s *Service) fillWithdrawal(
 	}
 
 	// dest
-	if req.DestinationCurrency != nil {
-		newTx.DestinationCurrency = *req.DestinationCurrency
+	newTx.DestinationCurrency = req.DestinationCurrency
+
+	destinationAmount, destinationErr := decimal.NewFromString(req.DestinationAmount)
+	if destinationErr != nil {
+		return nil, errors.Wrap(destinationErr, "invalid destination amount")
 	}
 
-	if req.DestinationAmount != nil {
-		destinationAmount, destinationErr := decimal.NewFromString(*req.DestinationAmount)
-		if destinationErr != nil {
-			return nil, errors.Wrap(destinationErr, "invalid destination amount")
-		}
+	if destinationAmount.IsNegative() || destinationAmount.IsZero() {
+		return nil, errors.New("destination amount must be positive")
+	}
 
-		if destinationAmount.IsNegative() || destinationAmount.IsZero() {
-			return nil, errors.New("destination amount must be positive")
-		}
-
-		newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
-		if newTx.DestinationCurrency == "" {
-			return nil, errors.New("destination currency is required when destination amount is provided")
-		}
+	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
+	if newTx.DestinationCurrency == "" {
+		return nil, errors.New("destination currency is required when destination amount is provided")
 	}
 
 	return &fillResponse{}, nil

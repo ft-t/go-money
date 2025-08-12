@@ -176,13 +176,13 @@ func TestFireflyImport(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Deposit)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Income)
 
-				assert.EqualValues(t, tx.Deposit.DestinationCurrency, "PLN")
+				assert.EqualValues(t, tx.Income.DestinationCurrency, "PLN")
 
-				assert.EqualValues(t, "3520.42", tx.Deposit.DestinationAmount)
+				assert.EqualValues(t, "3520.42", tx.Income.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[1].ID, tx.Deposit.DestinationAccountId)
+				assert.EqualValues(t, accountsData[1].ID, tx.Income.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_18691", *requests[0].Req.InternalReferenceNumber)
 
