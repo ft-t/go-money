@@ -157,7 +157,13 @@ func main() {
 	tagSvc := tags.NewService(mapper)
 	categoriesSvc := categories.NewService(mapper)
 
-	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper, validationSvc)
+	dryRunSvc := rules.NewDryRun(&rules.DryRunConfig{
+		Executor:       ruleEngine,
+		TransactionSvc: transactionSvc,
+		MapperSvc:      mapper,
+		ValidationSvc:  validationSvc,
+		AccountSvc:     accountSvc,
+	})
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc, applicableAccountSvc, mapper)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
 	_ = handlers.NewRulesApi(grpcServer, &handlers.RulesApiConfig{
