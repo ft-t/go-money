@@ -364,6 +364,7 @@ func TestCreateAccount(t *testing.T) {
 			LiabilityPercent: nil,
 			Iban:             "some-iban",
 			AccountNumber:    "some-account-number",
+			Flags:            database.AccountFlagIsDefault,
 		})
 
 		assert.NoError(t, err)
@@ -379,6 +380,28 @@ func TestCreateAccount(t *testing.T) {
 		assert.EqualValues(t, map[string]string{"a": "b"}, rec.Extra)
 		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_ASSET, rec.Type)
 		assert.EqualValues(t, "some note", rec.Note)
+	})
+
+	t.Run("no default account", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		resp, err := srv.Create(context.TODO(), &accountsv1.CreateAccountRequest{
+			Name:     "some-account",
+			Currency: "USD",
+			Extra: map[string]string{
+				"a": "b",
+			},
+			Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Note:             "some note",
+			LiabilityPercent: nil,
+			Iban:             "some-iban",
+			AccountNumber:    "some-account-number",
+		})
+
+		assert.ErrorContains(t, err, "at least one default account is required")
+		assert.Nil(t, resp)
 	})
 
 	t.Run("invalid liability format", func(t *testing.T) {
@@ -399,6 +422,69 @@ func TestCreateAccount(t *testing.T) {
 
 		assert.Nil(t, resp)
 		assert.ErrorContains(t, err, "can't convert 100-00 to decimal")
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectBegin()
+		sql.ExpectExec("INSERT INTO `accounts`.*").
+			WillReturnError(errors.New("failed to create account"))
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.Create(ctx, &accountsv1.CreateAccountRequest{
+			Name:     "some-account",
+			Currency: "USD",
+			Extra: map[string]string{
+				"a": "b",
+			},
+			Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Note:             "some note",
+			LiabilityPercent: nil,
+			Iban:             "some-iban",
+			AccountNumber:    "some-account-number",
+			Flags:            database.AccountFlagIsDefault,
+		})
+
+		assert.ErrorContains(t, err, "failed to create account")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("db error - commit fail", func(t *testing.T) {
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("INSERT INTO.*").
+			WillReturnRows(sql.NewRows([]string{"id"}).AddRow(1))
+		sql.ExpectExec("update accounts .*").WillReturnResult(sqlmock.NewResult(1, 1))
+		sql.ExpectQuery("select count.*").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+		sql.ExpectCommit().WillReturnError(errors.New("failed to commit transaction"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.Create(ctx, &accountsv1.CreateAccountRequest{
+			Name:     "some-account",
+			Currency: "USD",
+			Extra: map[string]string{
+				"a": "b",
+			},
+			Type:             v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Note:             "some note",
+			LiabilityPercent: nil,
+			Iban:             "some-iban",
+			AccountNumber:    "some-account-number",
+			Flags:            database.AccountFlagIsDefault,
+		})
+
+		assert.ErrorContains(t, err, "failed to commit transaction")
+		assert.Nil(t, resp)
 	})
 }
 
@@ -434,6 +520,7 @@ func TestCreateBulk(t *testing.T) {
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
 					AccountNumber:    "some-account-number",
+					Flags:            database.AccountFlagIsDefault,
 				},
 				{
 					Name:     "some-account2",
@@ -494,6 +581,7 @@ func TestCreateBulk(t *testing.T) {
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
 					AccountNumber:    "some-account-number",
+					Flags:            database.AccountFlagIsDefault,
 				},
 				{
 					Name:     "some-account",
@@ -554,6 +642,7 @@ func TestCreateBulk(t *testing.T) {
 					LiabilityPercent: nil,
 					Iban:             "some-iban",
 					AccountNumber:    "some-account-number",
+					Flags:            database.AccountFlagIsDefault,
 				},
 			},
 		})
@@ -626,6 +715,26 @@ func TestCreateBulk(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to create account")
 		assert.Nil(t, resp)
 	})
+
+	t.Run("no default account", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		resp, err := srv.CreateBulk(context.TODO(), &accountsv1.CreateAccountsBulkRequest{
+			Accounts: []*accountsv1.CreateAccountRequest{
+				{
+					Name:     "some-account",
+					Currency: "USD",
+					Type:     v1.AccountType_ACCOUNT_TYPE_ASSET,
+					Note:     "some note",
+				},
+			},
+		})
+
+		assert.ErrorContains(t, err, "at least one default account is required")
+		assert.Nil(t, resp)
+	})
 }
 
 func TestUpdate(t *testing.T) {
@@ -642,6 +751,7 @@ func TestUpdate(t *testing.T) {
 			Name:           "xxx",
 			Extra:          map[string]string{},
 			CurrentBalance: decimal.RequireFromString("111"),
+			Type:           v1.AccountType_ACCOUNT_TYPE_ASSET,
 		}
 		assert.NoError(t, gormDB.Create(&acc).Error)
 
@@ -666,6 +776,7 @@ func TestUpdate(t *testing.T) {
 			LiabilityPercent: lo.ToPtr("12"),
 			Iban:             "iban",
 			AccountNumber:    "num",
+			Flags:            database.AccountFlagIsDefault,
 		})
 
 		assert.NoError(t, err)
@@ -740,6 +851,7 @@ func TestUpdate(t *testing.T) {
 			Extra: nil,
 			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
 			Note:  "updated note",
+			Flags: database.AccountFlagIsDefault,
 		})
 
 		assert.NoError(t, err)
@@ -784,6 +896,115 @@ func TestUpdate(t *testing.T) {
 
 		assert.Nil(t, resp)
 		assert.ErrorContains(t, err, "can't convert -1-2 to decimal")
+	})
+
+	t.Run("removing flag from default account", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+		srv := accounts.NewService(&accounts.ServiceConfig{
+			MapperSvc: mapper,
+		})
+
+		acc := database.Account{
+			Currency:       "USD",
+			Name:           "xxx",
+			Extra:          map[string]string{},
+			CurrentBalance: decimal.RequireFromString("111"),
+			Type:           v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Flags:          database.AccountFlagIsDefault,
+		}
+		assert.NoError(t, gormDB.Create(&acc).Error)
+
+		resp, err := srv.Update(context.TODO(), &accountsv1.UpdateAccountRequest{
+			Id:    acc.ID,
+			Name:  "yy",
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Note:  "updated note",
+			Flags: 0, // removing default flag
+		})
+		assert.Nil(t, resp)
+		assert.ErrorContains(t, err, "at least one default account is required")
+	})
+
+	t.Run("db error - save", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		acc := database.Account{
+			Currency:       "USD",
+			Name:           "xxx",
+			Extra:          map[string]string{},
+			CurrentBalance: decimal.RequireFromString("111"),
+			Type:           v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Flags:          database.AccountFlagIsDefault,
+		}
+		assert.NoError(t, gormDB.Create(&acc).Error)
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(acc.ID, acc.Name))
+		sql.ExpectQuery("UPDATE .*").
+			WillReturnError(errors.New("failed to update account"))
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.Update(ctx, &accountsv1.UpdateAccountRequest{
+			Id:    acc.ID,
+			Name:  "yy",
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Note:  "updated note",
+			Flags: database.AccountFlagIsDefault,
+		})
+
+		assert.ErrorContains(t, err, "failed to update account")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("db error - commit", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		acc := database.Account{
+			Currency:       "USD",
+			Name:           "xxx",
+			Extra:          map[string]string{},
+			CurrentBalance: decimal.RequireFromString("111"),
+			Type:           v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Flags:          database.AccountFlagIsDefault,
+		}
+		assert.NoError(t, gormDB.Create(&acc).Error)
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(acc.ID, acc.Name))
+		sql.ExpectExec("UPDATE .*").
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		sql.ExpectExec("update .*").
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		sql.ExpectQuery("select count.*").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+		sql.ExpectCommit().WillReturnError(errors.New("failed to commit transaction"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.Update(ctx, &accountsv1.UpdateAccountRequest{
+			Id:    acc.ID,
+			Name:  "yy",
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Note:  "updated note",
+			Flags: database.AccountFlagIsDefault,
+		})
+
+		assert.ErrorContains(t, err, "failed to commit transaction")
+		assert.Nil(t, resp)
 	})
 }
 

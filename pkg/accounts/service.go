@@ -210,7 +210,7 @@ func (s *Service) Create(
 		Name:          req.Name,
 		Currency:      req.Currency,
 		Extra:         req.Extra,
-		Flags:         0, // todo
+		Flags:         req.Flags,
 		LastUpdatedAt: time.Now().UTC(),
 		CreatedAt:     time.Now().UTC(),
 		DeletedAt:     gorm.DeletedAt{},
@@ -220,8 +220,6 @@ func (s *Service) Create(
 		AccountNumber: req.AccountNumber,
 		DisplayOrder:  req.DisplayOrder,
 	}
-
-	account.Flags = database.AccountFlagIsDefault // todo flags
 
 	if account.Extra == nil {
 		account.Extra = map[string]string{}
@@ -273,7 +271,7 @@ func (s *Service) Update(
 ) (*accountsv1.UpdateAccountResponse, error) {
 	var account database.Account
 
-	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	tx := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Begin()
 	defer tx.Rollback()
 
 	if err := tx.Clauses(clause.Locking{
@@ -290,7 +288,7 @@ func (s *Service) Update(
 	account.AccountNumber = req.AccountNumber
 	account.Iban = req.Iban
 	account.DisplayOrder = req.DisplayOrder
-	account.Flags = database.AccountFlagIsDefault // todo flags
+	account.Flags = req.Flags
 
 	liabilityPercent, err := s.parseLiabilityPercent(req.LiabilityPercent)
 	if err != nil {

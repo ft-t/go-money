@@ -3,8 +3,8 @@ module github.com/ft-t/go-money
 go 1.23.5
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250812173731-77f702f49e93.1
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250812173731-77f702f49e93.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250813194918-72986950fbff.1
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250813194918-72986950fbff.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -71,7 +71,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/getsentry/sentry-go v0.35.0 // indirect
+	github.com/getsentry/sentry-go v0.35.1 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
