@@ -24,6 +24,7 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/double_entry"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/ft-t/go-money/pkg/users"
@@ -126,6 +127,10 @@ func main() {
 		ApplicableAccountSvc: applicableAccountSvc,
 	})
 
+	doubleEntry := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+		BaseCurrency: config.CurrencyConfig.BaseCurrency,
+	})
+
 	statsSvc := transactions.NewStatService()
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             statsSvc,
@@ -134,6 +139,8 @@ func main() {
 		BaseAmountService:    baseAmountSvc,
 		RuleSvc:              ruleEngine,
 		ValidationSvc:        validationSvc,
+		DoubleEntry:          doubleEntry,
+		AccountSvc:           accountSvc,
 	})
 
 	ruleScheduler := rules.NewScheduler(&rules.SchedulerConfig{

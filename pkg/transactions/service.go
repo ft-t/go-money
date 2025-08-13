@@ -30,6 +30,8 @@ type ServiceConfig struct {
 	BaseAmountService    BaseAmountSvc
 	RuleSvc              RuleSvc
 	ValidationSvc        ValidationSvc
+	DoubleEntry          DoubleEntrySvc
+	AccountSvc           AccountSvc
 }
 
 func NewService(
@@ -342,17 +344,31 @@ func (s *Service) FinalizeTransactions(
 	created []*database.Transaction,
 	originalTxs []*database.Transaction,
 ) ([]*transactionsv1.CreateTransactionResponse, error) {
-	if err := s.cfg.ValidationSvc.Validate(ctx, tx, created); err != nil {
+	accounts, err := s.cfg.AccountSvc.GetAllAccounts(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get accounts")
+	}
+
+	accountMap := make(map[int32]*database.Account, len(accounts))
+	for _, acc := range accounts {
+		accountMap[acc.ID] = acc
+	}
+
+	if err = s.cfg.ValidationSvc.Validate(ctx, tx, created, accountMap); err != nil {
 		return nil, errors.Wrap(err, "failed to validate transactions")
 	}
 
 	// include original as we need to ensure previous history is correct now
-	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
+	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
 		return nil, err
 	}
 
-	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+	if err = s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
 		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
+	}
+
+	if err = s.cfg.DoubleEntry.Record(ctx, tx, created, accountMap); err != nil {
+		return nil, errors.Wrap(err, "failed to record double entry transactions")
 	}
 
 	var finalRes []*transactionsv1.CreateTransactionResponse

@@ -57,9 +57,19 @@ type ValidationSvc interface {
 		ctx context.Context,
 		dbTx *gorm.DB,
 		txs []*database.Transaction,
+		accounts map[int32]*database.Account,
 	) error
 }
 
 type AccountSvc interface {
 	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
+}
+
+type DoubleEntrySvc interface {
+	Record(
+		ctx context.Context,
+		dbTx *gorm.DB,
+		txs []*database.Transaction,
+		accounts map[int32]*database.Account,
+	) error
 }

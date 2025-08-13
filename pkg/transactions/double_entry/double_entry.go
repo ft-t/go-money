@@ -8,6 +8,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 const (
@@ -31,6 +32,43 @@ func NewDoubleEntryService(
 }
 
 func (s *DoubleEntryService) Record(
+	ctx context.Context,
+	dbTx *gorm.DB,
+	txs []*database.Transaction,
+	accounts map[int32]*database.Account,
+) error {
+	var entries []*database.DoubleEntry
+
+	for _, tx := range txs {
+		sourceAccount, ok := accounts[tx.SourceAccountID]
+		if !ok {
+			return errors.New("source account not found for double entry transaction")
+		}
+
+		et, err := s.Calculate(ctx, &RecordRequest{
+			Transaction:   tx,
+			SourceAccount: sourceAccount,
+		})
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to record double entry for transaction ID %d", tx.ID)
+		}
+
+		entries = append(entries, et...)
+	}
+
+	if len(entries) == 0 {
+		return nil
+	}
+
+	if err := dbTx.CreateInBatches(entries, 5000).Error; err != nil {
+		return errors.Wrap(err, "failed to create double entry records in database")
+	}
+
+	return nil
+}
+
+func (s *DoubleEntryService) Calculate(
 	_ context.Context,
 	req *RecordRequest,
 ) ([]*database.DoubleEntry, error) {

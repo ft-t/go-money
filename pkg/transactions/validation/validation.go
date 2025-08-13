@@ -7,6 +7,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -30,39 +31,30 @@ func (s *Service) Validate(
 	ctx context.Context,
 	dbTx *gorm.DB,
 	txs []*database.Transaction,
+	accounts map[int32]*database.Account,
 ) error {
-	accounts, err := s.cfg.AccountSvc.GetAllAccounts(ctx) // todo filter by ids
-	if err != nil {
-		return errors.Wrap(err, "failed to get accounts")
-	}
-
-	accMap := map[int32]*database.Account{}
-	for _, acc := range accounts {
-		accMap[acc.ID] = acc
-	}
-
-	applicableAccounts := s.cfg.ApplicableAccountSvc.GetApplicableAccounts(ctx, accounts)
+	applicableAccounts := s.cfg.ApplicableAccountSvc.GetApplicableAccounts(ctx, lo.Values(accounts))
 
 	for _, createdTx := range txs {
-		if err = s.ValidateTransactionData(ctx, dbTx, createdTx); err != nil {
+		if err := s.ValidateTransactionData(ctx, dbTx, createdTx); err != nil {
 			return errors.Wrapf(err, "failed to validate transaction")
 		}
 
-		if err = s.ValidateTransactionAccounts(ctx, applicableAccounts, createdTx); err != nil {
+		if err := s.ValidateTransactionAccounts(ctx, applicableAccounts, createdTx); err != nil {
 			return errors.Wrapf(err, "failed to validate transaction accounts")
 		}
 
-		if err = s.ensureCurrencyExists(ctx, createdTx.SourceCurrency); err != nil {
+		if err := s.ensureCurrencyExists(ctx, createdTx.SourceCurrency); err != nil {
 			return errors.Wrapf(err, "failed to ensure source currency exists: %s",
 				createdTx.SourceCurrency)
 		}
 
-		if err = s.ensureCurrencyExists(ctx, createdTx.DestinationCurrency); err != nil {
+		if err := s.ensureCurrencyExists(ctx, createdTx.DestinationCurrency); err != nil {
 			return errors.Wrapf(err, "failed to ensure destination currency exists: %s",
 				createdTx.DestinationCurrency)
 		}
 
-		if err = s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, accMap, map[int32]string{
+		if err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, accounts, map[int32]string{
 			createdTx.SourceAccountID:      createdTx.SourceCurrency,
 			createdTx.DestinationAccountID: createdTx.DestinationCurrency,
 		}); err != nil {
@@ -145,8 +137,8 @@ func (s *Service) ValidateTransactionAccounts(
 }
 
 func (s *Service) validateWithdrawal(
-	ctx context.Context,
-	dbTx *gorm.DB,
+	_ context.Context,
+	_ *gorm.DB,
 	tx *database.Transaction,
 ) error {
 	txType := gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE

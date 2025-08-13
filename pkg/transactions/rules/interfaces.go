@@ -58,6 +58,7 @@ type ValidationSvc interface {
 		ctx context.Context,
 		dbTx *gorm.DB,
 		txs []*database.Transaction,
+		accounts map[int32]*database.Account,
 	) error
 }
 
@@ -77,4 +78,8 @@ type DecimalSvc interface {
 type SchedulerSvc interface {
 	Reinit(ctx context.Context) error
 	ValidateCronExpression(cronExpression string) error
+}
+
+type AccountSvc interface {
+	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
 }

@@ -19,7 +19,7 @@ func TestDryRun(t *testing.T) {
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
 		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
 
 		dry := rules.NewDryRun(executorSvc, transactionSvc, mapperSvc, validationSvc)

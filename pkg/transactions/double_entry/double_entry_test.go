@@ -26,7 +26,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		}
 
-		resp, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		resp, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
@@ -52,7 +52,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_LIABILITY,
 		}
 
-		resp, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		resp, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
@@ -78,7 +78,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME,
 		}
 
-		resp, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		resp, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
@@ -104,7 +104,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		}
 
-		resp, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		resp, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
@@ -129,7 +129,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		}
 
-		resp, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		resp, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
@@ -155,7 +155,7 @@ func TestDoubleEntry_Withdrawals(t *testing.T) {
 			Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_LIABILITY,
 		}
 
-		resp, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		resp, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
@@ -186,7 +186,7 @@ func TestDoubleEntry(t *testing.T) {
 			BaseCurrency: baseCurrency,
 		})
 
-		_, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		_, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
@@ -205,7 +205,7 @@ func TestDoubleEntry(t *testing.T) {
 			BaseCurrency: baseCurrency,
 		})
 
-		_, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		_, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
@@ -224,7 +224,7 @@ func TestDoubleEntry(t *testing.T) {
 			BaseCurrency: baseCurrency,
 		})
 
-		_, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		_, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				DestinationAccountID:            destinationAccountID,
 				SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
@@ -242,7 +242,7 @@ func TestDoubleEntry(t *testing.T) {
 			BaseCurrency: baseCurrency,
 		})
 
-		_, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		_, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(-100)),
@@ -260,7 +260,7 @@ func TestDoubleEntry(t *testing.T) {
 			BaseCurrency: baseCurrency,
 		})
 
-		_, err := srv.Record(context.TODO(), &double_entry.RecordRequest{
+		_, err := srv.Calculate(context.TODO(), &double_entry.RecordRequest{
 			Transaction: &database.Transaction{
 				SourceAccountID:                 sourceAccountID,
 				DestinationAccountID:            destinationAccountID,
