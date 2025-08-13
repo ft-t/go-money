@@ -31,17 +31,20 @@ func NewService(
 
 func (s *Service) GetAccountByID(ctx context.Context, id int32) (*database.Account, error) {
 	var account database.Account
+
 	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).Where("id = ?", id).
 		First(&account).Error; err != nil {
 		return nil, errors.Join(err, errors.New("failed to fetch account by id"))
 	}
+
 	return &account, nil
 }
 
 func (s *Service) GetAllAccounts(ctx context.Context) ([]*database.Account, error) {
 	var accounts []*database.Account
 
-	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).Find(&accounts).Error; err != nil {
+	if err := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly)).
+		Find(&accounts).Error; err != nil {
 		return nil, errors.Join(err, errors.New("failed to fetch accounts"))
 	}
 
@@ -51,7 +54,8 @@ func (s *Service) GetAllAccounts(ctx context.Context) ([]*database.Account, erro
 func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
 	var accounts []*database.Account
 
-	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Order("display_order asc nulls last")
+	query := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly)).
+		Order("display_order asc nulls last")
 
 	if len(req.Ids) > 0 {
 		query = query.Where("id in ?", req.Ids)
@@ -82,19 +86,59 @@ func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest)
 func (s *Service) Delete(ctx context.Context, req *accountsv1.DeleteAccountRequest) (*accountsv1.DeleteAccountResponse, error) {
 	var account database.Account
 
-	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	tx := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Begin()
+	defer tx.Rollback()
 
-	if err := db.Where("id = ?", req.Id).First(&account).Error; err != nil {
+	if err := tx.Where("id = ?", req.Id).First(&account).Error; err != nil {
 		return nil, errors.Join(err, errors.New("account not found"))
 	}
 
-	if err := db.Delete(&account).Error; err != nil {
+	if err := tx.Delete(&account).Error; err != nil {
 		return nil, err
+	}
+
+	if err := s.EnsureDefaultExists(ctx, tx, &account); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.Join(err, errors.New("failed to commit transaction"))
 	}
 
 	return &accountsv1.DeleteAccountResponse{
 		Account: s.cfg.MapperSvc.MapAccount(ctx, &account),
 	}, nil
+}
+
+func (s *Service) EnsureDefaultExists(
+	_ context.Context,
+	tx *gorm.DB,
+	updatedAcc *database.Account,
+) error {
+	if updatedAcc.IsDefault() {
+		if err := tx.Exec("update accounts set flags = flags & ~CAST(? AS bigint) where id != ? and type = ? and deleted_at is null",
+			database.AccountFlagIsDefault,
+			updatedAcc.ID,
+			updatedAcc.Type,
+		).Error; err != nil {
+			return err
+		}
+	}
+
+	// ensure that we have at least one default account
+	var count int64
+	if err := tx.Raw("select count(*) from accounts where flags & ? = ? and type = ? and deleted_at is null",
+		database.AccountFlagIsDefault,
+		database.AccountFlagIsDefault,
+		updatedAcc.Type).Find(&count).Error; err != nil {
+		return err
+	}
+
+	if count == 0 {
+		return errors.New("at least one default account is required")
+	}
+
+	return nil
 }
 
 func (s *Service) CreateBulk(
@@ -103,7 +147,7 @@ func (s *Service) CreateBulk(
 ) (*accountsv1.CreateAccountsBulkResponse, error) {
 	var existingAccounts []*database.Account
 
-	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	tx := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Begin()
 	defer tx.Rollback()
 
 	if err := tx.Clauses(clause.Locking{
@@ -166,7 +210,7 @@ func (s *Service) Create(
 		Name:          req.Name,
 		Currency:      req.Currency,
 		Extra:         req.Extra,
-		Flags:         0,
+		Flags:         0, // todo
 		LastUpdatedAt: time.Now().UTC(),
 		CreatedAt:     time.Now().UTC(),
 		DeletedAt:     gorm.DeletedAt{},
@@ -176,6 +220,8 @@ func (s *Service) Create(
 		AccountNumber: req.AccountNumber,
 		DisplayOrder:  req.DisplayOrder,
 	}
+
+	account.Flags = database.AccountFlagIsDefault // todo flags
 
 	if account.Extra == nil {
 		account.Extra = map[string]string{}
@@ -188,8 +234,19 @@ func (s *Service) Create(
 
 	account.LiabilityPercent = liabilityPercent
 
-	if err = database.GetDbWithContext(ctx, database.DbTypeMaster).Create(account).Error; err != nil {
+	tx := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Begin()
+	defer tx.Rollback()
+
+	if err = tx.Create(account).Error; err != nil {
 		return nil, err
+	}
+
+	if err = s.EnsureDefaultExists(ctx, tx, account); err != nil {
+		return nil, err
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.Join(err, errors.New("failed to commit transaction"))
 	}
 
 	return &accountsv1.CreateAccountResponse{
@@ -233,6 +290,7 @@ func (s *Service) Update(
 	account.AccountNumber = req.AccountNumber
 	account.Iban = req.Iban
 	account.DisplayOrder = req.DisplayOrder
+	account.Flags = database.AccountFlagIsDefault // todo flags
 
 	liabilityPercent, err := s.parseLiabilityPercent(req.LiabilityPercent)
 	if err != nil {
@@ -246,6 +304,10 @@ func (s *Service) Update(
 	}
 
 	if err = tx.Save(&account).Error; err != nil {
+		return nil, err
+	}
+
+	if err = s.EnsureDefaultExists(ctx, tx, &account); err != nil {
 		return nil, err
 	}
 

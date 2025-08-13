@@ -2,11 +2,12 @@ package database
 
 import (
 	"github.com/ft-t/go-money/pkg/boilerplate"
+	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/go-gormigrate/gormigrate/v2"
 	"gorm.io/gorm"
 )
 
-func getMigrations() []*gormigrate.Migration {
+func getMigrations(cfg *configuration.Configuration) []*gormigrate.Migration {
 	return []*gormigrate.Migration{
 		{
 			ID: "2025-02-24-InitialUsers",
@@ -310,7 +311,7 @@ where id in (select * from currencies)`,
 		{
 			ID: "2025-08-10-AddFxSourceCurrency",
 			Migrate: func(db *gorm.DB) error {
-				return boilerplate.ExecuteSql(db,
+				queries := []string{
 					`alter table transactions add column if not exists fx_source_currency text;`,
 					`alter table transactions add column if not exists fx_source_amount DECIMAL;`,
 					`begin ;
@@ -319,10 +320,20 @@ update transactions set destination_currency = '' where transaction_type = 3;
 
 update transactions set fx_source_amount = -abs(destination_amount) where transaction_type = 3 and destination_amount != 0;
 update transactions set destination_amount = 0 where transaction_type = 3;
-update accounts set type = 1 where type in (2,3) 
+update accounts set type = 1 where type in (2,3);
 commit ;
 `,
-				)
+				}
+
+				queries = append(queries, generateDefaultAccounts(cfg)...)
+
+				for _, q := range queries {
+					if err := db.Exec(q).Error; err != nil {
+						return err
+					}
+				}
+
+				return nil
 			},
 		},
 	}

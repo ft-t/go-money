@@ -1,9 +1,16 @@
 package accounts_test
 
 import (
+	"context"
+	"math"
+	"os"
+	"testing"
+	"time"
+
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
@@ -13,9 +20,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"os"
-	"testing"
-	"time"
 )
 
 var gormDB *gorm.DB
@@ -29,26 +33,46 @@ func TestMain(m *testing.M) {
 }
 
 func TestService_GetAccountByID(t *testing.T) {
-	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-	acc := &database.Account{
-		Extra: map[string]string{},
-	}
-	assert.NoError(t, gormDB.Create(&acc).Error)
+		acc := &database.Account{
+			Extra: map[string]string{},
+		}
+		assert.NoError(t, gormDB.Create(&acc).Error)
 
-	srv := accounts.NewService(&accounts.ServiceConfig{})
+		srv := accounts.NewService(&accounts.ServiceConfig{})
 
-	resp, err := srv.GetAccountByID(context.TODO(), acc.ID)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
+		resp, err := srv.GetAccountByID(context.TODO(), acc.ID)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		resp, err := srv.GetAccountByID(context.TODO(), int32(math.MaxInt32))
+		assert.ErrorContains(t, err, "failed to fetch account by id")
+		assert.Nil(t, resp)
+	})
 }
 
 func TestDelete(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
+		defaultAcc := &database.Account{
+			Extra: map[string]string{},
+			Flags: database.AccountFlagIsDefault,
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		}
+		assert.NoError(t, gormDB.Create(defaultAcc).Error)
+
 		acc := &database.Account{
 			Extra: map[string]string{},
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
 		}
 		assert.NoError(t, gormDB.Create(acc).Error)
 
@@ -74,7 +98,7 @@ func TestDelete(t *testing.T) {
 		assert.EqualValues(t, acc.ID, resp.Account.Id)
 
 		var rec database.Account
-		assert.NoError(t, gormDB.Unscoped().First(&rec).Error)
+		assert.NoError(t, gormDB.Unscoped().Where("id = ?", acc.ID).First(&rec).Error)
 
 		assert.True(t, rec.DeletedAt.Valid)
 		assert.NotEmpty(t, rec.DeletedAt.Time)
@@ -92,65 +116,222 @@ func TestDelete(t *testing.T) {
 		assert.ErrorContains(t, err, "account not found")
 		assert.Nil(t, resp)
 	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		rows := sqlmock.NewRows([]string{"id", "name"}).
+			AddRow(999, "some-account")
+
+		sql.ExpectBegin()
+		sql.ExpectQuery(`SELECT \* FROM .*`).
+			WillReturnRows(rows)
+
+		sql.ExpectExec("UPDATE .*").
+			WillReturnError(errors.New("failed to delete account"))
+
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.Delete(ctx, &accountsv1.DeleteAccountRequest{
+			Id: 999,
+		})
+
+		assert.ErrorContains(t, err, "failed to delete account")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("db error - fail commit", func(t *testing.T) {
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		rows := sqlmock.NewRows([]string{"id", "name"}).
+			AddRow(999, "some-account")
+
+		sql.ExpectBegin()
+		sql.ExpectQuery(`SELECT \* FROM .*`).
+			WillReturnRows(rows)
+
+		sql.ExpectExec("UPDATE .*").
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		sql.ExpectQuery("select count.*").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+		sql.ExpectCommit().WillReturnError(errors.New("failed to commit transaction"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.Delete(ctx, &accountsv1.DeleteAccountRequest{
+			Id: 999,
+		})
+
+		assert.ErrorContains(t, err, "failed to commit transaction")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("cannot remove default", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		defaultAcc := &database.Account{
+			Extra: map[string]string{},
+			Flags: database.AccountFlagIsDefault,
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		}
+		assert.NoError(t, gormDB.Create(defaultAcc).Error)
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		resp, err := srv.Delete(context.TODO(), &accountsv1.DeleteAccountRequest{
+			Id: defaultAcc.ID,
+		})
+
+		assert.ErrorContains(t, err, "at least one default account is required")
+		assert.Nil(t, resp)
+	})
 }
 
 func TestGetAllAccounts(t *testing.T) {
-	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-	acc := &database.Account{
-		Extra:        map[string]string{},
-		DisplayOrder: lo.ToPtr(int32(1)),
-	}
-	assert.NoError(t, gormDB.Create(acc).Error)
+		acc := &database.Account{
+			Extra:        map[string]string{},
+			DisplayOrder: lo.ToPtr(int32(1)),
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
 
-	srv := accounts.NewService(&accounts.ServiceConfig{})
+		srv := accounts.NewService(&accounts.ServiceConfig{})
 
-	resp, err := srv.GetAllAccounts(context.TODO())
+		resp, err := srv.GetAllAccounts(context.TODO())
 
-	assert.NoError(t, err)
-	assert.Len(t, resp, 1)
+		assert.NoError(t, err)
+		assert.Len(t, resp, 1)
+	})
+
+	t.Run("db fail", func(t *testing.T) {
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectQuery("SELECT \\* FROM `accounts`.*").
+			WillReturnError(errors.New("failed to fetch accounts"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.GetAllAccounts(ctx)
+
+		assert.ErrorContains(t, err, "failed to fetch accounts")
+		assert.Nil(t, resp)
+	})
 }
 
 func TestList(t *testing.T) {
-	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-	acc := &database.Account{
-		Extra:        map[string]string{},
-		DisplayOrder: lo.ToPtr(int32(1)),
-	}
-	assert.NoError(t, gormDB.Create(acc).Error)
+		acc := &database.Account{
+			Extra:        map[string]string{},
+			DisplayOrder: lo.ToPtr(int32(1)),
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
 
-	accDeleted := &database.Account{
-		Extra: map[string]string{},
-		DeletedAt: gorm.DeletedAt{
-			Valid: true,
-			Time:  time.Now().UTC(),
-		},
-		DisplayOrder: lo.ToPtr(int32(999)),
-	}
-	assert.NoError(t, gormDB.Create(accDeleted).Error)
+		accDeleted := &database.Account{
+			Extra: map[string]string{},
+			DeletedAt: gorm.DeletedAt{
+				Valid: true,
+				Time:  time.Now().UTC(),
+			},
+			DisplayOrder: lo.ToPtr(int32(999)),
+		}
+		assert.NoError(t, gormDB.Create(accDeleted).Error)
 
-	mapper := NewMockMapperSvc(gomock.NewController(t))
+		mapper := NewMockMapperSvc(gomock.NewController(t))
 
-	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
-			assert.EqualValues(t, acc.ID, account.ID)
+		mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
+				assert.EqualValues(t, acc.ID, account.ID)
 
-			return &v1.Account{
-				Id: account.ID,
-			}
+				return &v1.Account{
+					Id: account.ID,
+				}
+			})
+
+		srv := accounts.NewService(&accounts.ServiceConfig{
+			MapperSvc: mapper,
 		})
 
-	srv := accounts.NewService(&accounts.ServiceConfig{
-		MapperSvc: mapper,
+		resp, err := srv.List(context.TODO(), &accountsv1.ListAccountsRequest{
+			Ids: []int32{acc.ID, accDeleted.ID},
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, resp.Accounts, 1)
+
+		assert.EqualValues(t, acc.ID, resp.Accounts[0].Account.Id)
 	})
 
-	resp, err := srv.List(context.TODO(), &accountsv1.ListAccountsRequest{})
+	t.Run("include deleted", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-	assert.NoError(t, err)
-	assert.Len(t, resp.Accounts, 1)
+		acc := &database.Account{
+			Extra:        map[string]string{},
+			DisplayOrder: lo.ToPtr(int32(1)),
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
 
-	assert.EqualValues(t, acc.ID, resp.Accounts[0].Account.Id)
+		accDeleted := &database.Account{
+			Extra: map[string]string{},
+			DeletedAt: gorm.DeletedAt{
+				Valid: true,
+				Time:  time.Now().UTC(),
+			},
+			DisplayOrder: lo.ToPtr(int32(999)),
+		}
+		assert.NoError(t, gormDB.Create(accDeleted).Error)
+
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+
+		mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+			Times(2).
+			DoAndReturn(func(ctx context.Context, account *database.Account) *v1.Account {
+				return &v1.Account{
+					Id: account.ID,
+				}
+			})
+
+		srv := accounts.NewService(&accounts.ServiceConfig{
+			MapperSvc: mapper,
+		})
+
+		resp, err := srv.List(context.TODO(), &accountsv1.ListAccountsRequest{
+			IncludeDeleted: true,
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, resp.Accounts, 2)
+
+		assert.EqualValues(t, acc.ID, resp.Accounts[0].Account.Id)
+		assert.EqualValues(t, accDeleted.ID, resp.Accounts[1].Account.Id)
+	})
+
+	t.Run("db fail", func(t *testing.T) {
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectQuery("SELECT \\* FROM .*").
+			WillReturnError(errors.New("failed to fetch accounts"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.List(ctx, &accountsv1.ListAccountsRequest{})
+
+		assert.ErrorContains(t, err, "failed to fetch accounts")
+		assert.Nil(t, resp)
+	})
 }
 
 func TestCreateAccount(t *testing.T) {
@@ -342,7 +523,7 @@ func TestCreateBulk(t *testing.T) {
 		assert.EqualValues(t, 1, resp.DuplicateCount)
 
 		assert.Contains(t, resp.Messages[0], "created successfully")
-		assert.Contains(t, resp.Messages[1], "account with name 'some-account', type 'ACCOUNT_TYPE_REGULAR', and currency 'USD' already exists")
+		assert.Contains(t, resp.Messages[1], "account with name 'some-account', type 'ACCOUNT_TYPE_ASSET', and currency 'USD' already exists")
 	})
 
 	t.Run("one duplicate", func(t *testing.T) {
@@ -412,10 +593,38 @@ func TestCreateBulk(t *testing.T) {
 		assert.Len(t, rec, 1)
 		assert.Len(t, resp.Messages, 1)
 
-		assert.Contains(t, resp.Messages[0], "account with name 'some-account', type 'ACCOUNT_TYPE_REGULAR', and currency 'USD' already exists")
+		assert.Contains(t, resp.Messages[0], "account with name 'some-account', type 'ACCOUNT_TYPE_ASSET', and currency 'USD' already exists")
 
 		assert.EqualValues(t, 0, resp.CreatedCount)
 		assert.EqualValues(t, 1, resp.DuplicateCount)
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").
+			WillReturnError(errors.New("failed to create account"))
+
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := srv.CreateBulk(ctx, &accountsv1.CreateAccountsBulkRequest{
+			Accounts: []*accountsv1.CreateAccountRequest{
+				{
+					Name:     "some-account",
+					Currency: "USD",
+					Type:     v1.AccountType_ACCOUNT_TYPE_ASSET,
+					Note:     "some note",
+				},
+			},
+		})
+
+		assert.ErrorContains(t, err, "failed to create account")
+		assert.Nil(t, resp)
 	})
 }
 
@@ -575,5 +784,135 @@ func TestUpdate(t *testing.T) {
 
 		assert.Nil(t, resp)
 		assert.ErrorContains(t, err, "can't convert -1-2 to decimal")
+	})
+}
+
+func TestEnsureDefaultExists(t *testing.T) {
+	t.Run("current is default", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		prevDefault := &database.Account{
+			Extra: map[string]string{},
+			Flags: database.AccountFlagIsDefault,
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		}
+		assert.NoError(t, gormDB.Create(prevDefault).Error)
+
+		defaultOtherType := &database.Account{
+			Extra: map[string]string{},
+			Flags: database.AccountFlagIsDefault,
+			Type:  v1.AccountType_ACCOUNT_TYPE_INCOME,
+		}
+		assert.NoError(t, gormDB.Create(defaultOtherType).Error)
+
+		acc := &database.Account{
+			Extra: map[string]string{},
+			Flags: database.AccountFlagIsDefault,
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		err := srv.EnsureDefaultExists(context.TODO(), gormDB, acc)
+		assert.NoError(t, err)
+
+		var updatedPrevDefault database.Account
+		assert.NoError(t, gormDB.First(&updatedPrevDefault, "id = ?", prevDefault.ID).Error)
+		assert.EqualValues(t, 0, updatedPrevDefault.Flags)
+
+		var updatedDefaultOtherType database.Account
+		assert.NoError(t, gormDB.First(&updatedDefaultOtherType, "id = ?", defaultOtherType.ID).Error)
+		assert.EqualValues(t, database.AccountFlagIsDefault, updatedDefaultOtherType.Flags)
+	})
+
+	t.Run("current is not default", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		prevDefault := &database.Account{
+			Extra: map[string]string{},
+			Flags: database.AccountFlagIsDefault,
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		}
+		assert.NoError(t, gormDB.Create(prevDefault).Error)
+
+		acc := &database.Account{
+			Extra: map[string]string{},
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		err := srv.EnsureDefaultExists(context.TODO(), gormDB, acc)
+		assert.NoError(t, err)
+
+		var updatedPrevDefault database.Account
+		assert.NoError(t, gormDB.First(&updatedPrevDefault, "id = ?", prevDefault.ID).Error)
+		assert.EqualValues(t, database.AccountFlagIsDefault, updatedPrevDefault.Flags)
+
+		var updatedAcc database.Account
+		assert.NoError(t, gormDB.First(&updatedAcc, "id = ?", acc.ID).Error)
+		assert.EqualValues(t, 0, updatedAcc.Flags)
+	})
+
+	t.Run("no default exists", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		acc := &database.Account{
+			Extra: map[string]string{},
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		err := srv.EnsureDefaultExists(context.TODO(), gormDB, acc)
+		assert.ErrorContains(t, err, "at least one default account is required")
+	})
+
+	t.Run("db fail - current default", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		acc := &database.Account{
+			Extra: map[string]string{},
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+			Flags: database.AccountFlagIsDefault,
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectExec("update accounts .*").
+			WillReturnError(errors.New("failed to update account"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		err := srv.EnsureDefaultExists(ctx, mockGorm, acc)
+		assert.ErrorContains(t, err, "failed to update account")
+	})
+
+	t.Run("db fail - current not default", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		acc := &database.Account{
+			Extra: map[string]string{},
+			Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		}
+		assert.NoError(t, gormDB.Create(acc).Error)
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectExec("update accounts .*").
+			WillReturnError(errors.New("failed to update account"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		err := srv.EnsureDefaultExists(ctx, mockGorm, acc)
+		assert.ErrorContains(t, err, "failed to update account")
 	})
 }
