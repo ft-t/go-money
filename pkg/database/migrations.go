@@ -336,5 +336,28 @@ commit ;
 				return nil
 			},
 		},
+		{
+			ID: "2025-08-14-AddDoubleEntry",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table if not exists double_entries
+(
+    id                      bigserial
+        constraint double_entries_pk
+            primary key,
+    transaction_id          bigint    not null,
+    is_debit                boolean   not null,
+    amount_in_base_currency decimal,
+    base_currency           text,
+    account_id              integer   not null,
+    created_at              timestamp not null,
+    deleted_at              timestamp
+);
+
+create index if not exists ix_transaction on double_entries (transaction_id);
+create unique index if not exists ix_uniq_record on double_entries (transaction_id, is_debit) where (deleted_at is null);
+`)
+			},
+		},
 	}
 }
