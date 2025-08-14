@@ -368,11 +368,23 @@ func TestCreateReconciliation(t *testing.T) {
 			return i, nil
 		})
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+	doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		RuleSvc:           ruleEngine,
 		BaseAmountService: baseCurrency,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEnty,
 	})
 
 	accounts := []*database.Account{
@@ -380,9 +392,17 @@ func TestCreateReconciliation(t *testing.T) {
 			Name:     "Private [UAH]",
 			Currency: "UAH",
 			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+		},
+		{
+			Name:     "Adjustment",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT,
 		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
 
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
@@ -436,11 +456,23 @@ func TestCreateBulk(t *testing.T) {
 			return i, nil
 		})
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+	doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
 		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEnty,
 	})
 
 	accounts := []*database.Account{
@@ -451,6 +483,8 @@ func TestCreateBulk(t *testing.T) {
 		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
 
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
@@ -545,10 +579,24 @@ func TestCreateRawTransaction(t *testing.T) {
 		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+		doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+		doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+
 		svc := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:          statSvc,
 			BaseAmountService: baseSvc,
 			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
+			DoubleEntry:       doubleEnty,
 		})
 
 		mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
@@ -584,11 +632,20 @@ func TestCreateRawTransaction(t *testing.T) {
 		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+
 		svc := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:          statSvc,
 			BaseAmountService: baseSvc,
 			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
 		})
+
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(errors.New("validation error"))
 
 		newTx := &database.Transaction{
 			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
@@ -597,7 +654,7 @@ func TestCreateRawTransaction(t *testing.T) {
 		}
 		resp, err := svc.CreateRawTransaction(context.TODO(), newTx)
 
-		assert.ErrorContains(t, err, "destination_amount is required for")
+		assert.ErrorContains(t, err, "failed to validate transactions: validation error")
 		assert.Nil(t, resp)
 	})
 
@@ -606,11 +663,22 @@ func TestCreateRawTransaction(t *testing.T) {
 		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+		doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 		svc := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:          statSvc,
 			BaseAmountService: baseSvc,
 			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
+			DoubleEntry:       doubleEnty,
 		})
+
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
 
 		statSvc.EXPECT().HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(errors.New("unexpected error"))
@@ -632,16 +700,68 @@ func TestCreateRawTransaction(t *testing.T) {
 		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+		doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 		svc := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:          statSvc,
 			BaseAmountService: baseSvc,
 			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
+			DoubleEntry:       doubleEnty,
 		})
 
 		statSvc.EXPECT().HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
 
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
 		baseSvc.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(errors.New("unexpected error"))
+
+		newTx := &database.Transaction{
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+			DestinationAccountID: accounts[0].ID,
+			DestinationCurrency:  accounts[0].Currency,
+			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+		}
+		resp, err := svc.CreateRawTransaction(context.TODO(), newTx)
+
+		assert.ErrorContains(t, err, "unexpected error")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("double entry err", func(t *testing.T) {
+		statSvc := NewMockStatsSvc(gomock.NewController(t))
+		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+		doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+		svc := transactions.NewService(&transactions.ServiceConfig{
+			StatsSvc:          statSvc,
+			BaseAmountService: baseSvc,
+			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
+			DoubleEntry:       doubleEnty,
+		})
+
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+		statSvc.EXPECT().HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+		baseSvc.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
+		doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(errors.New("unexpected error"))
 
 		newTx := &database.Transaction{

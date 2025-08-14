@@ -13,6 +13,8 @@ buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250812173731-7
 buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250812173731-77f702f49e93.1/go.mod h1:c/gfMzq0TEp7gqFCXAYeWTmymVAf+Awc3BmOSjzyHpU=
 buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250813194918-72986950fbff.1 h1:TSt5B6Dm39XYtdcrSIwdd9oKWEyEvCDBi3PkF4VMlVQ=
 buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250813194918-72986950fbff.1/go.mod h1:c/gfMzq0TEp7gqFCXAYeWTmymVAf+Awc3BmOSjzyHpU=
+buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250814100257-fb099f78937a.1 h1:vpzKflHcvLkcZ9TNgHhjldyB69Celvkmi5GE+gMqYI8=
+buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250814100257-fb099f78937a.1/go.mod h1:c/gfMzq0TEp7gqFCXAYeWTmymVAf+Awc3BmOSjzyHpU=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 connectrpc.com/connect v1.18.1 h1:PAg7CjSAGvscaf6YZKUefjoih5Z/qYkyaTrBW8xvYPw=
 connectrpc.com/connect v1.18.1/go.mod h1:0292hj1rnx8oFrStN7cB4jjVBeqs+Yx5yDIC2prWDO8=

@@ -18,6 +18,7 @@ func generateDefaultAccounts(cfg *configuration.Configuration) []string {
 		{"Default Income", gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME},
 		{"Default Income", gomoneypbv1.AccountType_ACCOUNT_TYPE_LIABILITY},
 		{"Cash", gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET},
+		{"Default Adjustment", gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT},
 	} {
 		result = append(result, fmt.Sprintf(`insert into accounts(name, current_balance, currency, flags, last_updated_at, created_at, deleted_at, type, note,
                      account_number, iban, liability_percent, display_order, first_transaction_at)

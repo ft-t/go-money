@@ -4,7 +4,7 @@ go 1.23.5
 
 require (
 	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250813194918-72986950fbff.1
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250813194918-72986950fbff.1
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.7-20250814100257-fb099f78937a.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
