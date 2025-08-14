@@ -17,7 +17,6 @@ type Service struct {
 }
 
 type ServiceConfig struct {
-	AccountSvc           AccountSvc
 	ApplicableAccountSvc ApplicableAccountSvc
 }
 
@@ -186,30 +185,28 @@ func (s *Service) validateWithdrawal(
 		}
 	}
 
-	if tx.DestinationAmount.Valid { // destination amount is optional
-		if err := s.validateAmount(
-			tx.DestinationAmount,
-			true,
-			txType,
-			"destination_amount",
-		); err != nil {
-			return err
-		}
+	if err := s.validateAmount(
+		tx.DestinationAmount,
+		true,
+		txType,
+		"destination_amount",
+	); err != nil {
+		return err
+	}
 
-		if err := s.validateCurrency(
-			tx.DestinationCurrency,
-			txType,
-			"destination_currency",
-		); err != nil {
-			return err
-		}
+	if err := s.validateCurrency(
+		tx.DestinationCurrency,
+		txType,
+		"destination_currency",
+	); err != nil {
+		return err
+	}
 
-		if tx.DestinationAccountID == 0 {
-			return errors.Newf(
-				"destination_account_id is required for %s when destination_amount is provided",
-				txType,
-			)
-		}
+	if tx.DestinationAccountID == 0 {
+		return errors.Newf(
+			"destination_account_id is required for %s when destination_amount is provided",
+			txType,
+		)
 	}
 
 	return nil
@@ -396,7 +393,7 @@ func (s *Service) ensureCurrencyExists(
 
 func (s *Service) ensureAccountsExistAndCurrencyCorrect(
 	_ context.Context,
-	dbTx *gorm.DB,
+	_ *gorm.DB,
 	accMap map[int32]*database.Account,
 	expectedAccounts map[int32]string,
 ) error {

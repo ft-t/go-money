@@ -9,7 +9,9 @@ import (
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
+	"github.com/golang/mock/gomock"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -48,18 +50,48 @@ func TestValidateWithdrawal(t *testing.T) {
 			Currency: "PLN",
 			Extra:    map[string]string{},
 		},
+		{
+			Name:     "Default expense account",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
+			Currency: "USD",
+		},
 	}
 	assert.NoError(t, gormDB.Create(&acc).Error)
 
-	t.Run("valid withdrawal", func(t *testing.T) {
-		srv := validation.NewValidationService(nil)
+	accountMap := buildAccountMap(acc)
 
-		assert.NoError(t, srv.ValidateTransactionData(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-			SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-			SourceCurrency:  acc[0].Currency,
-			SourceAccountID: acc[0].ID,
-		}))
+	t.Run("valid withdrawal", func(t *testing.T) {
+		applicableSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: applicableSvc,
+		})
+
+		applicableSvc.EXPECT().GetApplicableAccounts(gomock.Any(), gomock.Any()).
+			Return(map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE: {
+					SourceAccounts: map[int32]*database.Account{
+						acc[0].ID: acc[0],
+					},
+					DestinationAccounts: map[int32]*database.Account{
+						acc[3].ID: acc[3],
+					},
+				},
+			})
+
+		assert.NoError(t, srv.Validate(context.TODO(), gormDB, []*database.Transaction{
+			{
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+				SourceCurrency:  acc[0].Currency,
+				SourceAccountID: acc[0].ID,
+
+				DestinationAccountID: acc[3].ID,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+				DestinationCurrency:  acc[3].Currency,
+			},
+		}, accountMap))
 	})
 
 	t.Run("invalid - positive amount", func(t *testing.T) {
@@ -133,14 +165,36 @@ func TestValidateWithdrawal(t *testing.T) {
 	})
 
 	t.Run("invalid - source currency mismatch", func(t *testing.T) {
-		srv := validation.NewValidationService(nil)
+		appAcc := NewMockApplicableAccountSvc(gomock.NewController(t))
 
-		err := srv.ValidateTransactionData(context.TODO(), gormDB, &database.Transaction{
-			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-			SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-			SourceCurrency:  acc[1].Currency,
-			SourceAccountID: acc[0].ID,
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: appAcc,
 		})
+
+		appAcc.EXPECT().GetApplicableAccounts(gomock.Any(), gomock.Any()).
+			Return(map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE: {
+					SourceAccounts: map[int32]*database.Account{
+						acc[0].ID: acc[1],
+					},
+					DestinationAccounts: map[int32]*database.Account{
+						acc[3].ID: acc[3],
+					},
+				},
+			})
+
+		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
+			{
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+				SourceCurrency:  acc[1].Currency,
+				SourceAccountID: acc[0].ID,
+
+				DestinationAccountID: acc[3].ID,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+				DestinationCurrency:  acc[3].Currency,
+			},
+		}, accountMap)
 
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency USD, expected EUR")
@@ -220,6 +274,11 @@ func TestValidateDeposit(t *testing.T) {
 	}
 	assert.NoError(t, gormDB.Create(&acc).Error)
 
+	accountMap := make(map[int32]*database.Account, len(acc))
+	for _, a := range acc {
+		accountMap[a.ID] = a
+	}
+
 	t.Run("valid deposit", func(t *testing.T) {
 		srv := validation.NewValidationService(nil)
 		assert.NoError(t, srv.ValidateTransactionData(context.TODO(), gormDB, &database.Transaction{
@@ -279,15 +338,37 @@ func TestValidateDeposit(t *testing.T) {
 	})
 
 	t.Run("invalid - destination currency mismatch", func(t *testing.T) {
-		srv := validation.NewValidationService(nil)
-		err := srv.ValidateTransactionData(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
-			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
-			DestinationCurrency:  acc[1].Currency,
-			DestinationAccountID: acc[0].ID,
+		accSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: accSvc,
 		})
+
+		accSvc.EXPECT().GetApplicableAccounts(gomock.Any(), gomock.Any()).
+			Return(map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME: {
+					SourceAccounts: map[int32]*database.Account{
+						acc[0].ID: acc[0],
+					},
+					DestinationAccounts: map[int32]*database.Account{
+						acc[1].ID: acc[1],
+					},
+				},
+			})
+
+		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
+			{
+				TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+				DestinationCurrency:  "RAND",
+				DestinationAccountID: acc[1].ID,
+
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-100)),
+				SourceCurrency:  acc[0].Currency,
+				SourceAccountID: acc[0].ID,
+			},
+		}, accountMap)
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "has currency USD, expected EUR")
+		assert.ErrorContains(t, err, "has currency EUR, expected RAND")
 	})
 }
 
@@ -295,9 +376,21 @@ func TestValidateReconciliation(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
 	acc := []*database.Account{
-		{Name: "Test USD", Currency: "USD", Extra: map[string]string{}},
+		{
+			Name:     "Test USD",
+			Currency: "USD",
+			Extra:    map[string]string{},
+		},
+		{
+			Name:     "reconciliation account",
+			Currency: "USD",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE, // todo
+		},
 	}
 	assert.NoError(t, gormDB.Create(&acc).Error)
+
+	accMap := buildAccountMap(acc)
 
 	t.Run("valid reconciliation", func(t *testing.T) {
 		srv := validation.NewValidationService(nil)
@@ -358,13 +451,36 @@ func TestValidateReconciliation(t *testing.T) {
 	})
 
 	t.Run("invalid - destination currency mismatch", func(t *testing.T) {
-		srv := validation.NewValidationService(nil)
-		err := srv.ValidateTransactionData(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
-			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(200)),
-			DestinationCurrency:  "EUR",
-			DestinationAccountID: acc[0].ID,
+		accSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: accSvc,
 		})
+
+		accSvc.EXPECT().GetApplicableAccounts(gomock.Any(), gomock.Any()).
+			Return(map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT: {
+					SourceAccounts: map[int32]*database.Account{
+						acc[0].ID: acc[0],
+					},
+					DestinationAccounts: map[int32]*database.Account{
+						acc[1].ID: acc[1],
+					},
+				},
+			})
+
+		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
+			{
+				TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(200)),
+				DestinationCurrency:  "EUR",
+				DestinationAccountID: acc[1].ID,
+
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-200)),
+				SourceCurrency:  acc[0].Currency,
+				SourceAccountID: acc[0].ID,
+			},
+		}, accMap)
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency USD, expected EUR")
 	})
@@ -378,6 +494,8 @@ func TestValidateTransferBetweenAccounts(t *testing.T) {
 		{Name: "Test EUR", Currency: "EUR", Extra: map[string]string{}},
 	}
 	assert.NoError(t, gormDB.Create(&acc).Error)
+
+	accountMap := buildAccountMap(acc)
 
 	t.Run("valid transfer", func(t *testing.T) {
 		srv := validation.NewValidationService(nil)
@@ -483,31 +601,71 @@ func TestValidateTransferBetweenAccounts(t *testing.T) {
 	})
 
 	t.Run("invalid - source currency mismatch", func(t *testing.T) {
-		srv := validation.NewValidationService(nil)
-		err := srv.ValidateTransactionData(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-			SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-50)),
-			SourceCurrency:       acc[1].Currency,
-			SourceAccountID:      acc[0].ID,
-			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
-			DestinationCurrency:  acc[1].Currency,
-			DestinationAccountID: acc[1].ID,
+		accSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: accSvc,
 		})
+
+		accSvc.EXPECT().GetApplicableAccounts(gomock.Any(), gomock.Any()).
+			Return(map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS: {
+					SourceAccounts: map[int32]*database.Account{
+						acc[0].ID: acc[0],
+					},
+					DestinationAccounts: map[int32]*database.Account{
+						acc[1].ID: acc[1],
+					},
+				},
+			})
+
+		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
+			{
+				TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
+				SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-50)),
+				SourceCurrency:       acc[1].Currency,
+				SourceAccountID:      acc[0].ID,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
+				DestinationCurrency:  acc[1].Currency,
+				DestinationAccountID: acc[1].ID,
+			},
+		}, accountMap)
+
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency USD, expected EUR")
 	})
 
 	t.Run("invalid - destination currency mismatch", func(t *testing.T) {
-		srv := validation.NewValidationService(nil)
-		err := srv.ValidateTransactionData(context.TODO(), gormDB, &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-			SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-50)),
-			SourceCurrency:       acc[0].Currency,
-			SourceAccountID:      acc[0].ID,
-			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
-			DestinationCurrency:  acc[0].Currency,
-			DestinationAccountID: acc[1].ID,
+		accSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: accSvc,
 		})
+
+		accSvc.EXPECT().GetApplicableAccounts(gomock.Any(), gomock.Any()).
+			Return(map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS: {
+					SourceAccounts: map[int32]*database.Account{
+						acc[0].ID: acc[0],
+					},
+					DestinationAccounts: map[int32]*database.Account{
+						acc[1].ID: acc[1],
+					},
+				},
+			})
+
+		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
+			{
+				TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
+				SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-50)),
+				SourceCurrency:       acc[0].Currency,
+				SourceAccountID:      acc[0].ID,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
+				DestinationCurrency:  acc[0].Currency,
+				DestinationAccountID: acc[1].ID,
+			},
+		}, accountMap)
+
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency EUR, expected USD")
 	})
@@ -524,4 +682,106 @@ func TestValidateInvalidType(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "unsupported transaction type: TRANSACTION_TYPE_UNSPECIFIED")
+}
+
+func TestValidateTxAccounts(t *testing.T) {
+	t.Run("no possible accounts for tx type", func(t *testing.T) {
+		accSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: accSvc,
+		})
+
+		err := srv.ValidateTransactionAccounts(context.TODO(), map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+			gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME: {},
+		}, &database.Transaction{
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+		})
+
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "no possible accounts found for transaction type")
+	})
+
+	t.Run("source account not found", func(t *testing.T) {
+		accSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: accSvc,
+		})
+
+		err := srv.ValidateTransactionAccounts(context.TODO(), map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+			gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME: {
+				SourceAccounts: map[int32]*database.Account{},
+			},
+		}, &database.Transaction{
+			TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			SourceAccountID: 1,
+		})
+
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "is not applicable for transaction type")
+	})
+
+	t.Run("destination account not found", func(t *testing.T) {
+		accSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: accSvc,
+		})
+
+		err := srv.ValidateTransactionAccounts(context.TODO(), map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+			gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME: {
+				SourceAccounts: map[int32]*database.Account{
+					1: {},
+				},
+				DestinationAccounts: map[int32]*database.Account{},
+			},
+		}, &database.Transaction{
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			DestinationAccountID: 1,
+			SourceAccountID:      1,
+		})
+
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "is not applicable for transaction type")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		accSvc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: accSvc,
+		})
+
+		err := srv.ValidateTransactionAccounts(context.TODO(), map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+			gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME: {
+				SourceAccounts: map[int32]*database.Account{
+					1: {ID: 1, Currency: "USD"},
+				},
+				DestinationAccounts: map[int32]*database.Account{
+					2: {ID: 2, Currency: "USD"},
+				},
+			},
+		}, &database.Transaction{
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			DestinationAccountID: 2,
+			SourceAccountID:      1,
+			DestinationCurrency:  "USD",
+			SourceCurrency:       "USD",
+			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+			SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-100)),
+		})
+
+		assert.NoError(t, err)
+	})
+}
+
+func buildAccountMap(acc []*database.Account) map[int32]*database.Account {
+	accountMap := make(map[int32]*database.Account, len(acc))
+
+	for _, a := range acc {
+		accountMap[a.ID] = a
+	}
+
+	return accountMap
 }
