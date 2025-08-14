@@ -41,21 +41,37 @@ func TestBaseAmountService(t *testing.T) {
 				Name:     "PLN",
 				Currency: "PLN",
 				Extra:    make(map[string]string),
+				Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 			},
 			{
 				Name:     baseCurrency,
 				Currency: baseCurrency,
 				Extra:    make(map[string]string),
+				Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 			},
 			{
 				Name:     "UAH",
 				Currency: "UAH",
 				Extra:    make(map[string]string),
+				Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 			},
 			{
 				Name:     "EUR",
 				Currency: "EUR",
 				Extra:    make(map[string]string),
+				Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+			},
+			{
+				Name:     "Expense Account",
+				Extra:    map[string]string{},
+				Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
+				Currency: baseCurrency,
+			},
+			{
+				Name:     "Expense Account in RAND currency",
+				Extra:    map[string]string{},
+				Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
+				Currency: "RAND",
 			},
 		}
 		assert.NoError(t, gormDB.Create(&acc).Error)
@@ -71,6 +87,10 @@ func TestBaseAmountService(t *testing.T) {
 				FxSourceAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-999)),
 				Extra:            make(map[string]string),
 
+				DestinationCurrency:  acc[5].Currency,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(2)),
+				DestinationAccountID: acc[5].ID,
+
 				// should not be updated by script, because foreign currency is set to base
 			},
 			{
@@ -80,8 +100,11 @@ func TestBaseAmountService(t *testing.T) {
 				Extra:           make(map[string]string),
 				SourceAccountID: acc[0].ID,
 
+				DestinationCurrency:  acc[5].Currency,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(1)),
+				DestinationAccountID: acc[5].ID,
 				// source to rate
-				// here dest should be null
+				// sourceInBase = destInBase
 			},
 			{
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
@@ -89,6 +112,10 @@ func TestBaseAmountService(t *testing.T) {
 				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
 				SourceAccountID: acc[1].ID,
 				Extra:           make(map[string]string),
+
+				DestinationCurrency:  acc[5].Currency,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(11)),
+				DestinationAccountID: acc[5].ID,
 
 				// [2]
 				// source same,
@@ -147,6 +174,10 @@ func TestBaseAmountService(t *testing.T) {
 
 				FxSourceAmount:   decimal.NewNullDecimal(decimal.NewFromInt(-10)),
 				FxSourceCurrency: baseCurrency,
+
+				DestinationCurrency:  acc[5].Currency,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(0)),
+				DestinationAccountID: acc[5].ID,
 
 				// [6]
 				// source different,
@@ -207,14 +238,14 @@ func TestBaseAmountService(t *testing.T) {
 		var updatedTxs []*database.Transaction
 		assert.NoError(t, gormDB.Order("id asc").Find(&updatedTxs).Error)
 
-		assert.EqualValues(t, 0, updatedTxs[0].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, -999, updatedTxs[0].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, 999, updatedTxs[0].DestinationAmountInBaseCurrency.Decimal.IntPart()) // because FX is set to base
+		assert.EqualValues(t, -999, updatedTxs[0].SourceAmountInBaseCurrency.Decimal.IntPart())     // because FX is set to base
 
 		assert.EqualValues(t, -3, updatedTxs[1].SourceAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, false, updatedTxs[1].DestinationAmountInBaseCurrency.Valid)
+		assert.EqualValues(t, 3, updatedTxs[1].DestinationAmountInBaseCurrency.Decimal.IntPart())
 
 		assert.EqualValues(t, -55, updatedTxs[2].SourceAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, false, updatedTxs[2].DestinationAmountInBaseCurrency.Valid)
+		assert.EqualValues(t, 55, updatedTxs[2].DestinationAmountInBaseCurrency.Decimal.IntPart()) // because source is in base currency
 
 		// transfers
 		assert.EqualValues(t, 55, updatedTxs[3].DestinationAmountInBaseCurrency.Decimal.IntPart())
@@ -228,8 +259,7 @@ func TestBaseAmountService(t *testing.T) {
 
 		// withdrawal fx
 		assert.EqualValues(t, -10, updatedTxs[6].SourceAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, 0, updatedTxs[6].DestinationAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, false, updatedTxs[6].DestinationAmountInBaseCurrency.Valid)
+		assert.EqualValues(t, 10, updatedTxs[6].DestinationAmountInBaseCurrency.Decimal.IntPart()) // fx is base
 
 		assert.EqualValues(t, -30, updatedTxs[7].SourceAmountInBaseCurrency.Decimal.IntPart())
 		assert.EqualValues(t, 30, updatedTxs[7].DestinationAmountInBaseCurrency.Decimal.IntPart())

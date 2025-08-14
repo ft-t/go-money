@@ -30,18 +30,20 @@ func TestBuildImpactedAccounts(t *testing.T) {
 
 		txs := []*database.Transaction{
 			{
-				TransactionDateTime: time.Now().UTC(),
-				SourceAccountID:     int32(1),
+				TransactionDateTime:  time.Now().UTC(),
+				SourceAccountID:      int32(1),
+				DestinationAccountID: 2,
 			},
 			{
-				TransactionDateTime: time.Now().UTC().Add(-time.Hour * 24 * 2),
-				SourceAccountID:     int32(1),
+				TransactionDateTime:  time.Now().UTC().Add(-time.Hour * 24 * 2),
+				SourceAccountID:      int32(1),
+				DestinationAccountID: 2,
 			},
 		}
 
 		impacted := stat.BuildImpactedAccounts(txs)
 
-		assert.Len(t, impacted, 1)
+		assert.Len(t, impacted, 2)
 		assert.EqualValues(t, txs[1].TransactionDateTime, impacted[int32(1)])
 	})
 }

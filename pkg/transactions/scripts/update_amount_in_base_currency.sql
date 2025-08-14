@@ -37,9 +37,9 @@ UPDATE transactions
 SET destination_amount_in_base_currency = case
                                               when transaction_type = 1
                                                   then abs(upd.sourceInBase) -- for transaction lets use same value for both operations but ensure its > 0
-                                              when transaction_type = 3 and destination_account_id is null -- if withdrawal and no destination account
+                                              when transaction_type = 3 and destination_account_id = 0 -- if withdrawal and no destination account
                                                   then null
-                                              when transaction_type = 3 and destination_account_id is not null
+                                              when transaction_type = 3 and destination_account_id != 0
                                                   then abs(upd.sourceInBase) -- left side should be same as right side
                                               else upd.destinationInBase end,
     source_amount_in_base_currency      = case
