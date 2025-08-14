@@ -23,6 +23,7 @@ func TestTransactionMapper(t *testing.T) {
 
 	decimalSvc.EXPECT().ToString(gomock.Any(), gomock.Any(), "PLN").Return("11.123")
 	decimalSvc.EXPECT().ToString(gomock.Any(), gomock.Any(), "USD").Return("22.456")
+	decimalSvc.EXPECT().ToString(gomock.Any(), gomock.Any(), "FX").Return("55.456")
 
 	txDate := time.Now().Add(22 * time.Hour).UTC()
 
@@ -45,6 +46,8 @@ func TestTransactionMapper(t *testing.T) {
 		Flags:                 12,
 		VoidedByTransactionID: lo.ToPtr(int64(123)),
 		Title:                 "xxx",
+		FxSourceAmount:        decimal.NewNullDecimal(decimal.NewFromInt(11)),
+		FxSourceCurrency:      "FX",
 	})
 
 	assert.EqualValues(t, "xxx", mapped.Title)
@@ -62,4 +65,6 @@ func TestTransactionMapper(t *testing.T) {
 	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME, mapped.Type)
 	assert.NotNil(t, mapped.CreatedAt)
 	assert.EqualValues(t, txDate, mapped.TransactionDate.AsTime())
+	assert.EqualValues(t, "55.456", *mapped.FxSourceAmount)
+	assert.EqualValues(t, "FX", *mapped.FxSourceCurrency)
 }
