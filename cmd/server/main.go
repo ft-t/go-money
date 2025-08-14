@@ -123,7 +123,6 @@ func main() {
 	ruleEngine := rules.NewExecutor(ruleInterpreter)
 	applicableAccountSvc := transactions.NewApplicableAccountService(accountSvc)
 	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
-		AccountSvc:           accountSvc,
 		ApplicableAccountSvc: applicableAccountSvc,
 	})
 
