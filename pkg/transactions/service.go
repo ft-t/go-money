@@ -524,6 +524,7 @@ func (s *Service) fillWithdrawal(
 
 	// dest
 	newTx.DestinationCurrency = req.DestinationCurrency
+	newTx.DestinationAccountID = req.DestinationAccountId
 
 	destinationAmount, destinationErr := decimal.NewFromString(req.DestinationAmount)
 	if destinationErr != nil {

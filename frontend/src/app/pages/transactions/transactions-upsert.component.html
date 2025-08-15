@@ -31,10 +31,9 @@
                             optionValue="id"
                             placeholder="Select source account"
                         />
-                        <!--                        <div *ngIf="showValidation && !transaction.sourceAccountId"-->
-                        <!--                             class="text-red-500 text-xs">Source account is required.-->
-                        <!--                        </div>-->
-
+                        @if (sourceAccountId.invalid && (sourceAccountId.dirty || sourceAccountId.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Source Account is required</p-message>
+                        }
                         <div class="flex gap-2">
                             <p-inputgroup>
                                 <p-inputnumber formControlName="sourceAmount"
@@ -52,9 +51,9 @@
                                       (onClick)="convertAmount(this.form.get('sourceAmount')!.value, this.form.get('sourceCurrency')!.value,'destination')"
                             />
                         </div>
-                        <!--                        <div *ngIf="showValidation && !transaction.sourceAmount"-->
-                        <!--                             class="text-red-500 text-xs">Amount is required.-->
-                        <!--                        </div>-->
+                        @if (sourceAmount.invalid && (sourceAmount.dirty || sourceAmount.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Source Amount should be > 0</p-message>
+                        }
                     </div>
                 </div>
                 <div class="flex flex-col w-1/2" *ngIf="isForeignCurrencyActive()">
@@ -102,10 +101,9 @@
                         optionValue="id"
                         placeholder="Select destination account"
                     />
-                    <!--                    <div *ngIf="showValidation && !transaction.destinationAccountId && isDestinationAccountActive()"-->
-                    <!--                         class="text-red-500 text-xs">Destination account is required.-->
-                    <!--                    </div>-->
-
+                    @if (destinationAccountId.invalid && (destinationAccountId.dirty || destinationAccountId.touched)) {
+                        <p-message severity="error" variant="simple" size="small">Destination Account is required</p-message>
+                    }
                     <div class="flex gap-2">
                         <p-button [disabled]="!canConvert()" severity="info" label="Convert"
                                   icon="pi pi-arrow-left"
@@ -122,9 +120,11 @@
                             </p-inputgroup-addon>
                         </p-inputgroup>
                     </div>
-                    <!--                    <div *ngIf="showValidation && !transaction.destinationAmount && isDestinationAccountActive()"-->
-                    <!--                         class="text-red-500 text-xs">Amount is required.-->
-                    <!--                    </div>-->
+
+                    @if (destinationAmount.invalid && (destinationAmount.dirty || destinationAmount.touched)) {
+                        <p-message severity="error" variant="simple" size="small">Destination Amount should be > 0</p-message>
+                    }
+
                 </div>
             </div>
             <div class="flex gap-4">
@@ -133,9 +133,9 @@
                         <label for="accountName">Transaction title *</label>
                         <input pInputText id="accountName" type="text" formControlName="title" required
                         />
-                        <!--                        <div *ngIf="showValidation && !transaction.title" class="text-red-500 text-xs">Title is-->
-                        <!--                            required.-->
-                        <!--                        </div>-->
+                        @if (title.invalid && (title.dirty || title.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Title is required</p-message>
+                        }
                     </div>
                 </div>
                 <div class="flex flex-col gap-4 w-1/2">
@@ -143,8 +143,9 @@
                         <label>Date *</label>
                         <p-datepicker formControlName="transactionDate" [hourFormat]="'24'"
                                       [showTime]="true"></p-datepicker>
-                        <!--                        <div *ngIf="showValidation && !transactionDate" class="text-red-500 text-xs">Date is required.-->
-                        <!--                        </div>-->
+                        @if (transactionDateFm.invalid && (transactionDateFm.dirty || transactionDateFm.touched)) {
+                            <p-message severity="error" variant="simple" size="small">Date is required</p-message>
+                        }
                     </div>
                 </div>
             </div>
@@ -200,8 +201,8 @@
                 </div>
 
                 <div class="flex flex-col justify-end gap-2">
-                    <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="create()"></p-button>
-                    <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="update()"></p-button>
+                    <p-button *ngIf="!isEdit" label="Create" [fluid]="false" (click)="submit()"></p-button>
+                    <p-button *ngIf="isEdit" label="Update" [fluid]="false" (click)="submit()"></p-button>
                 </div>
             </div>
 

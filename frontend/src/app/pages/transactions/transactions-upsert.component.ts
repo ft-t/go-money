@@ -45,6 +45,8 @@ import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneyp
 import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { SelectChangeEvent, SelectModule } from 'primeng/select';
 import { Checkbox } from 'primeng/checkbox';
+import { Message } from 'primeng/message';
+import { greaterThanZeroValidator } from '../../validators/greaterthenzero';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -70,7 +72,8 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         SelectButtonModule,
         ChipModule,
         NgClass,
-        Checkbox
+        Checkbox,
+        Message
     ]
 })
 export class TransactionUpsertComponent implements OnInit {
@@ -132,17 +135,15 @@ export class TransactionUpsertComponent implements OnInit {
         await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags(), this.fetchCategories()]);
     }
 
-    async submit() {}
-
     buildForm(tx: Transaction) {
         const form = new FormGroup({
             id: new FormControl(tx.id, { nonNullable: false }),
-            sourceAmount: new FormControl(this.toPositiveNumber(tx.sourceAmount), Validators.min(0)),
+            sourceAmount: new FormControl(this.toPositiveNumber(tx.sourceAmount), greaterThanZeroValidator()),
             sourceCurrency: new FormControl(tx.sourceCurrency, Validators.required),
-            sourceAccountId: new FormControl(tx.sourceAccountId, Validators.required),
-            destinationAmount: new FormControl(this.toPositiveNumber(tx.destinationAmount), Validators.min(0)),
+            sourceAccountId: new FormControl(tx.sourceAccountId, Validators.min(1)),
+            destinationAmount: new FormControl(this.toPositiveNumber(tx.destinationAmount), greaterThanZeroValidator()),
             destinationCurrency: new FormControl(tx.destinationCurrency, Validators.required),
-            destinationAccountId: new FormControl(tx.destinationAccountId, Validators.required),
+            destinationAccountId: new FormControl(tx.destinationAccountId, Validators.min(1)),
             notes: new FormControl(tx.notes, { nonNullable: false }),
             title: new FormControl(tx.title, Validators.required),
             categoryId: new FormControl(tx.categoryId, { nonNullable: false }),
@@ -151,12 +152,12 @@ export class TransactionUpsertComponent implements OnInit {
             tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
             skipRules: new FormControl(this.skipRules, { nonNullable: false }),
             fxSourceAmount: new FormControl(this.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
-            fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false }),
+            fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false })
         });
 
         form.get('destinationAccountId')!.valueChanges.subscribe(async (newVal) => {
             let curr = form.get('destinationCurrency');
-            curr?.setValue('', { emitEvent: false })
+            curr?.setValue('', { emitEvent: false });
 
             let account = this.getAccountById(newVal!);
             if (!account) {
@@ -168,7 +169,7 @@ export class TransactionUpsertComponent implements OnInit {
 
         form.get('sourceAccountId')!.valueChanges.subscribe(async (newVal) => {
             let curr = form.get('sourceCurrency');
-            curr?.setValue('', { emitEvent: false })
+            curr?.setValue('', { emitEvent: false });
 
             let account = this.getAccountById(newVal!);
             if (!account) {
@@ -193,7 +194,7 @@ export class TransactionUpsertComponent implements OnInit {
 
         form.get('type')!.valueChanges.subscribe((newVal) => {
             if (newVal != TransactionType.EXPENSE) {
-                form.get('fxSourceAmount')?.setValue('')
+                form.get('fxSourceAmount')?.setValue('');
                 form.get('fxSourceCurrency')!.setValue('');
             }
 
@@ -207,13 +208,29 @@ export class TransactionUpsertComponent implements OnInit {
             if (!this.isAccountApplicable(newVal!, false, destinationAccountId!)) {
                 form.get('destinationAccountId')!.setValue(0);
             }
-        })
+        });
 
         return form;
     }
 
     get destinationAccountId() {
         return this.form.get('destinationAccountId')!;
+    }
+
+    get transactionDateFm() {
+        return this.form.get('transactionDate')!;
+    }
+
+    get destinationAmount() {
+        return this.form.get('destinationAmount')!;
+    }
+
+    get sourceAmount() {
+        return this.form.get('sourceAmount')!;
+    }
+
+    get title() {
+        return this.form.get('title')!;
     }
 
     async editTransaction(id: number) {
@@ -482,6 +499,25 @@ export class TransactionUpsertComponent implements OnInit {
         return req;
     }
 
+    async submit() {
+        this.form!.markAllAsTouched();
+
+        if (!this.form!.valid) {
+            console.log(this.form);
+            return;
+        }
+
+        if (this.isEdit) {
+            await this.update();
+        } else {
+            await this.create();
+        }
+    }
+
+    get sourceAccountId() {
+        return this.form.get('sourceAccountId')!;
+    }
+
     async create() {
         try {
             await this.transactionService.createTransaction(this.buildTransactionRequest());
@@ -497,12 +533,12 @@ export class TransactionUpsertComponent implements OnInit {
 
     async update() {
         try {
-            // let response = await this.transactionService.updateTransaction(
-            //     create(UpdateTransactionRequestSchema, {
-            //         transaction: this.buildTransactionRequest(),
-            //         id: this.transaction.id
-            //     })
-            // );
+            let response = await this.transactionService.updateTransaction(
+                create(UpdateTransactionRequestSchema, {
+                    transaction: this.buildTransactionRequest(),
+                    id: this.form.get('id')?.value
+                })
+            );
 
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
