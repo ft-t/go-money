@@ -21,6 +21,9 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/double_entry"
+	"github.com/ft-t/go-money/pkg/transactions/rules"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -448,12 +451,12 @@ func TestFireflyIntegration(t *testing.T) {
 	//t.Skip("todo")
 
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
-	//data, err := os.ReadFile("E:\\extra-data\\first.csv")
-	data, err := os.ReadFile("~/Downloads/2025_08_16_transaction_export.csv")
+	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_08_16_transaction_export.csv")
+	//data, err := os.ReadFile("~/Downloads/2025_08_16_transaction_export.csv")
 	assert.NoError(t, err)
 
-	//accountsData, err := os.ReadFile("C:\\Users\\iqpir\\Result_17.json")
-	accountsData, err := os.ReadFile("~/wallets.json")
+	accountsData, err := os.ReadFile("C:\\Users\\iqpir\\Result_17.json")
+	//accountsData, err := os.ReadFile("~/wallets.json")
 	assert.NoError(t, err)
 
 	var bulkAccounts []*accountsv1.CreateAccountRequest
@@ -483,11 +486,25 @@ func TestFireflyIntegration(t *testing.T) {
 	assert.NoError(t, cur.Sync(context.TODO(), "http://go-money-exchange-rates.s3-website.eu-north-1.amazonaws.com/latest.json"))
 
 	converter := currency.NewConverter("USD")
+	applicableAcc := transactions.NewApplicableAccountService(accountSvc)
+	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
+		ApplicableAccountSvc: applicableAcc,
+	})
+	doubleEntry := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+		BaseCurrency: "USD",
+	})
+	baseAmountSvc := transactions.NewBaseAmountService("USD")
+	ruleSvc := rules.NewExecutor(nil)
 
 	txSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             transactions.NewStatService(),
 		MapperSvc:            m,
 		CurrencyConverterSvc: converter,
+		BaseAmountService:    baseAmountSvc,
+		RuleSvc:              ruleSvc,
+		ValidationSvc:        validationSvc,
+		DoubleEntry:          doubleEntry,
+		AccountSvc:           accountSvc,
 	})
 	importer := importers.NewFireflyImporter(txSvc, converter)
 

@@ -39,12 +39,11 @@ func (s *ApplicableAccountService) GetApplicableAccounts(
 		gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 		gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 		gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+		gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
 	}
 	finalRes := map[gomoneypbv1.TransactionType]*PossibleAccount{}
 
 	assetAccounts := []gomoneypbv1.AccountType{
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
-		gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 	}
 
@@ -75,6 +74,12 @@ func (s *ApplicableAccountService) GetApplicableAccounts(
 					res.DestinationAccounts[account.ID] = account
 				} else if lo.Contains(assetAndLiabilityAccounts, account.Type) {
 					res.SourceAccounts[account.ID] = account
+				}
+			case gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT:
+				if account.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT {
+					res.SourceAccounts[account.ID] = account
+				} else {
+					res.DestinationAccounts[account.ID] = account
 				}
 			}
 		}

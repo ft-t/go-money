@@ -174,7 +174,10 @@ func main() {
 	})
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 
-	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(transactionSvc))
+	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(
+		transactionSvc,
+		currencyConverter,
+	))
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)
 	if err != nil {
