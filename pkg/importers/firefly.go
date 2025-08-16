@@ -11,6 +11,7 @@ import (
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
@@ -26,6 +27,7 @@ const (
 
 type FireflyImporter struct {
 	transactionService TransactionSvc
+	currencyConverter  CurrencySvc
 }
 
 func NewFireflyImporter(
@@ -176,9 +178,9 @@ func (f *FireflyImporter) Import(
 				return nil, errors.Errorf("source account not found: %s", sourceName)
 			}
 
-			withdrawal := &transactionsv1.Expense{
+			expense := &transactionsv1.Expense{
 				SourceAccountId: sourceAccount.ID,
-				SourceAmount:    amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String(),
+				SourceAmount:    amountParsed.Neg().String(),
 				SourceCurrency:  currencyCode,
 			}
 
@@ -192,12 +194,27 @@ func (f *FireflyImporter) Import(
 					return nil, errors.Wrapf(err, "failed to parse foreign amount: %s", foreignAmount)
 				}
 
-				withdrawal.FxSourceCurrency = &foreignCurrencyCode
-				withdrawal.FxSourceAmount = lo.ToPtr(foreignAmountParsed.Abs().Mul(decimal.NewFromInt(-1)).String())
+				expense.FxSourceCurrency = &foreignCurrencyCode
+				expense.FxSourceAmount = lo.ToPtr(foreignAmountParsed.Abs().Mul(decimal.NewFromInt(-1)).String())
 			}
 
+			secondAccResp, secAccErr := f.getSecondAccount(ctx, &GetSecondaryAccountRequest{
+				InitialAmount:     amountParsed,
+				InitialCurrency:   currencyCode,
+				Accounts:          accountMap,
+				TargetAccountName: destinationName,
+				TransactionType:   gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+			})
+			if secAccErr != nil {
+				return nil, errors.Wrapf(secAccErr, "failed to get secondary account for transaction: %s", key)
+			}
+
+			expense.DestinationAccountId = secondAccResp.SecondaryAccount.ID
+			expense.DestinationAmount = secondAccResp.SecondaryAmount.Abs().String()
+			expense.DestinationCurrency = secondAccResp.SecondaryAccount.Currency
+
 			targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Expense{
-				Expense: withdrawal,
+				Expense: expense,
 			}
 		case "Opening balance", "Deposit":
 			if sourceType == "Debt" {
@@ -215,12 +232,29 @@ func (f *FireflyImporter) Import(
 					)
 				}
 
+				expense := &transactionsv1.Expense{
+					SourceAmount:    amountParsed.Neg().String(),
+					SourceCurrency:  currencyCode,
+					SourceAccountId: sourceAccount.ID,
+				}
+
+				secondAccResp, secAccErr := f.getSecondAccount(ctx, &GetSecondaryAccountRequest{
+					InitialAmount:     amountParsed,
+					InitialCurrency:   currencyCode,
+					Accounts:          accountMap,
+					TargetAccountName: destinationName, // most likely will be always initial balance account
+					TransactionType:   gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+				})
+				if secAccErr != nil {
+					return nil, errors.Wrapf(secAccErr, "failed to get secondary account for transaction: %s", key)
+				}
+
+				expense.DestinationAccountId = secondAccResp.SecondaryAccount.ID
+				expense.DestinationAmount = secondAccResp.SecondaryAmount.Abs().String()
+				expense.DestinationCurrency = secondAccResp.SecondaryAccount.Currency
+
 				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Expense{
-					Expense: &transactionsv1.Expense{
-						SourceAmount:    amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String(),
-						SourceCurrency:  currencyCode,
-						SourceAccountId: sourceAccount.ID,
-					},
+					Expense: expense,
 				}
 			} else {
 				destAccount, ok := accountMap[destinationName]
@@ -237,11 +271,25 @@ func (f *FireflyImporter) Import(
 					)
 				}
 
+				secondAccResp, secAccErr := f.getSecondAccount(ctx, &GetSecondaryAccountRequest{
+					InitialAmount:     amountParsed,
+					InitialCurrency:   currencyCode,
+					Accounts:          accountMap,
+					TargetAccountName: sourceName,
+					TransactionType:   gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+				})
+				if secAccErr != nil {
+					return nil, errors.Wrapf(secAccErr, "failed to get secondary account for transaction: %s", key)
+				}
+
 				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Income{
 					Income: &transactionsv1.Income{
-						DestinationCurrency:  currencyCode, // todo validate currency
+						SourceAccountId:      secondAccResp.SecondaryAccount.ID,
 						DestinationAccountId: destAccount.ID,
+						SourceAmount:         secondAccResp.SecondaryAmount.Neg().String(),
 						DestinationAmount:    amountParsed.Abs().String(),
+						SourceCurrency:       secondAccResp.SecondaryAccount.Currency,
+						DestinationCurrency:  currencyCode,
 					},
 				}
 			}
@@ -254,7 +302,7 @@ func (f *FireflyImporter) Import(
 				},
 			}
 			if destinationAccountType == "Reconciliation account" {
-				rec.Adjustment.DestinationAmount = amountParsed.Abs().Mul(decimal.NewFromInt(-1)).String()
+				rec.Adjustment.DestinationAmount = amountParsed.Neg().String()
 
 				destAccount, ok := accountMap[sourceName] // yes, sourceName is used here as destination account
 				if !ok {
@@ -446,4 +494,71 @@ func (f *FireflyImporter) toTag(
 		input,
 		prefix + input,
 	}
+}
+
+func (f *FireflyImporter) getSecondAccount(
+	ctx context.Context,
+	req *GetSecondaryAccountRequest,
+) (*GetSecondaryAccountResponse, error) {
+	secondaryAccount, ok := req.Accounts[req.TargetAccountName]
+	if !ok {
+		dest, err := f.getDefaultAccountForTransactionType(
+			gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+			req.Accounts,
+		)
+
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get default account for transaction type: %s",
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE)
+		}
+
+		secondaryAccount = dest
+	}
+
+	finalAmount := req.InitialAmount.Abs()
+
+	if secondaryAccount.Currency != req.InitialCurrency {
+		converted, convertErr := f.currencyConverter.Convert(
+			ctx,
+			req.InitialCurrency,
+			secondaryAccount.Currency,
+			finalAmount,
+		)
+		if convertErr != nil {
+			return nil, errors.Wrapf(convertErr,
+				"failed to convert amount from %s to %s",
+				req.InitialCurrency,
+				secondaryAccount.Currency,
+			)
+		}
+
+		finalAmount = converted
+	}
+
+	return &GetSecondaryAccountResponse{
+		SecondaryAccount: secondaryAccount,
+		SecondaryAmount:  finalAmount,
+	}, nil
+}
+
+func (f *FireflyImporter) getDefaultAccountForTransactionType(
+	transactionType gomoneypbv1.TransactionType,
+	accounts map[string]*database.Account,
+) (*database.Account, error) {
+	switch transactionType {
+	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE:
+		for _, acc := range accounts {
+			if acc.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE && acc.IsDefault() {
+				return acc, nil
+			}
+		}
+	case gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME:
+		for _, acc := range accounts {
+			if acc.Type == gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME && acc.IsDefault() {
+				return acc, nil
+			}
+		}
+	}
+
+	return nil, errors.Errorf("unsupported transaction type for default account: %s", transactionType)
 }

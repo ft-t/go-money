@@ -1,11 +1,13 @@
 package importers
 
 import (
+	"context"
+
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
-	"context"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -34,4 +36,13 @@ type TransactionSvc interface {
 		reqs []*transactions.BulkRequest,
 		tx *gorm.DB,
 	) ([]*transactionsv1.CreateTransactionResponse, error)
+}
+
+type CurrencySvc interface {
+	Convert(
+		ctx context.Context,
+		fromCurrency string,
+		toCurrency string,
+		amount decimal.Decimal,
+	) (decimal.Decimal, error)
 }
