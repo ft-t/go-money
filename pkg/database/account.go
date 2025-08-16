@@ -1,13 +1,18 @@
 package database
 
 import (
+	"time"
+
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	"time"
 )
 
-type WalletFlags = int64
+type AccountFlag = int64
+
+const (
+	AccountFlagIsDefault AccountFlag = 1 << 0
+)
 
 type Account struct {
 	ID int32
@@ -17,7 +22,7 @@ type Account struct {
 
 	CurrentBalance decimal.Decimal
 	Extra          map[string]string `gorm:"serializer:json"`
-	Flags          WalletFlags
+	Flags          AccountFlag
 
 	LastUpdatedAt time.Time
 	CreatedAt     time.Time
@@ -31,4 +36,8 @@ type Account struct {
 	DisplayOrder     *int32
 
 	FirstTransactionAt *time.Time
+}
+
+func (a *Account) IsDefault() bool {
+	return a.Flags&AccountFlagIsDefault == AccountFlagIsDefault
 }

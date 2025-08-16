@@ -2,6 +2,12 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/ft-t/go-money/cmd/server/internal/handlers"
 	"github.com/ft-t/go-money/cmd/server/internal/jobs"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
@@ -18,14 +24,11 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/double_entry"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/ft-t/go-money/pkg/users"
 	"github.com/rs/zerolog/log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 func main() {
@@ -100,7 +103,8 @@ func main() {
 	})
 
 	accountSvc := accounts.NewService(&accounts.ServiceConfig{
-		MapperSvc: mapper,
+		MapperSvc:       mapper,
+		DefaultCurrency: config.CurrencyConfig.BaseCurrency,
 	})
 
 	_, err = handlers.NewAccountsApi(grpcServer, accounts.NewService(&accounts.ServiceConfig{
@@ -118,6 +122,14 @@ func main() {
 	})
 
 	ruleEngine := rules.NewExecutor(ruleInterpreter)
+	applicableAccountSvc := transactions.NewApplicableAccountService(accountSvc)
+	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
+		ApplicableAccountSvc: applicableAccountSvc,
+	})
+
+	doubleEntry := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+		BaseCurrency: config.CurrencyConfig.BaseCurrency,
+	})
 
 	statsSvc := transactions.NewStatService()
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
@@ -126,6 +138,9 @@ func main() {
 		CurrencyConverterSvc: currencyConverter,
 		BaseAmountService:    baseAmountSvc,
 		RuleSvc:              ruleEngine,
+		ValidationSvc:        validationSvc,
+		DoubleEntry:          doubleEntry,
+		AccountSvc:           accountSvc,
 	})
 
 	ruleScheduler := rules.NewScheduler(&rules.SchedulerConfig{
@@ -142,8 +157,14 @@ func main() {
 	tagSvc := tags.NewService(mapper)
 	categoriesSvc := categories.NewService(mapper)
 
-	dryRunSvc := rules.NewDryRun(ruleEngine, transactionSvc, mapper)
-	_ = handlers.NewTransactionApi(grpcServer, transactionSvc)
+	dryRunSvc := rules.NewDryRun(&rules.DryRunConfig{
+		Executor:       ruleEngine,
+		TransactionSvc: transactionSvc,
+		MapperSvc:      mapper,
+		ValidationSvc:  validationSvc,
+		AccountSvc:     accountSvc,
+	})
+	_ = handlers.NewTransactionApi(grpcServer, transactionSvc, applicableAccountSvc, mapper)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
 	_ = handlers.NewRulesApi(grpcServer, &handlers.RulesApiConfig{
 		RulesScheduleSvc: rulesScheduleSvc,

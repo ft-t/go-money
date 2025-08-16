@@ -2,11 +2,12 @@ package rules_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestLuaAmounts(t *testing.T) {

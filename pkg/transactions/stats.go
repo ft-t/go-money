@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"time"
+
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"gorm.io/gorm"
-	"time"
 )
 
 //go:embed scripts/daily_recalculate.sql
@@ -27,12 +28,8 @@ func NewStatService() *StatService {
 func (s *StatService) getAccountsForTx(tx *database.Transaction) []int32 {
 	var accounts []int32
 
-	if tx.SourceAccountID != nil {
-		accounts = append(accounts, *tx.SourceAccountID)
-	}
-	if tx.DestinationAccountID != nil {
-		accounts = append(accounts, *tx.DestinationAccountID)
-	}
+	accounts = append(accounts, tx.SourceAccountID)
+	accounts = append(accounts, tx.DestinationAccountID)
 
 	return accounts
 }

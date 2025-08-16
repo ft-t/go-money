@@ -1,8 +1,9 @@
 package transactions
 
 import (
-	"github.com/ft-t/go-money/pkg/database"
 	"time"
+
+	"github.com/ft-t/go-money/pkg/database"
 )
 
 type fillResponse struct {
@@ -12,4 +13,9 @@ type fillResponse struct {
 type CalculateDailyStatRequest struct {
 	StartDate time.Time
 	AccountID int32
+}
+
+type PossibleAccount struct {
+	SourceAccounts      map[int32]*database.Account
+	DestinationAccounts map[int32]*database.Account
 }

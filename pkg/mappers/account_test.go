@@ -1,16 +1,17 @@
 package mappers_test
 
 import (
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+	"testing"
+	"time"
+
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/golang/mock/gomock"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"testing"
-	"time"
 )
 
 func TestMapper(t *testing.T) {
@@ -43,7 +44,7 @@ func TestMapper(t *testing.T) {
 			Time:  deletedTime,
 			Valid: true,
 		},
-		Type:          gomoneypbv1.AccountType_ACCOUNT_TYPE_BROKERAGE,
+		Type:          gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		Note:          "note",
 		AccountNumber: "number",
 		Iban:          "iban",
@@ -62,7 +63,7 @@ func TestMapper(t *testing.T) {
 	}, mapped.Extra)
 	assert.EqualValues(t, updatedTime, mapped.UpdatedAt.AsTime())
 	assert.EqualValues(t, deletedTime, mapped.DeletedAt.AsTime())
-	assert.EqualValues(t, gomoneypbv1.AccountType_ACCOUNT_TYPE_BROKERAGE, mapped.Type)
+	assert.EqualValues(t, gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET, mapped.Type)
 	assert.EqualValues(t, "note", mapped.Note)
 	assert.EqualValues(t, "number", mapped.AccountNumber)
 	assert.EqualValues(t, "iban", mapped.Iban)

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/testingutils"
@@ -41,7 +42,7 @@ func InitDb() error {
 	masterGormDb = mainDb
 	readonlyGormDb = masterGormDb
 
-	migrations := getMigrations()
+	migrations := getMigrations(config)
 	if len(migrations) > 0 {
 		log.Info().Msg("[Db] start migrations")
 		if err = gormigrate.New(mainDb, gormigrate.DefaultOptions, migrations).Migrate(); err != nil {
@@ -58,7 +59,7 @@ func GetDb(t DbType) *gorm.DB {
 			panic(err)
 		}
 	}
-	
+
 	switch t {
 	case DbTypeMaster:
 		return masterGormDb
