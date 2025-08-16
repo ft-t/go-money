@@ -38,7 +38,7 @@ type TransactionSvc interface {
 	) ([]*transactionsv1.CreateTransactionResponse, error)
 }
 
-type CurrencySvc interface {
+type CurrencyConverterSvc interface {
 	Convert(
 		ctx context.Context,
 		fromCurrency string,

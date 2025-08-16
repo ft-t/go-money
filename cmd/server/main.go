@@ -103,7 +103,8 @@ func main() {
 	})
 
 	accountSvc := accounts.NewService(&accounts.ServiceConfig{
-		MapperSvc: mapper,
+		MapperSvc:       mapper,
+		DefaultCurrency: config.CurrencyConfig.BaseCurrency,
 	})
 
 	_, err = handlers.NewAccountsApi(grpcServer, accounts.NewService(&accounts.ServiceConfig{

@@ -467,7 +467,7 @@ func (s *Service) fillDeposit(
 }
 
 func (s *Service) fillReconciliation(
-	_ context.Context,
+	ctx context.Context,
 	req *transactionsv1.Adjustment,
 	newTx *database.Transaction,
 ) (*fillResponse, error) {
@@ -480,7 +480,30 @@ func (s *Service) fillReconciliation(
 	newTx.DestinationAmount = decimal.NewNullDecimal(destinationAmount)
 	newTx.DestinationCurrency = req.DestinationCurrency
 	newTx.DestinationAccountID = req.DestinationAccountId
-	// todo
+
+	acc, err := s.cfg.AccountSvc.GetDefaultAccount(ctx, gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get default adjustment account")
+	}
+
+	targetAmount := destinationAmount.Mul(decimal.NewFromInt(-1)) // invert amount for source
+	if acc.Currency != newTx.DestinationCurrency {
+		convertedAmount, err := s.cfg.CurrencyConverterSvc.Convert(
+			ctx,
+			newTx.DestinationCurrency,
+			acc.Currency,
+			targetAmount,
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert destination amount to adjustment account currency")
+		}
+
+		targetAmount = convertedAmount
+	}
+
+	newTx.SourceCurrency = acc.Currency
+	newTx.SourceAccountID = acc.ID
+	newTx.SourceAmount = decimal.NewNullDecimal(targetAmount)
 
 	return &fillResponse{}, nil
 }

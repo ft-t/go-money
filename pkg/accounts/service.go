@@ -6,7 +6,9 @@ import (
 	"time"
 
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -18,7 +20,8 @@ type Service struct {
 }
 
 type ServiceConfig struct {
-	MapperSvc MapperSvc
+	MapperSvc       MapperSvc
+	DefaultCurrency string
 }
 
 func NewService(
@@ -49,6 +52,22 @@ func (s *Service) GetAllAccounts(ctx context.Context) ([]*database.Account, erro
 	}
 
 	return accounts, nil
+}
+
+func (s *Service) GetDefaultAccount(ctx context.Context, accountType gomoneypbv1.AccountType) (*database.Account, error) {
+	var account database.Account
+
+	if err := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly)).
+		Where("flags >= ? and flags & ? = ? and type = ? and deleted_at is null",
+			database.AccountFlagIsDefault,
+			database.AccountFlagIsDefault,
+			database.AccountFlagIsDefault,
+			accountType,
+		).First(&account).Error; err != nil {
+		return nil, err
+	}
+
+	return &account, nil
 }
 
 func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest) (*accountsv1.ListAccountsResponse, error) {
@@ -316,4 +335,39 @@ func (s *Service) Update(
 	return &accountsv1.UpdateAccountResponse{
 		Account: s.cfg.MapperSvc.MapAccount(ctx, &account),
 	}, nil
+}
+
+func (s *Service) EnsureDefaultAccountsExist(
+	ctx context.Context,
+) error {
+	tx := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Begin()
+	defer tx.Rollback()
+
+	for name, accType := range boilerplate.RequiredDefaultAccounts {
+		acc, err := s.GetDefaultAccount(ctx, accType)
+
+		if acc != nil {
+			continue
+		}
+
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		account := &database.Account{
+			Name:          name,
+			Currency:      s.cfg.DefaultCurrency,
+			Flags:         database.AccountFlagIsDefault,
+			Type:          accType,
+			Extra:         map[string]string{},
+			CreatedAt:     time.Now().UTC(),
+			LastUpdatedAt: time.Now().UTC(),
+		}
+
+		if err = tx.Create(account).Error; err != nil {
+			return errors.Join(err, errors.New("failed to create default account"))
+		}
+	}
+
+	return tx.Commit().Error
 }

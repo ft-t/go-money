@@ -27,14 +27,16 @@ const (
 
 type FireflyImporter struct {
 	transactionService TransactionSvc
-	currencyConverter  CurrencySvc
+	currencyConverter  CurrencyConverterSvc
 }
 
 func NewFireflyImporter(
 	txSvc TransactionSvc,
+	converter CurrencyConverterSvc,
 ) *FireflyImporter {
 	return &FireflyImporter{
 		transactionService: txSvc,
+		currencyConverter:  converter,
 	}
 }
 
@@ -301,6 +303,7 @@ func (f *FireflyImporter) Import(
 					DestinationAccountId: 0,
 				},
 			}
+
 			if destinationAccountType == "Reconciliation account" {
 				rec.Adjustment.DestinationAmount = amountParsed.Neg().String()
 
@@ -339,7 +342,7 @@ func (f *FireflyImporter) Import(
 				rec.Adjustment.DestinationAccountId = destAccount.ID
 			}
 
-			targetTx.Transaction = rec
+			targetTx.Transaction = rec // source account is handled in transaction service
 		case "Transfer":
 			sourceAccount, ok := accountMap[sourceName]
 			if !ok {

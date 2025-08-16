@@ -63,6 +63,7 @@ type ValidationSvc interface {
 
 type AccountSvc interface {
 	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
+	GetDefaultAccount(ctx context.Context, accountType v1.AccountType) (*database.Account, error)
 }
 
 type DoubleEntrySvc interface {
