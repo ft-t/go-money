@@ -1,20 +1,22 @@
 package transactions_test
 
 import (
+	"context"
+	"testing"
+	"time"
+
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
-	"testing"
-	"time"
 )
 
 func TestBasicExpenseWithMultiCurrency(t *testing.T) {
@@ -39,11 +41,18 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 			return i, nil
 		})
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEntry := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
 		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEntry,
 	})
 
 	accounts := []*database.Account{
@@ -55,19 +64,37 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, req *validation.Request) error {
+			assert.Len(t, req.Accounts, 1)
+			assert.Len(t, req.Txs, 1)
+			assert.EqualValues(t, accounts[0].ID, req.Txs[0].SourceAccountID)
+
+			assert.EqualValues(t, accounts[0].Name, req.Accounts[accounts[0].ID].Name)
+
+			return nil
+		})
+	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		Return(&gomoneypbv1.Transaction{})
 
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
-				SourceAmount:    "-765.76",
-				SourceCurrency:  "UAH",
-				SourceAccountId: accounts[0].ID,
-				ForeignAmount:   lo.ToPtr("-67.54"),
-				ForeignCurrency: lo.ToPtr("PLN"),
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
+				SourceAmount:     "-765.76",
+				SourceCurrency:   "UAH",
+				SourceAccountId:  accounts[0].ID,
+				FxSourceAmount:   lo.ToPtr("-67.54"),
+				FxSourceCurrency: lo.ToPtr("PLN"),
+
+				DestinationCurrency:  "USD",
+				DestinationAmount:    "67.54",
+				DestinationAccountId: accounts[0].ID,
 			},
 		},
 	})
@@ -97,11 +124,18 @@ func TestUpdateTransaction(t *testing.T) {
 			return i, nil
 		}).AnyTimes()
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEntry := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
 		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEntry,
 	})
 
 	accounts := []*database.Account{
@@ -109,14 +143,28 @@ func TestUpdateTransaction(t *testing.T) {
 			Name:     "Private [UAH]",
 			Currency: "UAH",
 			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 		},
 		{
 			Name:     "Bank 2 [USD]",
 			Currency: "USD",
 			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+		},
+		{
+			Name:     "Work expenses",
+			Currency: "USD",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
 		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil).Times(4)
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(4)
+	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(4)
 
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
@@ -130,13 +178,17 @@ func TestUpdateTransaction(t *testing.T) {
 	tx1Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
 		CategoryId:      lo.ToPtr(int32(55)),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
-				SourceAmount:    "-765.76",
-				SourceCurrency:  "UAH",
-				SourceAccountId: accounts[0].ID,
-				ForeignAmount:   lo.ToPtr("-67.54"),
-				ForeignCurrency: lo.ToPtr("PLN"),
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
+				SourceAmount:     "-765.76",
+				SourceCurrency:   "UAH",
+				SourceAccountId:  accounts[0].ID,
+				FxSourceAmount:   lo.ToPtr("-67.54"),
+				FxSourceCurrency: lo.ToPtr("PLN"),
+
+				DestinationCurrency:  "USD",
+				DestinationAmount:    "67.54",
+				DestinationAccountId: accounts[2].ID,
 			},
 		},
 	})
@@ -147,13 +199,17 @@ func TestUpdateTransaction(t *testing.T) {
 	expenseDate2 := time.Date(2025, 6, 5, 0, 0, 0, 0, time.UTC)
 	tx2Result, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate2),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
-				SourceAmount:    "-200.76",
-				SourceCurrency:  "UAH",
-				SourceAccountId: accounts[0].ID,
-				ForeignAmount:   lo.ToPtr("-20.54"),
-				ForeignCurrency: lo.ToPtr("PLN"),
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
+				SourceAmount:     "-200.76",
+				SourceCurrency:   "UAH",
+				SourceAccountId:  accounts[0].ID,
+				FxSourceAmount:   lo.ToPtr("-20.54"),
+				FxSourceCurrency: lo.ToPtr("PLN"),
+
+				DestinationCurrency:  "USD",
+				DestinationAmount:    "67.54",
+				DestinationAccountId: accounts[2].ID,
 			},
 		},
 	})
@@ -164,6 +220,7 @@ func TestUpdateTransaction(t *testing.T) {
 	var stats []database.DailyStat
 	assert.NoError(t, gormDB.
 		Where("date >= ?", expenseDate).
+		Where("account_id = ?", accounts[0].ID).
 		Order("date asc").Find(&stats).Error)
 
 	assert.EqualValues(t, "-765.76", stats[0].Amount.String()) // day of transaction
@@ -185,13 +242,17 @@ func TestUpdateTransaction(t *testing.T) {
 		Transaction: &transactionsv1.CreateTransactionRequest{
 			CategoryId:      lo.ToPtr(int32(53)),
 			TransactionDate: timestamppb.New(expenseDate3),
-			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-				Withdrawal: &transactionsv1.Withdrawal{
-					SourceAmount:    "-100.0",
-					SourceCurrency:  "UAH",
-					SourceAccountId: accounts[0].ID,
-					ForeignAmount:   lo.ToPtr("-20.54"),
-					ForeignCurrency: lo.ToPtr("PLN"),
+			Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+				Expense: &transactionsv1.Expense{
+					SourceAmount:     "-100.0",
+					SourceCurrency:   "UAH",
+					SourceAccountId:  accounts[0].ID,
+					FxSourceAmount:   lo.ToPtr("-20.54"),
+					FxSourceCurrency: lo.ToPtr("PLN"),
+
+					DestinationCurrency:  "USD",
+					DestinationAmount:    "53",
+					DestinationAccountId: accounts[2].ID,
 				},
 			},
 		},
@@ -202,6 +263,7 @@ func TestUpdateTransaction(t *testing.T) {
 
 	assert.NoError(t, gormDB.
 		Where("date >= ?", expenseDate).
+		Where("account_id = ?", accounts[0].ID).
 		Order("date asc").Find(&stats).Error)
 
 	assert.EqualValues(t, "-765.76", stats[0].Amount.String()) // day of transaction
@@ -214,13 +276,17 @@ func TestUpdateTransaction(t *testing.T) {
 		Id: tx1Result.Transaction.Id,
 		Transaction: &transactionsv1.CreateTransactionRequest{
 			TransactionDate: timestamppb.New(expenseDate),
-			Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-				Withdrawal: &transactionsv1.Withdrawal{
-					SourceAmount:    "-20.5",
-					SourceCurrency:  "USD",
-					SourceAccountId: accounts[1].ID,
-					ForeignAmount:   lo.ToPtr("-4.54"),
-					ForeignCurrency: lo.ToPtr("PLN"),
+			Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+				Expense: &transactionsv1.Expense{
+					SourceAmount:     "-20.5",
+					SourceCurrency:   "USD",
+					SourceAccountId:  accounts[1].ID,
+					FxSourceAmount:   lo.ToPtr("-4.54"),
+					FxSourceCurrency: lo.ToPtr("PLN"),
+
+					DestinationCurrency:  "USD",
+					DestinationAmount:    "20.5",
+					DestinationAccountId: accounts[2].ID,
 				},
 			},
 		},
@@ -249,7 +315,7 @@ func TestUpdateTransaction(t *testing.T) {
 	var updatedAccounts []database.Account
 	assert.NoError(t, gormDB.Order("id asc").Find(&updatedAccounts).Error)
 
-	assert.Len(t, updatedAccounts, 2)
+	assert.Len(t, updatedAccounts, 3)
 
 	assert.EqualValues(t, "-100", updatedAccounts[0].CurrentBalance.String())
 	assert.EqualValues(t, "-20.5", updatedAccounts[1].CurrentBalance.String())
@@ -279,11 +345,18 @@ func TestBasicCalc(t *testing.T) {
 			return nil
 		}).Times(6)
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEntry := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
 		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEntry,
 	})
 
 	accounts := []*database.Account{
@@ -300,15 +373,25 @@ func TestBasicCalc(t *testing.T) {
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil).Times(6)
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(6)
+	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(6)
+
 	txDate := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
 
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(txDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "500",
 				DestinationCurrency:  "USD",
 				DestinationAccountId: accounts[0].ID,
+
+				SourceAmount:    "2000",
+				SourceCurrency:  "PLN",
+				SourceAccountId: accounts[1].ID,
 			},
 		},
 	})
@@ -333,11 +416,15 @@ func TestBasicCalc(t *testing.T) {
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
 				SourceAmount:    "-10",
 				SourceCurrency:  "USD",
 				SourceAccountId: accounts[0].ID,
+
+				DestinationAmount:    "40",
+				DestinationCurrency:  "PLN",
+				DestinationAccountId: accounts[1].ID,
 			},
 		},
 	})
@@ -346,11 +433,15 @@ func TestBasicCalc(t *testing.T) {
 	expenseDate2 := time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate2),
-		Transaction: &transactionsv1.CreateTransactionRequest_Withdrawal{
-			Withdrawal: &transactionsv1.Withdrawal{
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
 				SourceAmount:    "-15",
 				SourceCurrency:  "PLN",
 				SourceAccountId: accounts[1].ID,
+
+				DestinationAmount:    "60",
+				DestinationCurrency:  "USD",
+				DestinationAccountId: accounts[0].ID,
 			},
 		},
 	})
@@ -359,11 +450,15 @@ func TestBasicCalc(t *testing.T) {
 	depositDate2 := time.Date(2025, 6, 7, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(depositDate2),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "11",
 				DestinationCurrency:  "PLN",
 				DestinationAccountId: accounts[1].ID,
+
+				SourceAmount:    "3",
+				SourceCurrency:  "USD",
+				SourceAccountId: accounts[0].ID,
 			},
 		},
 	})
@@ -372,11 +467,15 @@ func TestBasicCalc(t *testing.T) {
 	depositDate3 := time.Date(2025, 6, 9, 0, 0, 0, 0, time.UTC)
 	_, err = srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(depositDate3),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "55",
 				DestinationCurrency:  "PLN",
 				DestinationAccountId: accounts[1].ID,
+
+				SourceAmount:    "15",
+				SourceCurrency:  "USD",
+				SourceAccountId: accounts[0].ID,
 			},
 		},
 	})
@@ -407,11 +506,18 @@ func TestBasicCalcWithGap(t *testing.T) {
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		Return(&gomoneypbv1.Transaction{}).AnyTimes()
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEntry := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
 		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEntry,
 	})
 
 	accounts := []*database.Account{
@@ -419,19 +525,36 @@ func TestBasicCalcWithGap(t *testing.T) {
 			Name:     "BNP Paribas [USD]",
 			Currency: "USD",
 			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+		},
+		{
+			Name:     "Service Income",
+			Currency: "PLN",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME,
 		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
 
 	txDate := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
 
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(txDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "500",
 				DestinationCurrency:  "USD",
 				DestinationAccountId: accounts[0].ID,
+
+				SourceAmount:    "2000",
+				SourceCurrency:  "PLN",
+				SourceAccountId: accounts[1].ID,
 			},
 		},
 	})
@@ -440,6 +563,7 @@ func TestBasicCalcWithGap(t *testing.T) {
 	var stats []database.DailyStat
 	assert.NoError(t, gormDB.
 		Where("date >= ?", txDate).
+		Where("account_id = ?", accounts[0].ID).
 		Order("date asc").Find(&stats).Error)
 
 	assert.EqualValues(t, "500", stats[0].Amount.String()) // day of transaction
@@ -456,6 +580,7 @@ func TestBasicCalcWithGap(t *testing.T) {
 	}))
 
 	assert.NoError(t, gormDB.
+		Where("account_id = ?", accounts[0].ID).
 		Where("date >= ?", txDate).
 		Order("date asc").Find(&stats).Error)
 
@@ -489,11 +614,18 @@ func TestNoDailyStatOnRecalculate(t *testing.T) {
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		Return(&gomoneypbv1.Transaction{}).AnyTimes()
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEntry := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
 		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEntry,
 	})
 
 	accounts := []*database.Account{
@@ -502,18 +634,33 @@ func TestNoDailyStatOnRecalculate(t *testing.T) {
 			Currency: "USD",
 			Extra:    map[string]string{},
 		},
+		{
+			Name:     "Service Income",
+			Currency: "PLN",
+			Extra:    map[string]string{},
+		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil).Times(1)
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(1)
+	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(1)
 
 	txDate := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
 
 	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(txDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Deposit{
-			Deposit: &transactionsv1.Deposit{
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
 				DestinationAmount:    "500",
 				DestinationCurrency:  "USD",
 				DestinationAccountId: accounts[0].ID,
+
+				SourceAmount:    "2000",
+				SourceCurrency:  "PLN",
+				SourceAccountId: accounts[1].ID,
 			},
 		},
 	})
@@ -521,6 +668,7 @@ func TestNoDailyStatOnRecalculate(t *testing.T) {
 
 	var stats []database.DailyStat
 	assert.NoError(t, gormDB.
+		Where("account_id = ?", accounts[0].ID).
 		Where("date >= ?", txDate).
 		Order("date asc").Find(&stats).Error)
 

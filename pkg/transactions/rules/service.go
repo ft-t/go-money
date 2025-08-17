@@ -1,11 +1,12 @@
 package rules
 
 import (
+	"context"
+	"time"
+
 	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
 	"github.com/ft-t/go-money/pkg/database"
-	"time"
 )
 
 type Service struct {

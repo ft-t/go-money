@@ -3,6 +3,10 @@ package maintenance_test
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
@@ -15,9 +19,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"os"
-	"testing"
-	"time"
 )
 
 var gormDB *gorm.DB
@@ -84,7 +85,7 @@ func TestDailyGap(t *testing.T) {
 		lastDate := time.Now().AddDate(0, 0, -1).UTC()
 
 		assert.NoError(t, gormDB.Create(&database.Transaction{
-			SourceAccountID:     &account.ID,
+			SourceAccountID:     account.ID,
 			TransactionDateOnly: lastDate,
 			TransactionDateTime: lastDate,
 			Extra:               make(map[string]string),

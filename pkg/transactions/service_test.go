@@ -1,9 +1,13 @@
 package transactions_test
 
 import (
+	"context"
+	"os"
+	"testing"
+	"time"
+
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
@@ -16,9 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
-	"os"
-	"testing"
-	"time"
 )
 
 var gormDB *gorm.DB
@@ -38,19 +39,19 @@ func TestListTransactions(t *testing.T) {
 
 	txs := []*database.Transaction{
 		{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			TransactionDateTime:  time.Now(),
 			Title:                "Test Deposit",
-			DestinationAccountID: lo.ToPtr(int32(123)),
+			DestinationAccountID: int32(123),
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(11)),
 			DestinationCurrency:  "USD",
 			Extra:                map[string]string{},
 		},
 		{
-			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_WITHDRAWAL,
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			TransactionDateTime: time.Now().Add(1 * time.Hour),
 			Title:               "Test Withdrawal",
-			SourceAccountID:     lo.ToPtr(int32(456)),
+			SourceAccountID:     int32(456),
 			SourceAmount:        decimal.NewNullDecimal(decimal.NewFromInt(22)),
 			SourceCurrency:      "EUR",
 			Extra:               map[string]string{},
@@ -274,7 +275,7 @@ func TestListTransactions(t *testing.T) {
 
 		resp, err := srv.List(context.TODO(), &transactionsv1.ListTransactionsRequest{
 			TransactionTypes: []gomoneypbv1.TransactionType{
-				gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			},
 			FromDate:  timestamppb.New(time.Now().Add(-24 * time.Hour)),
 			ToDate:    nil,
@@ -367,11 +368,23 @@ func TestCreateReconciliation(t *testing.T) {
 			return i, nil
 		})
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+	doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		RuleSvc:           ruleEngine,
 		BaseAmountService: baseCurrency,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEnty,
 	})
 
 	accounts := []*database.Account{
@@ -379,9 +392,19 @@ func TestCreateReconciliation(t *testing.T) {
 			Name:     "Private [UAH]",
 			Currency: "UAH",
 			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+		},
+		{
+			Name:     "Adjustment",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT,
 		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	accountSvc.EXPECT().GetDefaultAccount(gomock.Any(), gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT).
+		Return(accounts[1], nil)
 
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
@@ -393,8 +416,8 @@ func TestCreateReconciliation(t *testing.T) {
 	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
 	resp, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
 		TransactionDate: timestamppb.New(expenseDate),
-		Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
-			Reconciliation: &transactionsv1.Reconciliation{
+		Transaction: &transactionsv1.CreateTransactionRequest_Adjustment{
+			Adjustment: &transactionsv1.Adjustment{
 				DestinationAmount:    "556",
 				DestinationCurrency:  accounts[0].Currency,
 				DestinationAccountId: accounts[0].ID,
@@ -407,10 +430,10 @@ func TestCreateReconciliation(t *testing.T) {
 	var createdTx *database.Transaction
 	assert.NoError(t, gormDB.Where("id = ?", resp.Transaction.Id).Find(&createdTx).Error)
 
-	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx.TransactionType)
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx.TransactionType)
 	assert.EqualValues(t, 556, createdTx.DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx.DestinationCurrency)
-	assert.EqualValues(t, accounts[0].ID, *createdTx.DestinationAccountID)
+	assert.EqualValues(t, accounts[0].ID, createdTx.DestinationAccountID)
 }
 
 func TestCreateBulk(t *testing.T) {
@@ -435,11 +458,23 @@ func TestCreateBulk(t *testing.T) {
 			return i, nil
 		})
 
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+	doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
 	srv := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:          statsSvc,
 		MapperSvc:         mapper,
 		BaseAmountService: baseCurrency,
 		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEnty,
 	})
 
 	accounts := []*database.Account{
@@ -448,8 +483,18 @@ func TestCreateBulk(t *testing.T) {
 			Currency: "UAH",
 			Extra:    map[string]string{},
 		},
+		{
+			Name:     "Adjustment",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT,
+		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	accountSvc.EXPECT().GetDefaultAccount(gomock.Any(), gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT).
+		Return(accounts[1], nil).Times(2)
 
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
@@ -462,8 +507,8 @@ func TestCreateBulk(t *testing.T) {
 	resp, err := srv.CreateBulk(context.TODO(), []*transactionsv1.CreateTransactionRequest{
 		{
 			TransactionDate: timestamppb.New(expenseDate),
-			Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
-				Reconciliation: &transactionsv1.Reconciliation{
+			Transaction: &transactionsv1.CreateTransactionRequest_Adjustment{
+				Adjustment: &transactionsv1.Adjustment{
 					DestinationAmount:    "556",
 					DestinationCurrency:  accounts[0].Currency,
 					DestinationAccountId: accounts[0].ID,
@@ -472,8 +517,8 @@ func TestCreateBulk(t *testing.T) {
 		},
 		{
 			TransactionDate: timestamppb.New(expenseDate),
-			Transaction: &transactionsv1.CreateTransactionRequest_Reconciliation{
-				Reconciliation: &transactionsv1.Reconciliation{
+			Transaction: &transactionsv1.CreateTransactionRequest_Adjustment{
+				Adjustment: &transactionsv1.Adjustment{
 					DestinationAmount:    "777",
 					DestinationCurrency:  accounts[0].Currency,
 					DestinationAccountId: accounts[0].ID,
@@ -496,15 +541,15 @@ func TestCreateBulk(t *testing.T) {
 	assert.NoError(t, gormDB.Where("id in ?", ids).Order("id asc").Find(&createdTx).Error)
 	assert.Len(t, createdTx, 2)
 
-	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx[0].TransactionType)
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx[0].TransactionType)
 	assert.EqualValues(t, 556, createdTx[0].DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx[0].DestinationCurrency)
-	assert.EqualValues(t, accounts[0].ID, *createdTx[0].DestinationAccountID)
+	assert.EqualValues(t, accounts[0].ID, createdTx[0].DestinationAccountID)
 
-	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION, createdTx[1].TransactionType)
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx[1].TransactionType)
 	assert.EqualValues(t, 777, createdTx[1].DestinationAmount.Decimal.IntPart())
 	assert.EqualValues(t, accounts[0].Currency, createdTx[1].DestinationCurrency)
-	assert.EqualValues(t, accounts[0].ID, *createdTx[1].DestinationAccountID)
+	assert.EqualValues(t, accounts[0].ID, createdTx[1].DestinationAccountID)
 }
 
 func TestGetTransactionsByIDs(t *testing.T) {
@@ -512,7 +557,7 @@ func TestGetTransactionsByIDs(t *testing.T) {
 
 	txs := []*database.Transaction{
 		{
-			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_DEPOSIT,
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			TransactionDateTime: time.Now(),
 			Title:               "Test Deposit",
 			Extra:               map[string]string{},
@@ -544,10 +589,24 @@ func TestCreateRawTransaction(t *testing.T) {
 		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+		doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+		doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+
 		svc := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:          statSvc,
 			BaseAmountService: baseSvc,
 			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
+			DoubleEntry:       doubleEnty,
 		})
 
 		mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
@@ -564,8 +623,8 @@ func TestCreateRawTransaction(t *testing.T) {
 			Return(nil)
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}
@@ -583,20 +642,29 @@ func TestCreateRawTransaction(t *testing.T) {
 		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+
 		svc := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:          statSvc,
 			BaseAmountService: baseSvc,
 			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
 		})
 
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(errors.New("validation error"))
+
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 		}
 		resp, err := svc.CreateRawTransaction(context.TODO(), newTx)
 
-		assert.ErrorContains(t, err, "destination_amount is required for")
+		assert.ErrorContains(t, err, "failed to validate transactions: validation error")
 		assert.Nil(t, resp)
 	})
 
@@ -605,18 +673,29 @@ func TestCreateRawTransaction(t *testing.T) {
 		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+		doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 		svc := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:          statSvc,
 			BaseAmountService: baseSvc,
 			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
+			DoubleEntry:       doubleEnty,
 		})
+
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
 
 		statSvc.EXPECT().HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(errors.New("unexpected error"))
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}
@@ -631,21 +710,73 @@ func TestCreateRawTransaction(t *testing.T) {
 		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
 		mapper := NewMockMapperSvc(gomock.NewController(t))
 
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+		doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
 		svc := transactions.NewService(&transactions.ServiceConfig{
 			StatsSvc:          statSvc,
 			BaseAmountService: baseSvc,
 			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
+			DoubleEntry:       doubleEnty,
 		})
 
 		statSvc.EXPECT().HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
 
 		baseSvc.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(errors.New("unexpected error"))
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+			DestinationAccountID: accounts[0].ID,
+			DestinationCurrency:  accounts[0].Currency,
+			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+		}
+		resp, err := svc.CreateRawTransaction(context.TODO(), newTx)
+
+		assert.ErrorContains(t, err, "unexpected error")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("double entry err", func(t *testing.T) {
+		statSvc := NewMockStatsSvc(gomock.NewController(t))
+		baseSvc := NewMockBaseAmountSvc(gomock.NewController(t))
+		mapper := NewMockMapperSvc(gomock.NewController(t))
+
+		accountSvc := NewMockAccountSvc(gomock.NewController(t))
+		validationSvc := NewMockValidationSvc(gomock.NewController(t))
+		doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+		svc := transactions.NewService(&transactions.ServiceConfig{
+			StatsSvc:          statSvc,
+			BaseAmountService: baseSvc,
+			MapperSvc:         mapper,
+			AccountSvc:        accountSvc,
+			ValidationSvc:     validationSvc,
+			DoubleEntry:       doubleEnty,
+		})
+
+		accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+		statSvc.EXPECT().HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+		baseSvc.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
+		doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(errors.New("unexpected error"))
+
+		newTx := &database.Transaction{
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}
@@ -667,8 +798,8 @@ func TestCreateRawTransaction(t *testing.T) {
 		})
 
 		newTx := &database.Transaction{
-			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_RECONCILIATION,
-			DestinationAccountID: lo.ToPtr(accounts[0].ID),
+			TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+			DestinationAccountID: accounts[0].ID,
 			DestinationCurrency:  accounts[0].Currency,
 			DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 		}

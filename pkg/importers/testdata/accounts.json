@@ -29,7 +29,7 @@
   {
     "name": "Broker1 USD",
     "currency": "USD",
-    "type": 2,
+    "type": 1,
     "note": null,
     "extra": {},
     "iban": "",
@@ -43,5 +43,12 @@
     "extra": {},
     "iban": "",
     "account_number": null
+  },
+  {
+    "name": "Basic expense account",
+    "currency": "USD",
+    "type": 5,
+    "extra": {},
+    "flags": 1
   }
 ]

@@ -1,10 +1,11 @@
 package database
 
 import (
+	"time"
+
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
-	"time"
 )
 
 type Transaction struct {
@@ -14,12 +15,15 @@ type Transaction struct {
 	SourceCurrency             string
 	SourceAmountInBaseCurrency decimal.NullDecimal
 
+	FxSourceAmount   decimal.NullDecimal // withdrawals only
+	FxSourceCurrency string              // withdrawals only
+
 	DestinationAmount               decimal.NullDecimal
 	DestinationCurrency             string
 	DestinationAmountInBaseCurrency decimal.NullDecimal
 
-	SourceAccountID      *int32
-	DestinationAccountID *int32
+	SourceAccountID      int32
+	DestinationAccountID int32
 
 	TagIDs pq.Int32Array `gorm:"type:integer[]"`
 
