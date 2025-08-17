@@ -2,11 +2,12 @@ package rules_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestBasicFields(t *testing.T) {
@@ -136,14 +137,14 @@ func TestBasicFields(t *testing.T) {
 	`
 
 		tx := &database.Transaction{
-			SourceAccountID: lo.ToPtr(int32(12345)),
+			SourceAccountID: int32(12345),
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Equal(t, int32(67890), *tx.SourceAccountID)
+		assert.Equal(t, int32(67890), tx.SourceAccountID)
 	})
 
 	t.Run("category ID", func(t *testing.T) {
@@ -166,44 +167,66 @@ func TestBasicFields(t *testing.T) {
 		assert.Equal(t, int32(67890), *tx.CategoryID)
 	})
 
+	t.Run("category ID nil", func(t *testing.T) {
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
+
+		script := `
+			tx:categoryID(nil)
+
+		if tx:categoryID() == nil then
+			tx:notes("abc")
+		end
+	`
+
+		tx := &database.Transaction{
+			CategoryID: lo.ToPtr(int32(12345)),
+		}
+
+		result, err := interpreter.Run(context.TODO(), script, tx)
+		assert.NoError(t, err)
+
+		assert.True(t, result)
+		assert.Nil(t, tx.CategoryID)
+	})
+
 	t.Run("source account ID nil", func(t *testing.T) {
 		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
-		if tx:sourceAccountID() == nil then
+		if tx:sourceAccountID() == 0 then
 			tx:sourceAccountID(67890)
 		end
 	`
 
 		tx := &database.Transaction{
-			SourceAccountID: nil,
+			SourceAccountID: 0,
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Equal(t, int32(67890), *tx.SourceAccountID)
+		assert.Equal(t, int32(67890), tx.SourceAccountID)
 	})
 
-	t.Run("set source account ID to nil", func(t *testing.T) {
+	t.Run("set source account ID to 0", func(t *testing.T) {
 		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
 		if tx:sourceAccountID() == 12345 then
-			tx:sourceAccountID(nil)
+			tx:sourceAccountID(0)
 		end
 	`
 
 		tx := &database.Transaction{
-			SourceAccountID: lo.ToPtr(int32(12345)),
+			SourceAccountID: int32(12345),
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Nil(t, tx.SourceAccountID)
+		assert.EqualValues(t, 0, tx.SourceAccountID)
 	})
 
 	t.Run("destination account ID", func(t *testing.T) {
@@ -216,14 +239,14 @@ func TestBasicFields(t *testing.T) {
 	`
 
 		tx := &database.Transaction{
-			DestinationAccountID: lo.ToPtr(int32(12345)),
+			DestinationAccountID: int32(12345),
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Equal(t, int32(67890), *tx.DestinationAccountID)
+		assert.Equal(t, int32(67890), tx.DestinationAccountID)
 	})
 
 	t.Run("transaction type", func(t *testing.T) {

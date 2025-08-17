@@ -11,9 +11,9 @@ jobs:
     env:
       ENVIRONMENT: ci
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: apk update && apk add curl openssl git openssh-client build-base && mkdir -p /root/.ssh
-      - uses: golangci/golangci-lint-action@v6.1.1
+      - uses: golangci/golangci-lint-action@v8
         if: github.ref != 'refs/heads/master'
         with:
           version: latest
@@ -33,7 +33,7 @@ jobs:
       DB_HOST: postgres
       DB_USER: postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: apk update && apk add curl openssl git openssh-client build-base && mkdir -p /root/.ssh
       - run: wget -O /usr/bin/mockgen https://github.com/skynet2/mock/releases/latest/download/mockgen && chmod 777 /usr/bin/mockgen
       - run: make generate
@@ -58,7 +58,7 @@ jobs:
     container: node:24-alpine
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install and build frontend
         working-directory: frontend
         run: npm install && npm run build

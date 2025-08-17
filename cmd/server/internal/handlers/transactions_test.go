@@ -1,24 +1,28 @@
 package handlers_test
 
 import (
-	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
-	"connectrpc.com/connect"
 	"context"
+	"net/http"
+	"testing"
+
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"connectrpc.com/connect"
 	"github.com/ft-t/go-money/cmd/server/internal/handlers"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
+	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
 )
 
 func TestTransactionApi_ListTransactions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockSvc := NewMockTransactionsSvc(ctrl)
 	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
-	api := handlers.NewTransactionApi(grpc, mockSvc)
+	api := handlers.NewTransactionApi(grpc, mockSvc, nil, nil)
 
 	t.Run("success", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
@@ -51,7 +55,7 @@ func TestTransactionApi_CreateTransaction(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockSvc := NewMockTransactionsSvc(ctrl)
 	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
-	api := handlers.NewTransactionApi(grpc, mockSvc)
+	api := handlers.NewTransactionApi(grpc, mockSvc, nil, nil)
 
 	t.Run("success", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
@@ -84,7 +88,7 @@ func TestTransactionApi_UpdateTransaction(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockSvc := NewMockTransactionsSvc(ctrl)
 	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
-	api := handlers.NewTransactionApi(grpc, mockSvc)
+	api := handlers.NewTransactionApi(grpc, mockSvc, nil, nil)
 
 	t.Run("success", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
@@ -108,6 +112,56 @@ func TestTransactionApi_UpdateTransaction(t *testing.T) {
 	t.Run("no auth", func(t *testing.T) {
 		req := connect.NewRequest(&transactionsv1.UpdateTransactionRequest{})
 		resp, err := api.UpdateTransaction(context.TODO(), req)
+		assert.ErrorIs(t, err, auth.ErrInvalidToken)
+		assert.Nil(t, resp)
+	})
+}
+
+func TestTransactionApi_GetApplicableAccounts(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockApplicableSvc := NewMockApplicableAccountSvc(ctrl)
+	mockMapper := NewMockMapperSvc(ctrl)
+	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
+	api := handlers.NewTransactionApi(grpc, nil, mockApplicableSvc, mockMapper)
+
+	t.Run("success", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.GetApplicableAccountsRequest{})
+
+		mockResp := map[gomoneypbv1.TransactionType]*applicable_accounts.PossibleAccount{
+			gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME: {
+				SourceAccounts: map[int32]*database.Account{
+					1: {
+						ID: 1,
+					},
+				},
+				DestinationAccounts: map[int32]*database.Account{
+					2: {
+						ID: 2,
+					},
+				},
+			},
+		}
+		mockApplicableSvc.EXPECT().GetAll(gomock.Any()).Return(mockResp, nil)
+		mockMapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).Return(&gomoneypbv1.Account{Id: 1}).Times(2)
+
+		resp, err := api.GetApplicableAccounts(ctx, req)
+		assert.NoError(t, err)
+		assert.Len(t, resp.Msg.ApplicableRecords, 1)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.GetApplicableAccountsRequest{})
+		mockApplicableSvc.EXPECT().GetAll(gomock.Any()).Return(nil, assert.AnError)
+		resp, err := api.GetApplicableAccounts(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		req := connect.NewRequest(&transactionsv1.GetApplicableAccountsRequest{})
+		resp, err := api.GetApplicableAccounts(context.TODO(), req)
 		assert.ErrorIs(t, err, auth.ErrInvalidToken)
 		assert.Nil(t, resp)
 	})

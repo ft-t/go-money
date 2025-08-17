@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { Fluid, FluidModule } from 'primeng/fluid';
-import { InputText, InputTextModule } from 'primeng/inputtext';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FluidModule } from 'primeng/fluid';
+import { InputTextModule } from 'primeng/inputtext';
+import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Transaction, TransactionSchema, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { create } from '@bufbuild/protobuf';
 import { AccountTypeEnum, EnumService } from '../../services/enum.service';
@@ -9,40 +9,46 @@ import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-import { MessageService } from 'primeng/api';
-import { Toast, ToastModule } from 'primeng/toast';
-import { DatePicker, DatePickerModule } from 'primeng/datepicker';
+import { FilterMetadata, MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
+import { DatePickerModule } from 'primeng/datepicker';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { NgClass, NgIf } from '@angular/common';
-import { Textarea, TextareaModule } from 'primeng/textarea';
-import { Button, ButtonModule } from 'primeng/button';
-import { MultiSelect, MultiSelectModule } from 'primeng/multiselect';
+import { TextareaModule } from 'primeng/textarea';
+import { ButtonModule } from 'primeng/button';
+import { MultiSelectModule } from 'primeng/multiselect';
 import {
     CreateTransactionRequest,
     CreateTransactionRequestSchema,
-    DepositSchema,
+    ExpenseSchema,
+    GetApplicableAccountsResponse,
+    GetApplicableAccountsResponse_ApplicableRecord,
+    IncomeSchema,
     ListTransactionsRequestSchema,
     TransactionsService,
     TransferBetweenAccountsSchema,
-    UpdateTransactionRequestSchema,
-    WithdrawalSchema
+    UpdateTransactionRequestSchema
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { CurrencyService, ExchangeRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
-import { InputGroup, InputGroupModule } from 'primeng/inputgroup';
-import { InputGroupAddon, InputGroupAddonModule } from 'primeng/inputgroupaddon';
-import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
+import { InputGroupModule } from 'primeng/inputgroup';
+import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
-import { SelectButton, SelectButtonModule } from 'primeng/selectbutton';
-import { Chip, ChipModule } from 'primeng/chip';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { ChipModule } from 'primeng/chip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
 import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { SelectChangeEvent, SelectModule } from 'primeng/select';
 import { Checkbox } from 'primeng/checkbox';
+import { Message } from 'primeng/message';
+import { greaterThanZeroValidator } from '../../validators/greaterthenzero';
+
+type possibleDestination = 'source' | 'destination' | 'fx';
 
 @Component({
     selector: 'transaction-upsert',
@@ -66,21 +72,22 @@ import { Checkbox } from 'primeng/checkbox';
         SelectButtonModule,
         ChipModule,
         NgClass,
-        Checkbox
+        Checkbox,
+        Message
     ]
 })
 export class TransactionUpsertComponent implements OnInit {
     public isEdit: boolean = false;
 
-    public transaction: Transaction;
+    // public transaction: Transaction;
     public transactionTypes: AccountTypeEnum[];
     public currencies: Currency[] = [];
     public tags: Tag[] = [];
     public categories: Category[] = [];
 
     public skipRules: false = false;
-    private accountService;
-    public accounts: ListAccountsResponse_AccountItem[] = [];
+    public accounts: { [s: number]: GetApplicableAccountsResponse_ApplicableRecord } = {};
+    public allAccounts: { [s: number]: Account } = {};
 
     private transactionService;
 
@@ -88,8 +95,9 @@ export class TransactionUpsertComponent implements OnInit {
     private tagsService;
     private categoriesService;
     public transactionDate: Date = new Date();
+    public maxSelectedLabels = 1;
 
-    public showValidation = false;
+    public form: FormGroup;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -97,22 +105,16 @@ export class TransactionUpsertComponent implements OnInit {
         private route: ActivatedRoute,
         private router: Router
     ) {
-        this.transaction = create(TransactionSchema, {
-            destinationAmount: undefined,
-            sourceAmount: undefined,
-            type: TransactionType.WITHDRAWAL
-        });
-
         this.transactionTypes = EnumService.getBaseTransactionTypes();
-        this.accountService = createClient(AccountsService, this.transport);
         this.transactionService = createClient(TransactionsService, this.transport);
         this.currencyService = createClient(CurrencyService, this.transport);
         this.tagsService = createClient(TagsService, this.transport);
         this.categoriesService = createClient(CategoriesService, this.transport);
 
+        let targetType = TransactionType.EXPENSE;
         this.route.queryParams.subscribe(async (data) => {
             if (data['type']) {
-                this.transaction.type = +(data['type'] as TransactionType);
+                targetType = +(data['type'] as TransactionType);
             }
         });
 
@@ -121,10 +123,114 @@ export class TransactionUpsertComponent implements OnInit {
                 await this.editTransaction(+params['id']);
             }
         });
+
+        this.form = this.buildForm(
+            create(TransactionSchema, {
+                type: targetType
+            })
+        );
     }
 
     async ngOnInit() {
         await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags(), this.fetchCategories()]);
+    }
+
+    buildForm(tx: Transaction) {
+        const form = new FormGroup({
+            id: new FormControl(tx.id, { nonNullable: false }),
+            sourceAmount: new FormControl(this.toPositiveNumber(tx.sourceAmount), greaterThanZeroValidator()),
+            sourceCurrency: new FormControl(tx.sourceCurrency, Validators.required),
+            sourceAccountId: new FormControl(tx.sourceAccountId, Validators.min(1)),
+            destinationAmount: new FormControl(this.toPositiveNumber(tx.destinationAmount), greaterThanZeroValidator()),
+            destinationCurrency: new FormControl(tx.destinationCurrency, Validators.required),
+            destinationAccountId: new FormControl(tx.destinationAccountId, Validators.min(1)),
+            notes: new FormControl(tx.notes, { nonNullable: false }),
+            title: new FormControl(tx.title, Validators.required),
+            categoryId: new FormControl(tx.categoryId, { nonNullable: false }),
+            transactionDate: new FormControl(this.transactionDate, Validators.required),
+            type: new FormControl(tx.type, Validators.required),
+            tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
+            skipRules: new FormControl(this.skipRules, { nonNullable: false }),
+            fxSourceAmount: new FormControl(this.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
+            fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false })
+        });
+
+        form.get('destinationAccountId')!.valueChanges.subscribe(async (newVal) => {
+            let curr = form.get('destinationCurrency');
+            curr?.setValue('', { emitEvent: false });
+
+            let account = this.getAccountById(newVal!);
+            if (!account) {
+                return;
+            }
+
+            curr?.setValue(account.currency, { emitEvent: false });
+        });
+
+        form.get('sourceAccountId')!.valueChanges.subscribe(async (newVal) => {
+            let curr = form.get('sourceCurrency');
+            curr?.setValue('', { emitEvent: false });
+
+            let account = this.getAccountById(newVal!);
+            if (!account) {
+                return;
+            }
+
+            curr?.setValue(account.currency, { emitEvent: false });
+        });
+
+        // handle amounts
+        form.get('destinationAmount')!.valueChanges.subscribe((newVal) => {
+            if (form.get('sourceCurrency')!.value != form.get('destinationCurrency')!.value) return;
+
+            form.get('sourceAmount')!.setValue(newVal, { emitEvent: false });
+        });
+
+        form.get('sourceAmount')!.valueChanges.subscribe((newVal) => {
+            if (form.get('sourceCurrency')!.value != form.get('destinationCurrency')!.value) return;
+
+            form.get('destinationAmount')!.setValue(newVal, { emitEvent: false });
+        });
+
+        form.get('type')!.valueChanges.subscribe((newVal) => {
+            if (newVal != TransactionType.EXPENSE) {
+                form.get('fxSourceAmount')?.setValue('');
+                form.get('fxSourceCurrency')!.setValue('');
+            }
+
+            let sourceAccountId = form.get('sourceAccountId')!.value;
+            let destinationAccountId = form.get('destinationAccountId')!.value;
+
+            if (!this.isAccountApplicable(newVal!, true, sourceAccountId!)) {
+                form.get('sourceAccountId')!.setValue(0);
+            }
+
+            if (!this.isAccountApplicable(newVal!, false, destinationAccountId!)) {
+                form.get('destinationAccountId')!.setValue(0);
+            }
+        });
+
+        return form;
+    }
+
+    get destinationAccountId() {
+        return this.form.get('destinationAccountId')!;
+    }
+
+    get transactionDateFm() {
+        return this.form.get('transactionDate')!;
+    }
+
+    get destinationAmount() {
+        return this.form.get('destinationAmount')!;
+    }
+
+    get sourceAmount() {
+        return this.form.get('sourceAmount')!;
+    }
+
+    get title() {
+        return this.form.get('title')!;
     }
 
     async editTransaction(id: number) {
@@ -143,13 +249,15 @@ export class TransactionUpsertComponent implements OnInit {
                 return;
             }
 
-            this.transaction = resp.transactions[0];
+            let tx = resp.transactions[0];
 
-            if (this.transaction.sourceAmount) this.transaction.sourceAmount = this.toPositiveNumber(this.transaction.sourceAmount);
+            if (tx.sourceAmount) tx.sourceAmount = this.toPositiveNumber(tx.sourceAmount)!;
 
-            if (this.transaction.destinationAmount) this.transaction.destinationAmount = this.toPositiveNumber(this.transaction.destinationAmount);
+            if (tx.destinationAmount) tx.destinationAmount = this.toPositiveNumber(tx.destinationAmount)!;
 
-            this.transactionDate = TimestampHelper.timestampToDate(this.transaction.transactionDate!);
+            this.transactionDate = TimestampHelper.timestampToDate(tx.transactionDate!);
+
+            this.form = this.buildForm(tx);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -157,7 +265,7 @@ export class TransactionUpsertComponent implements OnInit {
 
     getTitle() {
         if (this.isEdit) {
-            return `Editing Transaction (#${this.transaction.id})`;
+            return `Edit Transaction (#${this.form.get('id')?.value})`;
         }
 
         return `New Transaction`;
@@ -194,93 +302,115 @@ export class TransactionUpsertComponent implements OnInit {
 
     async fetchAccounts() {
         try {
-            let resp = await this.accountService.listAccounts({});
-            this.accounts = resp.accounts || [];
+            let resp = await this.transactionService.getApplicableAccounts({});
+            for (let applicable of resp.applicableRecords) {
+                this.accounts[applicable.transactionType] = applicable;
+
+                for (let source of applicable.sourceAccounts || []) {
+                    this.allAccounts[source.id] = source;
+                }
+                for (let destination of applicable.destinationAccounts || []) {
+                    this.allAccounts[destination.id] = destination;
+                }
+            }
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
     }
 
-    isSourceAccountActive(): boolean {
-        if (this.transaction.type == TransactionType.WITHDRAWAL) return true;
-
-        if (this.transaction.type == TransactionType.TRANSFER_BETWEEN_ACCOUNTS) return true;
-
-        return false;
-    }
-
-    onTransactionTypeChange() {
-        if (!this.isDestinationAccountActive()) {
-            this.transaction.destinationAccountId = undefined;
-            this.transaction.destinationCurrency = undefined;
-            this.transaction.destinationAmount = undefined;
-        }
-
-        if (!this.isSourceAccountActive()) {
-            this.transaction.sourceAccountId = undefined;
-            this.transaction.sourceCurrency = undefined;
-            this.transaction.sourceAmount = undefined;
-        }
-
-        if (!this.isForeignCurrencyActive()) {
-            this.transaction.destinationCurrency = undefined;
-            this.transaction.destinationAmount = undefined;
-        }
-    }
-
-    onSourceAccountChange(_: SelectChangeEvent) {
-        this.transaction.sourceCurrency = this.accountById(this.transaction.sourceAccountId)?.currency ?? '';
-    }
-
-    onDestinationAccountChange(_: SelectChangeEvent) {
-        this.transaction.destinationCurrency = this.accountById(this.transaction.destinationAccountId)?.currency ?? '';
-    }
-
-    accountById(id: number | undefined): Account | null {
-        if (!id) return null;
-
-        for (let account of this.accounts) {
-            if (account.account?.id == id) return account.account;
-        }
-
-        return null;
-    }
-
-    canConvertAmount(): boolean {
-        if (!this.transaction.sourceAmount || !this.transaction.sourceCurrency || !this.transaction.destinationCurrency) {
+    isAccountApplicable(type: TransactionType, isSource: boolean, id: number): boolean {
+        let applicable = this.getApplicableAccounts(type, isSource);
+        if (!applicable) {
             return false;
         }
 
-        return true;
+        return applicable.some((a) => a.id == id);
+    }
+
+    getApplicableAccounts(type: TransactionType, isSource: boolean): Account[] {
+        const applicable = this.accounts[type];
+
+        if (!applicable) {
+            return [];
+        }
+
+        if (isSource) {
+            return applicable.sourceAccounts || [];
+        } else {
+            return applicable.destinationAccounts || [];
+        }
+    }
+
+    // onTransactionTypeChange() {
+    //     if (!this.isDestinationAccountActive()) {
+    //         this.transaction.destinationAccountId = 0;
+    //         this.transaction.destinationCurrency = '';
+    //         this.transaction.destinationAmount = '';
+    //     }
+    //
+    //     if (!this.isForeignCurrencyActive()) {
+    //         this.transaction.destinationCurrency = '';
+    //         this.transaction.destinationAmount = '';
+    //     }
+    // }
+
+    getAccountById(id: number | undefined): Account | null {
+        if (!id) return null;
+
+        return this.allAccounts[id] || null;
+    }
+
+    canConvert(): boolean {
+        let source = this.form.get('sourceCurrency')!.value;
+        let dest = this.form.get('destinationCurrency')!.value;
+
+        if (!source || !dest) {
+            return false;
+        }
+
+        return source != dest;
     }
 
     log() {
-        console.log(this.transaction);
+        console.log(this.form);
     }
 
-    async convertAmount() {
-        if (!this.canConvertAmount()) return;
-
+    async convertAmount(amount: number, currency: string, setTo: possibleDestination) {
         try {
+            let destCurrency = '';
+            let destValueSetter: AbstractControl | null;
+            switch (setTo) {
+                case 'source':
+                    destCurrency = this.form.get('sourceCurrency')!.value;
+                    destValueSetter = this.form.get('sourceAmount');
+                    break;
+                case 'destination':
+                    destCurrency = this.form.get('destinationCurrency')!.value;
+                    destValueSetter = this.form.get('destinationAmount');
+                    break;
+                case 'fx':
+                    destCurrency = this.form.get('destinationCurrency')!.value;
+                    destValueSetter = this.form.get('sourceAmount');
+                    break;
+            }
+
             let converted = await this.currencyService.exchange(
                 create(ExchangeRequestSchema, {
-                    amount: this.transaction!.sourceAmount!.toString(),
-                    fromCurrency: this.transaction.sourceCurrency,
-                    toCurrency: this.transaction.destinationCurrency
+                    amount: amount.toString(),
+                    fromCurrency: currency,
+                    toCurrency: destCurrency
                 })
             );
 
-            this.transaction.destinationAmount = converted.amount;
+            destValueSetter?.setValue(converted.amount);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
         }
     }
 
-    maxSelectedLabels = 1;
-
     removeTag(tag: number) {
-        this.transaction.tagIds = this.transaction.tagIds.filter((t) => t != tag);
+        this.form.get('tagIds')!.setValue(this.form.get('tagIds')!.value.filter((t: number) => t != tag));
     }
 
     tagById(id: number | undefined): Tag | null {
@@ -293,61 +423,74 @@ export class TransactionUpsertComponent implements OnInit {
         return null;
     }
 
-    isDestinationAccountActive(): boolean {
-        if (this.transaction.type == TransactionType.DEPOSIT) return true;
-
-        if (this.transaction.type == TransactionType.TRANSFER_BETWEEN_ACCOUNTS) return true;
-
-        return false;
-    }
-
     isForeignCurrencyActive(): boolean {
-        if (this.transaction.type == TransactionType.WITHDRAWAL) return true;
+        if (this.form.get('type')?.value == TransactionType.EXPENSE) return true;
 
         return false;
     }
 
     buildTransactionRequest(): CreateTransactionRequest {
         let req = create(CreateTransactionRequestSchema, {
-            notes: this.transaction.notes,
+            notes: this.form.get('notes')!.value,
             extra: {}, // todo
-            tagIds: this.transaction.tagIds,
+            tagIds: this.form.get('tagIds')!.value || [],
             transactionDate: create(TimestampSchema, {
                 seconds: BigInt(Math.floor(this.transactionDate.getTime() / 1000)),
                 nanos: (this.transactionDate.getMilliseconds() % 1000) * 1_000_000
             }),
-            title: this.transaction.title,
-            categoryId: this.transaction.categoryId,
-            skipRules: this.skipRules
+            title: this.form.get('title')!.value,
+            categoryId: this.form.get('categoryId')!.value,
+            skipRules: this.form.get('skipRules')!.value
         });
 
-        switch (this.transaction.type) {
-            case TransactionType.DEPOSIT:
-                req.transaction.value = create(DepositSchema, {
-                    destinationAccountId: this.transaction.destinationAccountId,
-                    destinationAmount: this.toPositiveNumber(this.transaction.destinationAmount),
-                    destinationCurrency: this.transaction.destinationCurrency
+        let destinationAccountId = this.form.get('destinationAccountId')!.value;
+        let destinationCurrency = this.form.get('destinationCurrency')!.value;
+        let destinationAmount = this.form.get('destinationAmount')!.value;
+
+        let sourceAccountId = this.form.get('sourceAccountId')!.value;
+        let sourceCurrency = this.form.get('sourceCurrency')!.value;
+        let sourceAmount = this.form.get('sourceAmount')!.value;
+
+        let fxSourceAmount = this.form.get('fxSourceAmount')!.value;
+        let fxSourceCurrency = this.form.get('fxSourceCurrency')!.value;
+
+        switch (this.form.get('type')!.value) {
+            case TransactionType.INCOME:
+                req.transaction.value = create(IncomeSchema, {
+                    destinationAccountId: destinationAccountId,
+                    destinationAmount: this.toPositiveNumber(destinationAmount),
+                    destinationCurrency: destinationCurrency,
+
+                    sourceAccountId: sourceAccountId,
+                    sourceAmount: this.toNegativeNumber(sourceAmount),
+                    sourceCurrency: sourceCurrency
                 });
-                req.transaction.case = 'deposit';
+                req.transaction.case = 'income';
                 break;
-            case TransactionType.WITHDRAWAL:
-                req.transaction.value = create(WithdrawalSchema, {
-                    sourceAmount: this.toNegativeNumber(this.transaction.sourceAmount),
-                    sourceCurrency: this.transaction.sourceCurrency,
-                    sourceAccountId: this.transaction.sourceAccountId,
-                    foreignAmount: this.toNegativeNumber(this.transaction.destinationAmount),
-                    foreignCurrency: this.transaction.destinationCurrency
+            case TransactionType.EXPENSE:
+                req.transaction.value = create(ExpenseSchema, {
+                    destinationAccountId: destinationAccountId,
+                    destinationAmount: this.toPositiveNumber(destinationAmount),
+                    destinationCurrency: destinationCurrency,
+
+                    sourceAccountId: sourceAccountId,
+                    sourceAmount: this.toNegativeNumber(sourceAmount),
+                    sourceCurrency: sourceCurrency,
+
+                    fxSourceCurrency: fxSourceCurrency,
+                    fxSourceAmount: this.toNegativeNumber(fxSourceAmount)
                 });
-                req.transaction.case = 'withdrawal';
+                req.transaction.case = 'expense';
                 break;
             case TransactionType.TRANSFER_BETWEEN_ACCOUNTS:
                 req.transaction.value = create(TransferBetweenAccountsSchema, {
-                    sourceAccountId: this.transaction.sourceAccountId,
-                    destinationAccountId: this.transaction.destinationAccountId,
-                    sourceAmount: this.toNegativeNumber(this.transaction.sourceAmount),
-                    sourceCurrency: this.transaction.sourceCurrency,
-                    destinationAmount: this.toPositiveNumber(this.transaction.destinationAmount),
-                    destinationCurrency: this.transaction.destinationCurrency
+                    destinationAccountId: destinationAccountId,
+                    destinationAmount: this.toPositiveNumber(destinationAmount),
+                    destinationCurrency: destinationCurrency,
+
+                    sourceAccountId: sourceAccountId,
+                    sourceAmount: this.toNegativeNumber(sourceAmount),
+                    sourceCurrency: sourceCurrency
                 });
                 req.transaction.case = 'transferBetweenAccounts';
                 break;
@@ -356,13 +499,26 @@ export class TransactionUpsertComponent implements OnInit {
         return req;
     }
 
-    async create() {
-        this.showValidation = true;
-        if (!this.isFormValid()) {
-            this.messageService.add({ severity: 'error', detail: 'Please fill all required fields.' });
+    async submit() {
+        this.form!.markAllAsTouched();
+
+        if (!this.form!.valid) {
+            console.log(this.form);
             return;
         }
 
+        if (this.isEdit) {
+            await this.update();
+        } else {
+            await this.create();
+        }
+    }
+
+    get sourceAccountId() {
+        return this.form.get('sourceAccountId')!;
+    }
+
+    async create() {
         try {
             await this.transactionService.createTransaction(this.buildTransactionRequest());
 
@@ -376,17 +532,11 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     async update() {
-        this.showValidation = true;
-        if (!this.isFormValid()) {
-            this.messageService.add({ severity: 'error', detail: 'Please fill all required fields.' });
-            return;
-        }
-
         try {
             let response = await this.transactionService.updateTransaction(
                 create(UpdateTransactionRequestSchema, {
                     transaction: this.buildTransactionRequest(),
-                    id: this.transaction.id
+                    id: this.form.get('id')?.value
                 })
             );
 
@@ -399,16 +549,6 @@ export class TransactionUpsertComponent implements OnInit {
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
-    }
-
-    isFormValid(): boolean {
-        if (!this.transaction.title) return false;
-        if (!this.transactionDate) return false;
-        if (this.isSourceAccountActive() && !this.transaction.sourceAccountId) return false;
-        if (this.isSourceAccountActive() && !this.transaction.sourceAmount) return false;
-        if (this.isDestinationAccountActive() && !this.transaction.destinationAccountId) return false;
-        if (this.isDestinationAccountActive() && !this.transaction.destinationAmount) return false;
-        return true;
     }
 
     toNegativeNumber(value: string | undefined): string | undefined {
@@ -430,6 +570,6 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     async refresh() {
-        await this.editTransaction(Number(this.transaction.id));
+        await this.editTransaction(Number(this.form.get('id')?.value));
     }
 }

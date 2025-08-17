@@ -31,7 +31,7 @@ func (w *LuaTransactionWrapper) DestinationCurrency(l *lua.LState) int {
 }
 
 func (w *LuaTransactionWrapper) SourceAccountID(l *lua.LState) int {
-	return w.getSetNullInt32Field(l, w.tx.SourceAccountID, func(val *int32) {
+	return w.getSetInt32Field(l, w.tx.SourceAccountID, func(val int32) {
 		w.tx.SourceAccountID = val
 	})
 }
@@ -43,7 +43,7 @@ func (w *LuaTransactionWrapper) CategoryID(l *lua.LState) int {
 }
 
 func (w *LuaTransactionWrapper) DestinationAccountID(l *lua.LState) int {
-	return w.getSetNullInt32Field(l, w.tx.DestinationAccountID, func(val *int32) {
+	return w.getSetInt32Field(l, w.tx.DestinationAccountID, func(val int32) {
 		w.tx.DestinationAccountID = val
 	})
 }
@@ -97,6 +97,18 @@ func (w *LuaTransactionWrapper) getSetNullInt32Field(l *lua.LState, val *int32, 
 	} else {
 		l.Push(lua.LNil)
 	}
+
+	return 1
+}
+
+func (w *LuaTransactionWrapper) getSetInt32Field(l *lua.LState, val int32, setter func(int32)) int {
+	if l.GetTop() == 2 { // set
+		w.modified = true
+		setter(int32(l.CheckInt(2)))
+		return 0
+	}
+
+	l.Push(lua.LNumber(val))
 
 	return 1
 }

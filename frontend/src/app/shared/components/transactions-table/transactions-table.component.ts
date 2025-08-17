@@ -130,7 +130,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
     async createNewTransaction() {
         await this.router.navigate(['/transactions', 'new'], {
             queryParams: {
-                type: this.transactionTypeForCreate ?? TransactionType.WITHDRAWAL
+                type: this.transactionTypeForCreate ?? TransactionType.EXPENSE
             }
         });
     }
@@ -361,9 +361,9 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     getAmountColor(transaction: Transaction): string {
         switch (transaction.type) {
-            case TransactionType.WITHDRAWAL:
+            case TransactionType.EXPENSE:
                 return 'text-red-500';
-            case TransactionType.DEPOSIT:
+            case TransactionType.INCOME:
                 return 'text-green-500';
             case TransactionType.TRANSFER_BETWEEN_ACCOUNTS:
                 return 'text-blue-500';

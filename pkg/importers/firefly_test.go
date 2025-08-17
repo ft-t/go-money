@@ -1,13 +1,18 @@
 package importers_test
 
 import (
+	"context"
+	_ "embed"
+	"encoding/json"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
-	_ "embed"
-	"encoding/json"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
@@ -16,13 +21,14 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
+	"github.com/ft-t/go-money/pkg/transactions/double_entry"
+	"github.com/ft-t/go-money/pkg/transactions/rules"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/golang/mock/gomock"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"net/http"
-	"os"
-	"testing"
-	"time"
 )
 
 var gormDB *gorm.DB
@@ -75,27 +81,33 @@ func TestFireflyImport(t *testing.T) {
 
 	assert.NoError(t, gormDB.Create(&accountsData).Error)
 
-	t.Run("basic multi currency withdrawal", func(t *testing.T) {
+	t.Run("basic multi currency expense", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		importer := importers.NewFireflyImporter(txSvc, currencyConv)
+		currencyConv.EXPECT().Convert(context.TODO(), "UAH", "USD", gomock.Any()).
+			Return(decimal.NewFromInt(55), nil)
+
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
 
 				txDate := requests[0].Req.TransactionDate.AsTime().Format(time.RFC3339)
 				assert.EqualValues(t, "2025-06-17T13:07:46Z", txDate)
 
-				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "UAH")
-				assert.EqualValues(t, *tx.Withdrawal.ForeignCurrency, "PLN")
+				assert.EqualValues(t, tx.Expense.SourceCurrency, "UAH")
+				assert.EqualValues(t, *tx.Expense.FxSourceCurrency, "PLN")
 
-				assert.EqualValues(t, "-964.44", tx.Withdrawal.SourceAmount)
-				assert.EqualValues(t, "-83.81", *tx.Withdrawal.ForeignAmount)
+				assert.EqualValues(t, "-964.44", tx.Expense.SourceAmount)
+				assert.EqualValues(t, "-83.81", *tx.Expense.FxSourceAmount)
 
-				assert.EqualValues(t, accountsData[0].ID, tx.Withdrawal.SourceAccountId)
+				assert.EqualValues(t, accountsData[0].ID, tx.Expense.SourceAccountId)
+
+				assert.EqualValues(t, "55", tx.Expense.DestinationAmount)
 
 				assert.EqualValues(t, "firefly_2805", *requests[0].Req.InternalReferenceNumber)
 
@@ -127,19 +139,19 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("open balance (debt)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Withdrawal)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
 
-				assert.EqualValues(t, tx.Withdrawal.SourceCurrency, "PLN")
+				assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
 
-				assert.EqualValues(t, "-3900", tx.Withdrawal.SourceAmount)
+				assert.EqualValues(t, "-3900", tx.Adjustment.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[1].ID, tx.Withdrawal.SourceAccountId)
+				assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_1869", *requests[0].Req.InternalReferenceNumber)
 
@@ -169,19 +181,19 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("open balance", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Deposit)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
 
-				assert.EqualValues(t, tx.Deposit.DestinationCurrency, "PLN")
+				assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
 
-				assert.EqualValues(t, "3520.42", tx.Deposit.DestinationAmount)
+				assert.EqualValues(t, "3520.42", tx.Adjustment.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[1].ID, tx.Deposit.DestinationAccountId)
+				assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_18691", *requests[0].Req.InternalReferenceNumber)
 
@@ -211,19 +223,19 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("reconciliation (minus)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Reconciliation)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
 
-				assert.EqualValues(t, "USD", tx.Reconciliation.DestinationCurrency)
+				assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
 
-				assert.EqualValues(t, "-296", tx.Reconciliation.DestinationAmount)
+				assert.EqualValues(t, "-296", tx.Adjustment.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[2].ID, tx.Reconciliation.DestinationAccountId)
+				assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_2848", *requests[0].Req.InternalReferenceNumber)
 
@@ -253,19 +265,19 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("reconciliation (plus)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Reconciliation)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
 
-				assert.EqualValues(t, "USD", tx.Reconciliation.DestinationCurrency)
+				assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
 
-				assert.EqualValues(t, "49.37", tx.Reconciliation.DestinationAmount)
+				assert.EqualValues(t, "49.37", tx.Adjustment.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[2].ID, tx.Reconciliation.DestinationAccountId)
+				assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_2830", *requests[0].Req.InternalReferenceNumber)
 
@@ -295,10 +307,10 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("transfer (same currency)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
@@ -340,10 +352,10 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("debt withdrawal -> transfer", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
@@ -401,7 +413,11 @@ func TestSkipDuplicate(t *testing.T) {
 	t.Run("skip duplicate transactions", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
+		importer := importers.NewFireflyImporter(txSvc, currencyConv)
+
+		currencyConv.EXPECT().Convert(gomock.Any(), "UAH", "USD", gomock.Any()).
+			Return(decimal.NewFromInt(55), nil)
 
 		tx := &database.ImportDeduplication{
 			ImportSource: importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
@@ -429,7 +445,7 @@ func TestFireflyNoData(t *testing.T) {
 	t.Run("no data", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc)
+		importer := importers.NewFireflyImporter(txSvc, nil)
 
 		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
 			Data:     []byte{},
@@ -447,10 +463,12 @@ func TestFireflyIntegration(t *testing.T) {
 	t.Skip("todo")
 
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
-	data, err := os.ReadFile("E:\\extra-data\\first.csv")
+	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_08_16_transaction_export.csv")
+	//data, err := os.ReadFile("~/Downloads/2025_08_16_transaction_export.csv")
 	assert.NoError(t, err)
 
 	accountsData, err := os.ReadFile("C:\\Users\\iqpir\\Result_17.json")
+	//accountsData, err := os.ReadFile("~/wallets.json")
 	assert.NoError(t, err)
 
 	var bulkAccounts []*accountsv1.CreateAccountRequest
@@ -461,8 +479,11 @@ func TestFireflyIntegration(t *testing.T) {
 	})
 
 	accountSvc := accounts.NewService(&accounts.ServiceConfig{
-		MapperSvc: m,
+		MapperSvc:       m,
+		DefaultCurrency: "USD",
 	})
+
+	assert.NoError(t, accountSvc.EnsureDefaultAccountsExist(context.TODO()))
 	_, err = accountSvc.CreateBulk(context.TODO(), &accountsv1.CreateAccountsBulkRequest{
 		Accounts: bulkAccounts,
 	})
@@ -477,13 +498,27 @@ func TestFireflyIntegration(t *testing.T) {
 	assert.NoError(t, cur.Sync(context.TODO(), "http://go-money-exchange-rates.s3-website.eu-north-1.amazonaws.com/latest.json"))
 
 	converter := currency.NewConverter("USD")
+	applicableAcc := applicable_accounts.NewApplicableAccountService(accountSvc)
+	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
+		ApplicableAccountSvc: applicableAcc,
+	})
+	doubleEntry := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+		BaseCurrency: "USD",
+	})
+	baseAmountSvc := transactions.NewBaseAmountService("USD")
+	ruleSvc := rules.NewExecutor(nil)
 
 	txSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             transactions.NewStatService(),
 		MapperSvc:            m,
 		CurrencyConverterSvc: converter,
+		BaseAmountService:    baseAmountSvc,
+		RuleSvc:              ruleSvc,
+		ValidationSvc:        validationSvc,
+		DoubleEntry:          doubleEntry,
+		AccountSvc:           accountSvc,
 	})
-	importer := importers.NewFireflyImporter(txSvc)
+	importer := importers.NewFireflyImporter(txSvc, converter)
 
 	result, err := importer.Import(context.TODO(), &importers.ImportRequest{
 		Data:     data,
@@ -502,7 +537,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 	assert.NoError(t, gormDB.Create(&accountsData).Error)
 
 	txSvc := NewMockTransactionSvc(gomock.NewController(t))
-	importer := importers.NewFireflyImporter(txSvc)
+	importer := importers.NewFireflyImporter(txSvc, nil)
 
 	t.Run("missing source account", func(t *testing.T) {
 		// Withdrawal with unknown account name
@@ -553,7 +588,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 
 func TestParseDate(t *testing.T) {
 	input := "2025-06-17T15:07:46+02:00"
-	ff := importers.NewFireflyImporter(nil)
+	ff := importers.NewFireflyImporter(nil, nil)
 
 	t.Run("with local", func(t *testing.T) {
 		resp, err := ff.ParseDate(input, false)

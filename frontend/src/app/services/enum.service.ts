@@ -26,22 +26,22 @@ export class EnumService {
         return [
             {
                 name: 'Regular',
-                value: AccountType.REGULAR,
-                icon: ''
-            },
-            {
-                name: 'Savings',
-                value: AccountType.SAVINGS,
-                icon: ''
-            },
-            {
-                name: 'Brokerage',
-                value: AccountType.BROKERAGE,
+                value: AccountType.ASSET,
                 icon: ''
             },
             {
                 name: 'Liability',
                 value: AccountType.LIABILITY,
+                icon: ''
+            },
+            {
+                name: 'Income',
+                value: AccountType.INCOME,
+                icon: ''
+            },
+            {
+                name: 'Expense',
+                value: AccountType.EXPENSE,
                 icon: ''
             }
         ];
@@ -51,7 +51,7 @@ export class EnumService {
         return [
             {
                 name: 'Deposit',
-                value: TransactionType.DEPOSIT,
+                value: TransactionType.INCOME,
                 icon: 'pi pi-arrow-down text-green-500'
             },
             {
@@ -61,7 +61,7 @@ export class EnumService {
             },
             {
                 name: 'Withdrawal',
-                value: TransactionType.WITHDRAWAL,
+                value: TransactionType.EXPENSE,
                 icon: 'pi pi-arrow-up text-red-500'
             },
         ];
@@ -72,7 +72,7 @@ export class EnumService {
             ...EnumService.getBaseTransactionTypes(),
             {
                 name: 'Reconciliation',
-                value: TransactionType.RECONCILIATION,
+                value: TransactionType.ADJUSTMENT,
                 icon: '',
             }
         ];

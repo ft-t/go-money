@@ -1,10 +1,12 @@
 package rules
 
 import (
+	"context"
+
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -46,16 +48,18 @@ type TransactionSvc interface {
 		ids []int64,
 	) ([]*database.Transaction, error)
 
-	ValidateTransaction(
-		ctx context.Context,
-		dbTx *gorm.DB,
-		tx *database.Transaction,
-	) error
-
 	CreateRawTransaction(
 		ctx context.Context,
 		newTx *database.Transaction,
 	) (*transactionsv1.CreateTransactionResponse, error)
+}
+
+type ValidationSvc interface {
+	Validate(
+		ctx context.Context,
+		dbTx *gorm.DB,
+		req *validation.Request,
+	) error
 }
 
 type CurrencyConverterSvc interface {
@@ -74,4 +78,8 @@ type DecimalSvc interface {
 type SchedulerSvc interface {
 	Reinit(ctx context.Context) error
 	ValidateCronExpression(cronExpression string) error
+}
+
+type AccountSvc interface {
+	GetAllAccounts(ctx context.Context) ([]*database.Account, error)
 }

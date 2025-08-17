@@ -11,11 +11,7 @@ import { ErrorHelper } from '../../../../helpers/error.helper';
 import { TRANSPORT_TOKEN } from '../../../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { MessageService } from 'primeng/api';
-import {
-    CreateTransactionRequestSchema,
-    ReconciliationSchema,
-    TransactionsService
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { AdjustmentSchema, CreateTransactionRequestSchema, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { create } from '@bufbuild/protobuf';
 import { InputText } from 'primeng/inputtext';
@@ -102,8 +98,8 @@ export class ReconciliationModalComponent implements OnChanges {
                 title: this.form!.get('title')!.value
             });
 
-            baseRequest.transaction.case = 'reconciliation';
-            baseRequest.transaction.value = create(ReconciliationSchema, {
+            baseRequest.transaction.case = 'adjustment';
+            baseRequest.transaction.value = create(AdjustmentSchema, {
                 destinationAccountId: this.account!.id,
                 destinationAmount: this.form!.get('difference')!.value.toString(),
                 destinationCurrency: this.account!.currency
