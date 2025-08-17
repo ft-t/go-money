@@ -14,3 +14,7 @@ type CalculateDailyStatRequest struct {
 	StartDate time.Time
 	AccountID int32
 }
+
+type UpsertOptions struct {
+	SkipAccountSourceDestValidation bool
+}

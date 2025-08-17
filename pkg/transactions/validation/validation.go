@@ -29,12 +29,10 @@ func NewValidationService(cfg *ServiceConfig) *Service {
 func (s *Service) Validate(
 	ctx context.Context,
 	dbTx *gorm.DB,
-	txs []*database.Transaction,
-	accounts map[int32]*database.Account,
-	// req *Request,
+	req *Request,
 ) error {
-	//accounts := req.Accounts
-	//txs := req.Txs
+	accounts := req.Accounts
+	txs := req.Txs
 
 	applicableAccounts := s.cfg.ApplicableAccountSvc.GetApplicableAccounts(ctx, lo.Values(accounts))
 
@@ -43,11 +41,11 @@ func (s *Service) Validate(
 			return errors.Wrapf(err, "failed to validate transaction")
 		}
 
-		//if req.SkipAccountsValidation {
-		if err := s.ValidateTransactionAccounts(ctx, applicableAccounts, createdTx); err != nil {
-			return errors.Wrapf(err, "failed to validate transaction accounts")
+		if !req.SkipAccountsValidation {
+			if err := s.ValidateTransactionAccounts(ctx, applicableAccounts, createdTx); err != nil {
+				return errors.Wrapf(err, "failed to validate transaction accounts")
+			}
 		}
-		//}
 
 		if err := s.ensureCurrencyExists(ctx, createdTx.SourceCurrency); err != nil {
 			return errors.Wrapf(err, "failed to ensure source currency exists: %s",

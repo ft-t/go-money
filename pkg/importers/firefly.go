@@ -451,7 +451,14 @@ func (f *FireflyImporter) Import(
 	defer tx.Rollback()
 	ctx = database.WithContext(ctx, tx)
 
-	transactionResp, transactionErr := f.transactionService.CreateBulkInternal(ctx, allTransactions, tx)
+	transactionResp, transactionErr := f.transactionService.CreateBulkInternal(
+		ctx,
+		allTransactions,
+		tx,
+		transactions.UpsertOptions{
+			SkipAccountSourceDestValidation: true, // todo from request
+		},
+	)
 	if transactionErr != nil {
 		return nil, errors.Wrap(transactionErr, "failed to create transactions")
 	}
@@ -466,10 +473,8 @@ func (f *FireflyImporter) Import(
 		})
 	}
 
-	for _, chunk := range lo.Chunk(deduplicationRecords, chunkSize) {
-		if err = tx.Create(&chunk).Error; err != nil {
-			return nil, errors.Wrap(err, "failed to create deduplication records")
-		}
+	if err = tx.CreateInBatches(&deduplicationRecords, chunkSize).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to create deduplication records")
 	}
 
 	if err = tx.Commit().Error; err != nil {

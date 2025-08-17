@@ -35,6 +35,7 @@ type TransactionSvc interface {
 		ctx context.Context,
 		reqs []*transactions.BulkRequest,
 		tx *gorm.DB,
+		opts transactions.UpsertOptions,
 	) ([]*transactionsv1.CreateTransactionResponse, error)
 }
 

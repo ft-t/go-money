@@ -10,6 +10,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
@@ -64,13 +65,13 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 
 	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
-	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction, m map[int32]*database.Account) error {
-			assert.Len(t, i, 1)
-			assert.Len(t, m, 1)
-			assert.EqualValues(t, accounts[0].ID, i[0].SourceAccountID)
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, req *validation.Request) error {
+			assert.Len(t, req.Accounts, 1)
+			assert.Len(t, req.Txs, 1)
+			assert.EqualValues(t, accounts[0].ID, req.Txs[0].SourceAccountID)
 
-			assert.EqualValues(t, accounts[0].Name, m[accounts[0].ID].Name)
+			assert.EqualValues(t, accounts[0].Name, req.Accounts[accounts[0].ID].Name)
 
 			return nil
 		})
@@ -160,7 +161,7 @@ func TestUpdateTransaction(t *testing.T) {
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 
 	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil).Times(4)
-	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(4)
 	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(4)
@@ -373,7 +374,7 @@ func TestBasicCalc(t *testing.T) {
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 
 	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil).Times(6)
-	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(6)
 	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(6)
@@ -536,7 +537,7 @@ func TestBasicCalcWithGap(t *testing.T) {
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 
 	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
-	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil)
 	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil)
@@ -642,7 +643,7 @@ func TestNoDailyStatOnRecalculate(t *testing.T) {
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 
 	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil).Times(1)
-	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(1)
 	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil).Times(1)

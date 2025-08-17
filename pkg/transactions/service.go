@@ -11,6 +11,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -180,7 +181,7 @@ func (s *Service) CreateBulk(
 		})
 	}
 
-	resp, err := s.CreateBulkInternal(ctx, bulkRequests, tx)
+	resp, err := s.CreateBulkInternal(ctx, bulkRequests, tx, UpsertOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create transactions for request: %v", req)
 	}
@@ -201,6 +202,7 @@ func (s *Service) CreateBulkInternal(
 	ctx context.Context,
 	reqs []*BulkRequest,
 	tx *gorm.DB,
+	opts UpsertOptions,
 ) ([]*transactionsv1.CreateTransactionResponse, error) {
 	var transactionWithRules []*database.Transaction
 	var transactionWithoutRules []*database.Transaction
@@ -307,7 +309,7 @@ func (s *Service) CreateBulkInternal(
 
 	created := append(transactionWithRules, transactionWithoutRules...)
 
-	return s.FinalizeTransactions(ctx, tx, created, originalTxs)
+	return s.FinalizeTransactions(ctx, tx, created, originalTxs, opts)
 }
 
 func (s *Service) CreateRawTransaction(
@@ -326,7 +328,7 @@ func (s *Service) CreateRawTransaction(
 		return nil, errors.Wrapf(err, "failed to create transaction: %v", newTx)
 	}
 
-	resp, err := s.FinalizeTransactions(ctx, tx, []*database.Transaction{newTx}, nil)
+	resp, err := s.FinalizeTransactions(ctx, tx, []*database.Transaction{newTx}, nil, UpsertOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -343,6 +345,7 @@ func (s *Service) FinalizeTransactions(
 	tx *gorm.DB,
 	created []*database.Transaction,
 	originalTxs []*database.Transaction,
+	opts UpsertOptions,
 ) ([]*transactionsv1.CreateTransactionResponse, error) {
 	accounts, err := s.cfg.AccountSvc.GetAllAccounts(ctx)
 	if err != nil {
@@ -354,7 +357,11 @@ func (s *Service) FinalizeTransactions(
 		accountMap[acc.ID] = acc
 	}
 
-	if err = s.cfg.ValidationSvc.Validate(ctx, tx, created, accountMap); err != nil {
+	if err = s.cfg.ValidationSvc.Validate(ctx, tx, &validation.Request{
+		Txs:                    created,
+		Accounts:               accountMap,
+		SkipAccountsValidation: opts.SkipAccountSourceDestValidation,
+	}); err != nil {
 		return nil, errors.Wrap(err, "failed to validate transactions")
 	}
 
@@ -394,7 +401,7 @@ func (s *Service) Create(
 		{
 			Req: req,
 		},
-	}, tx)
+	}, tx, UpsertOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create transaction for request: %v", req)
 	}
@@ -425,7 +432,7 @@ func (s *Service) Update(
 			Req:        req.Transaction,
 			OriginalTx: &existingTx, // we need to update existing transaction
 		},
-	}, tx)
+	}, tx, UpsertOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create transaction for request: %v", req)
 	}
@@ -504,7 +511,7 @@ func (s *Service) fillReconciliation(
 	newTx.SourceCurrency = acc.Currency
 	newTx.SourceAccountID = acc.ID
 	newTx.SourceAmount = decimal.NewNullDecimal(targetAmount)
-
+	
 	return &fillResponse{}, nil
 }
 

@@ -85,8 +85,8 @@ func TestFireflyImport(t *testing.T) {
 
 		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
@@ -134,8 +134,8 @@ func TestFireflyImport(t *testing.T) {
 
 		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
@@ -176,8 +176,8 @@ func TestFireflyImport(t *testing.T) {
 
 		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Income)
@@ -218,8 +218,8 @@ func TestFireflyImport(t *testing.T) {
 
 		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
@@ -260,8 +260,8 @@ func TestFireflyImport(t *testing.T) {
 
 		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
@@ -302,8 +302,8 @@ func TestFireflyImport(t *testing.T) {
 
 		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
@@ -347,8 +347,8 @@ func TestFireflyImport(t *testing.T) {
 
 		importer := importers.NewFireflyImporter(txSvc, nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB) ([]*transactionsv1.CreateTransactionResponse, error) {
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
 				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)

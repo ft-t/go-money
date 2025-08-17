@@ -221,6 +221,22 @@ func TestBaseAmountService(t *testing.T) {
 				// fx different
 				// dest different
 			},
+
+			{
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+				SourceCurrency:  acc[1].Currency, // usd
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+				SourceAccountID: acc[1].ID,
+				Extra:           make(map[string]string),
+
+				DestinationCurrency:  acc[3].Currency,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(30)),
+				DestinationAccountID: acc[3].ID,
+
+				// [9]
+				// source base
+				// dest different
+			},
 		}
 
 		txSrv := validation.NewValidationService(&validation.ServiceConfig{})
@@ -268,6 +284,11 @@ func TestBaseAmountService(t *testing.T) {
 		assert.EqualValues(t, -14, updatedTxs[8].SourceAmountInBaseCurrency.Decimal.IntPart())
 		assert.EqualValues(t, 14, updatedTxs[8].DestinationAmountInBaseCurrency.Decimal.IntPart())
 		assert.EqualValues(t, true, updatedTxs[8].DestinationAmountInBaseCurrency.Valid)
+
+		// adjustment
+
+		assert.EqualValues(t, -55, updatedTxs[9].SourceAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, 55, updatedTxs[9].DestinationAmountInBaseCurrency.Decimal.IntPart())
 	})
 
 	t.Run("success with partial update", func(t *testing.T) {
