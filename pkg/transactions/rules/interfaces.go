@@ -6,6 +6,7 @@ import (
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -57,8 +58,7 @@ type ValidationSvc interface {
 	Validate(
 		ctx context.Context,
 		dbTx *gorm.DB,
-		txs []*database.Transaction,
-		accounts map[int32]*database.Account,
+		req *validation.Request,
 	) error
 }
 

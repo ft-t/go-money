@@ -80,18 +80,21 @@ func TestValidateWithdrawal(t *testing.T) {
 				},
 			})
 
-		assert.NoError(t, srv.Validate(context.TODO(), gormDB, []*database.Transaction{
-			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-				SourceCurrency:  acc[0].Currency,
-				SourceAccountID: acc[0].ID,
+		assert.NoError(t, srv.Validate(context.TODO(), gormDB, &validation.Request{
+			Accounts: accountMap,
+			Txs: []*database.Transaction{
+				{
+					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+					SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+					SourceCurrency:  acc[0].Currency,
+					SourceAccountID: acc[0].ID,
 
-				DestinationAccountID: acc[3].ID,
-				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
-				DestinationCurrency:  acc[3].Currency,
+					DestinationAccountID: acc[3].ID,
+					DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+					DestinationCurrency:  acc[3].Currency,
+				},
 			},
-		}, accountMap))
+		}))
 	})
 
 	t.Run("invalid - positive amount", func(t *testing.T) {
@@ -183,18 +186,21 @@ func TestValidateWithdrawal(t *testing.T) {
 				},
 			})
 
-		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
-			{
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
-				SourceCurrency:  acc[1].Currency,
-				SourceAccountID: acc[0].ID,
+		err := srv.Validate(context.TODO(), gormDB, &validation.Request{
+			Accounts: accountMap,
+			Txs: []*database.Transaction{
+				{
+					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+					SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+					SourceCurrency:  acc[1].Currency,
+					SourceAccountID: acc[0].ID,
 
-				DestinationAccountID: acc[3].ID,
-				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
-				DestinationCurrency:  acc[3].Currency,
+					DestinationAccountID: acc[3].ID,
+					DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+					DestinationCurrency:  acc[3].Currency,
+				},
 			},
-		}, accountMap)
+		})
 
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency USD, expected EUR")
@@ -355,18 +361,22 @@ func TestValidateDeposit(t *testing.T) {
 				},
 			})
 
-		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
-			{
-				TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
-				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
-				DestinationCurrency:  "RAND",
-				DestinationAccountID: acc[1].ID,
+		err := srv.Validate(context.TODO(), gormDB, &validation.Request{
+			Accounts: accountMap,
+			Txs: []*database.Transaction{
+				{
+					TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+					DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+					DestinationCurrency:  "RAND",
+					DestinationAccountID: acc[1].ID,
 
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-100)),
-				SourceCurrency:  acc[0].Currency,
-				SourceAccountID: acc[0].ID,
+					SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-100)),
+					SourceCurrency:  acc[0].Currency,
+					SourceAccountID: acc[0].ID,
+				},
 			},
-		}, accountMap)
+		})
+
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency EUR, expected RAND")
 	})
@@ -469,18 +479,22 @@ func TestValidateReconciliation(t *testing.T) {
 				},
 			})
 
-		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
-			{
-				TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
-				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(200)),
-				DestinationCurrency:  "EUR",
-				DestinationAccountID: acc[1].ID,
+		err := srv.Validate(context.TODO(), gormDB, &validation.Request{
+			Accounts: accMap,
+			Txs: []*database.Transaction{
+				{
+					TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT,
+					DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(200)),
+					DestinationCurrency:  "EUR",
+					DestinationAccountID: acc[1].ID,
 
-				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-200)),
-				SourceCurrency:  acc[0].Currency,
-				SourceAccountID: acc[0].ID,
+					SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(-200)),
+					SourceCurrency:  acc[0].Currency,
+					SourceAccountID: acc[0].ID,
+				},
 			},
-		}, accMap)
+		})
+
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency USD, expected EUR")
 	})
@@ -619,17 +633,20 @@ func TestValidateTransferBetweenAccounts(t *testing.T) {
 				},
 			})
 
-		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
-			{
-				TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-				SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-50)),
-				SourceCurrency:       acc[1].Currency,
-				SourceAccountID:      acc[0].ID,
-				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
-				DestinationCurrency:  acc[1].Currency,
-				DestinationAccountID: acc[1].ID,
+		err := srv.Validate(context.TODO(), gormDB, &validation.Request{
+			Accounts: accountMap,
+			Txs: []*database.Transaction{
+				{
+					TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
+					SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-50)),
+					SourceCurrency:       acc[1].Currency,
+					SourceAccountID:      acc[0].ID,
+					DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
+					DestinationCurrency:  acc[1].Currency,
+					DestinationAccountID: acc[1].ID,
+				},
 			},
-		}, accountMap)
+		})
 
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency USD, expected EUR")
@@ -654,17 +671,20 @@ func TestValidateTransferBetweenAccounts(t *testing.T) {
 				},
 			})
 
-		err := srv.Validate(context.TODO(), gormDB, []*database.Transaction{
-			{
-				TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-				SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-50)),
-				SourceCurrency:       acc[0].Currency,
-				SourceAccountID:      acc[0].ID,
-				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
-				DestinationCurrency:  acc[0].Currency,
-				DestinationAccountID: acc[1].ID,
+		err := srv.Validate(context.TODO(), gormDB, &validation.Request{
+			Accounts: accountMap,
+			Txs: []*database.Transaction{
+				{
+					TransactionType:      gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
+					SourceAmount:         decimal.NewNullDecimal(decimal.NewFromInt(-50)),
+					SourceCurrency:       acc[0].Currency,
+					SourceAccountID:      acc[0].ID,
+					DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
+					DestinationCurrency:  acc[0].Currency,
+					DestinationAccountID: acc[1].ID,
+				},
 			},
-		}, accountMap)
+		})
 
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency EUR, expected USD")

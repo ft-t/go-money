@@ -230,7 +230,7 @@ func (f *FireflyImporter) Import(
 				}
 				targetTx.Transaction = &transactionsv1.CreateTransactionRequest_Adjustment{
 					Adjustment: &transactionsv1.Adjustment{
-						DestinationAmount:    amountParsed.String(),
+						DestinationAmount:    amountParsed.Abs().String(),
 						DestinationCurrency:  currencyCode,
 						DestinationAccountId: targetAccount.ID,
 					},

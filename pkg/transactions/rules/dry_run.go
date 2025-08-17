@@ -7,6 +7,7 @@ import (
 	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/validation"
 )
 
 type DryRun struct {
@@ -75,8 +76,11 @@ func (s *DryRun) DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest)
 	if err = s.cfg.ValidationSvc.Validate(
 		ctx,
 		database.FromContext(ctx, database.GetDb(database.DbTypeReadonly)),
-		[]*database.Transaction{updated},
-		accountMap,
+		&validation.Request{
+			Txs:                    []*database.Transaction{updated},
+			Accounts:               accountMap,
+			SkipAccountsValidation: false,
+		},
 	); err != nil {
 		return nil, errors.Wrap(err, "transaction validation failed after rule execution")
 	}

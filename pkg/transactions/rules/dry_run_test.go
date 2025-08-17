@@ -19,7 +19,7 @@ func TestDryRun(t *testing.T) {
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
 		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
 
 		accountSvc := NewMockAccountSvc(gomock.NewController(t))
@@ -132,7 +132,7 @@ func TestDryRun(t *testing.T) {
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
 		validationSvc := NewMockValidationSvc(gomock.NewController(t))
 
-		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
 
 		accountSvc := NewMockAccountSvc(gomock.NewController(t))
@@ -271,7 +271,7 @@ func TestDryRun(t *testing.T) {
 		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 			Return(&gomoneypbv1.Transaction{})
 
-		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(assert.AnError)
 
 		executorSvc.EXPECT().ProcessSingleRule(gomock.Any(), gomock.Any(), gomock.Any()).
