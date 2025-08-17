@@ -393,14 +393,14 @@ func TestBaseAmountService(t *testing.T) {
 		var updatedTxs []*database.Transaction
 		assert.NoError(t, gormDB.Order("id asc").Find(&updatedTxs).Error)
 
-		assert.EqualValues(t, 0, updatedTxs[0].DestinationAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, 999, updatedTxs[0].DestinationAmountInBaseCurrency.Decimal.IntPart())
 		assert.EqualValues(t, -999, updatedTxs[0].SourceAmountInBaseCurrency.Decimal.IntPart())
 
 		assert.EqualValues(t, false, updatedTxs[1].SourceAmountInBaseCurrency.Valid)
 		assert.EqualValues(t, false, updatedTxs[1].DestinationAmountInBaseCurrency.Valid)
 
 		assert.EqualValues(t, -55, updatedTxs[2].SourceAmountInBaseCurrency.Decimal.IntPart())
-		assert.EqualValues(t, false, updatedTxs[2].DestinationAmountInBaseCurrency.Valid)
+		assert.EqualValues(t, 55, updatedTxs[2].DestinationAmountInBaseCurrency.Decimal.IntPart())
 
 		// transfers
 		assert.EqualValues(t, 55, updatedTxs[3].DestinationAmountInBaseCurrency.Decimal.IntPart())
@@ -495,10 +495,6 @@ func TestBaseAmountService(t *testing.T) {
 		gormMock, _, sql := testingutils.GormMock()
 
 		sql.ExpectQuery("with upd as .*").WithArgs(
-			"USD",
-			"USD",
-			"USD",
-			"USD",
 			"USD",
 			"USD",
 			"USD",

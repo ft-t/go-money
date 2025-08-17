@@ -403,6 +403,8 @@ func TestCreateReconciliation(t *testing.T) {
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	accountSvc.EXPECT().GetDefaultAccount(gomock.Any(), gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT).
+		Return(accounts[1], nil)
 
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
@@ -481,10 +483,18 @@ func TestCreateBulk(t *testing.T) {
 			Currency: "UAH",
 			Extra:    map[string]string{},
 		},
+		{
+			Name:     "Adjustment",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT,
+		},
 	}
 	assert.NoError(t, gormDB.Create(&accounts).Error)
 
 	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	accountSvc.EXPECT().GetDefaultAccount(gomock.Any(), gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT).
+		Return(accounts[1], nil).Times(2)
 
 	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
