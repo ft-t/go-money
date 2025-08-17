@@ -6,7 +6,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 )
 
-type fillResponse struct {
+type FillResponse struct {
 	Accounts map[int32]*database.Account
 }
 

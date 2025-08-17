@@ -12,6 +12,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/accounts"
+	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
@@ -1135,5 +1136,102 @@ func TestEnsureDefaultExists(t *testing.T) {
 
 		err := srv.EnsureDefaultExists(ctx, mockGorm, acc)
 		assert.ErrorContains(t, err, "failed to update account")
+	})
+}
+
+func TestEnsureAccountExists(t *testing.T) {
+	t.Run("success - all exists", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		for name, accType := range boilerplate.RequiredDefaultAccounts {
+			acc := &database.Account{
+				Name:     name,
+				Currency: "USD",
+				Type:     accType,
+				Extra:    map[string]string{},
+				Flags:    database.AccountFlagIsDefault,
+			}
+			assert.NoError(t, gormDB.Create(acc).Error)
+		}
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+		assert.NoError(t, srv.EnsureDefaultAccountsExist(context.TODO()))
+	})
+
+	t.Run("one account is missing", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		for name, accType := range boilerplate.RequiredDefaultAccounts {
+			if accType == v1.AccountType_ACCOUNT_TYPE_EXPENSE {
+				continue
+			}
+
+			acc := &database.Account{
+				Name:     name,
+				Currency: "USD",
+				Type:     accType,
+				Extra:    map[string]string{},
+				Flags:    database.AccountFlagIsDefault,
+			}
+			assert.NoError(t, gormDB.Create(acc).Error)
+		}
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+		assert.NoError(t, srv.EnsureDefaultAccountsExist(context.TODO()))
+
+		var created database.Account
+		err := gormDB.First(&created, "type = ?", v1.AccountType_ACCOUNT_TYPE_EXPENSE).Error
+		assert.NoError(t, err)
+
+		assert.True(t, created.IsDefault())
+	})
+
+	t.Run("db error on check", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").WillReturnError(errors.New("some error"))
+		sql.ExpectExec("INSERT INTO `accounts`.*").
+			WillReturnError(errors.New("failed to create account"))
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		err := srv.EnsureDefaultAccountsExist(ctx)
+		assert.ErrorContains(t, err, "some error")
+	})
+
+	t.Run("db error on create", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		for name, accType := range boilerplate.RequiredDefaultAccounts {
+			acc := &database.Account{
+				Name:     name,
+				Currency: "USD",
+				Type:     accType,
+				Extra:    map[string]string{},
+				Flags:    database.AccountFlagIsDefault,
+			}
+			assert.NoError(t, gormDB.Create(acc).Error)
+		}
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		srv := accounts.NewService(&accounts.ServiceConfig{})
+
+		sql.ExpectBegin()
+		sql.ExpectQuery("SELECT .*").WillReturnRows(sqlmock.NewRows([]string{"id"}))
+		sql.ExpectQuery("INSERT INTO.*").
+			WillReturnError(errors.New("failed to create account"))
+		sql.ExpectRollback()
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		err := srv.EnsureDefaultAccountsExist(ctx)
+		assert.ErrorContains(t, err, "failed to create account")
 	})
 }

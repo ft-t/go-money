@@ -249,7 +249,7 @@ func (s *Service) CreateBulkInternal(
 			newTx.Extra = map[string]string{}
 		}
 
-		var fillRes *fillResponse
+		var fillRes *FillResponse
 		var err error
 
 		switch v := req.Req.GetTransaction().(type) {
@@ -258,7 +258,7 @@ func (s *Service) CreateBulkInternal(
 				return nil, err
 			}
 		case *transactionsv1.CreateTransactionRequest_Expense:
-			if fillRes, err = s.fillWithdrawal(ctx, v.Expense, newTx); err != nil {
+			if fillRes, err = s.FillWithdrawal(ctx, v.Expense, newTx); err != nil {
 				return nil, err
 			}
 		case *transactionsv1.CreateTransactionRequest_Income:
@@ -450,7 +450,7 @@ func (s *Service) fillDeposit(
 	_ context.Context,
 	req *transactionsv1.Income,
 	newTx *database.Transaction,
-) (*fillResponse, error) {
+) (*FillResponse, error) {
 	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid destination amount")
@@ -470,14 +470,14 @@ func (s *Service) fillDeposit(
 	newTx.SourceCurrency = req.SourceCurrency
 	newTx.SourceAccountID = req.SourceAccountId
 
-	return &fillResponse{}, nil
+	return &FillResponse{}, nil
 }
 
 func (s *Service) fillReconciliation(
 	ctx context.Context,
 	req *transactionsv1.Adjustment,
 	newTx *database.Transaction,
-) (*fillResponse, error) {
+) (*FillResponse, error) {
 	destinationAmount, err := decimal.NewFromString(req.DestinationAmount)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid destination amount")
@@ -511,15 +511,15 @@ func (s *Service) fillReconciliation(
 	newTx.SourceCurrency = acc.Currency
 	newTx.SourceAccountID = acc.ID
 	newTx.SourceAmount = decimal.NewNullDecimal(targetAmount)
-	
-	return &fillResponse{}, nil
+
+	return &FillResponse{}, nil
 }
 
-func (s *Service) fillWithdrawal(
+func (s *Service) FillWithdrawal(
 	_ context.Context,
 	req *transactionsv1.Expense,
 	newTx *database.Transaction,
-) (*fillResponse, error) {
+) (*FillResponse, error) {
 	sourceAmount, err := decimal.NewFromString(req.SourceAmount)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid source amount")
@@ -570,7 +570,7 @@ func (s *Service) fillWithdrawal(
 		return nil, errors.New("destination currency is required when destination amount is provided")
 	}
 
-	return &fillResponse{}, nil
+	return &FillResponse{}, nil
 }
 
 func (s *Service) fillTransferBetweenAccounts(
@@ -578,7 +578,7 @@ func (s *Service) fillTransferBetweenAccounts(
 	_ *gorm.DB,
 	req *transactionsv1.TransferBetweenAccounts,
 	newTx *database.Transaction,
-) (*fillResponse, error) {
+) (*FillResponse, error) {
 	if req.SourceAccountId <= 0 {
 		return nil, errors.New("source account id is required")
 	}
@@ -616,5 +616,5 @@ func (s *Service) fillTransferBetweenAccounts(
 	newTx.SourceCurrency = req.SourceCurrency
 	newTx.DestinationCurrency = req.DestinationCurrency
 
-	return &fillResponse{}, nil
+	return &FillResponse{}, nil
 }
