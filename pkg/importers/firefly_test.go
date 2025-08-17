@@ -26,6 +26,7 @@ import (
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/golang/mock/gomock"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
@@ -80,10 +81,14 @@ func TestFireflyImport(t *testing.T) {
 
 	assert.NoError(t, gormDB.Create(&accountsData).Error)
 
-	t.Run("basic multi currency withdrawal", func(t *testing.T) {
+	t.Run("basic multi currency expense", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
+
+		importer := importers.NewFireflyImporter(txSvc, currencyConv)
+		currencyConv.EXPECT().Convert(context.TODO(), "UAH", "USD", gomock.Any()).
+			Return(decimal.NewFromInt(55), nil)
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -101,6 +106,8 @@ func TestFireflyImport(t *testing.T) {
 				assert.EqualValues(t, "-83.81", *tx.Expense.FxSourceAmount)
 
 				assert.EqualValues(t, accountsData[0].ID, tx.Expense.SourceAccountId)
+
+				assert.EqualValues(t, "55", tx.Expense.DestinationAmount)
 
 				assert.EqualValues(t, "firefly_2805", *requests[0].Req.InternalReferenceNumber)
 
@@ -138,13 +145,13 @@ func TestFireflyImport(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
 
-				assert.EqualValues(t, tx.Expense.SourceCurrency, "PLN")
+				assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
 
-				assert.EqualValues(t, "-3900", tx.Expense.SourceAmount)
+				assert.EqualValues(t, "-3900", tx.Adjustment.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[1].ID, tx.Expense.SourceAccountId)
+				assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_1869", *requests[0].Req.InternalReferenceNumber)
 
@@ -180,13 +187,13 @@ func TestFireflyImport(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
 				assert.Len(t, requests, 1)
 
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Income)
+				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
 
-				assert.EqualValues(t, tx.Income.DestinationCurrency, "PLN")
+				assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
 
-				assert.EqualValues(t, "3520.42", tx.Income.DestinationAmount)
+				assert.EqualValues(t, "3520.42", tx.Adjustment.DestinationAmount)
 
-				assert.EqualValues(t, accountsData[1].ID, tx.Income.DestinationAccountId)
+				assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
 
 				assert.EqualValues(t, "firefly_18691", *requests[0].Req.InternalReferenceNumber)
 
@@ -406,7 +413,11 @@ func TestSkipDuplicate(t *testing.T) {
 	t.Run("skip duplicate transactions", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
+		importer := importers.NewFireflyImporter(txSvc, currencyConv)
+
+		currencyConv.EXPECT().Convert(gomock.Any(), "UAH", "USD", gomock.Any()).
+			Return(decimal.NewFromInt(55), nil)
 
 		tx := &database.ImportDeduplication{
 			ImportSource: importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
@@ -449,7 +460,7 @@ func TestFireflyNoData(t *testing.T) {
 }
 
 func TestFireflyIntegration(t *testing.T) {
-	//t.Skip("todo")
+	t.Skip("todo")
 
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 	data, err := os.ReadFile("C:\\Users\\iqpir\\Downloads\\2025_08_16_transaction_export.csv")

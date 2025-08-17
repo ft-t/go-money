@@ -223,7 +223,7 @@ func (f *FireflyImporter) Import(
 			}
 		case "Opening balance":
 			switch sourceType {
-			case "Initial balance account":
+			case "Initial balance account", "":
 				targetAccount, ok := accountMap[destinationName]
 				if !ok {
 					return nil, errors.Errorf("destination account not found: %s", destinationName)
