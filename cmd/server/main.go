@@ -24,6 +24,7 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/ft-t/go-money/pkg/transactions/double_entry"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
@@ -122,7 +123,7 @@ func main() {
 	})
 
 	ruleEngine := rules.NewExecutor(ruleInterpreter)
-	applicableAccountSvc := transactions.NewApplicableAccountService(accountSvc)
+	applicableAccountSvc := applicable_accounts.NewApplicableAccountService(accountSvc)
 	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
 		ApplicableAccountSvc: applicableAccountSvc,
 	})

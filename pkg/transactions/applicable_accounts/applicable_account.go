@@ -1,4 +1,4 @@
-package transactions
+package applicable_accounts
 
 import (
 	"context"

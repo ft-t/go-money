@@ -5,7 +5,7 @@ import (
 
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 )
 
 //go:generate mockgen -destination interfaces_mocks_test.go -package validation_test -source=interfaces.go
@@ -19,5 +19,5 @@ type ApplicableAccountSvc interface {
 	GetApplicableAccounts(
 		_ context.Context,
 		accounts []*database.Account,
-	) map[v1.TransactionType]*transactions.PossibleAccount
+	) map[v1.TransactionType]*applicable_accounts.PossibleAccount
 }

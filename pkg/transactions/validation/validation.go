@@ -6,7 +6,7 @@ import (
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -31,7 +31,7 @@ func (s *Service) Validate(
 	dbTx *gorm.DB,
 	txs []*database.Transaction,
 	accounts map[int32]*database.Account,
-// req *Request,
+	// req *Request,
 ) error {
 	//accounts := req.Accounts
 	//txs := req.Txs
@@ -111,7 +111,7 @@ func (s *Service) ValidateTransactionData(
 
 func (s *Service) ValidateTransactionAccounts(
 	_ context.Context,
-	possible map[gomoneypbv1.TransactionType]*transactions.PossibleAccount,
+	possible map[gomoneypbv1.TransactionType]*applicable_accounts.PossibleAccount,
 	tx *database.Transaction,
 ) error {
 	possibleAccounts, ok := possible[tx.TransactionType]

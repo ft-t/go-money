@@ -1,10 +1,10 @@
-package transactions_test
+package applicable_accounts_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/golang/mock/gomock"
 	"github.com/samber/lo"
 
@@ -17,7 +17,7 @@ func TestGetAll(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		acc := NewMockAccountSvc(gomock.NewController(t))
 
-		svc := transactions.NewApplicableAccountService(acc)
+		svc := applicable_accounts.NewApplicableAccountService(acc)
 
 		accounts := []*database.Account{
 			{ID: 1, Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET},
@@ -41,7 +41,7 @@ func TestGetAll(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		acc := NewMockAccountSvc(gomock.NewController(t))
 
-		svc := transactions.NewApplicableAccountService(acc)
+		svc := applicable_accounts.NewApplicableAccountService(acc)
 
 		acc.EXPECT().GetAllAccounts(gomock.Any()).Return(nil, assert.AnError)
 
@@ -52,7 +52,7 @@ func TestGetAll(t *testing.T) {
 }
 
 func TestService_getPossibleAccountsForTransactionType(t *testing.T) {
-	svc := transactions.NewApplicableAccountService(nil)
+	svc := applicable_accounts.NewApplicableAccountService(nil)
 
 	accounts := []*database.Account{
 		{ID: 1, Type: gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET},

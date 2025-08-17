@@ -14,7 +14,7 @@ import (
 	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/shopspring/decimal"
 )
 
@@ -40,7 +40,7 @@ type TransactionsSvc interface {
 type ApplicableAccountSvc interface {
 	GetAll(
 		ctx context.Context,
-	) (map[gomoneypbv1.TransactionType]*transactions.PossibleAccount, error)
+	) (map[gomoneypbv1.TransactionType]*applicable_accounts.PossibleAccount, error)
 }
 
 type UserSvc interface {

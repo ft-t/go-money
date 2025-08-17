@@ -13,7 +13,7 @@ import (
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -128,7 +128,7 @@ func TestTransactionApi_GetApplicableAccounts(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
 		req := connect.NewRequest(&transactionsv1.GetApplicableAccountsRequest{})
 
-		mockResp := map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
+		mockResp := map[gomoneypbv1.TransactionType]*applicable_accounts.PossibleAccount{
 			gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME: {
 				SourceAccounts: map[int32]*database.Account{
 					1: {

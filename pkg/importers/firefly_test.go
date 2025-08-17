@@ -21,6 +21,7 @@ import (
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/ft-t/go-money/pkg/transactions/double_entry"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
@@ -486,7 +487,7 @@ func TestFireflyIntegration(t *testing.T) {
 	assert.NoError(t, cur.Sync(context.TODO(), "http://go-money-exchange-rates.s3-website.eu-north-1.amazonaws.com/latest.json"))
 
 	converter := currency.NewConverter("USD")
-	applicableAcc := transactions.NewApplicableAccountService(accountSvc)
+	applicableAcc := applicable_accounts.NewApplicableAccountService(accountSvc)
 	validationSvc := validation.NewValidationService(&validation.ServiceConfig{
 		ApplicableAccountSvc: applicableAcc,
 	})

@@ -14,8 +14,3 @@ type CalculateDailyStatRequest struct {
 	StartDate time.Time
 	AccountID int32
 }
-
-type PossibleAccount struct {
-	SourceAccounts      map[int32]*database.Account
-	DestinationAccounts map[int32]*database.Account
-}
