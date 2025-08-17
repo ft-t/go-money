@@ -262,7 +262,7 @@ func (s *Service) CreateBulkInternal(
 				return nil, err
 			}
 		case *transactionsv1.CreateTransactionRequest_Income:
-			if fillRes, err = s.fillDeposit(ctx, v.Income, newTx); err != nil {
+			if fillRes, err = s.FillDeposit(ctx, v.Income, newTx); err != nil {
 				return nil, err
 			}
 		case *transactionsv1.CreateTransactionRequest_Adjustment:
@@ -446,7 +446,7 @@ func (s *Service) Update(
 	}, nil
 }
 
-func (s *Service) fillDeposit(
+func (s *Service) FillDeposit(
 	_ context.Context,
 	req *transactionsv1.Income,
 	newTx *database.Transaction,

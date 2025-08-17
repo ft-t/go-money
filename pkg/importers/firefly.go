@@ -106,7 +106,7 @@ func (f *FireflyImporter) Import(
 	accountMap := map[string]*database.Account{}
 	for _, acc := range req.Accounts {
 		if _, ok := accountMap[acc.Name]; ok {
-			return nil, errors.Errorf("duplicate account found: %s. Please rename account account, and reimport both account and transactions", acc.Name)
+			return nil, errors.Errorf("duplicate account found: %s. Please rename account, and reimport both account and transactions", acc.Name)
 		}
 		accountMap[acc.Name] = acc
 	}
