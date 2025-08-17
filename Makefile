@@ -5,6 +5,8 @@ DOCKER_SERVER_IMAGE_NAME ?= "go-money-server:latest"
 VERSION ?= $(shell git describe --tags --always --dirty)
 COMMIT_SHA ?= $(shell git rev-parse --short HEAD)
 
+#
+
 .PHONY: lint
 lint:
 	golangci-lint run
