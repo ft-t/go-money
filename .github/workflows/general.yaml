@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - master
+      - develop
 
 jobs:
   version:
@@ -137,9 +138,18 @@ jobs:
       - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Create and push manifest
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          VERSION_TAG: ${{ needs.version.outputs.versionOut }}
         run: |
-          TAGS=("${{ needs.version.outputs.versionOut }}" "latest")
-          
+          TAGS=("develop")
+
+          if [ "$BRANCH_NAME" = "master" ]; then
+            TAGS=("$VERSION_TAG" "latest")
+          else
+            TAGS=("develop")
+          fi
+                    
           for TAG in "${TAGS[@]}"; do
             FULL_TAG="${DOCKER_FULL_IMAGE_NAME}:${TAG}"
           
