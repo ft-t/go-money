@@ -9,7 +9,7 @@ import (
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
-	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/shopspring/decimal"
@@ -69,7 +69,7 @@ func TestValidateWithdrawal(t *testing.T) {
 		})
 
 		applicableSvc.EXPECT().GetApplicableAccounts(gomock.Any(), gomock.Any()).
-			Return(map[gomoneypbv1.TransactionType]*applicable_accounts.PossibleAccount{
+			Return(map[gomoneypbv1.TransactionType]*transactions.PossibleAccount{
 				gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE: {
 					SourceAccounts: map[int32]*database.Account{
 						acc[0].ID: acc[0],
