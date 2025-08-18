@@ -64,7 +64,7 @@ export class AccountsImportComponent implements OnInit {
                               ON a.id = am.account_id AND am.name = 'currency_id'
                                   Left JOIN public.transaction_currencies tc
                                   ON replace(am.data, '"', ''):: int = tc.id
-                              WHERE a.account_type_id NOT IN (6, 13, 10, 2)) as result;
+                              WHERE a.account_type_id NOT IN (6, 13, 10, 2) and a.user_group_id = 1 and a.deleted_at is null) as result;
     `;
 
     private accountService;
