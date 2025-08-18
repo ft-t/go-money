@@ -187,6 +187,10 @@ func main() {
 
 	exchangeRateUpdater := currency.NewSyncer(http.DefaultClient, baseAmountSvc, config.CurrencyConfig)
 
+	if err = accountSvc.EnsureDefaultAccountsExist(context.TODO()); err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to ensure default accounts exist")
+	}
+
 	go func() {
 		if len(config.ExchangeRatesUrl) > 0 {
 			if currencyErr := exchangeRateUpdater.Sync(context.TODO(), config.ExchangeRatesUrl); currencyErr != nil {
