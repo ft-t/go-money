@@ -208,7 +208,7 @@ func (s *Service) CreateBulkInternal(
 	var transactionWithoutRules []*database.Transaction
 
 	var originalTxs []*database.Transaction
-
+	var toCreate []*database.Transaction
 	for _, req := range reqs {
 		if req.Req.TransactionDate == nil {
 			return nil, errors.New("transaction date is required")
@@ -282,9 +282,7 @@ func (s *Service) CreateBulkInternal(
 		// validate wallet transaction date
 
 		if req.OriginalTx == nil {
-			if err = tx.Create(newTx).Error; err != nil {
-				return nil, errors.WithStack(err)
-			}
+			toCreate = append(toCreate, newTx)
 		} else {
 			if err = tx.Updates(newTx).Error; err != nil {
 				return nil, errors.WithStack(err)
@@ -295,6 +293,12 @@ func (s *Service) CreateBulkInternal(
 			transactionWithoutRules = append(transactionWithoutRules, newTx)
 		} else {
 			transactionWithRules = append(transactionWithRules, newTx)
+		}
+	}
+
+	if len(toCreate) > 0 {
+		if err := tx.CreateInBatches(toCreate, 5000).Error; err != nil {
+			return nil, errors.WithStack(err)
 		}
 	}
 
