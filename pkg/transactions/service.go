@@ -9,6 +9,7 @@ import (
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
@@ -297,7 +298,7 @@ func (s *Service) CreateBulkInternal(
 	}
 
 	if len(toCreate) > 0 {
-		if err := tx.CreateInBatches(toCreate, 5000).Error; err != nil {
+		if err := tx.CreateInBatches(toCreate, boilerplate.DefaultBatchSize).Error; err != nil {
 			return nil, errors.WithStack(err)
 		}
 	}

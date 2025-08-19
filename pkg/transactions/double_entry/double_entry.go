@@ -6,6 +6,7 @@ import (
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -14,7 +15,6 @@ import (
 
 const (
 	roundPlaces = 18
-	chunkSize   = 3000
 )
 
 type DoubleEntryConfig struct {
@@ -66,7 +66,7 @@ func (s *DoubleEntryService) Record(
 		return nil
 	}
 
-	for _, chunk := range lo.Chunk(txIds, chunkSize) {
+	for _, chunk := range lo.Chunk(txIds, boilerplate.DefaultBatchSize) {
 		if err := dbTx.
 			Exec("update double_entries set deleted_at = now() where transaction_id in ? and deleted_at is null",
 				chunk).Error; err != nil {
@@ -74,7 +74,7 @@ func (s *DoubleEntryService) Record(
 		}
 	}
 
-	if err := dbTx.CreateInBatches(entries, chunkSize).Error; err != nil {
+	if err := dbTx.CreateInBatches(entries, boilerplate.DefaultBatchSize).Error; err != nil {
 		return errors.Wrap(err, "failed to create double entry records in database")
 	}
 

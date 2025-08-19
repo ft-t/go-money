@@ -13,16 +13,13 @@ import (
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
+	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/samber/lo"
 	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
-)
-
-const (
-	chunkSize = 5000
 )
 
 type FireflyImporter struct {
@@ -411,7 +408,7 @@ func (f *FireflyImporter) Import(
 	journalIDs := lo.Keys(newTxs)
 	duplicateCount := 0
 
-	for _, chunk := range lo.Chunk(journalIDs, chunkSize) {
+	for _, chunk := range lo.Chunk(journalIDs, boilerplate.DefaultBatchSize) {
 		var existingRecords []string
 
 		if err = database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
@@ -473,7 +470,7 @@ func (f *FireflyImporter) Import(
 		})
 	}
 
-	if err = tx.CreateInBatches(&deduplicationRecords, chunkSize).Error; err != nil {
+	if err = tx.CreateInBatches(&deduplicationRecords, boilerplate.DefaultBatchSize).Error; err != nil {
 		return nil, errors.Wrap(err, "failed to create deduplication records")
 	}
 

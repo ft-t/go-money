@@ -9,3 +9,7 @@ var RequiredDefaultAccounts = map[string]gomoneypbv1.AccountType{
 	"Cash":               gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
 	"Default Adjustment": gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT,
 }
+
+const (
+	DefaultBatchSize = 2000
+)
