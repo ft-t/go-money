@@ -36,6 +36,10 @@ func (s *RecalculateService) RecalculateAll(
 	accountMap := make(map[int32]*database.Account, len(accounts))
 	for _, acc := range accounts {
 		accountMap[acc.ID] = acc
+
+		if err = tx.Update("current_balance", 0).Error; err != nil {
+			return errors.Wrap(err, "failed to reset account balance")
+		}
 	}
 
 	tables := []string{

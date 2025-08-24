@@ -168,17 +168,12 @@ export class AppMenu implements OnInit {
                         label: 'Currencies',
                         icon: 'pi pi-fw pi-euro',
                         routerLink: ['/currencies']
+                    },
+                    {
+                        label: 'Maintenance & Debug',
+                        icon: 'pi pi-fw pi-bolt',
+                        routerLink: ['/maintenance']
                     }
-                    // {
-                    //     label: 'Users',
-                    //     icon: 'pi pi-fw pi-table',
-                    //     routerLink: ['/accounts']
-                    // },
-                    // {
-                    //     label: 'Debug',
-                    //     icon: 'pi pi-fw pi-table',
-                    //     routerLink: ['/accounts']
-                    // }
                 ]
             }
         ];
