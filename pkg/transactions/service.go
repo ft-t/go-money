@@ -370,17 +370,8 @@ func (s *Service) FinalizeTransactions(
 		return nil, errors.Wrap(err, "failed to validate transactions")
 	}
 
-	// include original as we need to ensure previous history is correct now
-	if err = s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
-		return nil, err
-	}
-
-	if err = s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
-		return nil, errors.Wrap(err, "failed to recalculate amounts in base currency")
-	}
-
-	if err = s.cfg.DoubleEntry.Record(ctx, tx, created, accountMap); err != nil {
-		return nil, errors.Wrap(err, "failed to record double entry transactions")
+	if err = s.StoreStat(ctx, tx, created, originalTxs, accountMap); err != nil {
+		return nil, errors.Wrap(err, "failed to store statistics")
 	}
 
 	var finalRes []*transactionsv1.CreateTransactionResponse
@@ -392,6 +383,29 @@ func (s *Service) FinalizeTransactions(
 	}
 
 	return finalRes, nil
+}
+
+func (s *Service) StoreStat(
+	ctx context.Context,
+	tx *gorm.DB,
+	created []*database.Transaction,
+	originalTxs []*database.Transaction,
+	accountMap map[int32]*database.Account,
+) error {
+	// include original as we need to ensure previous history is correct now
+	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, append(created, originalTxs...)); err != nil {
+		return err
+	}
+
+	if err := s.cfg.BaseAmountService.RecalculateAmountInBaseCurrency(ctx, tx, created); err != nil {
+		return errors.Wrap(err, "failed to recalculate amounts in base currency")
+	}
+
+	if err := s.cfg.DoubleEntry.Record(ctx, tx, created, accountMap); err != nil {
+		return errors.Wrap(err, "failed to record double entry transactions")
+	}
+
+	return nil
 }
 
 func (s *Service) Create(

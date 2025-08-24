@@ -199,3 +199,9 @@ type CategoriesSvc interface {
 type MapperSvc interface {
 	MapAccount(ctx context.Context, acc *database.Account) *gomoneypbv1.Account
 }
+
+type RecalculateSvc interface {
+	RecalculateAll(
+		ctx context.Context,
+	) error
+}

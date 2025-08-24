@@ -1,6 +1,8 @@
 package database
 
 import (
+	"fmt"
+
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/go-gormigrate/gormigrate/v2"
@@ -357,6 +359,13 @@ commit ;
 create index if not exists ix_transaction on double_entries (transaction_id);
 create unique index if not exists ix_uniq_record on double_entries (transaction_id, is_debit) where (deleted_at is null);
 `)
+			},
+		},
+		{
+			ID: "2025-08-19-AddDefaultCurrency",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					fmt.Sprintf("insert into currencies(id, rate, is_active, decimal_places, updated_at) select '%v', 1, true, 2, now() on conflict do nothing;", cfg.CurrencyConfig.BaseCurrency))
 			},
 		},
 	}
