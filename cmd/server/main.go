@@ -158,6 +158,15 @@ func main() {
 	tagSvc := tags.NewService(mapper)
 	categoriesSvc := categories.NewService(mapper)
 
+	maintenanceSvc := maintenance.NewService(&maintenance.Config{
+		StatsSvc: statsSvc,
+	})
+
+	recalculateSvc := maintenance.NewRecalculateService(&maintenance.RecalculateServiceConfig{
+		AccountSvc:     accountSvc,
+		TransactionSvc: transactionSvc,
+	})
+
 	dryRunSvc := rules.NewDryRun(&rules.DryRunConfig{
 		Executor:       ruleEngine,
 		TransactionSvc: transactionSvc,
@@ -173,7 +182,9 @@ func main() {
 		DryRunSvc:        dryRunSvc,
 		SchedulerSvc:     ruleScheduler,
 	})
+	
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
+	_ = handlers.NewMaintenanceApi(grpcServer, recalculateSvc)
 
 	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(
 		transactionSvc,
@@ -198,10 +209,6 @@ func main() {
 			}
 		}
 	}()
-
-	maintenanceSvc := maintenance.NewService(&maintenance.Config{
-		StatsSvc: statsSvc,
-	})
 
 	go func() {
 		if jobErr := maintenanceSvc.FixDailyGaps(context.TODO()); jobErr != nil {
