@@ -22,10 +22,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const (
-	chunkSize = 5000
-)
-
 type FireflyImporter struct {
 	transactionService TransactionSvc
 	currencyConverter  CurrencyConverterSvc
