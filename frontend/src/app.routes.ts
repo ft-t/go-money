@@ -27,6 +27,7 @@ import { CurrenciesListComponent } from './app/pages/currencies/currencies-list.
 import { CurrenciesUpsertComponent } from './app/pages/currencies/currencies-upsert.component';
 import { SchedulesListComponent } from './app/pages/rules/schedules-list.component';
 import { SchedulesUpsertComponent } from './app/pages/rules/schedules-upsert.component';
+import { MaintenanceComponent } from './app/pages/maintenance/maintenance.component';
 
 export const appRoutes: Routes = [
     {
@@ -50,7 +51,7 @@ export const appRoutes: Routes = [
                         {
                             'account.type': {
                                 matchMode: 'in',
-                                value: [1, 2, 3]
+                                value: [1]
                             }
                         }
                     ]
@@ -65,6 +66,34 @@ export const appRoutes: Routes = [
                             'account.type': {
                                 matchMode: 'in',
                                 value: [4]
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                path: 'accounts/income',
+                component: AccountsListComponent,
+                data: {
+                    filters: [
+                        {
+                            'account.type': {
+                                matchMode: 'in',
+                                value: [6]
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                path: 'accounts/expense',
+                component: AccountsListComponent,
+                data: {
+                    filters: [
+                        {
+                            'account.type': {
+                                matchMode: 'in',
+                                value: [5]
                             }
                         }
                     ]
@@ -105,10 +134,10 @@ export const appRoutes: Routes = [
                     preselectedFilter: {
                         transactionTypes: {
                             matchMode: 'in',
-                            value: [TransactionType.DEPOSIT]
+                            value: [TransactionType.INCOME]
                         }
                     },
-                    newTransactionType: TransactionType.DEPOSIT
+                    newTransactionType: TransactionType.INCOME
                 }
             },
             {
@@ -118,10 +147,10 @@ export const appRoutes: Routes = [
                     preselectedFilter: {
                         transactionTypes: {
                             matchMode: 'in',
-                            value: [TransactionType.WITHDRAWAL]
+                            value: [TransactionType.EXPENSE]
                         }
                     },
-                    newTransactionType: TransactionType.WITHDRAWAL
+                    newTransactionType: TransactionType.EXPENSE
                 }
             },
             {
@@ -131,7 +160,7 @@ export const appRoutes: Routes = [
                     preselectedFilter: {
                         transactionTypes: {
                             matchMode: 'in',
-                            value: [TransactionType.TRANSFER_BETWEEN_ACCOUNTS, TransactionType.RECONCILIATION]
+                            value: [TransactionType.TRANSFER_BETWEEN_ACCOUNTS, TransactionType.ADJUSTMENT]
                         }
                     },
                     newTransactionType: TransactionType.TRANSFER_BETWEEN_ACCOUNTS
@@ -255,6 +284,11 @@ export const appRoutes: Routes = [
             {
                 path: 'schedules/new',
                 component: SchedulesUpsertComponent,
+                data: {}
+            },
+            {
+                path: 'maintenance',
+                component: MaintenanceComponent,
                 data: {}
             }
         ]

@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
 import { Button } from 'primeng/button';
 import { DropdownModule } from 'primeng/dropdown';
 import { Fluid } from 'primeng/fluid';
@@ -18,26 +18,30 @@ import { ErrorHelper } from '../../helpers/error.helper';
 import { create } from '@bufbuild/protobuf';
 import { Step, StepList, StepPanel, StepPanels, Stepper } from 'primeng/stepper';
 import { IftaLabel } from 'primeng/iftalabel';
+import { ConfigService } from '../../services/config.service';
+import { ConfigurationService, GetConfigurationResponse, GetConfigurationResponseSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
 
 @Component({
     selector: 'app-accounts-import',
     imports: [Button, DropdownModule, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel],
     templateUrl: './accounts-import.component.html'
 })
-export class AccountsImportComponent {
+export class AccountsImportComponent implements OnInit {
     public clientData: string = '';
     public migrationScript = `SELECT json_agg(result)
-                              FROM (SELECT a.name,
-                                           tc.code AS currency,
+                              from (SELECT a.name,
+                                           coalesce(tc.code, '$DEFAULT_CURRENCY$') AS currency,
                                            CASE a.account_type_id
                                                WHEN 11 THEN 4 -- liability
+                                               WHEN 4 THEN 5 -- expense
+                                               When 5 then 6 -- income
                                                ELSE 1 -- regular
-                                               END AS type,
+                                               END                                 AS type,
                                            (SELECT n.text
                                             FROM notes n
                                             WHERE n.noteable_id = a.id
                                               AND n.noteable_type = 'FireflyIII\\Models\\Account'
-                                                      LIMIT 1) AS note,
+                                                                                      LIMIT 1)                               AS note,
                                    (SELECT CASE
                                                WHEN n.text ~ '^\\s*[\\{\\[]'
                              THEN (SELECT jsonb_object_agg(key, value)
@@ -46,36 +50,49 @@ export class AccountsImportComponent {
                                                END
                                     FROM notes n
                                     WHERE n.noteable_id = a.id
-                                      AND n.noteable_type = 'FireflyIII\\Models\\Account' LIMIT 1) AS extra,
+                                      AND n.noteable_type = 'FireflyIII\\Models\\Account'
+                                        LIMIT 1)                               AS extra,
                                    a.iban,
                                    (SELECT replace(am2.data, '"', '')
                                     FROM account_meta am2
                                     WHERE am2.account_id = a.id
-                                      AND am2.name = 'account_number' LIMIT 1) AS account_number,
-                                   a."order" as display_order FROM accounts a
-               JOIN public.account_meta am
+                                      AND am2.name = 'account_number'
+                                        LIMIT 1)                               AS account_number,
+                                   a."order"                               as display_order
+                                  FROM accounts a
+               Left JOIN public.account_meta am
                               ON a.id = am.account_id AND am.name = 'currency_id'
-                                  JOIN public.transaction_currencies tc
+                                  Left JOIN public.transaction_currencies tc
                                   ON replace(am.data, '"', ''):: int = tc.id
-                              WHERE a.account_type_id NOT IN (6, 13, 10, 2)
-                              ORDER BY a."order" ASC) result;
+                              WHERE a.account_type_id NOT IN (6, 13, 10, 2) and a.user_group_id = 1 and a.deleted_at is null) as result;
     `;
 
     private accountService;
+    private configService;
     public reviewText: string = '';
     public importDisabled: boolean = true;
+    private serverConfig: GetConfigurationResponse = create(GetConfigurationResponseSchema, {});
 
     constructor(
         private messageService: MessageService,
         @Inject(TRANSPORT_TOKEN) private transport: Transport
     ) {
         this.accountService = createClient(AccountsService, this.transport);
+        this.configService = createClient(ConfigurationService, this.transport);
+    }
+
+    async ngOnInit() {
+        this.serverConfig = await this.configService.getConfiguration({});
     }
 
     onValueChange(event: number) {
         if (event === 3) {
             this.reviewText = this.getReviewData();
         }
+    }
+
+    getQuery(): string {
+        return this.migrationScript.replace('$DEFAULT_CURRENCY$', this.serverConfig.baseCurrency);
     }
 
     getReviewData() {

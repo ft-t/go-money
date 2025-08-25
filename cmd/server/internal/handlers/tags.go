@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"context"
+
 	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/tags/v1/tagsv1connect"
 	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
 	"connectrpc.com/connect"
-	"context"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
@@ -29,7 +30,7 @@ func NewTagsApi(
 	return res
 }
 
-func (t TagsApi) CreateTag(ctx context.Context, c *connect.Request[tagsv1.CreateTagRequest]) (*connect.Response[tagsv1.CreateTagResponse], error) {
+func (t *TagsApi) CreateTag(ctx context.Context, c *connect.Request[tagsv1.CreateTagRequest]) (*connect.Response[tagsv1.CreateTagResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
@@ -43,7 +44,7 @@ func (t TagsApi) CreateTag(ctx context.Context, c *connect.Request[tagsv1.Create
 	return connect.NewResponse(resp), nil
 }
 
-func (t TagsApi) ImportTags(ctx context.Context, c *connect.Request[tagsv1.ImportTagsRequest]) (*connect.Response[tagsv1.ImportTagsResponse], error) {
+func (t *TagsApi) ImportTags(ctx context.Context, c *connect.Request[tagsv1.ImportTagsRequest]) (*connect.Response[tagsv1.ImportTagsResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
@@ -57,7 +58,7 @@ func (t TagsApi) ImportTags(ctx context.Context, c *connect.Request[tagsv1.Impor
 	return connect.NewResponse(resp), nil
 }
 
-func (t TagsApi) UpdateTag(ctx context.Context, c *connect.Request[tagsv1.UpdateTagRequest]) (*connect.Response[tagsv1.UpdateTagResponse], error) {
+func (t *TagsApi) UpdateTag(ctx context.Context, c *connect.Request[tagsv1.UpdateTagRequest]) (*connect.Response[tagsv1.UpdateTagResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
@@ -71,7 +72,7 @@ func (t TagsApi) UpdateTag(ctx context.Context, c *connect.Request[tagsv1.Update
 	return connect.NewResponse(resp), nil
 }
 
-func (t TagsApi) DeleteTag(ctx context.Context, c *connect.Request[tagsv1.DeleteTagRequest]) (*connect.Response[tagsv1.DeleteTagResponse], error) {
+func (t *TagsApi) DeleteTag(ctx context.Context, c *connect.Request[tagsv1.DeleteTagRequest]) (*connect.Response[tagsv1.DeleteTagResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
@@ -87,7 +88,7 @@ func (t TagsApi) DeleteTag(ctx context.Context, c *connect.Request[tagsv1.Delete
 	}), nil
 }
 
-func (t TagsApi) ListTags(
+func (t *TagsApi) ListTags(
 	ctx context.Context,
 	c *connect.Request[tagsv1.ListTagsRequest],
 ) (*connect.Response[tagsv1.ListTagsResponse], error) {

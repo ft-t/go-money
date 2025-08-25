@@ -2,12 +2,12 @@ package transactions_test
 
 import (
 	"context"
-	"github.com/ft-t/go-money/pkg/database"
-	"github.com/ft-t/go-money/pkg/transactions"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHandleTransactionFail(t *testing.T) {
@@ -19,7 +19,7 @@ func TestHandleTransactionFail(t *testing.T) {
 	assert.ErrorContains(t, stat.HandleTransactions(ctx, gormDB.WithContext(ctx), []*database.Transaction{
 		{
 			TransactionDateTime: time.Now().UTC(),
-			SourceAccountID:     lo.ToPtr(int32(1)),
+			SourceAccountID:     int32(1),
 		},
 	}), "context canceled")
 }
@@ -30,18 +30,20 @@ func TestBuildImpactedAccounts(t *testing.T) {
 
 		txs := []*database.Transaction{
 			{
-				TransactionDateTime: time.Now().UTC(),
-				SourceAccountID:     lo.ToPtr(int32(1)),
+				TransactionDateTime:  time.Now().UTC(),
+				SourceAccountID:      int32(1),
+				DestinationAccountID: 2,
 			},
 			{
-				TransactionDateTime: time.Now().UTC().Add(-time.Hour * 24 * 2),
-				SourceAccountID:     lo.ToPtr(int32(1)),
+				TransactionDateTime:  time.Now().UTC().Add(-time.Hour * 24 * 2),
+				SourceAccountID:      int32(1),
+				DestinationAccountID: 2,
 			},
 		}
 
 		impacted := stat.BuildImpactedAccounts(txs)
 
-		assert.Len(t, impacted, 1)
+		assert.Len(t, impacted, 2)
 		assert.EqualValues(t, txs[1].TransactionDateTime, impacted[int32(1)])
 	})
 }

@@ -17,7 +17,7 @@
 
                                     <p-card header="Execute following query on firefly db">
                         <pre class="app-code">
-                        <code [highlight]="migrationScript" language="pgsql"></code>
+                        <code [highlight]="this.getQuery()" language="pgsql"></code>
                         </pre>
                                     </p-card>
                                 </div>

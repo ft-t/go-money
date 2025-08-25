@@ -28,7 +28,6 @@
                         }
                     </div>
 
-
                     <div class="flex flex-col gap-2">
                         <label for="currency">Currency</label>
                         <p-dropdown
@@ -41,7 +40,7 @@
                             placeholder="Select Currency" />
 
                         @if (currency.invalid && (currency.dirty || currency.touched)) {
-                            <p-message severity="error" variant="simple" size="small">Type is required</p-message>
+                            <p-message severity="error" variant="simple" size="small">Currency is required</p-message>
                         }
                     </div>
                 </div>
@@ -72,6 +71,10 @@
         <div class="flex mt-8">
             <div class="card flex flex-col gap-6 w-full">
                 <div class="font-semibold text-xl">Advanced</div>
+                <div class="flex flex-col gap-2">
+                    <label for="accountName">Is default account for account type ({{currentAccountType()}})</label>
+                    <p-checkbox formControlName="isDefault" [binary]="true" />
+                </div>
                 <div class="flex flex-wrap">
                     <label for="note">Note</label>
                     <textarea autoResize="true" pTextarea formControlName="note" id="note" type="text"></textarea>

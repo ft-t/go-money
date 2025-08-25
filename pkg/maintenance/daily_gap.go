@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
 )
@@ -12,7 +13,8 @@ func (s *Service) FixDailyGaps(
 	var accounts []*database.Account
 
 	tx := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Begin()
-
+	defer tx.Rollback()
+	
 	if err := tx.Find(&accounts).Error; err != nil {
 		return err
 	}

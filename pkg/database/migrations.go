@@ -1,12 +1,15 @@
 package database
 
 import (
+	"fmt"
+
 	"github.com/ft-t/go-money/pkg/boilerplate"
+	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/go-gormigrate/gormigrate/v2"
 	"gorm.io/gorm"
 )
 
-func getMigrations() []*gormigrate.Migration {
+func getMigrations(cfg *configuration.Configuration) []*gormigrate.Migration {
 	return []*gormigrate.Migration{
 		{
 			ID: "2025-02-24-InitialUsers",
@@ -305,6 +308,64 @@ where id in (select * from currencies)`,
 );
 `,
 				)
+			},
+		},
+		{
+			ID: "2025-08-10-AddFxSourceCurrency",
+			Migrate: func(db *gorm.DB) error {
+				queries := []string{
+					`alter table transactions add column if not exists fx_source_currency text;`,
+					`alter table transactions add column if not exists fx_source_amount DECIMAL;`,
+					`begin ;
+update transactions set fx_source_currency = destination_currency where transaction_type = 3 and destination_currency != '';
+update transactions set destination_currency = '' where transaction_type = 3;
+
+update transactions set fx_source_amount = -abs(destination_amount) where transaction_type = 3 and destination_amount != 0;
+update transactions set destination_amount = 0 where transaction_type = 3;
+update accounts set type = 1 where type in (2,3);
+commit ;
+`,
+				}
+
+				queries = append(queries, generateDefaultAccounts(cfg)...)
+
+				for _, q := range queries {
+					if err := db.Exec(q).Error; err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+		},
+		{
+			ID: "2025-08-14-AddDoubleEntry",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table if not exists double_entries
+(
+    id                      bigserial
+        constraint double_entries_pk
+            primary key,
+    transaction_id          bigint    not null,
+    is_debit                boolean   not null,
+    amount_in_base_currency decimal,
+    base_currency           text,
+    account_id              integer   not null,
+    created_at              timestamp not null,
+    deleted_at              timestamp
+);
+
+create index if not exists ix_transaction on double_entries (transaction_id);
+create unique index if not exists ix_uniq_record on double_entries (transaction_id, is_debit) where (deleted_at is null);
+`)
+			},
+		},
+		{
+			ID: "2025-08-19-AddDefaultCurrency",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					fmt.Sprintf("insert into currencies(id, rate, is_active, decimal_places, updated_at) select '%v', 1, true, 2, now() on conflict do nothing;", cfg.CurrencyConfig.BaseCurrency))
 			},
 		},
 	}
