@@ -50,7 +50,7 @@ func TestDailyGap(t *testing.T) {
 				}
 				assert.NoError(t, gormDB.Create(account).Error)
 
-				lastDate := time.Now().AddDate(0, 0, -day)
+				lastDate := time.Now().UTC().AddDate(0, 0, -day)
 				assert.NoError(t, gormDB.Create(&database.DailyStat{
 					AccountID: account.ID,
 					Date:      lastDate,

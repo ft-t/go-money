@@ -18,11 +18,12 @@ import { Textarea } from 'primeng/textarea';
 import { AccountsService, CreateAccountRequestSchema, UpdateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Message } from 'primeng/message';
+import { Checkbox } from 'primeng/checkbox';
 
 @Component({
     selector: 'app-account-upsert',
     templateUrl: 'accounts-upsert.component.html',
-    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea, Message, ReactiveFormsModule]
+    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea, Message, ReactiveFormsModule, Checkbox]
 })
 export class AccountsUpsertComponent implements OnInit {
     private currencyService;
@@ -56,6 +57,16 @@ export class AccountsUpsertComponent implements OnInit {
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
+    }
+
+    currentAccountType(): string {
+        let currentValue = this.form.get('type')?.value;
+        if (!currentValue || currentValue === 0) {
+            return '';
+        }
+
+        let accountType = this.accountTypes.find((type) => type.value === currentValue);
+        return accountType ? accountType.name : '';
     }
 
     async ngOnInit() {
@@ -94,8 +105,17 @@ export class AccountsUpsertComponent implements OnInit {
             accountNumber: new FormControl(this.account.accountNumber),
             liabilityPercent: new FormControl(this.account.liabilityPercent),
             displayOrder: new FormControl(this.account.displayOrder),
-            extra: new FormControl(this.account.extra ?? {})
+            extra: new FormControl(this.account.extra ?? {}),
+            isDefault: new FormControl((this.account.flags & BigInt(1)) === BigInt(1))
         });
+
+        if (this.account.id > 0) {
+            this.form.get('type')?.disable();
+
+            if (this.account.currency) {
+                this.form.get('currency')?.disable();
+            }
+        }
 
         this.isFormReady = true;
     }
@@ -129,6 +149,11 @@ export class AccountsUpsertComponent implements OnInit {
 
     async update() {
         try {
+            let flags = BigInt(0);
+            if (this.form.get('isDefault')?.value) {
+                flags |= BigInt(1);
+            }
+
             let response = await this.accountsService.updateAccount(
                 create(UpdateAccountRequestSchema, {
                     id: this.account.id,
@@ -140,6 +165,7 @@ export class AccountsUpsertComponent implements OnInit {
                     liabilityPercent: this.account.liabilityPercent,
                     displayOrder: this.account.displayOrder,
                     extra: this.account.extra ?? {},
+                    flags: flags
                 })
             );
 

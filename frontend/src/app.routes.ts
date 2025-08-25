@@ -27,6 +27,7 @@ import { CurrenciesListComponent } from './app/pages/currencies/currencies-list.
 import { CurrenciesUpsertComponent } from './app/pages/currencies/currencies-upsert.component';
 import { SchedulesListComponent } from './app/pages/rules/schedules-list.component';
 import { SchedulesUpsertComponent } from './app/pages/rules/schedules-upsert.component';
+import { MaintenanceComponent } from './app/pages/maintenance/maintenance.component';
 
 export const appRoutes: Routes = [
     {
@@ -283,6 +284,11 @@ export const appRoutes: Routes = [
             {
                 path: 'schedules/new',
                 component: SchedulesUpsertComponent,
+                data: {}
+            },
+            {
+                path: 'maintenance',
+                component: MaintenanceComponent,
                 data: {}
             }
         ]

@@ -1,9 +1,12 @@
 package handlers_test
 
 import (
+	"context"
+	"net/http"
+	"testing"
+
 	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
 	"connectrpc.com/connect"
-	"context"
 	"github.com/ft-t/go-money/cmd/server/internal/handlers"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
@@ -11,8 +14,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
 )
 
 func TestCurrencyApi_Exchange(t *testing.T) {
