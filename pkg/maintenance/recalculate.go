@@ -37,7 +37,7 @@ func (s *RecalculateService) RecalculateAll(
 	for _, acc := range accounts {
 		accountMap[acc.ID] = acc
 
-		if err = tx.Update("current_balance", 0).Error; err != nil {
+		if err = tx.Model(acc).Update("current_balance", 0).Error; err != nil {
 			return errors.Wrap(err, "failed to reset account balance")
 		}
 	}
