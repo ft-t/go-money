@@ -45,18 +45,16 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "app.selectorLabels" -}}
+{{ define "app.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "app.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "app.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "app.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{ define "app.envs" -}}
+{{ $base := dict "HttpPort"  (toString .Values.service.port) "GrpcPort" (toString .Values.service.grpc) -}}
+{{ $env := merge $base ($.Values.env | deepCopy) -}}
+{{- range $key, $val := $env }}
+- name: {{ $key }}
+  value: {{ $val | quote }}
 {{- end }}
 {{- end }}

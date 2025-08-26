@@ -9,8 +9,9 @@ nameOverride: ""
 fullnameOverride: ""
 
 serviceMonitoring:
-  enabled: true
-  apiVersion: v1beta1
+  enabled: false
+  apiVersion: monitoring.coreos.com/v1
+  kind: ServiceMonitor
 
 podAnnotations: { }
 
@@ -25,9 +26,9 @@ service:
 
 ingress:
   enabled: false
-  profiler: false
-  domain: "go-money.local"
+  host: "go-money.local"
   className: ""
+  annotations:
   hosts:
     - host: go-money.local
       paths:

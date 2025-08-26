@@ -1,7 +1,7 @@
 {{- if .Values.serviceMonitoring.enabled -}}
 ---
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: {{ $.Values.serviceMonitoring.apiVersion }}
+apiVersion: {{ .Values.serviceMonitoring.apiVersion }}
+kind: {{ .Values.serviceMonitoring.apiVersion }}
 metadata:
   name: {{ include "app.name" . }}
   labels:
