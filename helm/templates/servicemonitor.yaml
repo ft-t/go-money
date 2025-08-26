@@ -1,0 +1,22 @@
+{{- if .Values.serviceMonitoring.enabled -}}
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: {{ $.Values.serviceMonitoring.apiVersion }}
+metadata:
+  name: {{ include "app.name" . }}
+  labels:
+{{ include "app.labels" . | indent 4 }}
+spec:
+  endpoints:
+    - interval: 30s
+      port: http
+      scheme: http
+      path: /metrics
+  jobLabel: {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "app.name" . }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}

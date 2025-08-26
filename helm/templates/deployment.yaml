@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "app.fullname" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "app.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "app.fullname" . }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: HttpPort
+              value: {{.Values.service.port | quote }}
+            - name: GrpcPort
+              value: {{.Values.service.grpc | quote }}
+            {{- if .Values.env }}
+            {{- range $key, $value := .Values.env}}
+            - name: {{$key | quote }}
+              value: {{$value | quote}}
+            {{- end}}
+            {{- end }}
+          envFrom:
+            {{- if .Values.envFrom.configMaps }}
+              {{- range .Values.envFrom.configMaps }}
+              - configMapRef:
+                  name: {{.}}
+              {{- end }}
+              {{- end }}
+              {{- if .Values.envFrom.secrets }}
+              {{- range .Values.envFrom.secrets }}
+              - secretRef:
+                  name: {{.}}
+          {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.service.grpc }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /app-health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /app-ready
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
