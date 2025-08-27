@@ -41,6 +41,8 @@ func main() {
 
 	boilerplate.SetupZeroLog()
 
+	ops := boilerplate.NewOpsHttpServer().StartAsync(config.OpsHttpPort)
+
 	logger := log.Logger
 
 	if err := database.InitDb(); err != nil {
@@ -182,7 +184,7 @@ func main() {
 		DryRunSvc:        dryRunSvc,
 		SchedulerSvc:     ruleScheduler,
 	})
-	
+
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 	_ = handlers.NewMaintenanceApi(grpcServer, recalculateSvc)
 
@@ -238,6 +240,11 @@ func main() {
 		grpcServer.ServeAsync(config.GrpcPort)
 
 		log.Logger.Info().Msgf("server started on port %v", config.GrpcPort)
+	}()
+
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		ops.Ready()
 	}()
 
 	sg := <-sig

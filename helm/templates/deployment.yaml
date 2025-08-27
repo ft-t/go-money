@@ -31,9 +31,9 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: HttpPort
+            - name: OPS_HTTP_PORT
               value: {{.Values.service.port | quote }}
-            - name: GrpcPort
+            - name: GRPC_PORT
               value: {{.Values.service.grpc | quote }}
             {{- if .Values.env }}
             {{- range $key, $value := .Values.env}}
@@ -62,12 +62,14 @@ spec:
               containerPort: {{ .Values.service.grpc }}
               protocol: TCP
           livenessProbe:
+            initialDelaySeconds: 5
             httpGet:
-              path: /app-health
+              path: /health
               port: http
           readinessProbe:
+            initialDelaySeconds: 5
             httpGet:
-              path: /app-ready
+              path: /ready
               port: http
           resources:
             {{ toYaml .Values.resources | nindent 12 }}

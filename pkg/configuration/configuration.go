@@ -3,9 +3,10 @@ package configuration
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/sethvargo/go-envconfig"
-	"os"
 )
 
 var configuration *Configuration

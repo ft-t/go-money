@@ -49,12 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "app.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{ define "app.envs" -}}
-{{ $base := dict "HttpPort"  (toString .Values.service.port) "GrpcPort" (toString .Values.service.grpc) -}}
-{{ $env := merge $base ($.Values.env | deepCopy) -}}
-{{- range $key, $val := $env }}
-- name: {{ $key }}
-  value: {{ $val | quote }}
-{{- end }}
-{{- end }}

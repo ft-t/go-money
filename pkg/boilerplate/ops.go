@@ -11,15 +11,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type HttpServer struct {
+type OpsHttpServer struct {
 	mux     *http.ServeMux
 	ready   bool
 	healthy bool
 	srv     *http.Server
 }
 
-func NewHttpServer() *HttpServer {
-	h := &HttpServer{
+func NewOpsHttpServer() *OpsHttpServer {
+	h := &OpsHttpServer{
 		mux:     http.NewServeMux(),
 		ready:   false,
 		healthy: true,
@@ -32,7 +32,7 @@ func NewHttpServer() *HttpServer {
 	return h
 }
 
-func (r *HttpServer) StartAsync(port int) *HttpServer {
+func (r *OpsHttpServer) StartAsync(port int) *OpsHttpServer {
 	if r.srv != nil {
 		return r
 	}
@@ -56,11 +56,11 @@ func (r *HttpServer) StartAsync(port int) *HttpServer {
 	return r
 }
 
-func (r *HttpServer) registerMetrics() {
+func (r *OpsHttpServer) registerMetrics() {
 	r.mux.Handle("/metrics", promhttp.Handler())
 }
 
-func (r *HttpServer) Stop() {
+func (r *OpsHttpServer) Stop() {
 	r.healthy = false
 	r.ready = false
 
@@ -71,12 +71,8 @@ func (r *HttpServer) Stop() {
 	}
 }
 
-func (r *HttpServer) Router() *http.ServeMux {
-	return r.mux
-}
-
-func (r *HttpServer) registerHttpHealthCheck() {
-	r.mux.HandleFunc("/app-health", func(w http.ResponseWriter, _ *http.Request) {
+func (r *OpsHttpServer) registerHttpHealthCheck() {
+	r.mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		if r.healthy {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -86,8 +82,8 @@ func (r *HttpServer) registerHttpHealthCheck() {
 	})
 }
 
-func (r *HttpServer) registerHttpReadinessCheck() {
-	r.mux.HandleFunc("/app-ready", func(w http.ResponseWriter, _ *http.Request) {
+func (r *OpsHttpServer) registerHttpReadinessCheck() {
+	r.mux.HandleFunc("/ready", func(w http.ResponseWriter, _ *http.Request) {
 		if r.ready {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -97,6 +93,6 @@ func (r *HttpServer) registerHttpReadinessCheck() {
 	})
 }
 
-func (r *HttpServer) Ready() {
+func (r *OpsHttpServer) Ready() {
 	r.ready = true
 }
