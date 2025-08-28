@@ -1,7 +1,7 @@
 {{- if .Values.serviceMonitoring.enabled -}}
 ---
 apiVersion: {{ .Values.serviceMonitoring.apiVersion }}
-kind: {{ .Values.serviceMonitoring.apiVersion }}
+kind: {{ .Values.serviceMonitoring.kind }}
 metadata:
   name: {{ include "app.name" . }}
   labels:
