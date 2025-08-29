@@ -3,12 +3,12 @@ entries:
   go-money:
   - apiVersion: v2
     appVersion: 0.2.2
-    created: "2025-08-29T16:46:53.255899129Z"
+    created: "2025-08-29T16:53:27.124064088Z"
     description: A Helm chart for Kubernetes
-    digest: 2d69076a88b5c1ed11dcfb69b4fe4dac13f9fa07dc5108269b3df096ddbb6909
+    digest: 60bd2a783e2cc74ee9f886b9e09416b2250935e36129e1f8bba6284f1ed5ec07
     name: go-money
     type: application
     urls:
     - go-money-0.2.2.tgz
     version: 0.2.2
-generated: "2025-08-29T16:46:53.255486677Z"
+generated: "2025-08-29T16:53:27.123628991Z"
