@@ -62,3 +62,9 @@ jobs:
       - name: Install and build frontend
         working-directory: frontend
         run: npm install && npm run build
+  helm-test:
+    runs-on: ubuntu-latest
+    container: alpine/helm
+    steps:
+      - uses: actions/checkout@v5
+      - run: helm lint helm

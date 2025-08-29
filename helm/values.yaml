@@ -1,0 +1,57 @@
+image:
+  repository: ghcr.io/ft-t/go-money/go-money-server
+  pullPolicy: IfNotPresent
+  tag: "0.2.0"
+
+imagePullSecrets:
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceMonitoring:
+  enabled: false
+  apiVersion: monitoring.coreos.com/v1
+  kind: ServiceMonitor
+
+podAnnotations: { }
+
+podSecurityContext: { }
+
+securityContext: { }
+
+service:
+  type: ClusterIP
+  port: 80
+  grpc: 81
+
+ingress:
+  enabled: false
+  host: "go-money.local"
+  className: ""
+  annotations:
+  hosts:
+    - host: go-money.local
+      paths:
+        - path: /
+          pathType: Exact
+  tls: [ ]
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+nodeSelector: { }
+
+tolerations: [ ]
+
+affinity:
+  
+envFrom:
+  configMaps:
+  secrets:
+
+env:
