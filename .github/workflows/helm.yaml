@@ -1,0 +1,78 @@
+on:
+  push:
+    branches:
+      - helm
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      versionOut: ${{ steps.generateVersion.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: paulhatch/semantic-version@v5.4.0
+        id: generateVersion
+        with:
+          tag_prefix: "v"
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
+          bump_each_commit: false
+          enable_prerelease_mode: true
+          version_format: "${major}.${minor}.${patch}"
+  helm:
+    needs:
+      - version
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      
+      - uses: azure/setup-helm@v4.3.0
+  
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          
+      - uses: actions/checkout@v5
+        with:
+          ref: 'gh-pages'
+          fetch-depth: '0'
+          path: 'gh-pages-dir'
+      
+      - name: replace versions
+        env:
+          DOCKER_IMAGE_VERSION: ${{needs.version.outputs.versionOut}}
+          HELM_CHART_VERSION: ${{ needs.version.outputs.versionOut }}
+          TARGET_ENV: ${{needs.target-env.outputs.targetEnv}}
+          CHART_FOLDER: "helm"
+        run: |
+          echo $HELM_CHART_VERSION
+          echo $DOCKER_IMAGE_VERSION
+          sed -i 's/tag:.*$/tag:\ '"${DOCKER_IMAGE_VERSION}"'/' $CHART_FOLDER/values.yaml
+          sed -i 's/appVersion:.*$/appVersion:\ '\""$DOCKER_IMAGE_VERSION"\"'/' $CHART_FOLDER/Chart.yaml
+          sed -i 's/^version:.*$/version:\ '"$HELM_CHART_VERSION"'/' $CHART_FOLDER/Chart.yaml
+          echo "New Chart.yaml"
+          cat $CHART_FOLDER/Chart.yaml
+          echo "New values.yaml"
+          cat $CHART_FOLDER/values.yaml
+          
+      - name: release
+        env:
+          CHART_FOLDER: "helm"
+          HELM_CHART_VERSION: ${{ needs.version.outputs.versionOut }}
+      
+        run: |
+          helm package $CHART_FOLDER -d gh-pages-dir
+          cd gh-pages-dir
+          helm repo index . 
+          git add .
+          git commit -m "Release chart version $HELM_CHART_VERSION"
+          git push origin gh-pages
