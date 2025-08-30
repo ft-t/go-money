@@ -14,6 +14,7 @@
 | `env`                          | map[string]interface{} | dictionary of key-value env variables                                                                                                     |
 | `envFrom.secrets`              | []string               | string array of secrets that should be mounted on pod startup                                                                             |
 | `envFrom.configMaps`           | []string               | string array of config maps that should be mounted on pod startup                                                                         |
+| `ingress.enabled`           | bool               | enable ingress                                                                        |
 | `ingress.host`           | string               | hostname                                                                         |
 | `ingress.annotations`          | map[string]string      | ingress annotations                                                                                                                       |
 | `ingress.className`          | string      | ingress class name                                                                                                                       |
