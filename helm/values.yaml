@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/ft-t/go-money/go-money-server
+  repository: ghcr.io/ft-t/go-money/go-money-full
   pullPolicy: IfNotPresent
   tag: "0.2.0"
 
