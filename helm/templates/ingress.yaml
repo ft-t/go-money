@@ -3,12 +3,16 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "app.fullname" . }}-ingress
+  {{- if .Values.ingress.annotations }}
   annotations:
-    {{ toYaml .Values.ingress.annotations | nindent 2 }}
+    {{ toYaml .Values.ingress.annotations | nindent 4 }}
+  {{- end }}
   labels:
-    {{ include "app.labels" . | indent 2 }}
+    {{ include "app.labels" . }}
 spec:
+  {{- if .Values.ingress.className }}
   ingressClassName: {{.Values.ingress.className}}
+  {{- end }}
   rules:
     - host: {{ .Values.ingress.host }}
       http:

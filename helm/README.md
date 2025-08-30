@@ -1,3 +1,12 @@
+## Getting started with Go-Money using Helm
+
+```sh
+> helm repo add go-money https://ft-t.github.io/go-money
+> helm repo update
+> helm install go-money/go-money .
+```
+
+```shell
 ## Values
 
 | key                            | type                   | Description                                                                                                                               |
@@ -5,6 +14,9 @@
 | `env`                          | map[string]interface{} | dictionary of key-value env variables                                                                                                     |
 | `envFrom.secrets`              | []string               | string array of secrets that should be mounted on pod startup                                                                             |
 | `envFrom.configMaps`           | []string               | string array of config maps that should be mounted on pod startup                                                                         |
+| `ingress.host`           | string               | hostname                                                                         |
+| `ingress.annotations`          | map[string]string      | ingress annotations                                                                                                                       |
+| `ingress.className`          | string      | ingress class name                                                                                                                       |
 | `image.repository`             | string                 | image repository                                                                                                                          |
 | `image.tag`                    | string                 | image tag                                                                                                                                 |
 | `serviceMonitoring.enabled`    | bool                   | prometheus metrics exporter. disabled by default                                                                                          |

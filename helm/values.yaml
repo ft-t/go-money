@@ -29,13 +29,7 @@ ingress:
   host: "go-money.local"
   className: ""
   annotations:
-  hosts:
-    - host: go-money.local
-      paths:
-        - path: /
-          pathType: Exact
-  tls: [ ]
-
+    
 resources:
   limits:
     cpu: 1000m
