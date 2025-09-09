@@ -94,7 +94,6 @@ export class TransactionUpsertComponent implements OnInit {
     private currencyService;
     private tagsService;
     private categoriesService;
-    public transactionDate: Date = new Date();
     public maxSelectedLabels = 1;
 
     public form: FormGroup;
@@ -147,7 +146,7 @@ export class TransactionUpsertComponent implements OnInit {
             notes: new FormControl(tx.notes, { nonNullable: false }),
             title: new FormControl(tx.title, Validators.required),
             categoryId: new FormControl(tx.categoryId, { nonNullable: false }),
-            transactionDate: new FormControl(this.transactionDate, Validators.required),
+            transactionDate: new FormControl(tx.transactionDate != null ? TimestampHelper.timestampToDate(tx.transactionDate!) : new Date(), Validators.required),
             type: new FormControl(tx.type, Validators.required),
             tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
             skipRules: new FormControl(this.skipRules, { nonNullable: false }),
@@ -254,8 +253,6 @@ export class TransactionUpsertComponent implements OnInit {
             if (tx.sourceAmount) tx.sourceAmount = this.toPositiveNumber(tx.sourceAmount)!;
 
             if (tx.destinationAmount) tx.destinationAmount = this.toPositiveNumber(tx.destinationAmount)!;
-
-            this.transactionDate = TimestampHelper.timestampToDate(tx.transactionDate!);
 
             this.form = this.buildForm(tx);
         } catch (e) {
@@ -435,8 +432,8 @@ export class TransactionUpsertComponent implements OnInit {
             extra: {}, // todo
             tagIds: this.form.get('tagIds')!.value || [],
             transactionDate: create(TimestampSchema, {
-                seconds: BigInt(Math.floor(this.transactionDate.getTime() / 1000)),
-                nanos: (this.transactionDate.getMilliseconds() % 1000) * 1_000_000
+                seconds: BigInt(Math.floor(this.form.get('transactionDate')!.value.getTime() / 1000)),
+                nanos: (this.form.get('transactionDate')!.value.getMilliseconds() % 1000) * 1_000_000
             }),
             title: this.form.get('title')!.value,
             categoryId: this.form.get('categoryId')!.value,
