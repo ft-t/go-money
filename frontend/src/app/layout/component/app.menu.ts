@@ -100,7 +100,7 @@ export class AppMenu implements OnInit {
                         routerLink: ['/transactions/deposits']
                     },
                     {
-                        label: 'Withdrawals',
+                        label: 'Expenses',
                         icon: 'pi pi-fw pi-minus',
                         routerLink: ['/transactions/withdrawals']
                     },

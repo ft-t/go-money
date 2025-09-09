@@ -1,0 +1,38 @@
+services:
+  app:
+    image: ${REPO}:${TAG}
+    hostname: app
+    container_name: app
+    restart: always
+    env_file: .env
+    pull_policy: ${PULL_POLICY}
+    networks:
+      - go-money
+    ports:
+      - "127.0.0.1:${GRPC_PORT}:${GRPC_PORT}"
+    depends_on:
+      - db
+        
+  db:
+    image: postgres:latest
+    hostname: db
+    command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c max_connections=500
+    container_name: db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_DB}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - go-money
+    volumes:
+      - ./db_data:/var/lib/postgresql/data:rw
+ 
+volumes:
+  grafana_data:
+
+networks:
+  go-money:
+    driver: bridge
