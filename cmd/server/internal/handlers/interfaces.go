@@ -35,6 +35,11 @@ type TransactionsSvc interface {
 		ctx context.Context,
 		msg *transactionsv1.UpdateTransactionRequest,
 	) (*transactionsv1.UpdateTransactionResponse, error)
+
+	GetTitleSuggestions(
+		ctx context.Context,
+		req *transactionsv1.GetTitleSuggestionsRequest,
+	) (*transactionsv1.GetTitleSuggestionsResponse, error)
 }
 
 type ApplicableAccountSvc interface {

@@ -95,6 +95,20 @@ func (a *TransactionApi) UpdateTransaction(ctx context.Context, c *connect.Reque
 	return connect.NewResponse(resp), nil
 }
 
+func (a *TransactionApi) GetTitleSuggestions(ctx context.Context, c *connect.Request[transactionsv1.GetTitleSuggestionsRequest]) (*connect.Response[transactionsv1.GetTitleSuggestionsResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	resp, err := a.transactionsSvc.GetTitleSuggestions(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
 func NewTransactionApi(
 	mux *boilerplate.DefaultGrpcServer,
 	transactionsSvc TransactionsSvc,

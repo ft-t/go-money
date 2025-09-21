@@ -58,6 +58,41 @@ func (s *Service) GetTransactionByIDs(ctx context.Context, ids []int64) ([]*data
 	return transactions, nil
 }
 
+func (s *Service) GetTitleSuggestions(
+	ctx context.Context,
+	req *transactionsv1.GetTitleSuggestionsRequest,
+) (*transactionsv1.GetTitleSuggestionsResponse, error) {
+	limit := req.GetLimit()
+	if limit <= 0 {
+		limit = 50 // default limit
+	}
+
+	query := strings.TrimSpace(req.GetQuery())
+	if query == "" {
+		return &transactionsv1.GetTitleSuggestionsResponse{
+			Titles: []string{},
+		}, nil
+	}
+
+	var titles []string
+
+	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
+		Model(&database.Transaction{}).
+		Select("DISTINCT title").
+		Where("to_tsvector('english', title) @@ plainto_tsquery('english', ?)", query).
+		Where("title IS NOT NULL AND title != ''").
+		Order("title").
+		Limit(int(limit)).
+		Pluck("title", &titles).
+		Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &transactionsv1.GetTitleSuggestionsResponse{
+		Titles: titles,
+	}, nil
+}
+
 func (s *Service) List(
 	ctx context.Context,
 	req *transactionsv1.ListTransactionsRequest,
