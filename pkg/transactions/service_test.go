@@ -573,6 +573,154 @@ func TestGetTransactionsByIDs(t *testing.T) {
 	assert.Len(t, resp, 1)
 }
 
+func TestService_GetTitleSuggestions(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	// Create test transactions with various titles
+	txs := []*database.Transaction{
+		{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			TransactionDateTime: time.Now(),
+			Title:               "Coffee Shop Purchase",
+			Extra:               map[string]string{},
+		},
+		{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+			TransactionDateTime: time.Now(),
+			Title:               "Grocery Store Shopping",
+			Extra:               map[string]string{},
+		},
+		{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			TransactionDateTime: time.Now(),
+			Title:               "Coffee Bean Store",
+			Extra:               map[string]string{},
+		},
+		{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+			TransactionDateTime: time.Now(),
+			Title:               "",
+			Extra:               map[string]string{},
+		},
+		{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+			TransactionDateTime: time.Now(),
+			Title:               "Another Coffee Shop",
+			Extra:               map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&txs).Error)
+
+	srv := transactions.NewService(&transactions.ServiceConfig{})
+
+	t.Run("success with coffee query", func(t *testing.T) {
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "coffee",
+			Limit: 10,
+		}
+		resp, err := srv.GetTitleSuggestions(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Titles, 3)
+		assert.Contains(t, resp.Titles, "Coffee Shop Purchase")
+		assert.Contains(t, resp.Titles, "Coffee Bean Store")
+		assert.Contains(t, resp.Titles, "Another Coffee Shop")
+	})
+
+	t.Run("success with shop query", func(t *testing.T) {
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "shop",
+			Limit: 10,
+		}
+		resp, err := srv.GetTitleSuggestions(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Titles, 3)
+		assert.Contains(t, resp.Titles, "Coffee Shop Purchase")
+		assert.Contains(t, resp.Titles, "Grocery Store Shopping")
+		assert.Contains(t, resp.Titles, "Another Coffee Shop")
+	})
+
+	t.Run("no results for nonexistent query", func(t *testing.T) {
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "nonexistent",
+			Limit: 10,
+		}
+		resp, err := srv.GetTitleSuggestions(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Titles, 0)
+	})
+
+	t.Run("empty query returns empty results", func(t *testing.T) {
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "",
+			Limit: 10,
+		}
+		resp, err := srv.GetTitleSuggestions(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Titles, 0)
+	})
+
+	t.Run("whitespace query returns empty results", func(t *testing.T) {
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "   \t\n   ",
+			Limit: 10,
+		}
+		resp, err := srv.GetTitleSuggestions(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Titles, 0)
+	})
+
+	t.Run("zero limit uses default", func(t *testing.T) {
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "coffee",
+			Limit: 0,
+		}
+		resp, err := srv.GetTitleSuggestions(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Titles, 3)
+	})
+
+	t.Run("negative limit uses default", func(t *testing.T) {
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "coffee",
+			Limit: -5,
+		}
+		resp, err := srv.GetTitleSuggestions(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Titles, 3)
+	})
+
+	t.Run("limit enforced", func(t *testing.T) {
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "coffee",
+			Limit: 1,
+		}
+		resp, err := srv.GetTitleSuggestions(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Titles, 1)
+	})
+
+	t.Run("database error handling", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.TODO())
+		cancel()
+
+		req := &transactionsv1.GetTitleSuggestionsRequest{
+			Query: "coffee",
+			Limit: 10,
+		}
+		resp, err := srv.GetTitleSuggestions(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
 func TestCreateRawTransaction(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 	accounts := []*database.Account{

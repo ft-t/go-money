@@ -20,6 +20,10 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+const (
+	DefaultSuggestionLimit = 50
+)
+
 type Service struct {
 	accountCurrencyCache *expirable.LRU[int32, string]
 	cfg                  *ServiceConfig
@@ -56,6 +60,40 @@ func (s *Service) GetTransactionByIDs(ctx context.Context, ids []int64) ([]*data
 	}
 
 	return transactions, nil
+}
+
+func (s *Service) GetTitleSuggestions(
+	ctx context.Context,
+	req *transactionsv1.GetTitleSuggestionsRequest,
+) (*transactionsv1.GetTitleSuggestionsResponse, error) {
+	limit := req.Limit
+	if limit <= 0 {
+		limit = DefaultSuggestionLimit
+	}
+
+	query := strings.TrimSpace(req.GetQuery())
+	if query == "" {
+		return &transactionsv1.GetTitleSuggestionsResponse{
+			Titles: []string{},
+		}, nil
+	}
+
+	var titles []string
+
+	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
+		Model(&database.Transaction{}).
+		Select("DISTINCT title").
+		Where("title ILIKE ?", "%"+query+"%").
+		Order("title").
+		Limit(int(limit)).
+		Pluck("title", &titles).
+		Error; err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &transactionsv1.GetTitleSuggestionsResponse{
+		Titles: titles,
+	}, nil
 }
 
 func (s *Service) List(

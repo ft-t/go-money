@@ -28,6 +28,7 @@ import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { FancyTagComponent } from '../fancy-tag/fancy-tag.component';
 import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
+import { Tooltip } from 'primeng/tooltip';
 
 export class FilterWrapper {
     public filters: { [s: string]: FilterMetadata } | undefined;
@@ -36,7 +37,7 @@ export class FilterWrapper {
 @Component({
     selector: 'app-transaction-table',
     templateUrl: 'transactions-table.component.html',
-    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent],
+    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent, Tooltip],
     styles: `
         :host ::ng-deep .transactionListingTable .p-datatable-header {
             border-width: 0 !important;

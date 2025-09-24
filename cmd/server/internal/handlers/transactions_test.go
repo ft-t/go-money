@@ -166,3 +166,46 @@ func TestTransactionApi_GetApplicableAccounts(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 }
+
+func TestTransactionApi_GetTitleSuggestions(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockSvc := NewMockTransactionsSvc(ctrl)
+	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
+	api := handlers.NewTransactionApi(grpc, mockSvc, nil, nil)
+
+	t.Run("success", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.GetTitleSuggestionsRequest{
+			Query: "coffee",
+			Limit: 10,
+		})
+		respMsg := &transactionsv1.GetTitleSuggestionsResponse{
+			Titles: []string{"Coffee Shop", "Coffee Bean Store"},
+		}
+		mockSvc.EXPECT().GetTitleSuggestions(gomock.Any(), req.Msg).Return(respMsg, nil)
+		resp, err := api.GetTitleSuggestions(ctx, req)
+		assert.NoError(t, err)
+		assert.Equal(t, respMsg, resp.Msg)
+		assert.Len(t, resp.Msg.Titles, 2)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.GetTitleSuggestionsRequest{
+			Query: "coffee",
+		})
+		mockSvc.EXPECT().GetTitleSuggestions(gomock.Any(), req.Msg).Return(nil, assert.AnError)
+		resp, err := api.GetTitleSuggestions(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		req := connect.NewRequest(&transactionsv1.GetTitleSuggestionsRequest{
+			Query: "coffee",
+		})
+		resp, err := api.GetTitleSuggestions(context.TODO(), req)
+		assert.ErrorIs(t, err, auth.ErrInvalidToken)
+		assert.Nil(t, resp)
+	})
+}

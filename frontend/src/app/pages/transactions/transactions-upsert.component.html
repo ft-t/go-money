@@ -131,8 +131,10 @@
                 <div class="flex flex-col gap-4 w-1/2">
                     <div class="flex flex-col gap-2">
                         <label for="accountName">Transaction title *</label>
-                        <input pInputText id="accountName" type="text" formControlName="title" required
-                        />
+
+                        <p-autocomplete formControlName="title" [suggestions]="titleAutoComplete"
+                                        (completeMethod)="search($event)"></p-autocomplete>
+
                         @if (title.invalid && (title.dirty || title.touched)) {
                             <p-message severity="error" variant="simple" size="small">Title is required</p-message>
                         }

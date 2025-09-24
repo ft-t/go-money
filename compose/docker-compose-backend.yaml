@@ -23,8 +23,9 @@ services:
       POSTGRES_DB: ${DB_DB}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGPORT: ${DB_PORT}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT}:${DB_PORT}"
     networks:
       - go-money
     volumes:
