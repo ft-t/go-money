@@ -117,6 +117,12 @@ export class TransactionUpsertComponent implements OnInit {
             if (data['type']) {
                 targetType = +(data['type'] as TransactionType);
             }
+
+            if(data['clone_from']) {
+                await this.editTransaction(+data['clone_from']);
+                this.form.get('id')?.setValue(0);
+                this.isEdit = false
+            }
         });
 
         this.route.params.subscribe(async (params) => {
