@@ -79,8 +79,7 @@ func (s *Service) GetTitleSuggestions(
 	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
 		Model(&database.Transaction{}).
 		Select("DISTINCT title").
-		Where("to_tsvector('english', title) @@ plainto_tsquery('english', ?)", query).
-		Where("title IS NOT NULL AND title != ''").
+		Where("title ILIKE ?", "%"+query+"%").
 		Order("title").
 		Limit(int(limit)).
 		Pluck("title", &titles).

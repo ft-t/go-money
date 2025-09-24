@@ -23,8 +23,9 @@ services:
       POSTGRES_DB: ${DB_DB}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGPORT: ${DB_PORT}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT}:${DB_PORT}"
     networks:
       - go-money
     volumes:
@@ -57,7 +58,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_DATABASE_TYPE: postgres
-      GF_DATABASE_HOST: ${DB_HOST}:5432
+      GF_DATABASE_HOST: ${DB_HOST}:${DB_PORT}
       GF_DATABASE_NAME: grafana
       GF_DATABASE_USER: ${DB_USER}
       GF_DATABASE_PASSWORD: ${DB_PASSWORD}

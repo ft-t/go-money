@@ -22,7 +22,7 @@ import {
     CreateTransactionRequestSchema,
     ExpenseSchema,
     GetApplicableAccountsResponse,
-    GetApplicableAccountsResponse_ApplicableRecord,
+    GetApplicableAccountsResponse_ApplicableRecord, GetTitleSuggestionsRequestSchema,
     IncomeSchema,
     ListTransactionsRequestSchema,
     TransactionsService,
@@ -35,7 +35,7 @@ import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
-import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
+import { Tag, TagSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { ChipModule } from 'primeng/chip';
@@ -47,6 +47,7 @@ import { SelectChangeEvent, SelectModule } from 'primeng/select';
 import { Checkbox } from 'primeng/checkbox';
 import { Message } from 'primeng/message';
 import { greaterThanZeroValidator } from '../../validators/greaterthenzero';
+import { AutoComplete, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -73,7 +74,8 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         ChipModule,
         NgClass,
         Checkbox,
-        Message
+        Message,
+        AutoComplete
     ]
 })
 export class TransactionUpsertComponent implements OnInit {
@@ -132,6 +134,25 @@ export class TransactionUpsertComponent implements OnInit {
 
     async ngOnInit() {
         await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags(), this.fetchCategories()]);
+    }
+
+    titleAutoComplete: string[] = [];
+
+    async search(event: AutoCompleteCompleteEvent) {
+        try {
+            let resp = await this.transactionService.getTitleSuggestions(create(GetTitleSuggestionsRequestSchema, {
+                limit: 50,
+                query: event.query
+            }))
+
+            this.titleAutoComplete = resp.titles;
+
+            if(!this.titleAutoComplete || this.titleAutoComplete.length == 0)
+                this.titleAutoComplete = [event.query];
+
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
     }
 
     buildForm(tx: Transaction) {
