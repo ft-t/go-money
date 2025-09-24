@@ -20,6 +20,10 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+const (
+	DefaultSuggestionLimit = 50
+)
+
 type Service struct {
 	accountCurrencyCache *expirable.LRU[int32, string]
 	cfg                  *ServiceConfig
@@ -62,9 +66,9 @@ func (s *Service) GetTitleSuggestions(
 	ctx context.Context,
 	req *transactionsv1.GetTitleSuggestionsRequest,
 ) (*transactionsv1.GetTitleSuggestionsResponse, error) {
-	limit := req.GetLimit()
+	limit := req.Limit
 	if limit <= 0 {
-		limit = 50 // default limit
+		limit = DefaultSuggestionLimit
 	}
 
 	query := strings.TrimSpace(req.GetQuery())
