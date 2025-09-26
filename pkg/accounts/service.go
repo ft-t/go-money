@@ -300,7 +300,6 @@ func (s *Service) Update(
 	}
 
 	account.Name = req.Name
-	account.Type = req.Type
 	account.Extra = req.Extra
 	account.LastUpdatedAt = time.Now().UTC()
 	account.Note = req.Note
