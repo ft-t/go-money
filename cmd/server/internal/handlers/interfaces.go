@@ -4,6 +4,7 @@ import (
 	"context"
 
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
+	analyticsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/analytics/v1"
 	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
@@ -209,4 +210,11 @@ type RecalculateSvc interface {
 	RecalculateAll(
 		ctx context.Context,
 	) error
+}
+
+type AnalyticsSvc interface {
+	GetDebitsAndCreditsSummary(
+		ctx context.Context,
+		req *analyticsv1.GetDebitsAndCreditsSummaryRequest,
+	) (*analyticsv1.GetDebitsAndCreditsSummaryResponse, error)
 }

@@ -17,6 +17,11 @@ type TransactionApi struct {
 	mapper               MapperSvc
 }
 
+func (a *TransactionApi) DeleteTransactions(ctx context.Context, c *connect.Request[transactionsv1.DeleteTransactionsRequest]) (*connect.Response[transactionsv1.DeleteTransactionsRequest], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (a *TransactionApi) GetApplicableAccounts(
 	ctx context.Context,
 	_ *connect.Request[transactionsv1.GetApplicableAccountsRequest],
