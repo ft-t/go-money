@@ -17,8 +17,9 @@ with upd as (select t.id,
              from transactions t
                       left join currencies sourceCurrency on sourceCurrency.id = t.source_currency
                       left join currencies destinationCurrency on destinationCurrency.id = t.destination_currency
-             where (@specificTxIDs)::bigint[] IS NULL
+             where ((@specificTxIDs)::bigint[] IS NULL
                 OR t.id = ANY ((@specificTxIDs)::bigint[]))
+               and t.deleted_at IS NULL)
 UPDATE transactions
 SET destination_amount_in_base_currency = abs(upd.sourceInBase),
     source_amount_in_base_currency      = -abs(upd.sourceInBase)

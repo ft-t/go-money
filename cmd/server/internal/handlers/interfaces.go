@@ -4,6 +4,7 @@ import (
 	"context"
 
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
+	analyticsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/analytics/v1"
 	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	currencyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/currency/v1"
@@ -40,6 +41,11 @@ type TransactionsSvc interface {
 		ctx context.Context,
 		req *transactionsv1.GetTitleSuggestionsRequest,
 	) (*transactionsv1.GetTitleSuggestionsResponse, error)
+
+	DeleteTransaction(
+		ctx context.Context,
+		req *transactionsv1.DeleteTransactionsRequest,
+	) (*transactionsv1.DeleteTransactionsResponse, error)
 }
 
 type ApplicableAccountSvc interface {
@@ -62,6 +68,10 @@ type UserSvc interface {
 
 type ImportSvc interface {
 	Import(ctx context.Context, req *importv1.ImportTransactionsRequest) (*importv1.ImportTransactionsResponse, error)
+}
+
+type Parser interface {
+	Parse(ctx context.Context, req *importv1.ParseTransactionsRequest) (*importv1.ParseTransactionsResponse, error)
 }
 
 type AccountSvc interface {
@@ -209,4 +219,11 @@ type RecalculateSvc interface {
 	RecalculateAll(
 		ctx context.Context,
 	) error
+}
+
+type AnalyticsSvc interface {
+	GetDebitsAndCreditsSummary(
+		ctx context.Context,
+		req *analyticsv1.GetDebitsAndCreditsSummaryRequest,
+	) (*analyticsv1.GetDebitsAndCreditsSummaryResponse, error)
 }

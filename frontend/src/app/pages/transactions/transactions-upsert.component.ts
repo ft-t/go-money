@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { FluidModule } from 'primeng/fluid';
 import { InputTextModule } from 'primeng/inputtext';
 import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -9,7 +9,7 @@ import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
-import { FilterMetadata, MessageService } from 'primeng/api';
+import { FilterMetadata, MessageService, ConfirmationService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { DatePickerModule } from 'primeng/datepicker';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
@@ -20,9 +20,11 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import {
     CreateTransactionRequest,
     CreateTransactionRequestSchema,
+    DeleteTransactionsRequestSchema,
     ExpenseSchema,
     GetApplicableAccountsResponse,
-    GetApplicableAccountsResponse_ApplicableRecord, GetTitleSuggestionsRequestSchema,
+    GetApplicableAccountsResponse_ApplicableRecord,
+    GetTitleSuggestionsRequestSchema,
     IncomeSchema,
     ListTransactionsRequestSchema,
     TransactionsService,
@@ -48,6 +50,11 @@ import { Checkbox } from 'primeng/checkbox';
 import { Message } from 'primeng/message';
 import { greaterThanZeroValidator } from '../../validators/greaterthenzero';
 import { AutoComplete, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { TransactionEditorComponent } from '../../shared/components/transaction-editor/transaction-editor.component';
+import { NumberHelper } from '../../helpers/number.helper';
+import { Tooltip } from 'primeng/tooltip';
+import { Dialog } from 'primeng/dialog';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -72,45 +79,30 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         InputNumberModule,
         SelectButtonModule,
         ChipModule,
-        NgClass,
-        Checkbox,
-        Message,
-        AutoComplete
+        ConfirmDialogModule,
+        TransactionEditorComponent,
+        Tooltip,
+        Dialog
     ]
 })
 export class TransactionUpsertComponent implements OnInit {
-    public isEdit: boolean = false;
-
-    // public transaction: Transaction;
-    public transactionTypes: AccountTypeEnum[];
-    public currencies: Currency[] = [];
-    public tags: Tag[] = [];
-    public categories: Category[] = [];
-
-    public skipRules: false = false;
-    public accounts: { [s: number]: GetApplicableAccountsResponse_ApplicableRecord } = {};
-    public allAccounts: { [s: number]: Account } = {};
-
     private transactionService;
+    private lastTxID = 0;
+    public targetTransaction: Transaction[] = [];
+    public showExpenseSplit = false;
+    public expenseSplitForm: FormGroup | undefined = undefined;
+    private currentSplitIndex = 0;
 
-    private currencyService;
-    private tagsService;
-    private categoriesService;
-    public maxSelectedLabels = 1;
-
-    public form: FormGroup;
+    @ViewChildren('editor') components: QueryList<TransactionEditorComponent> = new QueryList();
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        private route: ActivatedRoute,
-        private router: Router
+        private confirmationService: ConfirmationService,
+        private router: Router,
+        private route: ActivatedRoute
     ) {
-        this.transactionTypes = EnumService.getBaseTransactionTypes();
         this.transactionService = createClient(TransactionsService, this.transport);
-        this.currencyService = createClient(CurrencyService, this.transport);
-        this.tagsService = createClient(TagsService, this.transport);
-        this.categoriesService = createClient(CategoriesService, this.transport);
 
         let targetType = TransactionType.EXPENSE;
         this.route.queryParams.subscribe(async (data) => {
@@ -118,482 +110,301 @@ export class TransactionUpsertComponent implements OnInit {
                 targetType = +(data['type'] as TransactionType);
             }
 
-            if(data['clone_from']) {
-                await this.editTransaction(+data['clone_from']);
-                this.form.get('id')?.setValue(0);
-                this.isEdit = false
+            if (data['clone_from']) {
+                await this.setTx(+data['clone_from'], 0);
+                this.targetTransaction[0]!.id = BigInt(0);
             }
         });
 
         this.route.params.subscribe(async (params) => {
             if (params['id']) {
-                await this.editTransaction(+params['id']);
+                await this.setTx(+params['id'], 0);
             }
         });
 
-        this.form = this.buildForm(
-            create(TransactionSchema, {
-                type: targetType
-            })
-        );
+        this.targetTransaction[0] = create(TransactionSchema, {
+            type: targetType
+        });
     }
 
-    async ngOnInit() {
-        await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags(), this.fetchCategories()]);
+    ngOnInit(): void {}
+
+    showCommissionSplit(index: number) {
+        this.currentSplitIndex = index;
+        let editor = this.components.get(index);
+        let result = editor?.getForm();
+
+        const sourceAccountId = result?.get('sourceAccountId')?.value;
+        const sourceCurrency = result?.get('sourceCurrency')?.value;
+        const sourceAmount = parseFloat(result?.get('sourceAmount')?.value || '0');
+        const transactionDate = result?.get('transactionDate')?.value;
+        const destinationAccountId = result?.get('destinationAccountId')?.value;
+        const destinationCurrency = result?.get('destinationCurrency')?.value;
+
+        this.expenseSplitForm = new FormGroup({
+            sourceAccountId: new FormControl(sourceAccountId),
+            sourceAccountName: new FormControl(editor?.getSourceAccountName() || 'Unknown'),
+            title: new FormControl('Commission Split', Validators.required),
+            sourceCurrency: new FormControl(sourceCurrency),
+            transactionDate: new FormControl(transactionDate),
+            destinationAccountId: new FormControl(destinationAccountId),
+            destinationCurrency: new FormControl(destinationCurrency),
+            amount: new FormControl(undefined, [Validators.required, greaterThanZeroValidator, Validators.max(Math.abs(sourceAmount))])
+        });
+
+        this.expenseSplitForm.get('sourceAccountName')!.disable();
+
+        this.showExpenseSplit = true;
     }
 
-    titleAutoComplete: string[] = [];
+    onHideExpenseSplit() {
+        this.showExpenseSplit = false;
+        this.expenseSplitForm = undefined;
+    }
 
-    async search(event: AutoCompleteCompleteEvent) {
-        try {
-            let resp = await this.transactionService.getTitleSuggestions(create(GetTitleSuggestionsRequestSchema, {
-                limit: 50,
-                query: event.query
-            }))
+    async saveExpenseSplit() {
+        if (!this.expenseSplitForm) return;
 
-            this.titleAutoComplete = resp.titles;
+        this.expenseSplitForm.markAllAsTouched();
 
-            if(!this.titleAutoComplete || this.titleAutoComplete.length == 0)
-                this.titleAutoComplete = [event.query];
-
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        if (!this.expenseSplitForm.valid) {
+            return;
         }
-    }
 
-    buildForm(tx: Transaction) {
-        const form = new FormGroup({
-            id: new FormControl(tx.id, { nonNullable: false }),
-            sourceAmount: new FormControl(this.toPositiveNumber(tx.sourceAmount), greaterThanZeroValidator()),
-            sourceCurrency: new FormControl(tx.sourceCurrency, Validators.required),
-            sourceAccountId: new FormControl(tx.sourceAccountId, Validators.min(1)),
-            destinationAmount: new FormControl(this.toPositiveNumber(tx.destinationAmount), greaterThanZeroValidator()),
-            destinationCurrency: new FormControl(tx.destinationCurrency, Validators.required),
-            destinationAccountId: new FormControl(tx.destinationAccountId, Validators.min(1)),
-            notes: new FormControl(tx.notes, { nonNullable: false }),
-            title: new FormControl(tx.title, Validators.required),
-            categoryId: new FormControl(tx.categoryId, { nonNullable: false }),
-            transactionDate: new FormControl(tx.transactionDate != null ? TimestampHelper.timestampToDate(tx.transactionDate!) : new Date(), Validators.required),
-            type: new FormControl(tx.type, Validators.required),
-            tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
-            skipRules: new FormControl(this.skipRules, { nonNullable: false }),
-            fxSourceAmount: new FormControl(this.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
-            fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false })
-        });
+        const amount = this.expenseSplitForm.get('amount')!.value;
+        const delta = NumberHelper.toPositiveNumber(amount?.toString());
 
-        form.get('destinationAccountId')!.valueChanges.subscribe(async (newVal) => {
-            let curr = form.get('destinationCurrency');
-            curr?.setValue('', { emitEvent: false });
-
-            let account = this.getAccountById(newVal!);
-            if (!account) {
-                return;
-            }
-
-            curr?.setValue(account.currency, { emitEvent: false });
-        });
-
-        form.get('sourceAccountId')!.valueChanges.subscribe(async (newVal) => {
-            let curr = form.get('sourceCurrency');
-            curr?.setValue('', { emitEvent: false });
-
-            let account = this.getAccountById(newVal!);
-            if (!account) {
-                return;
-            }
-
-            curr?.setValue(account.currency, { emitEvent: false });
-        });
-
-        // handle amounts
-        form.get('destinationAmount')!.valueChanges.subscribe((newVal) => {
-            if (form.get('sourceCurrency')!.value != form.get('destinationCurrency')!.value) return;
-
-            form.get('sourceAmount')!.setValue(newVal, { emitEvent: false });
-        });
-
-        form.get('sourceAmount')!.valueChanges.subscribe((newVal) => {
-            if (form.get('sourceCurrency')!.value != form.get('destinationCurrency')!.value) return;
-
-            form.get('destinationAmount')!.setValue(newVal, { emitEvent: false });
-        });
-
-        form.get('type')!.valueChanges.subscribe((newVal) => {
-            if (newVal != TransactionType.EXPENSE) {
-                form.get('fxSourceAmount')?.setValue('');
-                form.get('fxSourceCurrency')!.setValue('');
-            }
-
-            let sourceAccountId = form.get('sourceAccountId')!.value;
-            let destinationAccountId = form.get('destinationAccountId')!.value;
-
-            if (!this.isAccountApplicable(newVal!, true, sourceAccountId!)) {
-                form.get('sourceAccountId')!.setValue(0);
-            }
-
-            if (!this.isAccountApplicable(newVal!, false, destinationAccountId!)) {
-                form.get('destinationAccountId')!.setValue(0);
-            }
-        });
-
-        return form;
-    }
-
-    get destinationAccountId() {
-        return this.form.get('destinationAccountId')!;
-    }
-
-    get transactionDateFm() {
-        return this.form.get('transactionDate')!;
-    }
-
-    get destinationAmount() {
-        return this.form.get('destinationAmount')!;
-    }
-
-    get sourceAmount() {
-        return this.form.get('sourceAmount')!;
-    }
-
-    get title() {
-        return this.form.get('title')!;
-    }
-
-    async editTransaction(id: number) {
-        this.isEdit = true;
-
-        try {
-            let resp = await this.transactionService.listTransactions(
-                create(ListTransactionsRequestSchema, {
-                    ids: [id],
-                    limit: 1
-                })
-            );
-
-            if (!resp.transactions || resp.transactions.length == 0) {
-                this.messageService.add({ severity: 'error', detail: 'Transaction not found.' });
-                return;
-            }
-
-            let tx = resp.transactions[0];
-
-            if (tx.sourceAmount) tx.sourceAmount = this.toPositiveNumber(tx.sourceAmount)!;
-
-            if (tx.destinationAmount) tx.destinationAmount = this.toPositiveNumber(tx.destinationAmount)!;
-
-            this.form = this.buildForm(tx);
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        if (!delta) {
+            return;
         }
+
+        const editor = this.components.get(this.currentSplitIndex);
+        let originalForm = editor!.getForm();
+
+        const newTransaction = create(TransactionSchema, {
+            type: TransactionType.EXPENSE,
+            sourceAccountId: this.expenseSplitForm.get('sourceAccountId')!.value,
+            sourceCurrency: this.expenseSplitForm.get('sourceCurrency')!.value,
+            sourceAmount: delta,
+            title: this.expenseSplitForm.get('title')!.value,
+            transactionDate: create(TimestampSchema, {
+                seconds: BigInt(Math.floor(originalForm!.get('transactionDate')!.value.getTime() / 1000)),
+                nanos: (originalForm!.get('transactionDate')!.value.getMilliseconds() % 1000) * 1_000_000
+            }),
+        });
+
+        console.log(newTransaction);
+
+
+        this.targetTransaction.push(newTransaction);
+
+
+        if (editor) {
+            editor.adjustSourceAmount(parseFloat(NumberHelper.toNegativeNumber(delta)!));
+        }
+
+        this.messageService.add({
+            severity: 'success',
+            detail: 'Commission split added successfully'
+        });
+
+        this.onHideExpenseSplit();
     }
 
-    getTitle() {
-        if (this.isEdit) {
-            return `Edit Transaction (#${this.form.get('id')?.value})`;
+    getTitle(tx: Transaction): string {
+        const id = tx.id;
+
+        if (id) {
+            return `Edit Transaction (#${id})`;
         }
 
         return `New Transaction`;
     }
 
-    async fetchTags() {
-        try {
-            let resp = await this.tagsService.listTags({});
-            for (let tag of resp.tags || []) {
-                this.tags.push(tag.tag!);
-            }
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+    async setTx(id: number, index: number) {
+        this.lastTxID = id;
+
+        let resp = await this.transactionService.listTransactions(
+            create(ListTransactionsRequestSchema, {
+                ids: [id],
+                limit: 1
+            })
+        );
+
+        if (!resp.transactions || resp.transactions.length == 0) {
+            this.messageService.add({ severity: 'error', detail: 'Transaction not found.' });
+            return;
         }
+
+        let tx = resp.transactions[0];
+
+        if (tx.sourceAmount) tx.sourceAmount = NumberHelper.toPositiveNumber(tx.sourceAmount)!;
+
+        if (tx.destinationAmount) tx.destinationAmount = NumberHelper.toPositiveNumber(tx.destinationAmount)!;
+
+        this.targetTransaction[index] = tx;
     }
 
-    async fetchCategories() {
-        try {
-            let resp = await this.categoriesService.listCategories({});
-            this.categories = resp.categories || [];
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        }
-    }
-
-    async fetchCurrencies() {
-        try {
-            let resp = await this.currencyService.getCurrencies({});
-            this.currencies = resp.currencies || [];
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        }
-    }
-
-    async fetchAccounts() {
-        try {
-            let resp = await this.transactionService.getApplicableAccounts({});
-            for (let applicable of resp.applicableRecords) {
-                this.accounts[applicable.transactionType] = applicable;
-
-                for (let source of applicable.sourceAccounts || []) {
-                    this.allAccounts[source.id] = source;
-                }
-                for (let destination of applicable.destinationAccounts || []) {
-                    this.allAccounts[destination.id] = destination;
-                }
-            }
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        }
-    }
-
-    isAccountApplicable(type: TransactionType, isSource: boolean, id: number): boolean {
-        let applicable = this.getApplicableAccounts(type, isSource);
-        if (!applicable) {
-            return false;
-        }
-
-        return applicable.some((a) => a.id == id);
-    }
-
-    getApplicableAccounts(type: TransactionType, isSource: boolean): Account[] {
-        const applicable = this.accounts[type];
-
-        if (!applicable) {
-            return [];
-        }
-
-        if (isSource) {
-            return applicable.sourceAccounts || [];
-        } else {
-            return applicable.destinationAccounts || [];
-        }
-    }
-
-    // onTransactionTypeChange() {
-    //     if (!this.isDestinationAccountActive()) {
-    //         this.transaction.destinationAccountId = 0;
-    //         this.transaction.destinationCurrency = '';
-    //         this.transaction.destinationAmount = '';
-    //     }
-    //
-    //     if (!this.isForeignCurrencyActive()) {
-    //         this.transaction.destinationCurrency = '';
-    //         this.transaction.destinationAmount = '';
-    //     }
+    // async confirmDelete() {
+    //     this.confirmationService.confirm({
+    //         message: 'Are you sure you want to delete this transaction? This action cannot be undone.',
+    //         header: 'Confirm Delete',
+    //         icon: 'pi pi-exclamation-triangle',
+    //         acceptButtonStyleClass: 'p-button-danger',
+    //         accept: async () => {
+    //             await this.deleteTransaction();
+    //         }
+    //     });
     // }
 
-    getAccountById(id: number | undefined): Account | null {
-        if (!id) return null;
+    getTransactionCounts(): { create: number; update: number } {
+        let create = 0;
+        let update = 0;
 
-        return this.allAccounts[id] || null;
-    }
-
-    canConvert(): boolean {
-        let source = this.form.get('sourceCurrency')!.value;
-        let dest = this.form.get('destinationCurrency')!.value;
-
-        if (!source || !dest) {
-            return false;
+        for (const tx of this.targetTransaction) {
+            if (tx.id === BigInt(0)) {
+                create++;
+            } else {
+                update++;
+            }
         }
 
-        return source != dest;
+        return { create, update };
     }
 
-    log() {
-        console.log(this.form);
+    getSaveButtonLabel(): string {
+        return 'Save All';
     }
 
-    async convertAmount(amount: number, currency: string, setTo: possibleDestination) {
+    getSaveButtonDescription(): string {
+        const counts = this.getTransactionCounts();
+        const parts: string[] = [];
+
+        if (counts.create > 0) {
+            parts.push(`${counts.create} to create`);
+        }
+        if (counts.update > 0) {
+            parts.push(`${counts.update} to update`);
+        }
+
+        return parts.length > 0 ? parts.join(', ') : '';
+    }
+
+    async saveAll() {
         try {
-            let destCurrency = '';
-            let destValueSetter: AbstractControl | null;
-            switch (setTo) {
-                case 'source':
-                    destCurrency = this.form.get('sourceCurrency')!.value;
-                    destValueSetter = this.form.get('sourceAmount');
-                    break;
-                case 'destination':
-                    destCurrency = this.form.get('destinationCurrency')!.value;
-                    destValueSetter = this.form.get('destinationAmount');
-                    break;
-                case 'fx':
-                    destCurrency = this.form.get('destinationCurrency')!.value;
-                    destValueSetter = this.form.get('sourceAmount');
-                    break;
+            for (const editor of this.components) {
+                const form = editor.getForm();
+                form.markAllAsTouched();
+
+                if (!form.valid) {
+                    this.messageService.add({
+                        severity: 'error',
+                        detail: 'Please fix validation errors in all transactions'
+                    });
+                    return;
+                }
             }
 
-            let converted = await this.currencyService.exchange(
-                create(ExchangeRequestSchema, {
-                    amount: amount.toString(),
-                    fromCurrency: currency,
-                    toCurrency: destCurrency
-                })
-            );
+            const counts = this.getTransactionCounts();
+            let successCount = 0;
 
-            destValueSetter?.setValue(converted.amount);
+            for (let i = 0; i < this.targetTransaction.length; i++) {
+                const tx = this.targetTransaction[i];
+                const editor = this.components.get(i);
+
+                if (!editor) continue;
+
+                const request = editor.buildTransactionRequest();
+
+                if (tx.id === BigInt(0)) {
+                    // Create new transaction
+                    await this.transactionService.createTransaction(request);
+                    successCount++;
+                } else {
+                    // Update existing transaction
+                    await this.transactionService.updateTransaction(
+                        create(UpdateTransactionRequestSchema, {
+                            transaction: request,
+                            id: tx.id
+                        })
+                    );
+                    successCount++;
+                }
+            }
+
+            this.messageService.add({
+                severity: 'success',
+                detail: `Successfully saved ${successCount} transaction(s)`
+            });
+
+            await this.router.navigate(['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async addSplit() {
+        console.log(this.components);
+        this.targetTransaction.push(
+            create(TransactionSchema, {
+                type: this.targetTransaction[0]!.type
+            })
+        );
+    }
+
+    canDeleteSplit(index: number, tx: Transaction): boolean {
+        return index !== 0 && tx.id === BigInt(0);
+    }
+
+    deleteSplit(index: number) {
+        if (!this.canDeleteSplit(index, this.targetTransaction[index])) {
             return;
         }
+
+        this.targetTransaction.splice(index, 1);
     }
 
-    removeTag(tag: number) {
-        this.form.get('tagIds')!.setValue(this.form.get('tagIds')!.value.filter((t: number) => t != tag));
+    canDeleteTransaction(tx: Transaction): boolean {
+        return tx.id !== BigInt(0);
     }
 
-    tagById(id: number | undefined): Tag | null {
-        if (!id) return null;
-
-        for (let tag of this.tags) {
-            if (tag.id == id) return tag;
+    confirmDelete(index: number) {
+        const tx = this.targetTransaction[index];
+        if (!this.canDeleteTransaction(tx)) {
+            return;
         }
 
-        return null;
-    }
-
-    isForeignCurrencyActive(): boolean {
-        if (this.form.get('type')?.value == TransactionType.EXPENSE) return true;
-
-        return false;
-    }
-
-    buildTransactionRequest(): CreateTransactionRequest {
-        let req = create(CreateTransactionRequestSchema, {
-            notes: this.form.get('notes')!.value,
-            extra: {}, // todo
-            tagIds: this.form.get('tagIds')!.value || [],
-            transactionDate: create(TimestampSchema, {
-                seconds: BigInt(Math.floor(this.form.get('transactionDate')!.value.getTime() / 1000)),
-                nanos: (this.form.get('transactionDate')!.value.getMilliseconds() % 1000) * 1_000_000
-            }),
-            title: this.form.get('title')!.value,
-            categoryId: this.form.get('categoryId')!.value,
-            skipRules: this.form.get('skipRules')!.value
+        this.confirmationService.confirm({
+            message: 'Are you sure you want to delete this transaction? This action cannot be undone.',
+            header: 'Confirm Delete',
+            icon: 'pi pi-exclamation-triangle',
+            acceptButtonStyleClass: 'p-button-danger',
+            accept: async () => {
+                await this.deleteTransaction(index);
+            }
         });
-
-        let destinationAccountId = this.form.get('destinationAccountId')!.value;
-        let destinationCurrency = this.form.get('destinationCurrency')!.value;
-        let destinationAmount = this.form.get('destinationAmount')!.value;
-
-        let sourceAccountId = this.form.get('sourceAccountId')!.value;
-        let sourceCurrency = this.form.get('sourceCurrency')!.value;
-        let sourceAmount = this.form.get('sourceAmount')!.value;
-
-        let fxSourceAmount = this.form.get('fxSourceAmount')!.value;
-        let fxSourceCurrency = this.form.get('fxSourceCurrency')!.value;
-
-        switch (this.form.get('type')!.value) {
-            case TransactionType.INCOME:
-                req.transaction.value = create(IncomeSchema, {
-                    destinationAccountId: destinationAccountId,
-                    destinationAmount: this.toPositiveNumber(destinationAmount),
-                    destinationCurrency: destinationCurrency,
-
-                    sourceAccountId: sourceAccountId,
-                    sourceAmount: this.toNegativeNumber(sourceAmount),
-                    sourceCurrency: sourceCurrency
-                });
-                req.transaction.case = 'income';
-                break;
-            case TransactionType.EXPENSE:
-                req.transaction.value = create(ExpenseSchema, {
-                    destinationAccountId: destinationAccountId,
-                    destinationAmount: this.toPositiveNumber(destinationAmount),
-                    destinationCurrency: destinationCurrency,
-
-                    sourceAccountId: sourceAccountId,
-                    sourceAmount: this.toNegativeNumber(sourceAmount),
-                    sourceCurrency: sourceCurrency,
-
-                    fxSourceCurrency: fxSourceCurrency,
-                    fxSourceAmount: this.toNegativeNumber(fxSourceAmount)
-                });
-                req.transaction.case = 'expense';
-                break;
-            case TransactionType.TRANSFER_BETWEEN_ACCOUNTS:
-                req.transaction.value = create(TransferBetweenAccountsSchema, {
-                    destinationAccountId: destinationAccountId,
-                    destinationAmount: this.toPositiveNumber(destinationAmount),
-                    destinationCurrency: destinationCurrency,
-
-                    sourceAccountId: sourceAccountId,
-                    sourceAmount: this.toNegativeNumber(sourceAmount),
-                    sourceCurrency: sourceCurrency
-                });
-                req.transaction.case = 'transferBetweenAccounts';
-                break;
-        }
-
-        return req;
     }
 
-    async submit() {
-        this.form!.markAllAsTouched();
-
-        if (!this.form!.valid) {
-            console.log(this.form);
-            return;
-        }
-
-        if (this.isEdit) {
-            await this.update();
-        } else {
-            await this.create();
-        }
-    }
-
-    get sourceAccountId() {
-        return this.form.get('sourceAccountId')!;
-    }
-
-    async create() {
+    async deleteTransaction(index: number) {
         try {
-            await this.transactionService.createTransaction(this.buildTransactionRequest());
+            const tx = this.targetTransaction[index];
+            if (!tx || !tx.id) {
+                this.messageService.add({ severity: 'error', detail: 'No transaction ID found' });
+                return;
+            }
 
-            this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
-
-            // todo transaction details page
-            await this.router.navigate(['/transactions']);
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        }
-    }
-
-    async update() {
-        try {
-            let response = await this.transactionService.updateTransaction(
-                create(UpdateTransactionRequestSchema, {
-                    transaction: this.buildTransactionRequest(),
-                    id: this.form.get('id')?.value
+            await this.transactionService.deleteTransactions(
+                create(DeleteTransactionsRequestSchema, {
+                    ids: [tx.id]
                 })
             );
 
-            this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
-
-            // todo transaction details page
+            this.messageService.add({ severity: 'success', detail: 'Transaction deleted successfully.' });
             await this.router.navigate(['/transactions']);
-
-            // todo transaction details page
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
     }
 
-    toNegativeNumber(value: string | undefined): string | undefined {
-        if (!value) return value;
-
-        let num = parseFloat(value);
-        if (!num) return value;
-
-        return (-Math.abs(num)).toString();
-    }
-
-    toPositiveNumber(value: string | undefined): string | undefined {
-        if (!value) return value;
-
-        let num = parseFloat(value);
-        if (!num) return value;
-
-        return Math.abs(num).toString();
-    }
-
-    async refresh() {
-        await this.editTransaction(Number(this.form.get('id')?.value));
-    }
+    protected readonly BigInt = BigInt;
 }

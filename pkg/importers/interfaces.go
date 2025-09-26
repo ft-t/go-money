@@ -37,6 +37,11 @@ type TransactionSvc interface {
 		tx *gorm.DB,
 		opts transactions.UpsertOptions,
 	) ([]*transactionsv1.CreateTransactionResponse, error)
+	ConvertRequestToTransaction(
+		ctx context.Context,
+		req *transactionsv1.CreateTransactionRequest,
+		originalTx *database.Transaction,
+	) (*database.Transaction, error)
 }
 
 type CurrencyConverterSvc interface {

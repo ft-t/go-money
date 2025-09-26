@@ -209,3 +209,43 @@ func TestTransactionApi_GetTitleSuggestions(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 }
+
+func TestTransactionApi_DeleteTransactions(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockSvc := NewMockTransactionsSvc(ctrl)
+	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
+	api := handlers.NewTransactionApi(grpc, mockSvc, nil, nil)
+
+	t.Run("success", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{123, 456},
+		})
+		mockSvc.EXPECT().DeleteTransaction(gomock.Any(), req.Msg).Return(&transactionsv1.DeleteTransactionsResponse{
+			DeletedCount: 2,
+		}, nil)
+		resp, err := api.DeleteTransactions(ctx, req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{123},
+		})
+		mockSvc.EXPECT().DeleteTransaction(gomock.Any(), req.Msg).Return(nil, assert.AnError)
+		resp, err := api.DeleteTransactions(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		req := connect.NewRequest(&transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{123},
+		})
+		resp, err := api.DeleteTransactions(context.TODO(), req)
+		assert.ErrorIs(t, err, auth.ErrInvalidToken)
+		assert.Nil(t, resp)
+	})
+}

@@ -12,6 +12,7 @@ import (
 	"github.com/ft-t/go-money/cmd/server/internal/jobs"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/accounts"
+	"github.com/ft-t/go-money/pkg/analytics"
 	"github.com/ft-t/go-money/pkg/appcfg"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
@@ -185,15 +186,23 @@ func main() {
 		SchedulerSvc:     ruleScheduler,
 	})
 
+	analyticsSvc := analytics.NewService()
+
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 	_ = handlers.NewMaintenanceApi(grpcServer, recalculateSvc)
+	_ = handlers.NewAnalyticsApi(grpcServer, analyticsSvc)
+
+	baseParser := importers.NewBaseParser(currencyConverter, transactionSvc)
 
 	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(
 		transactionSvc,
 		currencyConverter,
+		baseParser,
 	))
 
-	_, err = handlers.NewImportApi(grpcServer, importSvc)
+	privat24Parser := importers.NewPrivat24(baseParser, mapper)
+
+	_, err = handlers.NewImportApi(grpcServer, importSvc, privat24Parser)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create import handler")
 	}

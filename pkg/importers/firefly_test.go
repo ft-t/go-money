@@ -86,7 +86,7 @@ func TestFireflyImport(t *testing.T) {
 
 		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, currencyConv)
+		importer := importers.NewFireflyImporter(txSvc, currencyConv, importers.NewBaseParser(currencyConv, txSvc))
 		currencyConv.EXPECT().Convert(context.TODO(), "UAH", "USD", gomock.Any()).
 			Return(decimal.NewFromInt(55), nil)
 
@@ -139,7 +139,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("open balance (debt)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -181,7 +181,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("open balance", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -223,7 +223,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("reconciliation (minus)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -265,7 +265,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("reconciliation (plus)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -307,7 +307,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("transfer (same currency)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -352,7 +352,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("debt withdrawal -> transfer", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -414,7 +414,7 @@ func TestSkipDuplicate(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
 		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
-		importer := importers.NewFireflyImporter(txSvc, currencyConv)
+		importer := importers.NewFireflyImporter(txSvc, currencyConv, importers.NewBaseParser(currencyConv, txSvc))
 
 		currencyConv.EXPECT().Convert(gomock.Any(), "UAH", "USD", gomock.Any()).
 			Return(decimal.NewFromInt(55), nil)
@@ -445,7 +445,7 @@ func TestFireflyNoData(t *testing.T) {
 	t.Run("no data", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil)
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
 
 		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
 			Data:     []byte{},
@@ -518,7 +518,7 @@ func TestFireflyIntegration(t *testing.T) {
 		DoubleEntry:          doubleEntry,
 		AccountSvc:           accountSvc,
 	})
-	importer := importers.NewFireflyImporter(txSvc, converter)
+	importer := importers.NewFireflyImporter(txSvc, converter, importers.NewBaseParser(converter, txSvc))
 
 	result, err := importer.Import(context.TODO(), &importers.ImportRequest{
 		Data:     data,
@@ -537,7 +537,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 	assert.NoError(t, gormDB.Create(&accountsData).Error)
 
 	txSvc := NewMockTransactionSvc(gomock.NewController(t))
-	importer := importers.NewFireflyImporter(txSvc, nil)
+	importer := importers.NewFireflyImporter(txSvc, nil, nil)
 
 	t.Run("missing source account", func(t *testing.T) {
 		// Withdrawal with unknown account name
@@ -588,7 +588,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 
 func TestParseDate(t *testing.T) {
 	input := "2025-06-17T15:07:46+02:00"
-	ff := importers.NewFireflyImporter(nil, nil)
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil))
 
 	t.Run("with local", func(t *testing.T) {
 		resp, err := ff.ParseDate(input, false)

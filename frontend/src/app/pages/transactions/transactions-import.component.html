@@ -12,25 +12,67 @@
                     placeholder="Select a Import Type" />
 
                 <div class="flex flex-row gap-4">
-                        <p-checkbox id="chkbox1" [(ngModel)]="skipRules" [binary]="true" />
-                        <label for="chkbox1">Skip rules (automation)</label>
+                    <p-checkbox id="chkbox1" [(ngModel)]="stagingMode" [binary]="true" />
+                    <label for="chkbox1">Staging Mode (manual approval)</label>
 
-                        <p-checkbox id="chkbox2" [(ngModel)]="treatDatesAsUtc" [binary]="true" />
-                        <label for="chkbox2">Treat Dates as UTC</label>
+                    <p-checkbox id="chkbox2" [(ngModel)]="skipRules" [binary]="true" />
+                    <label for="chkbox2">Skip rules (automation)</label>
+
+                    <p-checkbox id="chkbox3" [(ngModel)]="treatDatesAsUtc" [binary]="true" />
+                    <label for="chkbox3">Treat Dates as UTC</label>
                 </div>
+                @if (this.isRawTextImport()) {
+                    <p-iftalabel>
+                        <textarea pTextarea id="description" rows="5" cols="30" [(ngModel)]="rawText" fluid></textarea>
+                        <label for="description">Transactions</label>
+                    </p-iftalabel>
 
-                <p-fileupload mode="basic" name="demo[]"
-                              chooseIcon="pi pi-upload"
-                              maxFileSize="100000000"
-                              accept="text/csv"
-                              customUpload="true"
-                              (uploadHandler)="onBasicUploadAuto($event)"
-                              [disabled]="isLoading"
-                              [auto]="true" chooseLabel="Select file to import" />
+                } @else {
+                    <p-fileupload mode="basic" name="demo[]"
+                                  chooseIcon="pi pi-upload"
+                                  maxFileSize="100000000"
+                                  accept="text/csv"
+                                  customUpload="true"
+                                  (uploadHandler)="onBasicUploadAuto($event)"
+                                  [disabled]="isLoading"
+                                  [auto]="true" chooseLabel="Select file to import" />
+                }
 
+                <p-button label="Parse" (onClick)="submit()" [disabled]="isLoading" />
 
-                <textarea readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
+                <textarea *ngIf="!showReview" readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
             </div>
         </div>
+
+        @if (showReview) {
+            <div class="card flex flex-col gap-4">
+                <div class="flex flex-row justify-between items-center">
+                    <div class="font-semibold text-xl">Review Transactions ({{ getSelectedCount() }} / {{ transactionItems.length }})</div>
+                    <div class="flex flex-row gap-2">
+                        <p-button label="Select All" severity="secondary" (onClick)="selectAll()" />
+                        <p-button label="Deselect All" severity="secondary" (onClick)="deselectAll()" />
+                    </div>
+                </div>
+
+                <p-accordion>
+                    @for (item of transactionItems; track item.transaction; let idx = $index) {
+                        <p-accordionTab>
+                            <ng-template pTemplate="header">
+                                <div class="flex flex-row gap-2 items-center w-full">
+                                    <p-checkbox [(ngModel)]="item.selected" [binary]="true" (click)="$event.stopPropagation()" />
+                                    <span>{{ getTransactionTitle(item.transaction) }}</span>
+                                </div>
+                            </ng-template>
+                            <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                        </p-accordionTab>
+                    }
+                </p-accordion>
+
+                <div class="flex flex-row justify-end gap-2">
+                    <p-button label="Cancel" severity="secondary" (onClick)="showReview = false" />
+                    <p-button label="Import Selected" (onClick)="importSelected()" [disabled]="getSelectedCount() === 0 || isLoading" />
+                </div>
+            </div>
+        }
     </div>
 </p-fluid>

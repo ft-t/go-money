@@ -17,6 +17,25 @@ type TransactionApi struct {
 	mapper               MapperSvc
 }
 
+func (a *TransactionApi) CreateTransactionsBulk(ctx context.Context, c *connect.Request[transactionsv1.CreateTransactionsBulkRequest]) (*connect.Response[transactionsv1.CreateTransactionsBulkResponse], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *TransactionApi) DeleteTransactions(ctx context.Context, c *connect.Request[transactionsv1.DeleteTransactionsRequest]) (*connect.Response[transactionsv1.DeleteTransactionsRequest], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	_, err := a.transactionsSvc.DeleteTransaction(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(c.Msg), nil
+}
+
 func (a *TransactionApi) GetApplicableAccounts(
 	ctx context.Context,
 	_ *connect.Request[transactionsv1.GetApplicableAccountsRequest],
