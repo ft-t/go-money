@@ -53,7 +53,7 @@ func (s *Service) GetTransactionByIDs(ctx context.Context, ids []int64) ([]*data
 	var transactions []*database.Transaction
 
 	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
-		Where("id IN ?", ids).
+		Where("id IN ? AND deleted_at IS NULL", ids).
 		Find(&transactions).
 		Error; err != nil {
 		return nil, errors.WithStack(err)
@@ -83,7 +83,7 @@ func (s *Service) GetTitleSuggestions(
 	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
 		Model(&database.Transaction{}).
 		Select("DISTINCT title").
-		Where("title ILIKE ?", "%"+query+"%").
+		Where("title ILIKE ? AND deleted_at IS NULL", "%"+query+"%").
 		Order("title").
 		Limit(int(limit)).
 		Pluck("title", &titles).
@@ -100,7 +100,7 @@ func (s *Service) List(
 	ctx context.Context,
 	req *transactionsv1.ListTransactionsRequest,
 ) (*transactionsv1.ListTransactionsResponse, error) {
-	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Limit(int(req.Limit))
+	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Where("deleted_at IS NULL").Limit(int(req.Limit))
 
 	if req.AmountFrom != nil {
 		amountFrom, err := decimal.NewFromString(*req.AmountFrom)
@@ -479,7 +479,7 @@ func (s *Service) Update(
 	ctx = database.WithContext(ctx, tx)
 
 	var existingTx database.Transaction
-	if err := tx.Where("id = ?", req.Id).
+	if err := tx.Where("id = ? AND deleted_at IS NULL", req.Id).
 		First(&existingTx).Error; err != nil {
 		return nil, errors.Wrap(err, "failed to find existing transaction")
 	}
