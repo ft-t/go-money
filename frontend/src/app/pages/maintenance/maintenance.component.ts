@@ -27,11 +27,11 @@ export class MaintenanceComponent {
         this.messageService.add({ severity: 'info', detail: 'Recalculation started. This may take a while...' });
         try{
             await this.maintenanceService.recalculateAll({});
+            this.messageService.add({ severity: 'success', detail: 'Recalculation task has been completed' });
         }
         catch (e) {
             console.log(e);
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
-        this.messageService.add({ severity: 'success', detail: 'Recalculation task has been started' });
     }
 }
