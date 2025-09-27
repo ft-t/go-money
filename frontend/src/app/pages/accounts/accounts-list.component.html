@@ -155,14 +155,18 @@
                     </p>
                 </td>
                 <td>
-                    <p-button icon="pi pi-pencil"
-                              (onClick)="this.router.navigate(['/', 'accounts', 'edit', accountItem.account.id])"
-                              pTooltip="Edit account" tooltipPosition="top" placeholder="Top"
-                              severity="secondary" rounded />
-                    <p-button icon="pi pi-receipt"
-                              (onClick)="showReconcile(accountItem)"
-                              pTooltip="Reconcile account" tooltipPosition="top" placeholder="Top"
-                              severity="secondary" rounded />
+                    <div class="flex gap-2">
+                        <a [href]="'/accounts/edit/' + accountItem.account.id"
+                           [routerLink]="['/', 'accounts', 'edit', accountItem.account.id]">
+                            <p-button icon="pi pi-pencil"
+                                      pTooltip="Edit account" tooltipPosition="top" placeholder="Top"
+                                      severity="secondary" rounded />
+                        </a>
+                        <p-button icon="pi pi-receipt"
+                                  (onClick)="showReconcile(accountItem)"
+                                  pTooltip="Reconcile account" tooltipPosition="top" placeholder="Top"
+                                  severity="secondary" rounded />
+                    </div>
                 </td>
             </tr>
         </ng-template>

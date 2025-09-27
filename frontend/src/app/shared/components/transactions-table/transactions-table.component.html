@@ -232,11 +232,12 @@
                             <p-button icon="pi pi-pencil"
                                       severity="secondary" rounded pTooltip="Edit transaction" tooltipPosition="top" />
                         </a>
-                        <p-button icon="pi pi-clone" pTooltip="Clone & Edit transaction" tooltipPosition="top"
-                                  (onClick)="this.router.navigate(['/', 'transactions', 'new'], {
-                                  queryParams: { clone_from: transactionItem.id }
-                              })"
-                                  severity="secondary" rounded />
+                        <a [href]="'/transactions/new?clone_from=' + transactionItem.id"
+                           [routerLink]="['/', 'transactions', 'new']"
+                           [queryParams]="{ clone_from: transactionItem.id }">
+                            <p-button icon="pi pi-clone" pTooltip="Clone & Edit transaction" tooltipPosition="top"
+                                      severity="secondary" rounded />
+                        </a>
                     </div>
                 </td>
             </tr>
