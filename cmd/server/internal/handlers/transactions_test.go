@@ -249,3 +249,54 @@ func TestTransactionApi_DeleteTransactions(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 }
+
+func TestTransactionApi_CreateTransactionsBulk(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockSvc := NewMockTransactionsSvc(ctrl)
+	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
+	api := handlers.NewTransactionApi(grpc, mockSvc, nil, nil)
+
+	t.Run("success", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.CreateTransactionsBulkRequest{
+			Transactions: []*transactionsv1.CreateTransactionRequest{
+				{Title: "Transaction 1"},
+				{Title: "Transaction 2"},
+			},
+		})
+		respMsg := []*transactionsv1.CreateTransactionResponse{
+			{Transaction: &gomoneypbv1.Transaction{Id: 1, Title: "Transaction 1"}},
+			{Transaction: &gomoneypbv1.Transaction{Id: 2, Title: "Transaction 2"}},
+		}
+		mockSvc.EXPECT().CreateBulk(gomock.Any(), req.Msg.Transactions).Return(respMsg, nil)
+		resp, err := api.CreateTransactionsBulk(ctx, req)
+		assert.NoError(t, err)
+		assert.Len(t, resp.Msg.Transactions, 2)
+		assert.Equal(t, int64(1), resp.Msg.Transactions[0].Id)
+		assert.Equal(t, int64(2), resp.Msg.Transactions[1].Id)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.CreateTransactionsBulkRequest{
+			Transactions: []*transactionsv1.CreateTransactionRequest{
+				{Title: "Transaction 1"},
+			},
+		})
+		mockSvc.EXPECT().CreateBulk(gomock.Any(), req.Msg.Transactions).Return(nil, assert.AnError)
+		resp, err := api.CreateTransactionsBulk(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		req := connect.NewRequest(&transactionsv1.CreateTransactionsBulkRequest{
+			Transactions: []*transactionsv1.CreateTransactionRequest{
+				{Title: "Transaction 1"},
+			},
+		})
+		resp, err := api.CreateTransactionsBulk(context.TODO(), req)
+		assert.ErrorIs(t, err, auth.ErrInvalidToken)
+		assert.Nil(t, resp)
+	})
+}

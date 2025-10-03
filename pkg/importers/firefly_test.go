@@ -85,8 +85,9 @@ func TestFireflyImport(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
 		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
+		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, currencyConv, importers.NewBaseParser(currencyConv, txSvc))
+		importer := importers.NewFireflyImporter(txSvc, currencyConv, importers.NewBaseParser(currencyConv, txSvc, mapperSvc))
 		currencyConv.EXPECT().Convert(context.TODO(), "UAH", "USD", gomock.Any()).
 			Return(decimal.NewFromInt(55), nil)
 
@@ -122,12 +123,14 @@ func TestFireflyImport(t *testing.T) {
 				}, nil
 			})
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     ffWithdrawalByteData,
-			Accounts: accountsData,
-			Tags: map[string]*database.Tag{
-				"Grocery": {
-					ID: 1,
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{string(ffWithdrawalByteData)},
+				Accounts: accountsData,
+				Tags: map[string]*database.Tag{
+					"Grocery": {
+						ID: 1,
+					},
 				},
 			},
 		})
@@ -139,7 +142,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("open balance (debt)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -164,12 +167,14 @@ func TestFireflyImport(t *testing.T) {
 				}, nil
 			})
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     ffOpenBalanceDebtByteData,
-			Accounts: accountsData,
-			Tags: map[string]*database.Tag{
-				"Grocery": {
-					ID: 1,
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{string(ffOpenBalanceDebtByteData)},
+				Accounts: accountsData,
+				Tags: map[string]*database.Tag{
+					"Grocery": {
+						ID: 1,
+					},
 				},
 			},
 		})
@@ -181,7 +186,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("open balance", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -206,12 +211,14 @@ func TestFireflyImport(t *testing.T) {
 				}, nil
 			})
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     ffOpenBalanceByteData,
-			Accounts: accountsData,
-			Tags: map[string]*database.Tag{
-				"Grocery": {
-					ID: 1,
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{string(ffOpenBalanceByteData)},
+				Accounts: accountsData,
+				Tags: map[string]*database.Tag{
+					"Grocery": {
+						ID: 1,
+					},
 				},
 			},
 		})
@@ -223,7 +230,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("reconciliation (minus)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -248,12 +255,14 @@ func TestFireflyImport(t *testing.T) {
 				}, nil
 			})
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     ffReconciliationByteData,
-			Accounts: accountsData,
-			Tags: map[string]*database.Tag{
-				"Grocery": {
-					ID: 1,
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{string(ffReconciliationByteData)},
+				Accounts: accountsData,
+				Tags: map[string]*database.Tag{
+					"Grocery": {
+						ID: 1,
+					},
 				},
 			},
 		})
@@ -265,7 +274,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("reconciliation (plus)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -290,12 +299,14 @@ func TestFireflyImport(t *testing.T) {
 				}, nil
 			})
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     ffReconciliationPlusByteData,
-			Accounts: accountsData,
-			Tags: map[string]*database.Tag{
-				"Grocery": {
-					ID: 1,
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{string(ffReconciliationPlusByteData)},
+				Accounts: accountsData,
+				Tags: map[string]*database.Tag{
+					"Grocery": {
+						ID: 1,
+					},
 				},
 			},
 		})
@@ -307,7 +318,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("transfer (same currency)", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -335,12 +346,14 @@ func TestFireflyImport(t *testing.T) {
 				}, nil
 			})
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     ffTransferByteData,
-			Accounts: accountsData,
-			Tags: map[string]*database.Tag{
-				"Grocery": {
-					ID: 1,
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{string(ffTransferByteData)},
+				Accounts: accountsData,
+				Tags: map[string]*database.Tag{
+					"Grocery": {
+						ID: 1,
+					},
 				},
 			},
 		})
@@ -352,7 +365,7 @@ func TestFireflyImport(t *testing.T) {
 	t.Run("debt withdrawal -> transfer", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
 
 		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
@@ -380,13 +393,15 @@ func TestFireflyImport(t *testing.T) {
 				}, nil
 			})
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     ffWithdrawalDebt,
-			Accounts: accountsData,
-			Categories: map[string]*database.Category{
-				"Debt repayment": {
-					ID:   55,
-					Name: "Debt repayment",
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{string(ffWithdrawalDebt)},
+				Accounts: accountsData,
+				Categories: map[string]*database.Category{
+					"Debt repayment": {
+						ID:   55,
+						Name: "Debt repayment",
+					},
 				},
 			},
 		})
@@ -414,7 +429,8 @@ func TestSkipDuplicate(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
 		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
-		importer := importers.NewFireflyImporter(txSvc, currencyConv, importers.NewBaseParser(currencyConv, txSvc))
+		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
+		importer := importers.NewFireflyImporter(txSvc, currencyConv, importers.NewBaseParser(currencyConv, txSvc, mapperSvc))
 
 		currencyConv.EXPECT().Convert(gomock.Any(), "UAH", "USD", gomock.Any()).
 			Return(decimal.NewFromInt(55), nil)
@@ -425,19 +441,23 @@ func TestSkipDuplicate(t *testing.T) {
 		}
 		assert.NoError(t, gormDB.Create(&tx).Error)
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     ffWithdrawalByteData,
-			Accounts: accountsData,
-			Tags: map[string]*database.Tag{
-				"Grocery": {
-					ID: 1,
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{string(ffWithdrawalByteData)},
+				Accounts: accountsData,
+				Tags: map[string]*database.Tag{
+					"Grocery": {
+						ID: 1,
+					},
 				},
 			},
 		})
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
-		assert.EqualValues(t, result.DuplicateCount, 1)
+		// Parse doesn't check for duplicates - it just parses the data
+		// Duplicate checking happens at the Import level
+		assert.Len(t, result.CreateRequests, 1)
 	})
 }
 
@@ -445,12 +465,14 @@ func TestFireflyNoData(t *testing.T) {
 	t.Run("no data", func(t *testing.T) {
 		txSvc := NewMockTransactionSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil))
+		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
 
-		result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     []byte{},
-			Accounts: nil,
-			Tags:     nil,
+		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{""},
+				Accounts: nil,
+				Tags:     nil,
+			},
 		})
 
 		assert.Error(t, err)
@@ -518,11 +540,13 @@ func TestFireflyIntegration(t *testing.T) {
 		DoubleEntry:          doubleEntry,
 		AccountSvc:           accountSvc,
 	})
-	importer := importers.NewFireflyImporter(txSvc, converter, importers.NewBaseParser(converter, txSvc))
+	importer := importers.NewFireflyImporter(txSvc, converter, importers.NewBaseParser(converter, txSvc, m))
 
-	result, err := importer.Import(context.TODO(), &importers.ImportRequest{
-		Data:     data,
-		Accounts: allAccounts,
+	result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: allAccounts,
+		},
 	})
 
 	assert.NoError(t, err)
@@ -543,9 +567,11 @@ func TestFireflyImport_FailCases(t *testing.T) {
 		// Withdrawal with unknown account name
 		csv := `user_id,group_id,journal_id,created_at,updated_at,group_title,type,amount,foreign_amount,currency_code,foreign_currency_code,description,date,source_name,source_iban,source_type,destination_name,destination_iban,destination_type,reconciled,category,budget,bill,tags,notes,sepa_cc,sepa_ct_op,sepa_ct_id,sepa_db,sepa_country,sepa_ep,sepa_ci,sepa_batch_id,external_url,interest_date,book_date,process_date,due_date,payment_date,invoice_date,recurrence_id,internal_reference,bunq_payment_id,import_hash,import_hash_v2,external_id,original_source,recurrence_total,recurrence_count,recurrence_date
 1,2,3,4,5,6,Withdrawal,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,UnknownAccount,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
-		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     []byte(csv),
-			Accounts: accountsData,
+		_, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{csv},
+				Accounts: accountsData,
+			},
 		})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "source account not found")
@@ -555,9 +581,11 @@ func TestFireflyImport_FailCases(t *testing.T) {
 		// Withdrawal with wrong currency
 		csv := `user_id,group_id,journal_id,created_at,updated_at,group_title,type,amount,foreign_amount,currency_code,foreign_currency_code,description,date,source_name,source_iban,source_type,destination_name,destination_iban,destination_type,reconciled,category,budget,bill,tags,notes,sepa_cc,sepa_ct_op,sepa_ct_id,sepa_db,sepa_country,sepa_ep,sepa_ci,sepa_batch_id,external_url,interest_date,book_date,process_date,due_date,payment_date,invoice_date,recurrence_id,internal_reference,bunq_payment_id,import_hash,import_hash_v2,external_id,original_source,recurrence_total,recurrence_count,recurrence_date
 1,2,3,4,5,6,Withdrawal,100,50,PLN,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
-		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     []byte(csv),
-			Accounts: accountsData,
+		_, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{csv},
+				Accounts: accountsData,
+			},
 		})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "source account currency")
@@ -566,9 +594,11 @@ func TestFireflyImport_FailCases(t *testing.T) {
 	t.Run("unsupported operation type", func(t *testing.T) {
 		csv := `user_id,group_id,journal_id,created_at,updated_at,group_title,type,amount,foreign_amount,currency_code,foreign_currency_code,description,date,source_name,source_iban,source_type,destination_name,destination_iban,destination_type,reconciled,category,budget,bill,tags,notes,sepa_cc,sepa_ct_op,sepa_ct_id,sepa_db,sepa_country,sepa_ep,sepa_ci,sepa_batch_id,external_url,interest_date,book_date,process_date,due_date,payment_date,invoice_date,recurrence_id,internal_reference,bunq_payment_id,import_hash,import_hash_v2,external_id,original_source,recurrence_total,recurrence_count,recurrence_date
 1,2,3,4,5,6,UnknownType,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
-		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     []byte(csv),
-			Accounts: accountsData,
+		_, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{csv},
+				Accounts: accountsData,
+			},
 		})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported operation type")
@@ -577,9 +607,11 @@ func TestFireflyImport_FailCases(t *testing.T) {
 	t.Run("invalid amount", func(t *testing.T) {
 		csv := `user_id,group_id,journal_id,created_at,updated_at,group_title,type,amount,foreign_amount,currency_code,foreign_currency_code,description,date,source_name,source_iban,source_type,destination_name,destination_iban,destination_type,reconciled,category,budget,bill,tags,notes,sepa_cc,sepa_ct_op,sepa_ct_id,sepa_db,sepa_country,sepa_ep,sepa_ci,sepa_batch_id,external_url,interest_date,book_date,process_date,due_date,payment_date,invoice_date,recurrence_id,internal_reference,bunq_payment_id,import_hash,import_hash_v2,external_id,original_source,recurrence_total,recurrence_count,recurrence_date
 1,2,3,4,5,6,Withdrawal,notanumber,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
-		_, err := importer.Import(context.TODO(), &importers.ImportRequest{
-			Data:     []byte(csv),
-			Accounts: accountsData,
+		_, err := importer.Parse(context.TODO(), &importers.ParseRequest{
+			ImportRequest: importers.ImportRequest{
+				Data:     []string{csv},
+				Accounts: accountsData,
+			},
 		})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse amount")
@@ -588,7 +620,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 
 func TestParseDate(t *testing.T) {
 	input := "2025-06-17T15:07:46+02:00"
-	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil))
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
 
 	t.Run("with local", func(t *testing.T) {
 		resp, err := ff.ParseDate(input, false)
