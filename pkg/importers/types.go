@@ -3,6 +3,7 @@ package importers
 import (
 	"time"
 
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/shopspring/decimal"
@@ -31,6 +32,15 @@ type ImportRequest struct {
 	SkipRules       bool
 	TreatDatesAsUtc bool
 }
+
+type ParseRequest struct {
+	ImportRequest
+}
+
+type ParseResponse struct {
+	CreateRequests []*transactionsv1.CreateTransactionRequest
+}
+
 type Transaction struct {
 	ID   string
 	Type TransactionType

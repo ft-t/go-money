@@ -9,16 +9,11 @@ import (
 	"time"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
-	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ft-t/go-money/pkg/database"
-	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -45,21 +40,21 @@ var (
 
 type Privat24 struct {
 	*BaseParser
-	mapper *mappers.Mapper
 }
 
 func NewPrivat24(
 	base *BaseParser,
-	mapper *mappers.Mapper,
 ) *Privat24 {
 	return &Privat24{
 		BaseParser: base,
-		mapper:     mapper,
 	}
 }
 
-func (p *Privat24) Parse(ctx context.Context, req *importv1.ParseTransactionsRequest) (*importv1.ParseTransactionsResponse, error) {
-	rawInput := strings.ReplaceAll(req.Content[0], "\r\n", "\n") // for private its text box so always 0
+func (p *Privat24) Parse(
+	ctx context.Context,
+	req *ParseRequest,
+) (*importv1.ParseTransactionsResponse, error) {
+	rawInput := strings.ReplaceAll(string(req.Data[0]), "\r\n", "\n") // for private its text box so always 0
 
 	var builder strings.Builder
 
@@ -108,210 +103,14 @@ func (p *Privat24) Parse(ctx context.Context, req *importv1.ParseTransactionsReq
 		return nil, errors.WithStack(err)
 	}
 
-	var accounts []*database.Account
-	database.GetDbWithContext(ctx, database.DbTypeReadonly).Find(&accounts) // todo
-
-	converted, err := p.toDbTransactions(ctx, parsed, true, accounts)
+	transactions, err := p.ToTransactions(ctx, parsed, req.SkipRules, req.Accounts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	final := &importv1.ParseTransactionsResponse{}
-
-	for _, tx := range converted {
-		parsedTx, parseErr := p.BaseParser.transactionService.ConvertRequestToTransaction(ctx, tx, nil)
-		if parseErr != nil {
-			return nil, errors.WithStack(parseErr)
-		}
-
-		final.Transactions = append(final.Transactions, p.mapper.MapTransaction(ctx, parsedTx))
-	}
-
-	return final, nil
-}
-
-func (p *Privat24) toDbTransactions(
-	ctx context.Context,
-	transactions []*Transaction,
-	skipRules bool,
-	accounts []*database.Account,
-) ([]*transactionsv1.CreateTransactionRequest, error) {
-	var requests []*transactionsv1.CreateTransactionRequest
-
-	for _, tx := range transactions {
-		key := fmt.Sprintf("privat24_%x", p.GenerateHash(tx.Raw))
-
-		newTx := &transactionsv1.CreateTransactionRequest{
-			Notes:                   tx.Raw,
-			Extra:                   make(map[string]string),
-			TransactionDate:         timestamppb.New(tx.Date),
-			Title:                   tx.Description,
-			ReferenceNumber:         nil,
-			InternalReferenceNumber: &key,
-			SkipRules:               skipRules,
-			CategoryId:              nil,
-			Transaction:             nil,
-		}
-
-		accountNumberToAccountMap := map[string]*database.Account{}
-		for _, acc := range accounts {
-			for _, num := range strings.Split(acc.AccountNumber, ",") {
-				accountNumberToAccountMap[strings.TrimSpace(num)] = acc
-			}
-		}
-
-		switch tx.Type {
-		case TransactionTypeIncome:
-			sourceAccount, err := p.GetDefaultAccountAndAmount(
-				ctx,
-				&GetAccountRequest{
-					InitialAmount:   tx.SourceAmount.Abs().Neg(),
-					InitialCurrency: tx.SourceCurrency,
-					Accounts:        accountNumberToAccountMap,
-					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
-				},
-			)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get source account for income")
-			}
-
-			destinationAccount, err := p.GetAccountAndAmount(ctx, &GetAccountRequest{
-				InitialAmount:   tx.DestinationAmount.Abs(),
-				InitialCurrency: tx.DestinationCurrency,
-				Accounts:        accountNumberToAccountMap,
-				AccountName:     tx.DestinationAccount,
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
-			})
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get destination account for income")
-			}
-
-			newTx.Transaction = &transactionsv1.CreateTransactionRequest_Income{
-				Income: &transactionsv1.Income{
-					SourceAccountId: sourceAccount.Account.ID,
-					SourceAmount:    sourceAccount.AmountInAccountCurrency.Abs().Neg().String(),
-					SourceCurrency:  sourceAccount.Account.Currency,
-
-					DestinationAccountId: destinationAccount.Account.ID,
-					DestinationAmount:    destinationAccount.AmountInAccountCurrency.Abs().String(),
-					DestinationCurrency:  destinationAccount.Account.Currency,
-				},
-			}
-		case TransactionTypeExpense:
-			// destination here is usually FX currency
-			sourceAccount, err := p.GetAccountAndAmount(ctx, &GetAccountRequest{
-				InitialAmount:   tx.SourceAmount.Abs().Neg(),
-				InitialCurrency: tx.SourceCurrency,
-				Accounts:        accountNumberToAccountMap,
-				AccountName:     tx.SourceAccount,
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-			})
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get source account for expense")
-			}
-
-			destinationAccount, err := p.GetDefaultAccountAndAmount(
-				ctx,
-				&GetAccountRequest{
-					InitialAmount:   tx.DestinationAmount.Abs(),
-					InitialCurrency: tx.DestinationCurrency,
-					Accounts:        accountNumberToAccountMap,
-					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-				},
-			)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get destination account for expense")
-			}
-
-			newTx.Transaction = &transactionsv1.CreateTransactionRequest_Expense{
-				Expense: &transactionsv1.Expense{
-					SourceAmount:         sourceAccount.AmountInAccountCurrency.Abs().Neg().String(),
-					SourceCurrency:       sourceAccount.Account.Currency,
-					SourceAccountId:      sourceAccount.Account.ID,
-					FxSourceAmount:       lo.ToPtr(tx.DestinationAmount.Abs().Neg().String()),
-					FxSourceCurrency:     &tx.DestinationCurrency,
-					DestinationAccountId: destinationAccount.Account.ID,
-					DestinationAmount:    destinationAccount.AmountInAccountCurrency.Abs().String(),
-					DestinationCurrency:  destinationAccount.Account.Currency,
-				},
-			}
-		case TransactionTypeInternalTransfer:
-			sourceAccount, err := p.GetAccountAndAmount(ctx, &GetAccountRequest{
-				InitialAmount:   tx.SourceAmount.Abs().Neg(),
-				InitialCurrency: tx.SourceCurrency,
-				Accounts:        accountNumberToAccountMap,
-				AccountName:     tx.SourceAccount,
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-			})
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get source account for internal transfer")
-			}
-
-			destinationAccount, err := p.GetAccountAndAmount(ctx, &GetAccountRequest{
-				InitialAmount:   tx.DestinationAmount.Abs(),
-				InitialCurrency: tx.DestinationCurrency,
-				Accounts:        accountNumberToAccountMap,
-				AccountName:     tx.DestinationAccount,
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
-			})
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get destination account for internal transfer")
-			}
-
-			newTx.Transaction = &transactionsv1.CreateTransactionRequest_TransferBetweenAccounts{
-				TransferBetweenAccounts: &transactionsv1.TransferBetweenAccounts{
-					SourceAccountId:      sourceAccount.Account.ID,
-					SourceAmount:         sourceAccount.AmountInAccountCurrency.Abs().Neg().String(),
-					SourceCurrency:       sourceAccount.Account.Currency,
-					DestinationAccountId: destinationAccount.Account.ID,
-					DestinationAmount:    destinationAccount.AmountInAccountCurrency.Abs().String(),
-					DestinationCurrency:  destinationAccount.Account.Currency,
-				},
-			}
-		case TransactionTypeRemoteTransfer:
-			// Remote transfer to external party - treat as expense
-			sourceAccount, err := p.GetAccountAndAmount(ctx, &GetAccountRequest{
-				InitialAmount:   tx.SourceAmount.Abs().Neg(),
-				InitialCurrency: tx.SourceCurrency,
-				Accounts:        accountNumberToAccountMap,
-				AccountName:     tx.SourceAccount,
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-			})
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get source account for remote transfer")
-			}
-
-			destinationAccount, err := p.GetDefaultAccountAndAmount(
-				ctx,
-				&GetAccountRequest{
-					InitialAmount:   tx.DestinationAmount.Abs(),
-					InitialCurrency: tx.DestinationCurrency,
-					Accounts:        accountNumberToAccountMap,
-					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-				},
-			)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get destination account for remote transfer")
-			}
-
-			newTx.Transaction = &transactionsv1.CreateTransactionRequest_Expense{
-				Expense: &transactionsv1.Expense{
-					SourceAccountId:      sourceAccount.Account.ID,
-					SourceAmount:         sourceAccount.AmountInAccountCurrency.Abs().Neg().String(),
-					SourceCurrency:       sourceAccount.Account.Currency,
-					FxSourceAmount:       lo.ToPtr(tx.DestinationAmount.Abs().String()),
-					FxSourceCurrency:     &tx.DestinationCurrency,
-					DestinationAccountId: destinationAccount.Account.ID,
-					DestinationAmount:    destinationAccount.AmountInAccountCurrency.Abs().String(),
-					DestinationCurrency:  destinationAccount.Account.Currency,
-				},
-			}
-		}
-
-		requests = append(requests, newTx)
-	}
-
-	return requests, nil
+	return &importv1.ParseTransactionsResponse{
+		Transactions: transactions,
+	}, nil
 }
 
 func (p *Privat24) ParseMessages(

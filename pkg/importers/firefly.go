@@ -28,6 +28,11 @@ type FireflyImporter struct {
 	*BaseParser
 }
 
+func (f *FireflyImporter) Parse(ctx context.Context, req *ParseRequest) (*ParseResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewFireflyImporter(
 	txSvc TransactionSvc,
 	converter CurrencyConverterSvc,

@@ -192,15 +192,23 @@ func main() {
 	_ = handlers.NewMaintenanceApi(grpcServer, recalculateSvc)
 	_ = handlers.NewAnalyticsApi(grpcServer, analyticsSvc)
 
-	baseParser := importers.NewBaseParser(currencyConverter, transactionSvc)
+	baseParser := importers.NewBaseParser(currencyConverter, transactionSvc, mapper)
 
-	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(
-		transactionSvc,
-		currencyConverter,
-		baseParser,
-	))
+	importSvc := importers.NewImporter(
+		&importers.ImporterConfig{
+			AccountSvc:     accountSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: transactionSvc,
+			MapperSvc:      mapper,
+		},
+		importers.NewFireflyImporter(
+			transactionSvc,
+			currencyConverter,
+			baseParser,
+		))
 
-	privat24Parser := importers.NewPrivat24(baseParser, mapper)
+	privat24Parser := importers.NewPrivat24(baseParser)
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc, privat24Parser)
 	if err != nil {
