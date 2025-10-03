@@ -10,6 +10,7 @@ import (
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/twmb/murmur3"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -318,6 +319,29 @@ func (b *BaseParser) getDefaultAccountForTransactionType(
 
 func (b *BaseParser) GenerateHash(input string) string {
 	return strconv.FormatUint(murmur3.Sum64([]byte(input)), 10)
+}
+
+func (b *BaseParser) GetAccountMapByNumbers(
+	accounts []*database.Account,
+) (map[string]*database.Account, error) {
+	accountNumberToAccountMap := map[string]*database.Account{}
+
+	for _, acc := range accounts {
+		for _, num := range strings.Split(acc.AccountNumber, ",") {
+			num = strings.TrimSpace(num)
+			if num == "" {
+				num = uuid.NewString() // fallback to ensure all accounts are passed
+			}
+
+			if _, exists := accountNumberToAccountMap[num]; exists {
+				return nil, errors.Newf("duplicate account number: %s", num)
+			}
+
+			accountNumberToAccountMap[num] = acc
+		}
+	}
+
+	return accountNumberToAccountMap, nil
 }
 
 func toLines(input string) []string {

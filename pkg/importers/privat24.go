@@ -88,8 +88,7 @@ func (p *Privat24) Parse(
 	for _, message := range messages {
 		lines := toLines(message)
 
-		// is header in format PrivatBank, [10/1/2025 9:50 AM]
-		header := lines[0]
+		header := lines[0] // is header in format PrivatBank, [10/1/2025 9:50 AM]
 
 		createdAt, err := p.ParseHeaderDate(header)
 		if err != nil {

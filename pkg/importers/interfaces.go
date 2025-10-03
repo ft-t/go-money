@@ -15,7 +15,6 @@ import (
 //go:generate mockgen -destination interfaces_mocks_test.go -package importers_test -source=interfaces.go
 
 type Implementation interface {
-	//Import(ctx context.Context, req *ImportRequest) (*importv1.ImportTransactionsResponse, error)
 	Parse(ctx context.Context, req *ParseRequest) (*ParseResponse, error)
 	Type() importv1.ImportSource
 }
