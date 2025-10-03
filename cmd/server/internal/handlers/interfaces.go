@@ -68,9 +68,6 @@ type UserSvc interface {
 
 type ImportSvc interface {
 	Import(ctx context.Context, req *importv1.ImportTransactionsRequest) (*importv1.ImportTransactionsResponse, error)
-}
-
-type Parser interface {
 	Parse(ctx context.Context, req *importv1.ParseTransactionsRequest) (*importv1.ParseTransactionsResponse, error)
 }
 

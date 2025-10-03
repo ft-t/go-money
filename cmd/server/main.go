@@ -206,11 +206,11 @@ func main() {
 			transactionSvc,
 			currencyConverter,
 			baseParser,
-		))
+		),
+		importers.NewPrivat24(baseParser),
+	)
 
-	privat24Parser := importers.NewPrivat24(baseParser)
-
-	_, err = handlers.NewImportApi(grpcServer, importSvc, privat24Parser)
+	_, err = handlers.NewImportApi(grpcServer, importSvc)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create import handler")
 	}

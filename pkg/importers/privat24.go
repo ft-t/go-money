@@ -11,7 +11,9 @@ import (
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ft-t/go-money/pkg/database"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 )
@@ -42,6 +44,10 @@ type Privat24 struct {
 	*BaseParser
 }
 
+func (p *Privat24) Type() importv1.ImportSource {
+	return importv1.ImportSource_IMPORT_SOURCE_PRIVATE_24
+}
+
 func NewPrivat24(
 	base *BaseParser,
 ) *Privat24 {
@@ -53,8 +59,8 @@ func NewPrivat24(
 func (p *Privat24) Parse(
 	ctx context.Context,
 	req *ParseRequest,
-) (*importv1.ParseTransactionsResponse, error) {
-	rawInput := strings.ReplaceAll(string(req.Data[0]), "\r\n", "\n") // for private its text box so always 0
+) (*ParseResponse, error) {
+	rawInput := strings.ReplaceAll(req.Data[0], "\r\n", "\n") // for private its text box so always 0
 
 	var builder strings.Builder
 
@@ -85,8 +91,10 @@ func (p *Privat24) Parse(
 		// is header in format PrivatBank, [10/1/2025 9:50 AM]
 		header := lines[0]
 
-		createdAt, err := ParseHeaderDate(header)
+		createdAt, err := p.ParseHeaderDate(header)
 		if err != nil {
+			zerolog.Ctx(ctx).Err(err).Str("input", header).Msg("failed to parse header date")
+
 			return nil, errors.Wrap(err, "failed to parse header date")
 		}
 
@@ -103,13 +111,25 @@ func (p *Privat24) Parse(
 		return nil, errors.WithStack(err)
 	}
 
-	transactions, err := p.ToTransactions(ctx, parsed, req.SkipRules, req.Accounts)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	accountNumberToAccountMap := map[string]*database.Account{}
+	for _, acc := range req.Accounts {
+		for _, num := range strings.Split(acc.AccountNumber, ",") {
+			num = strings.TrimSpace(num)
+			if num == "" {
+				num = uuid.NewString() // fallback to ensure all accounts are passed
+			}
+
+			accountNumberToAccountMap[num] = acc
+		}
 	}
 
-	return &importv1.ParseTransactionsResponse{
-		Transactions: transactions,
+	createRequests, err := p.BaseParser.ToCreateRequests(ctx, parsed, req.SkipRules, accountNumberToAccountMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ParseResponse{
+		CreateRequests: createRequests,
 	}, nil
 }
 
@@ -849,13 +869,7 @@ func (p *Privat24) ParseSimpleExpense(
 	return finalTx, nil
 }
 
-func toLines(input string) []string {
-	input = strings.ReplaceAll(input, "\r\n", "\n")
-
-	return strings.Split(input, "\n")
-}
-
-func ParseHeaderDate(header string) (time.Time, error) {
+func (p *Privat24) ParseHeaderDate(header string) (time.Time, error) {
 	startIdx := strings.Index(header, "[")
 	endIdx := strings.Index(header, "]")
 

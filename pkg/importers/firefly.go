@@ -1,7 +1,6 @@
 package importers
 
 import (
-	"bytes"
 	"context"
 	"encoding/csv"
 	"fmt"
@@ -78,7 +77,7 @@ func (f *FireflyImporter) Import(
 	ctx context.Context,
 	req *ImportRequest,
 ) (*importv1.ImportTransactionsResponse, error) {
-	reader := csv.NewReader(bytes.NewBuffer(req.Data))
+	reader := csv.NewReader(strings.NewReader(req.Data[0]))
 	reader.FieldsPerRecord = -1
 
 	records, err := reader.ReadAll()

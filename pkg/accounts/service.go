@@ -307,7 +307,6 @@ func (s *Service) Update(
 	account.Iban = req.Iban
 	account.DisplayOrder = req.DisplayOrder
 	account.Flags = req.Flags
-	account.Type = req.Type
 
 	liabilityPercent, err := s.parseLiabilityPercent(req.LiabilityPercent)
 	if err != nil {

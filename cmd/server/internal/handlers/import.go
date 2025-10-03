@@ -13,17 +13,14 @@ import (
 
 type ImportApi struct {
 	importSvc ImportSvc
-	parser    Parser
 }
 
 func NewImportApi(
 	mux *boilerplate.DefaultGrpcServer,
 	importSvc ImportSvc,
-	parser Parser,
 ) (*ImportApi, error) {
 	res := &ImportApi{
 		importSvc: importSvc,
-		parser:    parser,
 	}
 
 	mux.GetMux().Handle(
@@ -62,7 +59,7 @@ func (i *ImportApi) ParseTransactions(
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
-	resp, err := i.parser.Parse(ctx, c.Msg)
+	resp, err := i.importSvc.Parse(ctx, c.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

@@ -94,8 +94,8 @@ func (i *Importer) ParseInternal(
 	}
 
 	parsed, err := impl.Parse(ctx, &ParseRequest{
-		ImportRequest{
-			Data:            nil,
+		ImportRequest: ImportRequest{
+			Data:            req.Content,
 			Accounts:        accounts,
 			Tags:            tagMap,
 			Categories:      categoryMap,

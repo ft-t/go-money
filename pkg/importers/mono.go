@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -38,7 +38,7 @@ func (m *Mono) Import(
 	ctx context.Context,
 	req *ImportRequest,
 ) (*importv1.ImportTransactionsResponse, error) {
-	records, err := m.splitCsv(ctx, req.Data)
+	records, err := m.splitCsv(ctx, []byte(req.Data[0])) // single file support only
 	if err != nil {
 		return nil, err
 	}

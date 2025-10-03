@@ -25,7 +25,7 @@ type GetSecondaryAccountResponse struct {
 }
 
 type ImportRequest struct {
-	Data            []byte
+	Data            []string
 	Accounts        []*database.Account
 	Tags            map[string]*database.Tag
 	Categories      map[string]*database.Category

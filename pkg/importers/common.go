@@ -33,25 +33,11 @@ func NewBaseParser(
 	}
 }
 
-func (b *BaseParser) ToTransactions(
-	ctx context.Context,
-	transactions []*Transaction,
-	skipRules bool,
-	accounts []*database.Account,
-) ([]*gomoneypbv1.Transaction, error) {
-	requests, err := b.ToCreateRequests(ctx, transactions, skipRules, accounts)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert to create requests")
-	}
-
-	return b.ConvertRequestsToTransactions(ctx, requests)
-}
-
 func (b *BaseParser) ToCreateRequests(
 	ctx context.Context,
 	transactions []*Transaction,
 	skipRules bool,
-	accounts []*database.Account,
+	accountMap map[string]*database.Account,
 ) ([]*transactionsv1.CreateTransactionRequest, error) {
 	var requests []*transactionsv1.CreateTransactionRequest
 
@@ -70,13 +56,6 @@ func (b *BaseParser) ToCreateRequests(
 			Transaction:             nil,
 		}
 
-		accountNumberToAccountMap := map[string]*database.Account{}
-		for _, acc := range accounts {
-			for _, num := range strings.Split(acc.AccountNumber, ",") {
-				accountNumberToAccountMap[strings.TrimSpace(num)] = acc
-			}
-		}
-
 		switch tx.Type {
 		case TransactionTypeIncome:
 			sourceAccount, err := b.GetDefaultAccountAndAmount(
@@ -84,7 +63,7 @@ func (b *BaseParser) ToCreateRequests(
 				&GetAccountRequest{
 					InitialAmount:   tx.SourceAmount.Abs().Neg(),
 					InitialCurrency: tx.SourceCurrency,
-					Accounts:        accountNumberToAccountMap,
+					Accounts:        accountMap,
 					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 				},
 			)
@@ -95,7 +74,7 @@ func (b *BaseParser) ToCreateRequests(
 			destinationAccount, err := b.GetAccountAndAmount(ctx, &GetAccountRequest{
 				InitialAmount:   tx.DestinationAmount.Abs(),
 				InitialCurrency: tx.DestinationCurrency,
-				Accounts:        accountNumberToAccountMap,
+				Accounts:        accountMap,
 				AccountName:     tx.DestinationAccount,
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
 			})
@@ -119,7 +98,7 @@ func (b *BaseParser) ToCreateRequests(
 			sourceAccount, err := b.GetAccountAndAmount(ctx, &GetAccountRequest{
 				InitialAmount:   tx.SourceAmount.Abs().Neg(),
 				InitialCurrency: tx.SourceCurrency,
-				Accounts:        accountNumberToAccountMap,
+				Accounts:        accountMap,
 				AccountName:     tx.SourceAccount,
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			})
@@ -132,7 +111,7 @@ func (b *BaseParser) ToCreateRequests(
 				&GetAccountRequest{
 					InitialAmount:   tx.DestinationAmount.Abs(),
 					InitialCurrency: tx.DestinationCurrency,
-					Accounts:        accountNumberToAccountMap,
+					Accounts:        accountMap,
 					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				},
 			)
@@ -156,7 +135,7 @@ func (b *BaseParser) ToCreateRequests(
 			sourceAccount, err := b.GetAccountAndAmount(ctx, &GetAccountRequest{
 				InitialAmount:   tx.SourceAmount.Abs().Neg(),
 				InitialCurrency: tx.SourceCurrency,
-				Accounts:        accountNumberToAccountMap,
+				Accounts:        accountMap,
 				AccountName:     tx.SourceAccount,
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 			})
@@ -167,7 +146,7 @@ func (b *BaseParser) ToCreateRequests(
 			destinationAccount, err := b.GetAccountAndAmount(ctx, &GetAccountRequest{
 				InitialAmount:   tx.DestinationAmount.Abs(),
 				InitialCurrency: tx.DestinationCurrency,
-				Accounts:        accountNumberToAccountMap,
+				Accounts:        accountMap,
 				AccountName:     tx.DestinationAccount,
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 			})
@@ -190,7 +169,7 @@ func (b *BaseParser) ToCreateRequests(
 			sourceAccount, err := b.GetAccountAndAmount(ctx, &GetAccountRequest{
 				InitialAmount:   tx.SourceAmount.Abs().Neg(),
 				InitialCurrency: tx.SourceCurrency,
-				Accounts:        accountNumberToAccountMap,
+				Accounts:        accountMap,
 				AccountName:     tx.SourceAccount,
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 			})
@@ -203,7 +182,7 @@ func (b *BaseParser) ToCreateRequests(
 				&GetAccountRequest{
 					InitialAmount:   tx.DestinationAmount.Abs(),
 					InitialCurrency: tx.DestinationCurrency,
-					Accounts:        accountNumberToAccountMap,
+					Accounts:        accountMap,
 					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
 				},
 			)
@@ -339,4 +318,10 @@ func (b *BaseParser) getDefaultAccountForTransactionType(
 
 func (b *BaseParser) GenerateHash(input string) string {
 	return strconv.FormatUint(murmur3.Sum64([]byte(input)), 10)
+}
+
+func toLines(input string) []string {
+	input = strings.ReplaceAll(input, "\r\n", "\n")
+
+	return strings.Split(input, "\n")
 }
