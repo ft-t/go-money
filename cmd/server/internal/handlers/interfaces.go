@@ -27,6 +27,11 @@ type TransactionsSvc interface {
 		req *transactionsv1.CreateTransactionRequest,
 	) (*transactionsv1.CreateTransactionResponse, error)
 
+	CreateBulk(
+		ctx context.Context,
+		req []*transactionsv1.CreateTransactionRequest,
+	) ([]*transactionsv1.CreateTransactionResponse, error)
+
 	List(
 		ctx context.Context,
 		req *transactionsv1.ListTransactionsRequest,

@@ -17,11 +17,6 @@ type TransactionApi struct {
 	mapper               MapperSvc
 }
 
-func (a *TransactionApi) CreateTransactionsBulk(ctx context.Context, c *connect.Request[transactionsv1.CreateTransactionsBulkRequest]) (*connect.Response[transactionsv1.CreateTransactionsBulkResponse], error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (a *TransactionApi) DeleteTransactions(ctx context.Context, c *connect.Request[transactionsv1.DeleteTransactionsRequest]) (*connect.Response[transactionsv1.DeleteTransactionsRequest], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
@@ -100,7 +95,33 @@ func (a *TransactionApi) CreateTransaction(
 	return connect.NewResponse(resp), nil
 }
 
-func (a *TransactionApi) UpdateTransaction(ctx context.Context, c *connect.Request[transactionsv1.UpdateTransactionRequest]) (*connect.Response[transactionsv1.UpdateTransactionResponse], error) {
+func (a *TransactionApi) CreateTransactionsBulk(
+	ctx context.Context,
+	c *connect.Request[transactionsv1.CreateTransactionsBulkRequest],
+) (*connect.Response[transactionsv1.CreateTransactionsBulkResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	resp, err := a.transactionsSvc.CreateBulk(ctx, c.Msg.Transactions)
+	if err != nil {
+		return nil, err
+	}
+
+	final := &transactionsv1.CreateTransactionsBulkResponse{}
+
+	for _, r := range resp {
+		final.Transactions = append(final.Transactions, r.Transaction)
+	}
+
+	return connect.NewResponse(final), nil
+}
+
+func (a *TransactionApi) UpdateTransaction(
+	ctx context.Context,
+	c *connect.Request[transactionsv1.UpdateTransactionRequest],
+) (*connect.Response[transactionsv1.UpdateTransactionResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
@@ -114,7 +135,10 @@ func (a *TransactionApi) UpdateTransaction(ctx context.Context, c *connect.Reque
 	return connect.NewResponse(resp), nil
 }
 
-func (a *TransactionApi) GetTitleSuggestions(ctx context.Context, c *connect.Request[transactionsv1.GetTitleSuggestionsRequest]) (*connect.Response[transactionsv1.GetTitleSuggestionsResponse], error) {
+func (a *TransactionApi) GetTitleSuggestions(
+	ctx context.Context,
+	c *connect.Request[transactionsv1.GetTitleSuggestionsRequest],
+) (*connect.Response[transactionsv1.GetTitleSuggestionsResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)

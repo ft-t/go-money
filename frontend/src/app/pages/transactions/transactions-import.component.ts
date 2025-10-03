@@ -15,25 +15,21 @@ import { MessageService } from 'primeng/api';
 import { Checkbox } from 'primeng/checkbox';
 import { IftaLabel } from 'primeng/iftalabel';
 import { Button } from 'primeng/button';
-import {
-    CreateTransactionRequest
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
-import { Transaction } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { AccordionModule } from 'primeng/accordion';
 import { NgIf } from '@angular/common';
 import { TransactionEditorComponent } from '../../shared/components/transaction-editor/transaction-editor.component';
+import { Transaction } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { TransactionsService, CreateTransactionsBulkRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 
 interface TransactionItem {
     transaction: Transaction;
     selected: boolean;
+    duplicateTxID?: bigint;
 }
 
 @Component({
     selector: 'app-transactions-import',
-    imports: [
-        Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea, Checkbox, IftaLabel, Button,
-        AccordionModule, NgIf, TransactionEditorComponent
-    ],
+    imports: [Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgIf, TransactionEditorComponent],
     templateUrl: './transactions-import.component.html'
 })
 export class TransactionsImportComponent {
@@ -45,10 +41,12 @@ export class TransactionsImportComponent {
     public stagingMode: boolean = true;
 
     public importService;
+    public transactionService;
     public rawText: string = '';
 
     public transactionItems: TransactionItem[] = [];
     public showReview: boolean = false;
+    public hideDuplicates: boolean = false;
 
     @ViewChildren('editor') editors: QueryList<TransactionEditorComponent> = new QueryList();
 
@@ -57,6 +55,7 @@ export class TransactionsImportComponent {
         private messageService: MessageService
     ) {
         this.importService = createClient(ImportService, this.transport);
+        this.transactionService = createClient(TransactionsService, this.transport);
     }
 
     public isRawTextImport() {
@@ -66,6 +65,14 @@ export class TransactionsImportComponent {
     public textContent: string = '';
 
     async submit() {
+        if (this.stagingMode) {
+            await this.parseForReview();
+        } else {
+            await this.directImport();
+        }
+    }
+
+    async parseForReview() {
         this.transactionItems = [];
         this.textContent = '';
         this.showReview = false;
@@ -82,9 +89,10 @@ export class TransactionsImportComponent {
                 })
             );
 
-            this.transactionItems = response.transactions.map(tx => ({
-                transaction: tx,
-                selected: true
+            this.transactionItems = response.transactions.map((tx) => ({
+                transaction: tx.transaction!,
+                selected: tx.duplicateTransactionId === undefined,
+                duplicateTxID: tx.duplicateTransactionId
             }));
 
             if (this.transactionItems.length > 0) {
@@ -106,6 +114,34 @@ export class TransactionsImportComponent {
         }
     }
 
+    async directImport() {
+        this.textContent = '';
+        this.showReview = false;
+
+        try {
+            this.isLoading = true;
+            this.messageService.add({ severity: 'info', detail: 'Importing...' });
+
+            const result = await this.importService.importTransactions(
+                create(ImportTransactionsRequestSchema, {
+                    skipRules: this.skipRules,
+                    treatDatesAsUtc: this.treatDatesAsUtc,
+                    source: this.selectedSource,
+                    content: [this.rawText]
+                })
+            );
+
+            const logText = `Imported ${result.importedCount} transaction(s).\nDuplicate transactions: ${result.duplicateCount}.\n`;
+            this.textContent = logText;
+            this.messageService.add({ severity: 'success', detail: logText });
+            this.rawText = '';
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
     getTransactionTitle(tx: Transaction): string {
         if (tx.title) {
             return tx.title;
@@ -113,24 +149,71 @@ export class TransactionsImportComponent {
         return `Transaction #${tx.id || 'New'}`;
     }
 
+    getTransactionTypeLabel(type: number): string {
+        const transactionType = EnumService.getAllTransactionTypes().find(t => t.value === type);
+        return transactionType?.name || 'Unknown';
+    }
+
+    formatDate(timestamp?: any): string {
+        if (!timestamp) return '';
+        const date = new Date(Number(timestamp.seconds) * 1000);
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    formatAmount(amount: string, currency: string): string {
+        return `${amount} ${currency}`;
+    }
+
     getSelectedCount(): number {
-        return this.transactionItems.filter(item => item.selected).length;
+        return this.transactionItems.filter((item) => item.selected && item.duplicateTxID === undefined).length;
+    }
+
+    getNonDuplicateCount(): number {
+        return this.transactionItems.filter((item) => item.duplicateTxID === undefined).length;
     }
 
     selectAll() {
-        this.transactionItems.forEach(item => item.selected = true);
+        this.transactionItems.forEach((item) => {
+            if (item.duplicateTxID === undefined) {
+                item.selected = true;
+            }
+        });
     }
 
     deselectAll() {
-        this.transactionItems.forEach(item => item.selected = false);
+        this.transactionItems.forEach((item) => {
+            if (item.duplicateTxID === undefined) {
+                item.selected = false;
+            }
+        });
+    }
+
+    getDuplicatesCount(): number {
+        return this.transactionItems.filter((item) => item.duplicateTxID !== undefined).length;
+    }
+
+    toggleHideDuplicates() {
+        this.hideDuplicates = !this.hideDuplicates;
+    }
+
+    getFilteredTransactionItems(): TransactionItem[] {
+        if (this.hideDuplicates) {
+            return this.transactionItems.filter((item) => item.duplicateTxID === undefined);
+        }
+        return this.transactionItems;
     }
 
     async importSelected() {
-        const selectedTransactions = this.transactionItems
-            .filter(item => item.selected)
-            .map(item => item.transaction);
+        const selectedIndices: number[] = [];
 
-        if (selectedTransactions.length === 0) {
+        // Get indices of selected items that are not duplicates
+        this.transactionItems.forEach((item, index) => {
+            if (item.selected && item.duplicateTxID === undefined) {
+                selectedIndices.push(index);
+            }
+        });
+
+        if (selectedIndices.length === 0) {
             this.messageService.add({
                 severity: 'warn',
                 detail: 'No transactions selected'
@@ -142,14 +225,25 @@ export class TransactionsImportComponent {
             this.isLoading = true;
             this.messageService.add({
                 severity: 'info',
-                detail: `Importing ${selectedTransactions.length} transaction(s)...`
+                detail: `Importing ${selectedIndices.length} transaction(s)...`
             });
 
-            // TODO: Call actual import API
-            // For now, just show success message
+            // Build transaction requests from editors
+            const transactionRequests = selectedIndices.map(index => {
+                const editor = this.editors.toArray()[index];
+                return editor.buildTransactionRequest();
+            });
+
+            // Call bulk create API
+            const response = await this.transactionService.createTransactionsBulk(
+                create(CreateTransactionsBulkRequestSchema, {
+                    transactions: transactionRequests
+                })
+            );
+
             this.messageService.add({
                 severity: 'success',
-                detail: `Successfully imported ${selectedTransactions.length} transaction(s)`
+                detail: `Successfully imported ${response.transactions.length} transaction(s)`
             });
 
             this.showReview = false;
@@ -179,7 +273,7 @@ export class TransactionsImportComponent {
                         skipRules: this.skipRules,
                         treatDatesAsUtc: this.treatDatesAsUtc,
                         source: this.selectedSource,
-                        fileContent: btoa(unescape(encodeURIComponent(event2.target!.result as string)))
+                        content: [btoa(unescape(encodeURIComponent(event2.target!.result as string)))] // todo
                     })
                 );
 

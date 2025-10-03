@@ -41,6 +41,11 @@ type ParseResponse struct {
 	CreateRequests []*transactionsv1.CreateTransactionRequest
 }
 
+type DeduplicationItem struct {
+	CreateRequest            *transactionsv1.CreateTransactionRequest
+	DuplicationTransactionID *int64
+}
+
 type Transaction struct {
 	ID   string
 	Type TransactionType

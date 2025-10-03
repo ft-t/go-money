@@ -186,7 +186,8 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
             skipRules: new FormControl(this.skipRules, { nonNullable: false }),
             fxSourceAmount: new FormControl(NumberHelper.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
-            fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false })
+            fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false }),
+            internalReferenceNumber: new FormControl(tx.internalReferenceNumber, { nonNullable: false })
         });
 
         form.get('destinationAccountId')!.valueChanges.subscribe(async (newVal) => {
@@ -479,7 +480,8 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             }),
             title: this.form.get('title')!.value,
             categoryId: this.form.get('categoryId')!.value,
-            skipRules: this.form.get('skipRules')!.value
+            skipRules: this.form.get('skipRules')!.value,
+            internalReferenceNumber: this.form.get('internalReferenceNumber')!.value
         });
 
         let destinationAccountId = this.form.get('destinationAccountId')!.value;

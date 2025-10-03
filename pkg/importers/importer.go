@@ -2,16 +2,17 @@ package importers
 
 import (
 	"context"
+	"fmt"
 	"sort"
-	"time"
+	"strings"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
 
@@ -43,12 +44,59 @@ func NewImporter(
 	}
 }
 
+func (i *Importer) CheckDuplicates(
+	ctx context.Context,
+	requests []*transactionsv1.CreateTransactionRequest,
+) (map[string]*DeduplicationItem, error) {
+	var journalIDs []string
+	references := map[string]*DeduplicationItem{}
+
+	for _, req := range requests {
+		ref := strings.TrimSpace(lo.FromPtr(req.InternalReferenceNumber))
+
+		if ref == "" {
+			return nil, errors.New("all transactions must have a reference number for deduplication")
+		}
+
+		if _, exists := references[ref]; exists {
+			return nil, errors.New(fmt.Sprintf("duplicate reference number found in import data: %s", ref))
+		}
+
+		references[ref] = &DeduplicationItem{
+			CreateRequest: req,
+		}
+
+		journalIDs = append(journalIDs, ref)
+	}
+
+	for _, chunk := range lo.Chunk(journalIDs, boilerplate.DefaultBatchSize) {
+		var existingTransactions []*struct {
+			InternalReferenceNumber string
+			ID                      int64
+		}
+
+		if err := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+			Model(&database.Transaction{}).
+			Where("deleted_at is null").
+			Where("internal_reference_number in ?", chunk).
+			Select("internal_reference_number, id").Find(&existingTransactions).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to check existing transactions")
+		}
+
+		for _, record := range existingTransactions {
+			references[record.InternalReferenceNumber].DuplicationTransactionID = &record.ID
+		}
+	}
+
+	return references, nil
+}
+
 func (i *Importer) Import(
 	ctx context.Context,
 	req *importv1.ImportTransactionsRequest,
 ) (*importv1.ImportTransactionsResponse, error) {
 	parsed, err := i.ParseInternal(ctx, &importv1.ParseTransactionsRequest{
-		Content:         req.FileContent,
+		Content:         req.Content,
 		Source:          req.Source,
 		TreatDatesAsUtc: req.TreatDatesAsUtc,
 	})
@@ -56,86 +104,45 @@ func (i *Importer) Import(
 		return nil, err
 	}
 
-	//
-	//journalIDs := lo.Keys(newTxs)
-	//duplicateCount := 0
-	//
-	//for _, chunk := range lo.Chunk(journalIDs, boilerplate.DefaultBatchSize) {
-	//	var existingRecords []string
-	//
-	//	if err = database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
-	//		Model(&database.ImportDeduplication{}).
-	//		Where("import_source = ?", f.Type().Number()).
-	//		Where("key in ?", chunk).
-	//		Pluck("key", &existingRecords).Error; err != nil {
-	//		return nil, errors.Wrap(err, "failed to check existing transactions")
-	//	}
-	//
-	//	for _, record := range existingRecords {
-	//		delete(newTxs, record)
-	//
-	//		duplicateCount += 1
-	//	}
-	//}
-	//
-	//if len(newTxs) == 0 {
-	//	return &importv1.ImportTransactionsResponse{
-	//		ImportedCount:  0,
-	//		DuplicateCount: int32(duplicateCount),
-	//	}, nil
-	//}
-	//
-	//var allTransactions []*transactions.BulkRequest
-	//for _, tx := range newTxs {
-	//	allTransactions = append(allTransactions, &transactions.BulkRequest{
-	//		Req: tx,
-	//	})
-	//}
-	//
-	//sort.Slice(allTransactions, func(i, j int) bool {
-	//	return allTransactions[i].Req.TransactionDate.AsTime().Before(allTransactions[j].Req.TransactionDate.AsTime())
-	//})
-	//
-	//tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()
-	//defer tx.Rollback()
-	//ctx = database.WithContext(ctx, tx)
-	//
-	//transactionResp, transactionErr := f.transactionService.CreateBulkInternal(
-	//	ctx,
-	//	allTransactions,
-	//	tx,
-	//	transactions.UpsertOptions{
-	//		SkipAccountSourceDestValidation: true, // todo from request
-	//	},
-	//)
-	//if transactionErr != nil {
-	//	return nil, errors.Wrap(transactionErr, "failed to create transactions")
-	//}
-	//
-	//var deduplicationRecords []*database.ImportDeduplication
-	//for _, record := range transactionResp {
-	//	deduplicationRecords = append(deduplicationRecords, &database.ImportDeduplication{
-	//		ImportSource:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
-	//		Key:           *record.Transaction.InternalReferenceNumber,
-	//		CreatedAt:     time.Now(),
-	//		TransactionID: record.Transaction.Id,
-	//	})
-	//}
-	//
-	//if err = tx.CreateInBatches(&deduplicationRecords, boilerplate.DefaultBatchSize).Error; err != nil {
-	//	return nil, errors.Wrap(err, "failed to create deduplication records")
-	//}
-	//
-	//if err = tx.Commit().Error; err != nil {
-	//	return nil, errors.Wrap(err, "failed to commit transaction")
-	//}
-	//
-	//return &importv1.ImportTransactionsResponse{
-	//	ImportedCount:  int32(len(allTransactions)),
-	//	DuplicateCount: int32(duplicateCount),
-	//}, nil
-	//
-	return nil, nil
+	var allTransactions []*transactions.BulkRequest
+	var duplicateCount int
+
+	for _, item := range parsed {
+		if item.DuplicationTransactionID != nil {
+			duplicateCount += 1
+			continue
+		}
+
+		allTransactions = append(allTransactions, &transactions.BulkRequest{
+			Req: item.CreateRequest,
+		})
+	}
+
+	tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()
+	defer tx.Rollback()
+	ctx = database.WithContext(ctx, tx)
+
+	transactionResp, transactionErr := i.cfg.TransactionSvc.CreateBulkInternal(
+		ctx,
+		allTransactions,
+		tx,
+		transactions.UpsertOptions{
+			SkipAccountSourceDestValidation: true,
+		},
+	)
+
+	if transactionErr != nil {
+		return nil, errors.Wrap(transactionErr, "failed to create transactions")
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, errors.Wrap(err, "failed to commit transaction")
+	}
+
+	return &importv1.ImportTransactionsResponse{
+		ImportedCount:  int32(len(transactionResp)),
+		DuplicateCount: int32(duplicateCount),
+	}, nil
 }
 
 func (i *Importer) Parse(
@@ -147,7 +154,7 @@ func (i *Importer) Parse(
 		return nil, err
 	}
 
-	converted, err := i.ConvertRequestsToTransactions(ctx, parsed.CreateRequests)
+	converted, err := i.ConvertRequestsToTransactions(ctx, parsed)
 
 	return &importv1.ParseTransactionsResponse{
 		Transactions: converted,
@@ -157,7 +164,7 @@ func (i *Importer) Parse(
 func (i *Importer) ParseInternal(
 	ctx context.Context,
 	req *importv1.ParseTransactionsRequest,
-) (*ParseResponse, error) {
+) ([]*DeduplicationItem, error) {
 	impl, ok := i.implementations[req.Source]
 	if !ok {
 		return nil, errors.New("unsupported import source")
@@ -194,30 +201,60 @@ func (i *Importer) ParseInternal(
 			Accounts:        accounts,
 			Tags:            tagMap,
 			Categories:      categoryMap,
-			SkipRules:       false, // todo
-			TreatDatesAsUtc: false, // todo
+			TreatDatesAsUtc: req.TreatDatesAsUtc,
 		},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "parse failed")
 	}
 
-	return parsed, nil
+	if len(parsed.CreateRequests) == 0 {
+		return nil, errors.New("no transactions found in import data")
+	}
+
+	batchID := uuid.NewString()
+
+	for _, r := range parsed.CreateRequests {
+		if r.Extra == nil {
+			r.Extra = map[string]string{}
+		}
+
+		r.Extra["import_batch_id"] = batchID
+	}
+
+	deduplicated, err := i.CheckDuplicates(ctx, parsed.CreateRequests)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check for duplicate transactions")
+	}
+
+	var dedupArr []*DeduplicationItem
+	for _, item := range deduplicated {
+		dedupArr = append(dedupArr, item)
+	}
+
+	sort.Slice(dedupArr, func(i, j int) bool {
+		return dedupArr[i].CreateRequest.TransactionDate.AsTime().Before(dedupArr[j].CreateRequest.TransactionDate.AsTime())
+	})
+
+	return dedupArr, nil
 }
 
 func (i *Importer) ConvertRequestsToTransactions(
 	ctx context.Context,
-	requests []*transactionsv1.CreateTransactionRequest,
-) ([]*gomoneypbv1.Transaction, error) {
-	var result []*gomoneypbv1.Transaction
+	requests []*DeduplicationItem,
+) ([]*importv1.ParseTransactionsResponse_ParsedTransaction, error) {
+	var result []*importv1.ParseTransactionsResponse_ParsedTransaction
 
 	for _, req := range requests {
-		converted, err := i.cfg.TransactionSvc.ConvertRequestToTransaction(ctx, req, nil)
+		converted, err := i.cfg.TransactionSvc.ConvertRequestToTransaction(ctx, req.CreateRequest, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert request to transaction")
 		}
 
-		result = append(result, i.cfg.MapperSvc.MapTransaction(ctx, converted))
+		result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
+			Transaction:            i.cfg.MapperSvc.MapTransaction(ctx, converted),
+			DuplicateTransactionId: req.DuplicationTransactionID,
+		})
 	}
 
 	return result, nil

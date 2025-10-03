@@ -38,7 +38,7 @@
                                   [auto]="true" chooseLabel="Select file to import" />
                 }
 
-                <p-button label="Parse" (onClick)="submit()" [disabled]="isLoading" />
+                <p-button [label]="stagingMode ? 'Parse' : 'Import'" (onClick)="submit()" [disabled]="isLoading" />
 
                 <textarea *ngIf="!showReview" readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
             </div>
@@ -47,20 +47,48 @@
         @if (showReview) {
             <div class="card flex flex-col gap-4">
                 <div class="flex flex-row justify-between items-center">
-                    <div class="font-semibold text-xl">Review Transactions ({{ getSelectedCount() }} / {{ transactionItems.length }})</div>
+                    <div class="font-semibold text-xl">Review Transactions ({{ getSelectedCount() }} / {{ getNonDuplicateCount() }})</div>
                     <div class="flex flex-row gap-2">
                         <p-button label="Select All" severity="secondary" (onClick)="selectAll()" />
                         <p-button label="Deselect All" severity="secondary" (onClick)="deselectAll()" />
+                        <p-button
+                            [label]="(hideDuplicates ? 'Show' : 'Hide') + ' Duplicates (' + getDuplicatesCount() + ')'"
+                            severity="secondary"
+                            (onClick)="toggleHideDuplicates()"
+                            [disabled]="getDuplicatesCount() === 0" />
                     </div>
                 </div>
 
-                <p-accordion>
-                    @for (item of transactionItems; track item.transaction; let idx = $index) {
+                <p-accordion [multiple]="true">
+                    @for (item of getFilteredTransactionItems(); track item.transaction; let idx = $index) {
                         <p-accordionTab>
                             <ng-template pTemplate="header">
-                                <div class="flex flex-row gap-2 items-center w-full">
-                                    <p-checkbox [(ngModel)]="item.selected" [binary]="true" (click)="$event.stopPropagation()" />
-                                    <span>{{ getTransactionTitle(item.transaction) }}</span>
+                                <div class="flex flex-row gap-3 items-center w-full">
+                                    <p-checkbox
+                                        [(ngModel)]="item.selected"
+                                        [binary]="true"
+                                        [disabled]="item.duplicateTxID !== undefined"
+                                        (click)="$event.stopPropagation()" />
+                                    <div class="flex flex-col gap-1 flex-1">
+                                        <div class="flex flex-row gap-2 items-center">
+                                            <span class="font-semibold">{{ getTransactionTitle(item.transaction) }}</span>
+                                            @if (item.duplicateTxID !== undefined) {
+                                                <span class="text-orange-500 text-sm">DUPLICATE</span>
+                                                <a
+                                                    [href]="'/transactions/edit/' + item.duplicateTxID"
+                                                    target="_blank"
+                                                    class="text-blue-500 hover:underline text-sm"
+                                                    (click)="$event.stopPropagation()">
+                                                    View #{{ item.duplicateTxID }}
+                                                </a>
+                                            }
+                                        </div>
+                                        <div class="text-sm text-gray-600 flex flex-row gap-3">
+                                            <span class="font-medium">{{ getTransactionTypeLabel(item.transaction.type) }}</span>
+                                            <span>{{ formatAmount(item.transaction.sourceAmount, item.transaction.sourceCurrency) }}</span>
+                                            <span>{{ formatDate(item.transaction.transactionDate) }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </ng-template>
                             <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>

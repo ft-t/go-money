@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -57,6 +58,8 @@ func main() {
 		newKey := keyGen.Generate()
 
 		config.JwtPrivateKey = string(keyGen.Serialize(newKey))
+	} else {
+		config.JwtPrivateKey = strings.ReplaceAll(config.JwtPrivateKey, "\\n", "\n")
 	}
 
 	jwtService, err := auth.NewService(config.JwtPrivateKey, 24*time.Hour)
