@@ -44,7 +44,10 @@ func TestImport(t *testing.T) {
 
 		parseResp := &importers.ParseResponse{
 			CreateRequests: []*transactionsv1.CreateTransactionRequest{
-				{Title: "Test Transaction"},
+				{
+					Title:                   "Test Transaction",
+					InternalReferenceNumber: strPtr("test_ref_123"),
+				},
 			},
 		}
 
@@ -109,8 +112,6 @@ func TestImport(t *testing.T) {
 
 		imp := importers.NewImporter(cfg, impl1)
 
-		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
-		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
 		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(nil, assert.AnError)
 
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
@@ -183,7 +184,10 @@ func TestImport(t *testing.T) {
 		accounts := []*database.Account{{ID: 1}, {ID: 2}}
 		parseResp := &importers.ParseResponse{
 			CreateRequests: []*transactionsv1.CreateTransactionRequest{
-				{Title: "Test Transaction"},
+				{
+					Title:                   "Test Transaction",
+					InternalReferenceNumber: strPtr("test_ref_123"),
+				},
 			},
 		}
 
@@ -243,6 +247,8 @@ func TestParse(t *testing.T) {
 		}
 
 		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+		txSvc.EXPECT().ConvertRequestToTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&database.Transaction{ID: 1}, nil)
 		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).Return(&gomoneypbv1.Transaction{Id: 1})
 
 		resp, err := imp.Parse(context.TODO(), &importv1.ParseTransactionsRequest{

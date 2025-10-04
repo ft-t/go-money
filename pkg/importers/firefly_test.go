@@ -2,6 +2,7 @@ package importers_test
 
 import (
 	"context"
+	"encoding/base64"
 	_ "embed"
 	"encoding/json"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
-	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/accounts"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/currency"
@@ -82,50 +82,16 @@ func TestFireflyImport(t *testing.T) {
 	assert.NoError(t, gormDB.Create(&accountsData).Error)
 
 	t.Run("basic multi currency expense", func(t *testing.T) {
-		txSvc := NewMockTransactionSvc(gomock.NewController(t))
-
 		currencyConv := NewMockCurrencyConverterSvc(gomock.NewController(t))
 		mapperSvc := NewMockMapperSvc(gomock.NewController(t))
 
-		importer := importers.NewFireflyImporter(txSvc, currencyConv, importers.NewBaseParser(currencyConv, txSvc, mapperSvc))
+		importer := importers.NewFireflyImporter(nil, currencyConv, importers.NewBaseParser(currencyConv, nil, mapperSvc))
 		currencyConv.EXPECT().Convert(context.TODO(), "UAH", "USD", gomock.Any()).
 			Return(decimal.NewFromInt(55), nil)
 
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
-				assert.Len(t, requests, 1)
-
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
-
-				txDate := requests[0].Req.TransactionDate.AsTime().Format(time.RFC3339)
-				assert.EqualValues(t, "2025-06-17T13:07:46Z", txDate)
-
-				assert.EqualValues(t, tx.Expense.SourceCurrency, "UAH")
-				assert.EqualValues(t, *tx.Expense.FxSourceCurrency, "PLN")
-
-				assert.EqualValues(t, "-964.44", tx.Expense.SourceAmount)
-				assert.EqualValues(t, "-83.81", *tx.Expense.FxSourceAmount)
-
-				assert.EqualValues(t, accountsData[0].ID, tx.Expense.SourceAccountId)
-
-				assert.EqualValues(t, "55", tx.Expense.DestinationAmount)
-
-				assert.EqualValues(t, "firefly_2805", *requests[0].Req.InternalReferenceNumber)
-
-				assert.EqualValues(t, []int32{1}, requests[0].Req.TagIds)
-
-				return []*transactionsv1.CreateTransactionResponse{
-					{
-						Transaction: &v1.Transaction{
-							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
-						},
-					},
-				}, nil
-			})
-
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{string(ffWithdrawalByteData)},
+				Data:     []string{base64.StdEncoding.EncodeToString(ffWithdrawalByteData)},
 				Accounts: accountsData,
 				Tags: map[string]*database.Tag{
 					"Grocery": {
@@ -137,39 +103,35 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+		assert.Len(t, result.CreateRequests, 1)
+
+		req := result.CreateRequests[0]
+		tx := req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
+
+		txDate := req.TransactionDate.AsTime().Format(time.RFC3339)
+		assert.EqualValues(t, "2025-06-17T13:07:46Z", txDate)
+
+		assert.EqualValues(t, tx.Expense.SourceCurrency, "UAH")
+		assert.EqualValues(t, *tx.Expense.FxSourceCurrency, "PLN")
+
+		assert.EqualValues(t, "-964.44", tx.Expense.SourceAmount)
+		assert.EqualValues(t, "-83.81", *tx.Expense.FxSourceAmount)
+
+		assert.EqualValues(t, accountsData[0].ID, tx.Expense.SourceAccountId)
+
+		assert.EqualValues(t, "55", tx.Expense.DestinationAmount)
+
+		assert.EqualValues(t, "firefly_2805", *req.InternalReferenceNumber)
+
+		assert.EqualValues(t, []int32{1}, req.TagIds)
 	})
 
 	t.Run("open balance (debt)", func(t *testing.T) {
-		txSvc := NewMockTransactionSvc(gomock.NewController(t))
-
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
-
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
-				assert.Len(t, requests, 1)
-
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
-
-				assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
-
-				assert.EqualValues(t, "-3900", tx.Adjustment.DestinationAmount)
-
-				assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
-
-				assert.EqualValues(t, "firefly_1869", *requests[0].Req.InternalReferenceNumber)
-
-				return []*transactionsv1.CreateTransactionResponse{
-					{
-						Transaction: &v1.Transaction{
-							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
-						},
-					},
-				}, nil
-			})
+		importer := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
 
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{string(ffOpenBalanceDebtByteData)},
+				Data:     []string{base64.StdEncoding.EncodeToString(ffOpenBalanceDebtByteData)},
 				Accounts: accountsData,
 				Tags: map[string]*database.Tag{
 					"Grocery": {
@@ -181,39 +143,23 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+		assert.Len(t, result.CreateRequests, 1)
+
+		req := result.CreateRequests[0]
+		tx := req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
+
+		assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
+		assert.EqualValues(t, "-3900", tx.Adjustment.DestinationAmount)
+		assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
+		assert.EqualValues(t, "firefly_1869", *req.InternalReferenceNumber)
 	})
 
 	t.Run("open balance", func(t *testing.T) {
-		txSvc := NewMockTransactionSvc(gomock.NewController(t))
-
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
-
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
-				assert.Len(t, requests, 1)
-
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
-
-				assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
-
-				assert.EqualValues(t, "3520.42", tx.Adjustment.DestinationAmount)
-
-				assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
-
-				assert.EqualValues(t, "firefly_18691", *requests[0].Req.InternalReferenceNumber)
-
-				return []*transactionsv1.CreateTransactionResponse{
-					{
-						Transaction: &v1.Transaction{
-							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
-						},
-					},
-				}, nil
-			})
+		importer := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
 
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{string(ffOpenBalanceByteData)},
+				Data:     []string{base64.StdEncoding.EncodeToString(ffOpenBalanceByteData)},
 				Accounts: accountsData,
 				Tags: map[string]*database.Tag{
 					"Grocery": {
@@ -225,39 +171,23 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+		assert.Len(t, result.CreateRequests, 1)
+
+		req := result.CreateRequests[0]
+		tx := req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
+
+		assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
+		assert.EqualValues(t, "3520.42", tx.Adjustment.DestinationAmount)
+		assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
+		assert.EqualValues(t, "firefly_18691", *req.InternalReferenceNumber)
 	})
 
 	t.Run("reconciliation (minus)", func(t *testing.T) {
-		txSvc := NewMockTransactionSvc(gomock.NewController(t))
-
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
-
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
-				assert.Len(t, requests, 1)
-
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
-
-				assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
-
-				assert.EqualValues(t, "-296", tx.Adjustment.DestinationAmount)
-
-				assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
-
-				assert.EqualValues(t, "firefly_2848", *requests[0].Req.InternalReferenceNumber)
-
-				return []*transactionsv1.CreateTransactionResponse{
-					{
-						Transaction: &v1.Transaction{
-							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
-						},
-					},
-				}, nil
-			})
+		importer := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
 
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{string(ffReconciliationByteData)},
+				Data:     []string{base64.StdEncoding.EncodeToString(ffReconciliationByteData)},
 				Accounts: accountsData,
 				Tags: map[string]*database.Tag{
 					"Grocery": {
@@ -269,39 +199,23 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+		assert.Len(t, result.CreateRequests, 1)
+
+		req := result.CreateRequests[0]
+		tx := req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
+
+		assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
+		assert.EqualValues(t, "-296", tx.Adjustment.DestinationAmount)
+		assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
+		assert.EqualValues(t, "firefly_2848", *req.InternalReferenceNumber)
 	})
 
 	t.Run("reconciliation (plus)", func(t *testing.T) {
-		txSvc := NewMockTransactionSvc(gomock.NewController(t))
-
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
-
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
-				assert.Len(t, requests, 1)
-
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
-
-				assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
-
-				assert.EqualValues(t, "49.37", tx.Adjustment.DestinationAmount)
-
-				assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
-
-				assert.EqualValues(t, "firefly_2830", *requests[0].Req.InternalReferenceNumber)
-
-				return []*transactionsv1.CreateTransactionResponse{
-					{
-						Transaction: &v1.Transaction{
-							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
-						},
-					},
-				}, nil
-			})
+		importer := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
 
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{string(ffReconciliationPlusByteData)},
+				Data:     []string{base64.StdEncoding.EncodeToString(ffReconciliationPlusByteData)},
 				Accounts: accountsData,
 				Tags: map[string]*database.Tag{
 					"Grocery": {
@@ -313,42 +227,23 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+		assert.Len(t, result.CreateRequests, 1)
+
+		req := result.CreateRequests[0]
+		tx := req.Transaction.(*transactionsv1.CreateTransactionRequest_Adjustment)
+
+		assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
+		assert.EqualValues(t, "49.37", tx.Adjustment.DestinationAmount)
+		assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
+		assert.EqualValues(t, "firefly_2830", *req.InternalReferenceNumber)
 	})
 
 	t.Run("transfer (same currency)", func(t *testing.T) {
-		txSvc := NewMockTransactionSvc(gomock.NewController(t))
-
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
-
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
-				assert.Len(t, requests, 1)
-
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
-
-				assert.EqualValues(t, accountsData[2].ID, tx.TransferBetweenAccounts.SourceAccountId)
-				assert.EqualValues(t, "-1000", tx.TransferBetweenAccounts.SourceAmount)
-				assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.SourceCurrency)
-
-				assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.DestinationCurrency)
-				assert.EqualValues(t, "1000", tx.TransferBetweenAccounts.DestinationAmount)
-
-				assert.EqualValues(t, accountsData[3].ID, tx.TransferBetweenAccounts.DestinationAccountId)
-
-				assert.EqualValues(t, "firefly_2856", *requests[0].Req.InternalReferenceNumber)
-
-				return []*transactionsv1.CreateTransactionResponse{
-					{
-						Transaction: &v1.Transaction{
-							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
-						},
-					},
-				}, nil
-			})
+		importer := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
 
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{string(ffTransferByteData)},
+				Data:     []string{base64.StdEncoding.EncodeToString(ffTransferByteData)},
 				Accounts: accountsData,
 				Tags: map[string]*database.Tag{
 					"Grocery": {
@@ -360,42 +255,26 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+		assert.Len(t, result.CreateRequests, 1)
+
+		req := result.CreateRequests[0]
+		tx := req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
+
+		assert.EqualValues(t, accountsData[2].ID, tx.TransferBetweenAccounts.SourceAccountId)
+		assert.EqualValues(t, "-1000", tx.TransferBetweenAccounts.SourceAmount)
+		assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.SourceCurrency)
+		assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.DestinationCurrency)
+		assert.EqualValues(t, "1000", tx.TransferBetweenAccounts.DestinationAmount)
+		assert.EqualValues(t, accountsData[3].ID, tx.TransferBetweenAccounts.DestinationAccountId)
+		assert.EqualValues(t, "firefly_2856", *req.InternalReferenceNumber)
 	})
 
 	t.Run("debt withdrawal -> transfer", func(t *testing.T) {
-		txSvc := NewMockTransactionSvc(gomock.NewController(t))
-
-		importer := importers.NewFireflyImporter(txSvc, nil, importers.NewBaseParser(nil, nil, nil))
-
-		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, requests []*transactions.BulkRequest, db *gorm.DB, _ transactions.UpsertOptions) ([]*transactionsv1.CreateTransactionResponse, error) {
-				assert.Len(t, requests, 1)
-
-				tx := requests[0].Req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
-
-				assert.EqualValues(t, 55, *requests[0].Req.CategoryId)
-				assert.EqualValues(t, accountsData[2].ID, tx.TransferBetweenAccounts.SourceAccountId)
-				assert.EqualValues(t, "-200", tx.TransferBetweenAccounts.SourceAmount)
-				assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.SourceCurrency)
-
-				assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.DestinationCurrency)
-				assert.EqualValues(t, "200", tx.TransferBetweenAccounts.DestinationAmount)
-				assert.EqualValues(t, accountsData[4].ID, tx.TransferBetweenAccounts.DestinationAccountId)
-
-				assert.EqualValues(t, "firefly_2004", *requests[0].Req.InternalReferenceNumber)
-
-				return []*transactionsv1.CreateTransactionResponse{
-					{
-						Transaction: &v1.Transaction{
-							InternalReferenceNumber: requests[0].Req.InternalReferenceNumber,
-						},
-					},
-				}, nil
-			})
+		importer := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
 
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{string(ffWithdrawalDebt)},
+				Data:     []string{base64.StdEncoding.EncodeToString(ffWithdrawalDebt)},
 				Accounts: accountsData,
 				Categories: map[string]*database.Category{
 					"Debt repayment": {
@@ -408,6 +287,19 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+		assert.Len(t, result.CreateRequests, 1)
+
+		req := result.CreateRequests[0]
+		tx := req.Transaction.(*transactionsv1.CreateTransactionRequest_TransferBetweenAccounts)
+
+		assert.EqualValues(t, 55, *req.CategoryId)
+		assert.EqualValues(t, accountsData[2].ID, tx.TransferBetweenAccounts.SourceAccountId)
+		assert.EqualValues(t, "-200", tx.TransferBetweenAccounts.SourceAmount)
+		assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.SourceCurrency)
+		assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.DestinationCurrency)
+		assert.EqualValues(t, "200", tx.TransferBetweenAccounts.DestinationAmount)
+		assert.EqualValues(t, accountsData[4].ID, tx.TransferBetweenAccounts.DestinationAccountId)
+		assert.EqualValues(t, "firefly_2004", *req.InternalReferenceNumber)
 	})
 
 }
@@ -443,7 +335,7 @@ func TestSkipDuplicate(t *testing.T) {
 
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{string(ffWithdrawalByteData)},
+				Data:     []string{base64.StdEncoding.EncodeToString(ffWithdrawalByteData)},
 				Accounts: accountsData,
 				Tags: map[string]*database.Tag{
 					"Grocery": {
@@ -469,7 +361,7 @@ func TestFireflyNoData(t *testing.T) {
 
 		result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{""},
+				Data:     []string{base64.StdEncoding.EncodeToString([]byte(""))},
 				Accounts: nil,
 				Tags:     nil,
 			},
@@ -477,7 +369,7 @@ func TestFireflyNoData(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.EqualError(t, err, "no records found in CSV data")
+		assert.ErrorContains(t, err, "no records found in CSV data")
 	})
 }
 
@@ -544,7 +436,7 @@ func TestFireflyIntegration(t *testing.T) {
 
 	result, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
+			Data:     []string{base64.StdEncoding.EncodeToString(data)},
 			Accounts: allAccounts,
 		},
 	})
@@ -569,7 +461,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 1,2,3,4,5,6,Withdrawal,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,UnknownAccount,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
 		_, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{csv},
+				Data:     []string{base64.StdEncoding.EncodeToString([]byte(csv))},
 				Accounts: accountsData,
 			},
 		})
@@ -583,7 +475,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 1,2,3,4,5,6,Withdrawal,100,50,PLN,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
 		_, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{csv},
+				Data:     []string{base64.StdEncoding.EncodeToString([]byte(csv))},
 				Accounts: accountsData,
 			},
 		})
@@ -596,7 +488,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 1,2,3,4,5,6,UnknownType,100,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
 		_, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{csv},
+				Data:     []string{base64.StdEncoding.EncodeToString([]byte(csv))},
 				Accounts: accountsData,
 			},
 		})
@@ -609,7 +501,7 @@ func TestFireflyImport_FailCases(t *testing.T) {
 1,2,3,4,5,6,Withdrawal,notanumber,50,USD,PLN,desc,2024-06-27T12:00:00+00:00,` + accountsData[0].Name + `,notes,normal,17,18,19,category,21,22,tag1,notes2,extra`
 		_, err := importer.Parse(context.TODO(), &importers.ParseRequest{
 			ImportRequest: importers.ImportRequest{
-				Data:     []string{csv},
+				Data:     []string{base64.StdEncoding.EncodeToString([]byte(csv))},
 				Accounts: accountsData,
 			},
 		})

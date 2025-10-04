@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
@@ -1386,7 +1387,16 @@ func TestToDbTransactionsIncome(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Nil(t, result)
+	assert.NotNil(t, result)
+	assert.Len(t, result.CreateRequests, 1)
+
+	req := result.CreateRequests[0]
+	assert.Equal(t, "Переказ через Приват24 Відправник: Імя Фамілія ПоБатькові", req.Title)
+	income := req.Transaction.(*transactionsv1.CreateTransactionRequest_Income)
+	assert.EqualValues(t, "123.11", income.Income.DestinationAmount)
+	assert.EqualValues(t, "UAH", income.Income.DestinationCurrency)
+	assert.EqualValues(t, uahAccount.ID, income.Income.DestinationAccountId)
+	assert.EqualValues(t, incomeAccount.ID, income.Income.SourceAccountId)
 }
 
 func TestToDbTransactionsRemoteTransfer(t *testing.T) {
@@ -1425,5 +1435,14 @@ func TestToDbTransactionsRemoteTransfer(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Nil(t, result)
+	assert.NotNil(t, result)
+	assert.Len(t, result.CreateRequests, 1)
+
+	req := result.CreateRequests[0]
+	assert.Equal(t, "Переказ через Приват24 Одержувач: Імя Фамілія ПоБатькові", req.Title)
+	expense := req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
+	assert.EqualValues(t, "-1", expense.Expense.SourceAmount)
+	assert.EqualValues(t, "UAH", expense.Expense.SourceCurrency)
+	assert.EqualValues(t, uahAccount.ID, expense.Expense.SourceAccountId)
+	assert.EqualValues(t, expenseAccount.ID, expense.Expense.DestinationAccountId)
 }

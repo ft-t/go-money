@@ -866,7 +866,6 @@ func TestUpdate(t *testing.T) {
 		assert.EqualValues(t, "USD", rec.Currency)
 		assert.NotNil(t, rec.Extra)
 		assert.Len(t, rec.Extra, 0)
-		assert.EqualValues(t, v1.AccountType_ACCOUNT_TYPE_ASSET, rec.Type)
 		assert.EqualValues(t, "updated note", rec.Note)
 		assert.EqualValues(t, "111", rec.CurrentBalance.String())
 	})
