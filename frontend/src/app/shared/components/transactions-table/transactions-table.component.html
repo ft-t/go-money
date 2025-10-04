@@ -227,14 +227,17 @@
                 </td>
                 <td>
                     <div class="flex gap-2">
-                        <p-button icon="pi pi-pencil"
-                                  (onClick)="this.router.navigate(['/', 'transactions', 'edit', transactionItem.id])"
-                                  severity="secondary" rounded pTooltip="Edit transaction" tooltipPosition="top" />
-                        <p-button icon="pi pi-clone" pTooltip="Clone & Edit transaction" tooltipPosition="top"
-                                  (onClick)="this.router.navigate(['/', 'transactions', 'new'], {
-                                  queryParams: { clone_from: transactionItem.id }
-                              })"
-                                  severity="secondary" rounded />
+                        <a [href]="'/transactions/edit/' + transactionItem.id"
+                           [routerLink]="['/', 'transactions', 'edit', transactionItem.id]">
+                            <p-button icon="pi pi-pencil"
+                                      severity="secondary" rounded pTooltip="Edit transaction" tooltipPosition="top" />
+                        </a>
+                        <a [href]="'/transactions/new?clone_from=' + transactionItem.id"
+                           [routerLink]="['/', 'transactions', 'new']"
+                           [queryParams]="{ clone_from: transactionItem.id }">
+                            <p-button icon="pi pi-clone" pTooltip="Clone & Edit transaction" tooltipPosition="top"
+                                      severity="secondary" rounded />
+                        </a>
                     </div>
                 </td>
             </tr>

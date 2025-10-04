@@ -37,3 +37,5 @@ pkg/auth/test_key.pem
 compose/db_data/
 
 build/.aws-sam/
+
+server

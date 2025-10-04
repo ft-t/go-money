@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"context"
+
 	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/categories/v1/categoriesv1connect"
 	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
 	"connectrpc.com/connect"
-	"context"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"

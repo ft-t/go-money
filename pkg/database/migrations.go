@@ -368,5 +368,12 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 					fmt.Sprintf("insert into currencies(id, rate, is_active, decimal_places, updated_at) select '%v', 1, true, 2, now() on conflict do nothing;", cfg.CurrencyConfig.BaseCurrency))
 			},
 		},
+		{
+			ID: "2025-09-26-AddTransactionSoftDelete",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table transactions add column if not exists deleted_at timestamp;`)
+			},
+		},
 	}
 }

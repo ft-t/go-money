@@ -54,3 +54,50 @@ func TestImportApi_ImportTransactions(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 }
+
+func TestImportApi_ParseTransactions(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockSvc := NewMockImportSvc(ctrl)
+	grpc := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).Build()
+	api, _ := handlers.NewImportApi(grpc, mockSvc)
+
+	t.Run("success", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&importv1.ParseTransactionsRequest{
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Content: []string{"test content"},
+		})
+		respMsg := &importv1.ParseTransactionsResponse{
+			Transactions: []*importv1.ParseTransactionsResponse_ParsedTransaction{
+				{DuplicateTransactionId: nil},
+			},
+		}
+		mockSvc.EXPECT().Parse(gomock.Any(), req.Msg).Return(respMsg, nil)
+		resp, err := api.ParseTransactions(ctx, req)
+		assert.NoError(t, err)
+		assert.Equal(t, respMsg, resp.Msg)
+		assert.Len(t, resp.Msg.Transactions, 1)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&importv1.ParseTransactionsRequest{
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Content: []string{"test content"},
+		})
+		mockSvc.EXPECT().Parse(gomock.Any(), req.Msg).Return(nil, assert.AnError)
+		resp, err := api.ParseTransactions(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("no auth", func(t *testing.T) {
+		req := connect.NewRequest(&importv1.ParseTransactionsRequest{
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Content: []string{"test content"},
+		})
+		resp, err := api.ParseTransactions(context.TODO(), req)
+		assert.ErrorIs(t, err, auth.ErrInvalidToken)
+		assert.Nil(t, resp)
+	})
+}

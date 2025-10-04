@@ -1,8 +1,9 @@
 package mappers
 
 import (
-	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
+
+	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -39,6 +40,7 @@ func (m *Mapper) MapAccount(ctx context.Context, acc *database.Account) *v1.Acco
 		Iban:             acc.Iban,
 		AccountNumber:    acc.AccountNumber,
 		DisplayOrder:     acc.DisplayOrder,
+		Flags:            acc.Flags,
 	}
 
 	if acc.LiabilityPercent.Valid {

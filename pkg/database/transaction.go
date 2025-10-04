@@ -6,6 +6,7 @@ import (
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 type Transaction struct {
@@ -41,6 +42,8 @@ type Transaction struct {
 
 	VoidedByTransactionID *int64
 	Title                 string
+
+	DeletedAt gorm.DeletedAt
 
 	ReferenceNumber         *string
 	InternalReferenceNumber *string

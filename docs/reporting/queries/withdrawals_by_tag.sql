@@ -4,4 +4,5 @@ from transactions t
          left join tags tg on tg.id = tag_id
 where transaction_date_only >= '2025-06-01'
   and t.transaction_type = 3
+  and t.deleted_at IS NULL
 group by tg.name;
