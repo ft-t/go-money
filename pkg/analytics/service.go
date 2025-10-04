@@ -68,7 +68,7 @@ func (s *Service) calculateAccountSummary(
 	accountIds []int32,
 	startDate, endDate time.Time,
 ) (map[int32]*AccountSummary, error) {
-	db := database.GetDbWithContext(ctx, database.DbTypeReadonly)
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly))
 
 	type result struct {
 		AccountId   int32           `gorm:"column:account_id"`

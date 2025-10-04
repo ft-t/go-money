@@ -7,6 +7,7 @@ import (
 	"time"
 
 	analyticsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/analytics/v1"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/analytics"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
@@ -217,5 +218,25 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 		assert.Equal(t, int32(0), item.TotalCreditsAmount)
 		assert.Equal(t, int32(0), item.TotalDebitsCount)
 		assert.Equal(t, int32(0), item.TotalCreditsCount)
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, _, sql := testingutils.GormMock()
+
+		sql.ExpectQuery("SELECT (.+) FROM \"double_entries\"").
+			WillReturnError(errors.New("database error"))
+
+		ctx := database.WithContext(context.Background(), mockGorm)
+
+		req := &analyticsv1.GetDebitsAndCreditsSummaryRequest{
+			AccountIds: []int32{account1ID},
+			StartAt:    timestamppb.New(baseTime.Add(-3 * time.Hour)),
+			EndAt:      timestamppb.New(baseTime.Add(3 * time.Hour)),
+		}
+
+		resp, err := service.GetDebitsAndCreditsSummary(ctx, req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Contains(t, err.Error(), "failed to calculate account summary")
 	})
 }

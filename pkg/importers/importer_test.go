@@ -1,15 +1,18 @@
 package importers_test
 
 import (
+	"context"
+	"testing"
+
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"context"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
+	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestImport(t *testing.T) {
@@ -293,6 +296,152 @@ func TestParse(t *testing.T) {
 		})
 		assert.Error(t, err)
 		assert.Nil(t, resp)
+	})
+}
+
+func TestCheckDuplicates(t *testing.T) {
+	t.Run("success with no duplicates", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		requests := []*transactionsv1.CreateTransactionRequest{
+			{
+				Title:                   "Transaction 1",
+				InternalReferenceNumber: strPtr("ref_001"),
+			},
+			{
+				Title:                   "Transaction 2",
+				InternalReferenceNumber: strPtr("ref_002"),
+			},
+		}
+
+		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		assert.NoError(t, err)
+		assert.Len(t, result, 2)
+		assert.NotNil(t, result["ref_001"])
+		assert.NotNil(t, result["ref_002"])
+		assert.Nil(t, result["ref_001"].DuplicationTransactionID)
+		assert.Nil(t, result["ref_002"].DuplicationTransactionID)
+	})
+
+	t.Run("error when missing internal reference number", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		requests := []*transactionsv1.CreateTransactionRequest{
+			{
+				Title:                   "Transaction 1",
+				InternalReferenceNumber: nil,
+			},
+		}
+
+		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "all transactions must have a reference number for deduplication")
+	})
+
+	t.Run("error when empty internal reference number", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		requests := []*transactionsv1.CreateTransactionRequest{
+			{
+				Title:                   "Transaction 1",
+				InternalReferenceNumber: strPtr(""),
+			},
+		}
+
+		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "all transactions must have a reference number for deduplication")
+	})
+
+	t.Run("error when whitespace-only internal reference number", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		requests := []*transactionsv1.CreateTransactionRequest{
+			{
+				Title:                   "Transaction 1",
+				InternalReferenceNumber: strPtr("   "),
+			},
+		}
+
+		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "all transactions must have a reference number for deduplication")
+	})
+
+	t.Run("error on duplicate reference in import data", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		requests := []*transactionsv1.CreateTransactionRequest{
+			{
+				Title:                   "Transaction 1",
+				InternalReferenceNumber: strPtr("ref_duplicate"),
+			},
+			{
+				Title:                   "Transaction 2",
+				InternalReferenceNumber: strPtr("ref_duplicate"),
+			},
+		}
+
+		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "duplicate reference number found in import data: ref_duplicate")
+	})
+
+	t.Run("db error on check", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		sql.ExpectQuery("SELECT internal_reference_number, id FROM \"transactions\"").
+			WillReturnError(errors.New("failed to check existing transactions"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		requests := []*transactionsv1.CreateTransactionRequest{
+			{
+				Title:                   "Transaction 1",
+				InternalReferenceNumber: strPtr("ref_001"),
+			},
+		}
+
+		result, err := imp.CheckDuplicates(ctx, requests)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "failed to check existing transactions")
 	})
 }
 
