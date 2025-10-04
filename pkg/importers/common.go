@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
@@ -39,11 +40,12 @@ func (b *BaseParser) ToCreateRequests(
 	transactions []*Transaction,
 	skipRules bool,
 	accountMap map[string]*database.Account,
+	importSource importv1.ImportSource,
 ) ([]*transactionsv1.CreateTransactionRequest, error) {
 	var requests []*transactionsv1.CreateTransactionRequest
 
 	for _, tx := range transactions {
-		key := fmt.Sprintf("privat24_%x", b.GenerateHash(tx.Raw))
+		key := fmt.Sprintf("%v_%x", importSource.String(), b.GenerateHash(tx.Raw))
 
 		newTx := &transactionsv1.CreateTransactionRequest{
 			Notes:                   tx.Raw,

@@ -2,8 +2,8 @@ package importers_test
 
 import (
 	"context"
-	"encoding/base64"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"os"

@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"testing"
 
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
@@ -34,10 +35,10 @@ func TestMonoParseSimpleExpense(t *testing.T) {
 	}
 
 	expenseAccount := &database.Account{
-		ID:        2,
-		Currency:  "UAH",
-		Type:      gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Flags:     database.AccountFlagIsDefault,
+		ID:       2,
+		Currency: "UAH",
+		Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Flags:    database.AccountFlagIsDefault,
 	}
 
 	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
@@ -137,10 +138,10 @@ func TestMonoParseMultipleTransactions(t *testing.T) {
 	}
 
 	expenseAccount := &database.Account{
-		ID:        2,
-		Currency:  "UAH",
-		Type:      gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Flags:     database.AccountFlagIsDefault,
+		ID:       2,
+		Currency: "UAH",
+		Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Flags:    database.AccountFlagIsDefault,
 	}
 
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
@@ -153,4 +154,10 @@ func TestMonoParseMultipleTransactions(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
+}
+
+func TestMonoType(t *testing.T) {
+	mono := importers.NewMono(nil)
+
+	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_UNSPECIFIED, mono.Type())
 }

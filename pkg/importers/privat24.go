@@ -11,7 +11,6 @@ import (
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ft-t/go-money/pkg/database"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
@@ -56,11 +55,10 @@ func NewPrivat24(
 	}
 }
 
-func (p *Privat24) Parse(
-	ctx context.Context,
-	req *ParseRequest,
-) (*ParseResponse, error) {
-	rawInput := strings.ReplaceAll(req.Data[0], "\r\n", "\n") // for private its text box so always 0
+func (p *Privat24) ExtractMessages(
+	rawInput string,
+) []string {
+	rawInput = strings.ReplaceAll(rawInput, "\r\n", "\n")
 
 	var builder strings.Builder
 
@@ -82,6 +80,15 @@ func (p *Privat24) Parse(
 	if builder.Len() != 0 {
 		messages = append(messages, builder.String())
 	}
+
+	return messages
+}
+
+func (p *Privat24) Parse(
+	ctx context.Context,
+	req *ParseRequest,
+) (*ParseResponse, error) {
+	messages := p.ExtractMessages(req.Data[0])
 
 	var records []*Record
 
@@ -110,19 +117,18 @@ func (p *Privat24) Parse(
 		return nil, errors.WithStack(err)
 	}
 
-	accountNumberToAccountMap := map[string]*database.Account{}
-	for _, acc := range req.Accounts {
-		for _, num := range strings.Split(acc.AccountNumber, ",") {
-			num = strings.TrimSpace(num)
-			if num == "" {
-				num = uuid.NewString() // fallback to ensure all accounts are passed
-			}
-
-			accountNumberToAccountMap[num] = acc
-		}
+	accountNumberToAccountMap, err := p.GetAccountMapByNumbers(req.Accounts)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get account map by numbers")
 	}
 
-	createRequests, err := p.ToCreateRequests(ctx, parsed, req.SkipRules, accountNumberToAccountMap)
+	createRequests, err := p.ToCreateRequests(
+		ctx,
+		parsed,
+		req.SkipRules,
+		accountNumberToAccountMap,
+		p.Type(),
+	)
 	if err != nil {
 		return nil, err
 	}

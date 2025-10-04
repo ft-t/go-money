@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
@@ -1407,6 +1408,8 @@ func TestToDbTransactionsRemoteTransfer(t *testing.T) {
 	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(decimal.NewFromInt(1), nil).AnyTimes()
 
 	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
+
+	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_PRIVATE_24, p.Type())
 
 	uahAccount := &database.Account{
 		ID:            1,
