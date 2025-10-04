@@ -122,7 +122,7 @@ func (p *Privat24) Parse(
 		}
 	}
 
-	createRequests, err := p.BaseParser.ToCreateRequests(ctx, parsed, req.SkipRules, accountNumberToAccountMap)
+	createRequests, err := p.ToCreateRequests(ctx, parsed, req.SkipRules, accountNumberToAccountMap)
 	if err != nil {
 		return nil, err
 	}

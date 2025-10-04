@@ -2,8 +2,9 @@ package importers_test
 
 import (
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"context"
-	"encoding/base64"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/golang/mock/gomock"
@@ -13,154 +14,282 @@ import (
 
 func TestImport(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		accSvc := NewMockAccountSvc(gomock.NewController(t))
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
 
-		impl1 := NewMockImplementation(gomock.NewController(t))
+		impl1 := NewMockImplementation(ctrl)
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
-		tag1 := NewMockTagSvc(gomock.NewController(t))
 
-		targetTags := []*database.Tag{
-			{
-				Name: "ab",
-				ID:   5,
-			},
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
 		}
 
-		tag1.EXPECT().GetAllTags(gomock.Any()).Return(targetTags, nil)
+		imp := importers.NewImporter(cfg, impl1)
 
-		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
-		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{
-			{
-				ID:   1,
-				Name: "Category1",
-			},
-		}, nil)
+		targetTags := []*database.Tag{{Name: "ab", ID: 5}}
+		targetCategories := []*database.Category{{ID: 1, Name: "Category1"}}
+		accounts := []*database.Account{{ID: 1}, {ID: 2}}
 
-		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
-
-		rawBytes := []byte{0x1, 0x2}
-		accounts := []*database.Account{
-			{},
-			{},
-		}
-
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return(targetTags, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return(targetCategories, nil)
 		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
-		finalResp := &importv1.ImportTransactionsResponse{}
 
-		impl1.EXPECT().Import(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, request *importers.ImportRequest) (*importv1.ImportTransactionsResponse, error) {
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{Title: "Test Transaction"},
+			},
+		}
+
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, request *importers.ParseRequest) (*importers.ParseResponse, error) {
 				assert.Equal(t, accounts, request.Accounts)
-				assert.EqualValues(t, rawBytes, request.Data)
-
+				assert.Equal(t, []string{"test content"}, request.Data)
 				assert.Len(t, request.Tags, 1)
 				assert.EqualValues(t, 5, request.Tags["ab"].ID)
-
-				return finalResp, nil
+				return parseResp, nil
 			})
 
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return([]*transactionsv1.CreateTransactionResponse{
+				{Transaction: &gomoneypbv1.Transaction{Id: 123}},
+			}, nil)
+
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
-			FileContent: base64.StdEncoding.EncodeToString(rawBytes),
-			Source:      importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Content: []string{"test content"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, finalResp, resp)
+		assert.NotNil(t, resp)
+		assert.EqualValues(t, 1, resp.ImportedCount)
 	})
 
 	t.Run("invalid source", func(t *testing.T) {
-		accSvc := NewMockAccountSvc(gomock.NewController(t))
-
-		impl1 := NewMockImplementation(gomock.NewController(t))
+		ctrl := gomock.NewController(t)
+		impl1 := NewMockImplementation(ctrl)
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
-		tag1 := NewMockTagSvc(gomock.NewController(t))
-		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
-
-		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
+		cfg := &importers.ImporterConfig{}
+		imp := importers.NewImporter(cfg, impl1)
 
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
-			FileContent: "test",
-			Source:      importv1.ImportSource_IMPORT_SOURCE_UNSPECIFIED,
+			Content: []string{"test"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_UNSPECIFIED,
 		})
 		assert.Error(t, err)
 		assert.Nil(t, resp)
-		assert.EqualError(t, err, "unsupported import source")
+		assert.Contains(t, err.Error(), "unsupported import source")
 	})
 
 	t.Run("error from GetAllAccounts", func(t *testing.T) {
-		accSvc := NewMockAccountSvc(gomock.NewController(t))
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
 
-		impl1 := NewMockImplementation(gomock.NewController(t))
+		impl1 := NewMockImplementation(ctrl)
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
-		tag1 := NewMockTagSvc(gomock.NewController(t))
-		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
 
-		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
+		imp := importers.NewImporter(cfg, impl1)
 
-		rawBytes := []byte{0x1, 0x2}
-
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
 		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(nil, assert.AnError)
 
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
-			FileContent: base64.StdEncoding.EncodeToString(rawBytes),
-			Source:      importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Content: []string{"test"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
 		})
 		assert.Error(t, err)
 		assert.Nil(t, resp)
-		assert.EqualError(t, err, "failed to get accounts: "+assert.AnError.Error())
+		assert.Contains(t, err.Error(), "failed to get accounts")
 	})
 
-	t.Run("error on decode base64", func(t *testing.T) {
-		accSvc := NewMockAccountSvc(gomock.NewController(t))
+	t.Run("error on parse", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
 
-		impl1 := NewMockImplementation(gomock.NewController(t))
+		impl1 := NewMockImplementation(ctrl)
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 
-		tag1 := NewMockTagSvc(gomock.NewController(t))
-		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
-
-		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
-
-		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
-			FileContent: "invalid_base64",
-			Source:      importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
-		})
-		assert.Error(t, err)
-		assert.Nil(t, resp)
-		assert.ErrorContains(t, err, "failed to decode file content: illegal base64 data at input byte")
-	})
-
-	t.Run("error on import", func(t *testing.T) {
-		accSvc := NewMockAccountSvc(gomock.NewController(t))
-
-		impl1 := NewMockImplementation(gomock.NewController(t))
-		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
-
-		tag1 := NewMockTagSvc(gomock.NewController(t))
-		tag1.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
-		categoriesSvc := NewMockCategoriesSvc(gomock.NewController(t))
-		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
-
-		imp := importers.NewImporter(accSvc, tag1, categoriesSvc, impl1)
-
-		rawBytes := []byte{0x1, 0x2}
-		accounts := []*database.Account{
-			{},
-			{},
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
 		}
 
+		imp := importers.NewImporter(cfg, impl1)
+
+		accounts := []*database.Account{{ID: 1}, {ID: 2}}
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
 		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
 
-		expectedErr := assert.AnError
-		impl1.EXPECT().Import(gomock.Any(), gomock.Any()).
-			Return(nil, expectedErr)
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(nil, assert.AnError)
 
 		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
-			FileContent: base64.StdEncoding.EncodeToString(rawBytes),
-			Source:      importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			Content: []string{"test"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
 		})
 		assert.Error(t, err)
 		assert.Nil(t, resp)
-		assert.ErrorContains(t, err, "import failed")
 	})
+
+	t.Run("error on create bulk", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		accounts := []*database.Account{{ID: 1}, {ID: 2}}
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{Title: "Test Transaction"},
+			},
+		}
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil, assert.AnError)
+
+		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
+			Content: []string{"test"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+		})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
+func TestParse(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		targetTags := []*database.Tag{{Name: "ab", ID: 5}}
+		targetCategories := []*database.Category{{ID: 1, Name: "Category1"}}
+		accounts := []*database.Account{{ID: 1}, {ID: 2}}
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return(targetTags, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return(targetCategories, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{
+					Title:                   "Test Transaction",
+					InternalReferenceNumber: strPtr("ref123"),
+				},
+			},
+		}
+
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).Return(&gomoneypbv1.Transaction{Id: 1})
+
+		resp, err := imp.Parse(context.TODO(), &importv1.ParseTransactionsRequest{
+			Content: []string{"test content"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Transactions, 1)
+	})
+
+	t.Run("parse error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		accounts := []*database.Account{{ID: 1}}
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(nil, assert.AnError)
+
+		resp, err := imp.Parse(context.TODO(), &importv1.ParseTransactionsRequest{
+			Content: []string{"test"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+		})
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+	})
+}
+
+func strPtr(s string) *string {
+	return &s
 }

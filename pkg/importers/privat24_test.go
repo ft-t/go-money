@@ -74,7 +74,8 @@ func TestParseHeaderDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTime, err := importers.ParseHeaderDate(tt.header)
+			p24 := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+			gotTime, err := p24.ParseHeaderDate(tt.header)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -90,7 +91,7 @@ func TestParseHeaderDate(t *testing.T) {
 }
 
 func TestExpensesShouldNotMerged(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -141,7 +142,7 @@ func TestExpensesShouldNotMerged(t *testing.T) {
 }
 
 func TestTransferBetweenOwnCards(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	t.Run("order 1", func(t *testing.T) {
 		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
@@ -216,7 +217,7 @@ func TestTransferBetweenOwnCards(t *testing.T) {
 }
 
 func TestTransferBetweenOwnCards3(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	t.Run("order 1", func(t *testing.T) {
 		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
@@ -289,7 +290,7 @@ func TestTransferBetweenOwnCards3(t *testing.T) {
 }
 
 func TestTransferBetweenOwnCards2(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	t.Run("order 1", func(t *testing.T) {
 		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
@@ -364,7 +365,7 @@ func TestTransferBetweenOwnCards2(t *testing.T) {
 }
 
 func TestConvertCurrency3(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	t.Run("opt1", func(t *testing.T) {
 		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
@@ -404,7 +405,7 @@ func TestConvertCurrency3(t *testing.T) {
 }
 
 func TestParseCurrencyExchange4(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -443,7 +444,7 @@ func TestParseCurrencyExchange4(t *testing.T) {
 }
 
 func TestParseCurrencyExchange3(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -486,7 +487,7 @@ func TestParseSimpleExpense(t *testing.T) {
 4*71 16:27
 Бал. 1.55USD`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -513,7 +514,7 @@ func TestParseSimpleRefund(t *testing.T) {
 4*68 15:09
 Бал. 329.89UAH`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -536,7 +537,7 @@ func TestParseSimpleRefund(t *testing.T) {
 }
 
 func TestNewTransfer(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -572,7 +573,7 @@ func TestNewTransfer(t *testing.T) {
 }
 
 func TestNewTransfer2(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 
@@ -613,7 +614,7 @@ func TestIncomeTransferP2P(t *testing.T) {
 4*51 22:00
 Бал. 1.89USD`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -642,7 +643,7 @@ func TestCreditExpense(t *testing.T) {
 	input := `1466.60UAH Списання
 4*40 20.05.24`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -671,7 +672,7 @@ func TestPartialRefund(t *testing.T) {
 	input := `1.01USD Зарахування
 4*71 09.03.24`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -699,7 +700,7 @@ func TestParseSimpleExpense2(t *testing.T) {
 Бал. 12.82USD
 Курс 0.2558 USD/PLN`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -730,7 +731,7 @@ func TestMultiCurrencyExpense(t *testing.T) {
 Бал. 45.45USD
 Курс 37.3873 UAH/USD`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -758,7 +759,7 @@ func TestParseRemoteTransfer(t *testing.T) {
 4*68 16:41
 Бал. 17.81UAH`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -785,7 +786,7 @@ func TestParseRemoteTransfer3(t *testing.T) {
 Бал. 111.29UAH
 Кред. лiмiт 111.0UAH`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -812,7 +813,7 @@ func TestParseRemoteTransfer2(t *testing.T) {
 Бал. 123.32UAH
 Кред. лiмiт 3000000.0UAH`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -837,7 +838,7 @@ func TestParseInternalTransferTo(t *testing.T) {
 4*68 16:13
 Бал. 18.81UAH`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -864,7 +865,7 @@ func TestParseInternalTransferFrom(t *testing.T) {
 5*20 16:13
 Бал. 123.32UAH`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -896,7 +897,7 @@ func TestParseInternalTransferFromUSD(t *testing.T) {
 4*71 23:50
 Бал. 89.19USD`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -923,7 +924,7 @@ func TestParseIncomeTransfer(t *testing.T) {
 5*20 20:11
 Бал. 11111.22UAH`
 
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 		{
@@ -945,7 +946,7 @@ func TestParseIncomeTransfer(t *testing.T) {
 
 func TestMerger(t *testing.T) {
 	t.Run("firstIsTo", func(t *testing.T) {
-		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 		txList := []*importers.Transaction{
 			{
@@ -989,7 +990,7 @@ func TestMerger(t *testing.T) {
 	})
 
 	t.Run("firstIsFrom", func(t *testing.T) {
-		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 		txList := []*importers.Transaction{
 			{
@@ -1033,7 +1034,7 @@ func TestMerger(t *testing.T) {
 	})
 
 	t.Run("multi currency", func(t *testing.T) {
-		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 		txList := []*importers.Transaction{
 			{
@@ -1083,7 +1084,7 @@ func TestMerger(t *testing.T) {
 	})
 
 	t.Run("multi currency 2", func(t *testing.T) {
-		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 		txList := []*importers.Transaction{
 			{
@@ -1142,7 +1143,7 @@ func TestMerger(t *testing.T) {
 Бал. 123.28UAH
 Кред. лiмiт 300000.0UAH`
 
-		srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+		srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 			{
@@ -1183,7 +1184,7 @@ func TestMerger(t *testing.T) {
 4*71 11:20
 Бал. 178.65USD`
 
-		srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+		srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
 			{
@@ -1217,7 +1218,7 @@ func TestMerger(t *testing.T) {
 }
 
 func TestImportExpense(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	usdAccount := &database.Account{
 		ID:            1,
@@ -1240,16 +1241,18 @@ func TestImportExpense(t *testing.T) {
 Бал. 1.86USD
 Курс 0.2547 USD/PLN`)
 
-	_, err := p.Import(context.TODO(), &importers.ImportRequest{
-		Data:     data,
-		Accounts: []*database.Account{usdAccount, plnAccount},
+	_, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{usdAccount, plnAccount},
+		},
 	})
 
 	assert.NoError(t, err)
 }
 
 func TestImportInternalTransfer(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	account1 := &database.Account{
 		ID:            1,
@@ -1272,16 +1275,18 @@ PrivatBank, [10/1/2025 9:50 AM]
 4*71 22:40
 Бал. 1.60USD`)
 
-	_, err := p.Import(context.TODO(), &importers.ImportRequest{
-		Data:     data,
-		Accounts: []*database.Account{account1, account2},
+	_, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{account1, account2},
+		},
 	})
 
 	assert.NoError(t, err)
 }
 
 func TestImportRemoteTransfer(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	usdAccount := &database.Account{
 		ID:            1,
@@ -1303,16 +1308,18 @@ func TestImportRemoteTransfer(t *testing.T) {
 Бал. 100.50USD
 Курс 0.0263 USD/UAH`)
 
-	_, err := p.Import(context.TODO(), &importers.ImportRequest{
-		Data:     data,
-		Accounts: []*database.Account{usdAccount, uahAccount},
+	_, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{usdAccount, uahAccount},
+		},
 	})
 
 	assert.NoError(t, err)
 }
 
 func TestImportIncomeTransfer(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil))
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	usdAccount := &database.Account{
 		ID:            1,
@@ -1333,9 +1340,11 @@ func TestImportIncomeTransfer(t *testing.T) {
 4*67 14:22
 Бал. 1050.00USD`)
 
-	_, err := p.Import(context.TODO(), &importers.ImportRequest{
-		Data:     data,
-		Accounts: []*database.Account{usdAccount, uahAccount},
+	_, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{usdAccount, uahAccount},
+		},
 	})
 
 	assert.NoError(t, err)
@@ -1348,7 +1357,7 @@ func TestToDbTransactionsIncome(t *testing.T) {
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
 	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(decimal.NewFromInt(1), nil).AnyTimes()
 
-	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil))
+	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
 
 	uahAccount := &database.Account{
 		ID:            1,
@@ -1369,9 +1378,11 @@ func TestToDbTransactionsIncome(t *testing.T) {
 5*20 20:11
 Бал. 11111.22UAH`)
 
-	result, err := p.Import(context.TODO(), &importers.ImportRequest{
-		Data:     data,
-		Accounts: []*database.Account{uahAccount, incomeAccount},
+	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{uahAccount, incomeAccount},
+		},
 	})
 
 	assert.NoError(t, err)
@@ -1385,7 +1396,7 @@ func TestToDbTransactionsRemoteTransfer(t *testing.T) {
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
 	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(decimal.NewFromInt(1), nil).AnyTimes()
 
-	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil))
+	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
 
 	uahAccount := &database.Account{
 		ID:            1,
@@ -1406,9 +1417,11 @@ func TestToDbTransactionsRemoteTransfer(t *testing.T) {
 4*68 16:41
 Бал. 17.81UAH`)
 
-	result, err := p.Import(context.TODO(), &importers.ImportRequest{
-		Data:     data,
-		Accounts: []*database.Account{uahAccount, expenseAccount},
+	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{uahAccount, expenseAccount},
+		},
 	})
 
 	assert.NoError(t, err)

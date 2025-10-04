@@ -155,6 +155,9 @@ func (i *Importer) Parse(
 	}
 
 	converted, err := i.ConvertRequestsToTransactions(ctx, parsed)
+	if err != nil {
+		return nil, err
+	}
 
 	return &importv1.ParseTransactionsResponse{
 		Transactions: converted,

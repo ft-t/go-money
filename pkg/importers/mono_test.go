@@ -24,7 +24,7 @@ func TestMonoParseSimpleExpense(t *testing.T) {
 	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(decimal.NewFromInt(1), nil).AnyTimes()
 
-	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil))
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
 
 	sourceAccount := &database.Account{
 		ID:            1,
@@ -41,7 +41,7 @@ func TestMonoParseSimpleExpense(t *testing.T) {
 	}
 
 	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     monoChargeOff,
+		Data:     []string{string(monoChargeOff)},
 		Accounts: []*database.Account{sourceAccount, expenseAccount},
 	})
 
@@ -53,10 +53,10 @@ func TestMonoParseEmptyFile(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil))
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
 
 	resp, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     []byte("Header\n"),
+		Data:     []string{"Header\n"},
 		Accounts: []*database.Account{},
 	})
 
@@ -70,13 +70,13 @@ func TestMonoParseInvalidDate(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil))
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
 
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 invalid-date,Test,5262,-100.00,10.00,USD,10.00,1000.00`)
 
 	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     csvData,
+		Data:     []string{string(csvData)},
 		Accounts: []*database.Account{},
 	})
 
@@ -88,13 +88,13 @@ func TestMonoParseInvalidAmount(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil))
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
 
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 11.08.2024 12:19:14,Test,5262,invalid,10.00,USD,10.00,1000.00`)
 
 	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     csvData,
+		Data:     []string{string(csvData)},
 		Accounts: []*database.Account{},
 	})
 
@@ -106,13 +106,13 @@ func TestMonoParseIncomeNotSupported(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil))
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
 
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 11.08.2024 12:19:14,Test Income,5262,100.00,10.00,USD,10.00,1000.00`)
 
 	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     csvData,
+		Data:     []string{string(csvData)},
 		Accounts: []*database.Account{},
 	})
 
@@ -127,7 +127,7 @@ func TestMonoParseMultipleTransactions(t *testing.T) {
 	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(decimal.NewFromInt(1), nil).AnyTimes()
 
-	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil))
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
 
 	sourceAccount := &database.Account{
 		ID:            1,
@@ -148,7 +148,7 @@ func TestMonoParseMultipleTransactions(t *testing.T) {
 12.08.2024 13:30:00,Transaction 2,5411,-500.00,50.00,EUR,10.00,500.00`)
 
 	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     csvData,
+		Data:     []string{string(csvData)},
 		Accounts: []*database.Account{sourceAccount, expenseAccount},
 	})
 
