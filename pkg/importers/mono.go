@@ -194,7 +194,7 @@ func (m *Mono) parseTransaction(
 		Date:                operationTime,
 		SourceAmount:        sourceAmount.Abs(),
 		SourceCurrency:      "UAH",
-		SourceAccount:       "UAH",
+		SourceAccount:       "Monobank_UAH",
 		DestinationAmount:   destAmount.Abs(),
 		DestinationCurrency: data[5],
 		Description:         data[1],

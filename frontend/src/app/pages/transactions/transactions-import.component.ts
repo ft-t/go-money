@@ -18,6 +18,7 @@ import { Button } from 'primeng/button';
 import { AccordionModule } from 'primeng/accordion';
 import { NgClass, NgIf } from '@angular/common';
 import { TransactionEditorComponent } from '../../shared/components/transaction-editor/transaction-editor.component';
+import { Message } from 'primeng/message';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionsService, CreateTransactionsBulkRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 
@@ -31,7 +32,7 @@ interface TransactionItem {
 
 @Component({
     selector: 'app-transactions-import',
-    imports: [Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgIf, NgClass, TransactionEditorComponent],
+    imports: [Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgIf, NgClass, TransactionEditorComponent, Message],
     templateUrl: './transactions-import.component.html',
     styles: [`
         :host ::ng-deep .validation-error .p-accordiontab-header {
@@ -76,6 +77,15 @@ export class TransactionsImportComponent {
         return this.selectedSource == ImportSource.PRIVATE_24;
     }
 
+    public getImportNotes(): string | null {
+        switch (this.selectedSource) {
+            case ImportSource.MONOBANK:
+                return 'For Monobank imports, account names should be in format: Monobank_<CURRENCY> (e.g., Monobank_UAH, Monobank_USD)';
+            default:
+                return null;
+        }
+    }
+
     public textContent: string = '';
 
     async submit() {
@@ -112,11 +122,16 @@ export class TransactionsImportComponent {
 
             if (this.transactionItems.length > 0) {
                 this.showReview = true;
+                const duplicateCount = this.getDuplicatesCount();
+                const errorCount = this.getErrorCount();
+                const logText = `Parsed ${this.transactionItems.length} transaction(s).\nDuplicate transactions: ${duplicateCount}.\nParsing errors: ${errorCount}.`;
+                this.textContent = logText;
                 this.messageService.add({
                     severity: 'success',
                     detail: `Parsed ${this.transactionItems.length} transaction(s)`
                 });
             } else {
+                this.textContent = 'No transactions found.';
                 this.messageService.add({
                     severity: 'info',
                     detail: 'No transactions found'
@@ -368,11 +383,16 @@ export class TransactionsImportComponent {
 
             if (this.transactionItems.length > 0) {
                 this.showReview = true;
+                const duplicateCount = this.getDuplicatesCount();
+                const errorCount = this.getErrorCount();
+                const logText = `Parsed ${this.transactionItems.length} transaction(s).\nDuplicate transactions: ${duplicateCount}.\nParsing errors: ${errorCount}.`;
+                this.textContent = logText;
                 this.messageService.add({
                     severity: 'success',
                     detail: `Parsed ${this.transactionItems.length} transaction(s)`
                 });
             } else {
+                this.textContent = 'No transactions found.';
                 this.messageService.add({
                     severity: 'info',
                     detail: 'No transactions found'
