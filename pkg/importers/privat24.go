@@ -773,10 +773,7 @@ func (p *Privat24) ParseCreditPayment(
 		}
 	}
 
-	if finalTx.DestinationCurrency == "" && finalTx.DestinationAmount.IsZero() {
-		finalTx.DestinationCurrency = finalTx.SourceCurrency
-		finalTx.DestinationAmount = finalTx.SourceAmount.Abs()
-	}
+	p.setDestinationFromSourceIfEmpty(finalTx)
 
 	for _, line := range lines {
 		balMatch := balanceRegex.FindStringSubmatch(line)
@@ -867,10 +864,7 @@ func (p *Privat24) ParseSimpleExpense(
 		}
 	}
 
-	if finalTx.DestinationCurrency == "" && finalTx.DestinationAmount.IsZero() {
-		finalTx.DestinationCurrency = finalTx.SourceCurrency
-		finalTx.DestinationAmount = finalTx.SourceAmount.Abs()
-	}
+	p.setDestinationFromSourceIfEmpty(finalTx)
 
 	for _, line := range lines {
 		balMatch := balanceRegex.FindStringSubmatch(line)
@@ -884,6 +878,13 @@ func (p *Privat24) ParseSimpleExpense(
 	}
 
 	return finalTx, nil
+}
+
+func (p *Privat24) setDestinationFromSourceIfEmpty(tx *Transaction) {
+	if tx.DestinationCurrency == "" && tx.DestinationAmount.IsZero() {
+		tx.DestinationCurrency = tx.SourceCurrency
+		tx.DestinationAmount = tx.SourceAmount.Abs()
+	}
 }
 
 func (p *Privat24) ParseHeaderDate(header string) (time.Time, error) {

@@ -1,0 +1,2 @@
+type,amount,currency_code,date,source_name,destination_name,description,notes,journal_id,foreign_amount,foreign_currency_code,source_type,destination_type,category,budget,bill,tags
+Opening balance,1000.00,USD,2025-01-01T00:00:00+00:00,Source Account,Dest Account,Opening,Notes,1,,,UnsupportedType,Asset,,,,

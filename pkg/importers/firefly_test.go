@@ -68,6 +68,21 @@ var ffWithdrawalDebt []byte
 //go:embed testdata/rates.json
 var ratesByteData []byte
 
+//go:embed testdata/ff_opening_multiple_1.csv
+var ffOpeningMultiple1 []byte
+
+//go:embed testdata/ff_opening_multiple_2.csv
+var ffOpeningMultiple2 []byte
+
+//go:embed testdata/ff_duplicate_account.csv
+var ffDuplicateAccount []byte
+
+//go:embed testdata/ff_invalid_amount.csv
+var ffInvalidAmount []byte
+
+//go:embed testdata/ff_unsupported_source_type.csv
+var ffUnsupportedSourceType []byte
+
 func TestFireflyImport(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
@@ -525,4 +540,118 @@ func TestParseDate(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "2025-06-17T15:07:46Z", resp.Format(time.RFC3339))
 	})
+}
+
+func TestFireflyType(t *testing.T) {
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
+	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_FIREFLY, ff.Type())
+}
+
+func TestParseDate_Failure(t *testing.T) {
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
+
+	_, err := ff.ParseDate("invalid-date", false)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse date")
+}
+
+func TestParse_DecodeError(t *testing.T) {
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
+
+	_, err := ff.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data: []string{"invalid-base64!!!"},
+		},
+	})
+
+	assert.Error(t, err)
+}
+
+func TestParse_MultipleFiles(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	currencyConv := NewMockCurrencyConverterSvc(ctrl)
+	ff := importers.NewFireflyImporter(nil, currencyConv, importers.NewBaseParser(currencyConv, nil, nil))
+
+	resp, err := ff.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data: []string{
+				base64.StdEncoding.EncodeToString(ffOpeningMultiple1),
+				base64.StdEncoding.EncodeToString(ffOpeningMultiple2),
+			},
+			Accounts: []*database.Account{
+				{ID: 1, Name: "Test Account", Currency: "USD"},
+			},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.CreateRequests, 2)
+}
+
+func TestParseSingleFile_EmptyCSV(t *testing.T) {
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
+
+	_, err := ff.ParseSingleFile(context.TODO(), &importers.ParseRequest{}, []byte(""))
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no records found")
+}
+
+func TestParseSingleFile_InvalidCSV(t *testing.T) {
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
+
+	_, err := ff.ParseSingleFile(context.TODO(), &importers.ParseRequest{}, []byte("invalid\ncsv\"unclosed"))
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to read CSV")
+}
+
+func TestParseSingleFile_DuplicateAccount(t *testing.T) {
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
+
+	_, err := ff.ParseSingleFile(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Accounts: []*database.Account{
+				{ID: 1, Name: "Duplicate", Currency: "USD"},
+				{ID: 2, Name: "Duplicate", Currency: "USD"},
+			},
+		},
+	}, ffDuplicateAccount)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "duplicate account found")
+}
+
+func TestParseSingleFile_InvalidAmount(t *testing.T) {
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
+
+	_, err := ff.ParseSingleFile(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Accounts: []*database.Account{
+				{ID: 1, Name: "Test Account", Currency: "USD"},
+			},
+		},
+	}, ffInvalidAmount)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse amount")
+}
+
+func TestParseSingleFile_UnsupportedSourceType(t *testing.T) {
+	ff := importers.NewFireflyImporter(nil, nil, importers.NewBaseParser(nil, nil, nil))
+
+	_, err := ff.ParseSingleFile(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Accounts: []*database.Account{
+				{ID: 1, Name: "Source Account", Currency: "USD"},
+				{ID: 2, Name: "Dest Account", Currency: "USD"},
+			},
+		},
+	}, ffUnsupportedSourceType)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported source type for opening balance")
 }
