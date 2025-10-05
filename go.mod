@@ -1,17 +1,18 @@
 module github.com/ft-t/go-money
 
-go 1.23.5
+go 1.24.0
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.18.1-20250825232136-eed02e2e6afd.1
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20250825232136-eed02e2e6afd.1
-	connectrpc.com/connect v1.18.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.0-20251003185146-da628952f53e.1
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20251003185146-da628952f53e.1
+	connectrpc.com/connect v1.19.0
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/aws/aws-lambda-go v1.49.0
 	github.com/aws/aws-sdk-go-v2/config v1.31.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.87.1
 	github.com/cockroachdb/errors v1.12.0
+	github.com/davecgh/go-spew v1.1.1
 	github.com/go-co-op/gocron/v2 v2.16.3
 	github.com/go-gormigrate/gormigrate/v2 v2.1.4
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -32,6 +33,7 @@ require (
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tiendc/go-deepcopy v1.6.1
+	github.com/twmb/murmur3 v1.1.8
 	github.com/vadv/gopher-lua-libs v0.7.0
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.41.0
@@ -69,7 +71,6 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.7 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20241215232642-bb51bb14a506 // indirect
 	github.com/cockroachdb/redact v1.1.6 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/getsentry/sentry-go v0.35.1 // indirect

@@ -5,6 +5,7 @@ import (
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/shopspring/decimal"
@@ -14,7 +15,7 @@ import (
 //go:generate mockgen -destination interfaces_mocks_test.go -package importers_test -source=interfaces.go
 
 type Implementation interface {
-	Import(ctx context.Context, req *ImportRequest) (*importv1.ImportTransactionsResponse, error)
+	Parse(ctx context.Context, req *ParseRequest) (*ParseResponse, error)
 	Type() importv1.ImportSource
 }
 
@@ -37,6 +38,11 @@ type TransactionSvc interface {
 		tx *gorm.DB,
 		opts transactions.UpsertOptions,
 	) ([]*transactionsv1.CreateTransactionResponse, error)
+	ConvertRequestToTransaction(
+		ctx context.Context,
+		req *transactionsv1.CreateTransactionRequest,
+		originalTx *database.Transaction,
+	) (*database.Transaction, error)
 }
 
 type CurrencyConverterSvc interface {
@@ -46,4 +52,8 @@ type CurrencyConverterSvc interface {
 		toCurrency string,
 		amount decimal.Decimal,
 	) (decimal.Decimal, error)
+}
+
+type MapperSvc interface {
+	MapTransaction(ctx context.Context, tx *database.Transaction) *gomoneypbv1.Transaction
 }

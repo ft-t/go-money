@@ -6,15 +6,17 @@ WITH minDate as (select least(coalesce(
                                  order by date desc
                                  limit 1)::date, (select min(transaction_date_only)
                                                   from transactions
-                                                  where source_account_id = @accountID
-                                                     or destination_account_id = @accountID
+                                                  where (source_account_id = @accountID
+                                                     or destination_account_id = @accountID)
+                                                    and deleted_at IS NULL
                                                   limit 1)::date, (@startDate)::date),(@startDate)::date) as minDate), -- last fallback to startDate from backend
      date_series AS (SELECT generate_series(
                                     (select * from minDate),
                                     GREATEST(NOW()::DATE, (select max(transaction_date_only)
                                                            from transactions
-                                                           where source_account_id = @accountID
-                                                              or destination_account_id = @accountID)) +
+                                                           where (source_account_id = @accountID
+                                                              or destination_account_id = @accountID)
+                                                             and deleted_at IS NULL)) +
                                     1, -- 1 day to get current
                                     '1 day'::INTERVAL
                             ) ::DATE AS date),
@@ -25,6 +27,7 @@ WITH minDate as (select least(coalesce(
                     where (source_account_id = @accountID
                         or destination_account_id = @accountID)
                       and transaction_date_only in (select * from date_series)
+                      and deleted_at IS NULL
                     group by transaction_date_only),
      lastestValue as (select st2.amount
                       from daily_stat st2

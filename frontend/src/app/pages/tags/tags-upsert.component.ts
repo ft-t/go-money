@@ -18,7 +18,7 @@ import { UpdateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es
 import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { Message } from 'primeng/message';
-import { CacheService } from '../../core/services/cache.service';
+import { DefaultCache, ShortLivedCache } from '../../core/services/cache.service';
 
 @Component({
     selector: 'app-tags-upsert',
@@ -37,7 +37,8 @@ export class TagsUpsertComponent implements OnInit {
         private messageService: MessageService,
         routeSnapshot: ActivatedRoute,
         private router: Router,
-        private cache: CacheService
+        private defaultCache: DefaultCache,
+        private shortLivedCache: ShortLivedCache
     ) {
         this.tagService = createClient(TagsService, this.transport);
 
@@ -79,7 +80,8 @@ export class TagsUpsertComponent implements OnInit {
             return;
         }
 
-        this.cache.clear(); // tags svc
+        this.defaultCache.clear();
+        this.shortLivedCache.clear();
 
         if (this.tag.id) {
             await this.update();

@@ -4,6 +4,9 @@
         <div class="card flex flex-col gap-4">
             <div class="font-semibold text-xl">Transactions Import</div>
             <div class="flex flex-col gap-2 left">
+                @if (getImportNotes()) {
+                    <p-message severity="info" variant="simple">{{ getImportNotes() }}</p-message>
+                }
                 <p-dropdown
                     [options]="sources"
                     [(ngModel)]="selectedSource"
@@ -12,25 +15,116 @@
                     placeholder="Select a Import Type" />
 
                 <div class="flex flex-row gap-4">
-                        <p-checkbox id="chkbox1" [(ngModel)]="skipRules" [binary]="true" />
-                        <label for="chkbox1">Skip rules (automation)</label>
+                    <p-checkbox id="chkbox1" [(ngModel)]="stagingMode" [binary]="true" />
+                    <label for="chkbox1">Staging Mode (manual approval)</label>
 
-                        <p-checkbox id="chkbox2" [(ngModel)]="treatDatesAsUtc" [binary]="true" />
-                        <label for="chkbox2">Treat Dates as UTC</label>
+                    <p-checkbox id="chkbox2" [(ngModel)]="skipRules" [binary]="true" />
+                    <label for="chkbox2">Skip rules (automation)</label>
+
+                    <p-checkbox id="chkbox3" [(ngModel)]="treatDatesAsUtc" [binary]="true" />
+                    <label for="chkbox3">Treat Dates as UTC</label>
                 </div>
+                @if (this.isRawTextImport()) {
+                    <p-iftalabel>
+                        <textarea pTextarea id="description" rows="5" cols="30" [(ngModel)]="rawText" fluid></textarea>
+                        <label for="description">Transactions</label>
+                    </p-iftalabel>
 
-                <p-fileupload mode="basic" name="demo[]"
-                              chooseIcon="pi pi-upload"
-                              maxFileSize="100000000"
-                              accept="text/csv"
-                              customUpload="true"
-                              (uploadHandler)="onBasicUploadAuto($event)"
-                              [disabled]="isLoading"
-                              [auto]="true" chooseLabel="Select file to import" />
+                } @else {
+                    <p-fileupload mode="basic" name="demo[]"
+                                  chooseIcon="pi pi-upload"
+                                  maxFileSize="100000000"
+                                  accept="text/csv"
+                                  customUpload="true"
+                                  (uploadHandler)="onBasicUploadAuto($event)"
+                                  [disabled]="isLoading"
+                                  [auto]="true" chooseLabel="Select file to import" />
+                }
 
+                <p-button [label]="stagingMode ? 'Parse' : 'Import'" (onClick)="submit()" [disabled]="isLoading" />
 
-                <textarea readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
+                <textarea *ngIf="!showReview" readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
             </div>
         </div>
+
+        @if (showReview) {
+            <div class="card flex flex-col gap-4">
+                <div class="flex flex-row justify-between items-center">
+                    <div class="font-semibold text-xl">
+                        Review Transactions ({{ getSelectedCount() }} / {{ getNonDuplicateCount() }})
+                        @if (getErrorCount() > 0) {
+                            <span class="text-red-500 text-sm ml-2">{{ getErrorCount() }} error(s)</span>
+                        }
+                    </div>
+                    <div class="flex flex-row gap-2">
+                        <p-button label="Select All" severity="secondary" (onClick)="selectAll()" />
+                        <p-button label="Deselect All" severity="secondary" (onClick)="deselectAll()" />
+                        <p-button
+                            [label]="(hideDuplicates ? 'Show' : 'Hide') + ' Duplicates (' + getDuplicatesCount() + ')'"
+                            severity="secondary"
+                            (onClick)="toggleHideDuplicates()"
+                            [disabled]="getDuplicatesCount() === 0" />
+                        <p-button
+                            [label]="(showErrorsOnly ? 'Show All' : 'Errors Only') + ' (' + getErrorCount() + ')'"
+                            severity="secondary"
+                            (onClick)="toggleShowErrorsOnly()"
+                            [disabled]="getErrorCount() === 0" />
+                    </div>
+                </div>
+
+                <p-accordion [multiple]="true" [(activeIndex)]="activeIndices">
+                    @for (item of getFilteredTransactionItems(); track item.transaction; let idx = $index) {
+                        <p-accordionTab [ngClass]="{'validation-error': item.hasValidationError}">
+                            <ng-template pTemplate="header">
+                                <div class="flex flex-row gap-3 items-center w-full">
+                                    <p-checkbox
+                                        [(ngModel)]="item.selected"
+                                        [binary]="true"
+                                        [disabled]="item.duplicateTxID !== undefined || item.hasError"
+                                        (click)="$event.stopPropagation()" />
+                                    <div class="flex flex-col gap-1 flex-1">
+                                        <div class="flex flex-row gap-2 items-center">
+                                            <span class="font-semibold">{{ getTransactionTitle(item.transaction) }}</span>
+                                            @if (item.hasError) {
+                                                <span class="text-red-500 text-sm">PARSING ERROR</span>
+                                            }
+                                            @if (item.duplicateTxID !== undefined) {
+                                                <span class="text-orange-500 text-sm">DUPLICATE</span>
+                                                <a
+                                                    [href]="'/transactions/edit/' + item.duplicateTxID"
+                                                    target="_blank"
+                                                    class="text-blue-500 hover:underline text-sm"
+                                                    (click)="$event.stopPropagation()">
+                                                    View #{{ item.duplicateTxID }}
+                                                </a>
+                                            }
+                                        </div>
+                                        @if (!item.hasError) {
+                                            <div class="text-sm text-gray-600 flex flex-row gap-3">
+                                                <span class="font-medium">{{ getTransactionTypeLabel(item.transaction.type) }}</span>
+                                                <span>{{ formatAmount(item.transaction.sourceAmount, item.transaction.sourceCurrency) }}</span>
+                                                <span>{{ formatDate(item.transaction.transactionDate) }}</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </ng-template>
+                            @if (item.hasError) {
+                                <div class="p-4">
+                                    <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.transaction.notes }}</div>
+                                </div>
+                            } @else {
+                                <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                            }
+                        </p-accordionTab>
+                    }
+                </p-accordion>
+
+                <div class="flex flex-row justify-end gap-2">
+                    <p-button label="Cancel" severity="secondary" (onClick)="showReview = false" />
+                    <p-button label="Import Selected" (onClick)="importSelected()" [disabled]="getSelectedCount() === 0 || isLoading" />
+                </div>
+            </div>
+        }
     </div>
 </p-fluid>

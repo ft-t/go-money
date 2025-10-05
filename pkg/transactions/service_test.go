@@ -960,3 +960,109 @@ func TestCreateRawTransaction(t *testing.T) {
 		assert.Nil(t, resp)
 	})
 }
+
+func TestDeleteTransaction(t *testing.T) {
+	t.Run("success single", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		tx := &database.Transaction{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			TransactionDateTime: time.Now(),
+			Title:               "Test Transaction",
+			Extra:               map[string]string{},
+		}
+		assert.NoError(t, gormDB.Create(tx).Error)
+
+		srv := transactions.NewService(&transactions.ServiceConfig{})
+
+		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{tx.ID},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.EqualValues(t, 1, resp.DeletedCount)
+
+		var rec database.Transaction
+		assert.NoError(t, gormDB.Unscoped().Where("id = ?", tx.ID).First(&rec).Error)
+
+		assert.True(t, rec.DeletedAt.Valid)
+		assert.NotEmpty(t, rec.DeletedAt.Time)
+	})
+
+	t.Run("success multiple", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		txs := []*database.Transaction{
+			{
+				TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+				TransactionDateTime: time.Now(),
+				Title:               "Test Transaction 1",
+				Extra:               map[string]string{},
+			},
+			{
+				TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+				TransactionDateTime: time.Now(),
+				Title:               "Test Transaction 2",
+				Extra:               map[string]string{},
+			},
+		}
+		assert.NoError(t, gormDB.Create(&txs).Error)
+
+		srv := transactions.NewService(&transactions.ServiceConfig{})
+
+		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{txs[0].ID, txs[1].ID},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.EqualValues(t, 2, resp.DeletedCount)
+
+		var rec1, rec2 database.Transaction
+		assert.NoError(t, gormDB.Unscoped().Where("id = ?", txs[0].ID).First(&rec1).Error)
+		assert.NoError(t, gormDB.Unscoped().Where("id = ?", txs[1].ID).First(&rec2).Error)
+
+		assert.True(t, rec1.DeletedAt.Valid)
+		assert.NotEmpty(t, rec1.DeletedAt.Time)
+		assert.True(t, rec2.DeletedAt.Valid)
+		assert.NotEmpty(t, rec2.DeletedAt.Time)
+	})
+
+	t.Run("nonexistent ids ignored", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := transactions.NewService(&transactions.ServiceConfig{})
+
+		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{99999},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.EqualValues(t, 0, resp.DeletedCount)
+	})
+
+	t.Run("already deleted transaction ignored", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		tx := &database.Transaction{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			TransactionDateTime: time.Now(),
+			Title:               "Test Transaction",
+			Extra:               map[string]string{},
+		}
+		assert.NoError(t, gormDB.Create(tx).Error)
+		assert.NoError(t, gormDB.Delete(tx).Error)
+
+		srv := transactions.NewService(&transactions.ServiceConfig{})
+
+		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{tx.ID},
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.EqualValues(t, 0, resp.DeletedCount)
+	})
+}

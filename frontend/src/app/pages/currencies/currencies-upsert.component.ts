@@ -14,7 +14,7 @@ import { Toast } from 'primeng/toast';
 import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { Message } from 'primeng/message';
-import { CacheService } from '../../core/services/cache.service';
+import { DefaultCache, ShortLivedCache } from '../../core/services/cache.service';
 import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { CreateCurrencyRequestSchema, CurrencyService, UpdateCurrencyRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { Checkbox } from 'primeng/checkbox';
@@ -35,7 +35,8 @@ export class CurrenciesUpsertComponent implements OnInit {
         private messageService: MessageService,
         routeSnapshot: ActivatedRoute,
         private router: Router,
-        private cache: CacheService
+        private defaultCache: DefaultCache,
+        private shortLivedCache: ShortLivedCache
     ) {
         this.currenciesService = createClient(CurrencyService, this.transport);
 
@@ -84,7 +85,8 @@ export class CurrenciesUpsertComponent implements OnInit {
             return;
         }
 
-        this.cache.clear(); // categories
+        this.defaultCache.clear();
+        this.shortLivedCache.clear();
 
         if (!this.isCreate) {
             await this.update();

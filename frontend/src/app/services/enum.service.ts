@@ -6,7 +6,6 @@ import { ImportSource } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/imp
 @Injectable({
     providedIn: 'root'
 })
-
 export class AccountTypeEnum {
     name: string = '';
     value: number = 0;
@@ -15,17 +14,29 @@ export class AccountTypeEnum {
 
 export class EnumService {
     static getImportTypes(): AccountTypeEnum[] {
-        return [{
-            name: 'Firefly',
-            value: ImportSource.FIREFLY,
-            icon: ''
-        }];
+        return [
+            {
+                name: 'Firefly',
+                value: ImportSource.FIREFLY,
+                icon: ''
+            },
+            {
+                name: 'Privat24',
+                value: ImportSource.PRIVATE_24,
+                icon: ''
+            },
+            {
+                name: 'Monobank',
+                value: ImportSource.MONOBANK,
+                icon: ''
+            }
+        ];
     }
 
     static getAccountTypes(): AccountTypeEnum[] {
         return [
             {
-                name: 'Regular',
+                name: 'Asset',
                 value: AccountType.ASSET,
                 icon: ''
             },
@@ -63,7 +74,7 @@ export class EnumService {
                 name: 'Withdrawal',
                 value: TransactionType.EXPENSE,
                 icon: 'pi pi-arrow-up text-red-500'
-            },
+            }
         ];
     }
 
@@ -73,7 +84,7 @@ export class EnumService {
             {
                 name: 'Reconciliation',
                 value: TransactionType.ADJUSTMENT,
-                icon: '',
+                icon: ''
             }
         ];
     }

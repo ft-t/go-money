@@ -53,7 +53,7 @@ func (s *Service) GetTransactionByIDs(ctx context.Context, ids []int64) ([]*data
 	var transactions []*database.Transaction
 
 	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
-		Where("id IN ?", ids).
+		Where("id IN ? AND deleted_at IS NULL", ids).
 		Find(&transactions).
 		Error; err != nil {
 		return nil, errors.WithStack(err)
@@ -83,7 +83,7 @@ func (s *Service) GetTitleSuggestions(
 	if err := database.GetDbWithContext(ctx, database.DbTypeReadonly).
 		Model(&database.Transaction{}).
 		Select("DISTINCT title").
-		Where("title ILIKE ?", "%"+query+"%").
+		Where("title ILIKE ? AND deleted_at IS NULL", "%"+query+"%").
 		Order("title").
 		Limit(int(limit)).
 		Pluck("title", &titles).
@@ -100,7 +100,7 @@ func (s *Service) List(
 	ctx context.Context,
 	req *transactionsv1.ListTransactionsRequest,
 ) (*transactionsv1.ListTransactionsResponse, error) {
-	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Limit(int(req.Limit))
+	query := database.GetDbWithContext(ctx, database.DbTypeReadonly).Where("deleted_at IS NULL").Limit(int(req.Limit))
 
 	if req.AmountFrom != nil {
 		amountFrom, err := decimal.NewFromString(*req.AmountFrom)
@@ -222,7 +222,7 @@ func (s *Service) CreateBulk(
 
 	resp, err := s.CreateBulkInternal(ctx, bulkRequests, tx, UpsertOptions{})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create transactions for request: %v", req)
+		return nil, errors.Wrapf(err, "failed to create transactions for request")
 	}
 
 	if err = tx.Commit().Error; err != nil {
@@ -237,6 +237,78 @@ type BulkRequest struct {
 	Req        *transactionsv1.CreateTransactionRequest
 }
 
+// ConvertRequestToTransaction converts a CreateTransactionRequest to a database.Transaction
+func (s *Service) ConvertRequestToTransaction(
+	ctx context.Context,
+	req *transactionsv1.CreateTransactionRequest,
+	originalTx *database.Transaction,
+) (*database.Transaction, error) {
+	if req.TransactionDate == nil {
+		return nil, errors.New("transaction date is required")
+	}
+
+	newTx := &database.Transaction{
+		SourceAmount:            decimal.NullDecimal{},
+		SourceCurrency:          "",
+		DestinationAmount:       decimal.NullDecimal{},
+		DestinationCurrency:     "",
+		SourceAccountID:         0,
+		DestinationAccountID:    0,
+		TagIDs:                  req.TagIds,
+		CreatedAt:               time.Now().UTC(),
+		Notes:                   req.Notes,
+		Extra:                   req.Extra,
+		TransactionDateTime:     req.TransactionDate.AsTime(),
+		TransactionDateOnly:     req.TransactionDate.AsTime(),
+		Title:                   req.Title,
+		ReferenceNumber:         req.ReferenceNumber,
+		InternalReferenceNumber: req.InternalReferenceNumber,
+		CategoryID:              req.CategoryId,
+	}
+
+	if originalTx != nil {
+		newTx.ID = originalTx.ID
+		newTx.CreatedAt = originalTx.CreatedAt
+		newTx.UpdatedAt = time.Now().UTC()
+	}
+
+	if newTx.Extra == nil {
+		newTx.Extra = map[string]string{}
+	}
+
+	var fillRes *FillResponse
+	var err error
+
+	switch v := req.GetTransaction().(type) {
+	case *transactionsv1.CreateTransactionRequest_TransferBetweenAccounts:
+		if fillRes, err = s.fillTransferBetweenAccounts(ctx, v.TransferBetweenAccounts, newTx); err != nil {
+			return nil, err
+		}
+	case *transactionsv1.CreateTransactionRequest_Expense:
+		if fillRes, err = s.FillWithdrawal(ctx, v.Expense, newTx); err != nil {
+			return nil, err
+		}
+	case *transactionsv1.CreateTransactionRequest_Income:
+		if fillRes, err = s.FillDeposit(ctx, v.Income, newTx); err != nil {
+			return nil, err
+		}
+	case *transactionsv1.CreateTransactionRequest_Adjustment:
+		if fillRes, err = s.fillReconciliation(ctx, v.Adjustment, newTx); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("invalid transaction type")
+	}
+
+	for _, acc := range fillRes.Accounts {
+		if acc.FirstTransactionAt == nil || acc.FirstTransactionAt.After(newTx.TransactionDateTime) {
+			acc.FirstTransactionAt = &newTx.TransactionDateTime
+		}
+	}
+
+	return newTx, nil
+}
+
 func (s *Service) CreateBulkInternal(
 	ctx context.Context,
 	reqs []*BulkRequest,
@@ -249,73 +321,17 @@ func (s *Service) CreateBulkInternal(
 	var originalTxs []*database.Transaction
 	var toCreate []*database.Transaction
 	for _, req := range reqs {
-		if req.Req.TransactionDate == nil {
-			return nil, errors.New("transaction date is required")
-		}
-
 		if req.OriginalTx != nil { // save list of original transactions for update
 			originalTxs = append(originalTxs, req.OriginalTx)
 		}
 
-		newTx := &database.Transaction{
-			SourceAmount:            decimal.NullDecimal{},
-			SourceCurrency:          "",
-			DestinationAmount:       decimal.NullDecimal{},
-			DestinationCurrency:     "",
-			SourceAccountID:         0,
-			DestinationAccountID:    0,
-			TagIDs:                  req.Req.TagIds,
-			CreatedAt:               time.Now().UTC(),
-			Notes:                   req.Req.Notes,
-			Extra:                   req.Req.Extra,
-			TransactionDateTime:     req.Req.TransactionDate.AsTime(),
-			TransactionDateOnly:     req.Req.TransactionDate.AsTime(),
-			Title:                   req.Req.Title,
-			ReferenceNumber:         req.Req.ReferenceNumber,
-			InternalReferenceNumber: req.Req.InternalReferenceNumber,
-			CategoryID:              req.Req.CategoryId,
+		newTx, err := s.ConvertRequestToTransaction(ctx, req.Req, req.OriginalTx)
+		if err != nil {
+			return nil, err
 		}
 
 		if req.OriginalTx != nil {
-			newTx.ID = req.OriginalTx.ID
-			newTx.CreatedAt = req.OriginalTx.CreatedAt
-			newTx.UpdatedAt = time.Now().UTC()
-
 			req.OriginalTx = newTx // swap
-		}
-
-		if newTx.Extra == nil {
-			newTx.Extra = map[string]string{}
-		}
-
-		var fillRes *FillResponse
-		var err error
-
-		switch v := req.Req.GetTransaction().(type) {
-		case *transactionsv1.CreateTransactionRequest_TransferBetweenAccounts:
-			if fillRes, err = s.fillTransferBetweenAccounts(ctx, tx, v.TransferBetweenAccounts, newTx); err != nil {
-				return nil, err
-			}
-		case *transactionsv1.CreateTransactionRequest_Expense:
-			if fillRes, err = s.FillWithdrawal(ctx, v.Expense, newTx); err != nil {
-				return nil, err
-			}
-		case *transactionsv1.CreateTransactionRequest_Income:
-			if fillRes, err = s.FillDeposit(ctx, v.Income, newTx); err != nil {
-				return nil, err
-			}
-		case *transactionsv1.CreateTransactionRequest_Adjustment:
-			if fillRes, err = s.fillReconciliation(ctx, v.Adjustment, newTx); err != nil {
-				return nil, err
-			}
-		default:
-			return nil, errors.New("invalid transaction type")
-		}
-
-		for _, acc := range fillRes.Accounts {
-			if acc.FirstTransactionAt == nil || acc.FirstTransactionAt.After(newTx.TransactionDateTime) {
-				acc.FirstTransactionAt = &newTx.TransactionDateTime
-			}
 		}
 
 		// validate wallet transaction date
@@ -479,7 +495,7 @@ func (s *Service) Update(
 	ctx = database.WithContext(ctx, tx)
 
 	var existingTx database.Transaction
-	if err := tx.Where("id = ?", req.Id).
+	if err := tx.Where("id = ? AND deleted_at IS NULL", req.Id).
 		First(&existingTx).Error; err != nil {
 		return nil, errors.Wrap(err, "failed to find existing transaction")
 	}
@@ -632,7 +648,6 @@ func (s *Service) FillWithdrawal(
 
 func (s *Service) fillTransferBetweenAccounts(
 	_ context.Context,
-	_ *gorm.DB,
 	req *transactionsv1.TransferBetweenAccounts,
 	newTx *database.Transaction,
 ) (*FillResponse, error) {
@@ -674,4 +689,26 @@ func (s *Service) fillTransferBetweenAccounts(
 	newTx.DestinationCurrency = req.DestinationCurrency
 
 	return &FillResponse{}, nil
+}
+
+func (s *Service) DeleteTransaction(
+	ctx context.Context,
+	req *transactionsv1.DeleteTransactionsRequest,
+) (*transactionsv1.DeleteTransactionsResponse, error) {
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+
+	result := tx.Where("id IN ? AND deleted_at IS NULL", req.Ids).
+		Delete(&database.Transaction{})
+	if result.Error != nil {
+		return nil, errors.WithStack(result.Error)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.Wrap(err, "failed to commit transaction")
+	}
+
+	return &transactionsv1.DeleteTransactionsResponse{
+		DeletedCount: int32(result.RowsAffected),
+	}, nil
 }

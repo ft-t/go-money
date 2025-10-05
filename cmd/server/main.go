@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ft-t/go-money/cmd/server/internal/jobs"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/accounts"
+	"github.com/ft-t/go-money/pkg/analytics"
 	"github.com/ft-t/go-money/pkg/appcfg"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
@@ -56,6 +58,8 @@ func main() {
 		newKey := keyGen.Generate()
 
 		config.JwtPrivateKey = string(keyGen.Serialize(newKey))
+	} else {
+		config.JwtPrivateKey = strings.ReplaceAll(config.JwtPrivateKey, "\\n", "\n")
 	}
 
 	jwtService, err := auth.NewService(config.JwtPrivateKey, 24*time.Hour)
@@ -185,13 +189,30 @@ func main() {
 		SchedulerSvc:     ruleScheduler,
 	})
 
+	analyticsSvc := analytics.NewService()
+
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 	_ = handlers.NewMaintenanceApi(grpcServer, recalculateSvc)
+	_ = handlers.NewAnalyticsApi(grpcServer, analyticsSvc)
 
-	importSvc := importers.NewImporter(accountSvc, tagSvc, categoriesSvc, importers.NewFireflyImporter(
-		transactionSvc,
-		currencyConverter,
-	))
+	baseParser := importers.NewBaseParser(currencyConverter, transactionSvc, mapper)
+
+	importSvc := importers.NewImporter(
+		&importers.ImporterConfig{
+			AccountSvc:     accountSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: transactionSvc,
+			MapperSvc:      mapper,
+		},
+		importers.NewFireflyImporter(
+			transactionSvc,
+			currencyConverter,
+			baseParser,
+		),
+		importers.NewPrivat24(baseParser),
+		importers.NewMono(baseParser),
+	)
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)
 	if err != nil {
