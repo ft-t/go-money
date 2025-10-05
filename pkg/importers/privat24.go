@@ -535,6 +535,8 @@ func (p *Privat24) ParseIncomeTransfer(
 		DestinationAccount:  source[0],
 		Raw:                 raw,
 		DateFromMessage:     source[1],
+		SourceCurrency:      matches[2],
+		SourceAmount:        amount.Abs(),
 	}
 
 	return finalTx, nil
@@ -771,6 +773,11 @@ func (p *Privat24) ParseCreditPayment(
 		}
 	}
 
+	if finalTx.DestinationCurrency == "" && finalTx.DestinationAmount.IsZero() {
+		finalTx.DestinationCurrency = finalTx.SourceCurrency
+		finalTx.DestinationAmount = finalTx.SourceAmount.Abs()
+	}
+
 	for _, line := range lines {
 		balMatch := balanceRegex.FindStringSubmatch(line)
 		if len(balMatch) != 2 {
@@ -858,6 +865,11 @@ func (p *Privat24) ParseSimpleExpense(
 				return nil, errors.Newf("currency mismatch: %s %s", currencies[0], currencies[1])
 			}
 		}
+	}
+
+	if finalTx.DestinationCurrency == "" && finalTx.DestinationAmount.IsZero() {
+		finalTx.DestinationCurrency = finalTx.SourceCurrency
+		finalTx.DestinationAmount = finalTx.SourceAmount.Abs()
 	}
 
 	for _, line := range lines {

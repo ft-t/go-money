@@ -72,6 +72,10 @@ invalid`
 		assert.Nil(t, tx)
 		assert.Contains(t, err.Error(), "currency mismatch")
 	})
+}
+
+func TestPrivat24ParseCreditPayment_Success(t *testing.T) {
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	t.Run("valid with exchange rate UAH/USD", func(t *testing.T) {
 		input := `100.00UAH Списання

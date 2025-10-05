@@ -82,7 +82,7 @@ func TestMonoParseInvalidDate(t *testing.T) {
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 invalid-date,Test,5262,-100.00,10.00,USD,10.00,1000.00`)
 
-	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+	resp, err := mono.Parse(context.TODO(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
 			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
 			Accounts: []*database.Account{},
@@ -90,6 +90,9 @@ invalid-date,Test,5262,-100.00,10.00,USD,10.00,1000.00`)
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.CreateRequests, 1)
+	assert.Contains(t, resp.CreateRequests[0].Title, "failed to parse operation time")
 }
 
 func TestMonoParseInvalidAmount(t *testing.T) {
@@ -102,7 +105,7 @@ func TestMonoParseInvalidAmount(t *testing.T) {
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 11.08.2024 12:19:14,Test,5262,invalid,10.00,USD,10.00,1000.00`)
 
-	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+	resp, err := mono.Parse(context.TODO(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
 			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
 			Accounts: []*database.Account{},
@@ -110,6 +113,9 @@ func TestMonoParseInvalidAmount(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.CreateRequests, 1)
+	assert.Contains(t, resp.CreateRequests[0].Title, "failed to parse source amount")
 }
 
 func TestMonoParseIncomeNotSupported(t *testing.T) {
@@ -122,7 +128,7 @@ func TestMonoParseIncomeNotSupported(t *testing.T) {
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 11.08.2024 12:19:14,Test Income,5262,100.00,10.00,USD,10.00,1000.00`)
 
-	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+	resp, err := mono.Parse(context.TODO(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
 			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
 			Accounts: []*database.Account{},
@@ -130,6 +136,9 @@ func TestMonoParseIncomeNotSupported(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.CreateRequests, 1)
+	assert.Contains(t, resp.CreateRequests[0].Title, "income transactions not supported")
 }
 
 func TestMonoParseMultipleTransactions(t *testing.T) {
@@ -204,7 +213,7 @@ func TestMonoParseInvalidDestinationAmount(t *testing.T) {
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 01.10.2025 10:00:00,Test,5262,-100.00,invalid,USD,10.00,1000.00`)
 
-	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+	resp, err := mono.Parse(context.TODO(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
 			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
 			Accounts: []*database.Account{},
@@ -212,6 +221,9 @@ func TestMonoParseInvalidDestinationAmount(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.CreateRequests, 1)
+	assert.Contains(t, resp.CreateRequests[0].Title, "failed to parse destination amount")
 }
 
 func TestMonoParseInsufficientFields(t *testing.T) {
@@ -224,7 +236,7 @@ func TestMonoParseInsufficientFields(t *testing.T) {
 	csvData := []byte(`Дата і час операції,Опис,MCC
 01.10.2025 10:00:00,Test,5262`)
 
-	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+	resp, err := mono.Parse(context.TODO(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
 			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
 			Accounts: []*database.Account{},
@@ -232,6 +244,9 @@ func TestMonoParseInsufficientFields(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.CreateRequests, 1)
+	assert.Contains(t, resp.CreateRequests[0].Title, "expected len >= 8")
 }
 
 func TestMonoParseEmptyLine(t *testing.T) {
