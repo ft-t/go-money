@@ -154,3 +154,31 @@ func TestGetAccountMapByNumbers(t *testing.T) {
 		assert.Empty(t, result)
 	})
 }
+
+func TestDecodeFiles(t *testing.T) {
+	bp := importers.NewBaseParser(nil, nil, nil)
+
+	t.Run("valid base64", func(t *testing.T) {
+		data := []string{"SGVsbG8gV29ybGQ="}
+		result, err := bp.DecodeFiles(data)
+		assert.NoError(t, err)
+		assert.Len(t, result, 1)
+		assert.Equal(t, "Hello World", string(result[0]))
+	})
+
+	t.Run("invalid base64", func(t *testing.T) {
+		data := []string{"!!!invalid!!!"}
+		result, err := bp.DecodeFiles(data)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("multiple files", func(t *testing.T) {
+		data := []string{"Zmlyc3Q=", "c2Vjb25k"}
+		result, err := bp.DecodeFiles(data)
+		assert.NoError(t, err)
+		assert.Len(t, result, 2)
+		assert.Equal(t, "first", string(result[0]))
+		assert.Equal(t, "second", string(result[1]))
+	})
+}

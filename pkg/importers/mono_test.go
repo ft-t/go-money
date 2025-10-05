@@ -193,3 +193,102 @@ func TestMonoType(t *testing.T) {
 
 	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_MONOBANK, mono.Type())
 }
+
+func TestMonoParseInvalidDestinationAmount(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConverter := NewMockCurrencyConverterSvc(ctrl)
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
+
+	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
+01.10.2025 10:00:00,Test,5262,-100.00,invalid,USD,10.00,1000.00`)
+
+	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
+			Accounts: []*database.Account{},
+		},
+	})
+
+	assert.NoError(t, err)
+}
+
+func TestMonoParseInsufficientFields(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConverter := NewMockCurrencyConverterSvc(ctrl)
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
+
+	csvData := []byte(`Дата і час операції,Опис,MCC
+01.10.2025 10:00:00,Test,5262`)
+
+	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
+			Accounts: []*database.Account{},
+		},
+	})
+
+	assert.NoError(t, err)
+}
+
+func TestMonoParseEmptyLine(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConverter := NewMockCurrencyConverterSvc(ctrl)
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
+
+	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
+01.10.2025 10:00:00,Test,5262,-100.00,10.00,USD,10.00,1000.00
+
+`)
+
+	sourceAccount := &database.Account{
+		ID:            1,
+		AccountNumber: "UAH",
+		Currency:      "UAH",
+		Type:          gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+	}
+
+	expenseAccount := &database.Account{
+		ID:       2,
+		Currency: "USD",
+		Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Flags:    database.AccountFlagIsDefault,
+	}
+
+	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(decimal.NewFromInt(1), nil).AnyTimes()
+
+	resp, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
+			Accounts: []*database.Account{sourceAccount, expenseAccount},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.CreateRequests, 1)
+}
+
+func TestMonoDecodeError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConverter := NewMockCurrencyConverterSvc(ctrl)
+	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
+
+	resp, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{"!!!invalid-base64!!!"},
+			Accounts: []*database.Account{},
+		},
+	})
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+}
