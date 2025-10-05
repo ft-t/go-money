@@ -130,11 +130,7 @@ func (m *Mono) parseMessages(
 			return nil, errors.New("empty csv line")
 		}
 
-		tx, _ := m.parseTransaction(linesData[0], raw.Message)
-
-		if tx != nil {
-			transactions = append(transactions, tx)
-		}
+		transactions = append(transactions, m.parseTransaction(linesData[0], raw.Message))
 	}
 
 	return transactions, nil
@@ -143,13 +139,14 @@ func (m *Mono) parseMessages(
 func (m *Mono) parseTransaction(
 	data []string,
 	message *Message,
-) (*Transaction, error) {
+) *Transaction {
 	if len(data) < 8 {
 		return &Transaction{
 			ID:              uuid.NewString(),
 			Raw:             strings.Join(data, ","),
 			OriginalMessage: message,
-		}, errors.Newf("expected len >= 8, got %d", len(data))
+			Description:     errors.Newf("expected len >= 8, got %d", len(data)).Error(),
+		}
 	}
 
 	operationTime, timeErr := time.Parse("02.01.2006 15:04:05", strings.TrimSpace(data[0]))
@@ -158,7 +155,8 @@ func (m *Mono) parseTransaction(
 			ID:              uuid.NewString(),
 			Raw:             strings.Join(data, ","),
 			OriginalMessage: message,
-		}, errors.Wrapf(timeErr, "failed to parse operation time %s", data[0])
+			Description:     errors.Wrapf(timeErr, "failed to parse operation time %s", data[0]).Error(),
+		}
 	}
 
 	sourceAmount, err := decimal.NewFromString(data[3])
@@ -167,7 +165,8 @@ func (m *Mono) parseTransaction(
 			ID:              uuid.NewString(),
 			Raw:             strings.Join(data, ","),
 			OriginalMessage: message,
-		}, errors.Wrapf(err, "failed to parse source amount %s", data[3])
+			Description:     errors.Wrapf(err, "failed to parse source amount %s", data[3]).Error(),
+		}
 	}
 
 	if sourceAmount.GreaterThan(decimal.Zero) {
@@ -175,7 +174,8 @@ func (m *Mono) parseTransaction(
 			ID:              uuid.NewString(),
 			Raw:             strings.Join(data, ","),
 			OriginalMessage: message,
-		}, errors.New("income transactions not supported")
+			Description:     errors.New("income transactions not supported").Error(),
+		}
 	}
 
 	destAmount, err := decimal.NewFromString(data[4])
@@ -184,7 +184,8 @@ func (m *Mono) parseTransaction(
 			ID:              uuid.NewString(),
 			Raw:             strings.Join(data, ","),
 			OriginalMessage: message,
-		}, errors.Wrapf(err, "failed to parse dest amount %s", data[4])
+			Description:     errors.Wrapf(err, "failed to parse destination amount %s", data[4]).Error(),
+		}
 	}
 
 	tx := &Transaction{
@@ -202,5 +203,5 @@ func (m *Mono) parseTransaction(
 		DeduplicationKeys:   []string{strings.Join(data, "_")},
 	}
 
-	return tx, nil
+	return tx
 }

@@ -8,6 +8,7 @@ import (
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
@@ -249,6 +250,18 @@ func (i *Importer) ConvertRequestsToTransactions(
 	var result []*importv1.ParseTransactionsResponse_ParsedTransaction
 
 	for _, req := range requests {
+		if !req.CreateRequest.HasTransaction() { // it means parsing failed, but we want to show raw transaction to user, so user can decide what to do
+			result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
+				DuplicateTransactionId: req.DuplicationTransactionID,
+				Transaction: i.cfg.MapperSvc.MapTransaction(ctx, &database.Transaction{
+					Title:           req.CreateRequest.Title,
+					Notes:           req.CreateRequest.Notes,
+					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_UNSPECIFIED,
+				}),
+			})
+
+			continue
+		}
 		converted, err := i.cfg.TransactionSvc.ConvertRequestToTransaction(ctx, req.CreateRequest, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert request to transaction")

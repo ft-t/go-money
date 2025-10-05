@@ -47,7 +47,12 @@
         @if (showReview) {
             <div class="card flex flex-col gap-4">
                 <div class="flex flex-row justify-between items-center">
-                    <div class="font-semibold text-xl">Review Transactions ({{ getSelectedCount() }} / {{ getNonDuplicateCount() }})</div>
+                    <div class="font-semibold text-xl">
+                        Review Transactions ({{ getSelectedCount() }} / {{ getNonDuplicateCount() }})
+                        @if (getErrorCount() > 0) {
+                            <span class="text-red-500 text-sm ml-2">{{ getErrorCount() }} error(s)</span>
+                        }
+                    </div>
                     <div class="flex flex-row gap-2">
                         <p-button label="Select All" severity="secondary" (onClick)="selectAll()" />
                         <p-button label="Deselect All" severity="secondary" (onClick)="deselectAll()" />
@@ -56,22 +61,30 @@
                             severity="secondary"
                             (onClick)="toggleHideDuplicates()"
                             [disabled]="getDuplicatesCount() === 0" />
+                        <p-button
+                            [label]="(showErrorsOnly ? 'Show All' : 'Errors Only') + ' (' + getErrorCount() + ')'"
+                            severity="secondary"
+                            (onClick)="toggleShowErrorsOnly()"
+                            [disabled]="getErrorCount() === 0" />
                     </div>
                 </div>
 
-                <p-accordion [multiple]="true">
+                <p-accordion [multiple]="true" [(activeIndex)]="activeIndices">
                     @for (item of getFilteredTransactionItems(); track item.transaction; let idx = $index) {
-                        <p-accordionTab>
+                        <p-accordionTab [ngClass]="{'validation-error': item.hasValidationError}">
                             <ng-template pTemplate="header">
                                 <div class="flex flex-row gap-3 items-center w-full">
                                     <p-checkbox
                                         [(ngModel)]="item.selected"
                                         [binary]="true"
-                                        [disabled]="item.duplicateTxID !== undefined"
+                                        [disabled]="item.duplicateTxID !== undefined || item.hasError"
                                         (click)="$event.stopPropagation()" />
                                     <div class="flex flex-col gap-1 flex-1">
                                         <div class="flex flex-row gap-2 items-center">
                                             <span class="font-semibold">{{ getTransactionTitle(item.transaction) }}</span>
+                                            @if (item.hasError) {
+                                                <span class="text-red-500 text-sm">PARSING ERROR</span>
+                                            }
                                             @if (item.duplicateTxID !== undefined) {
                                                 <span class="text-orange-500 text-sm">DUPLICATE</span>
                                                 <a
@@ -83,15 +96,23 @@
                                                 </a>
                                             }
                                         </div>
-                                        <div class="text-sm text-gray-600 flex flex-row gap-3">
-                                            <span class="font-medium">{{ getTransactionTypeLabel(item.transaction.type) }}</span>
-                                            <span>{{ formatAmount(item.transaction.sourceAmount, item.transaction.sourceCurrency) }}</span>
-                                            <span>{{ formatDate(item.transaction.transactionDate) }}</span>
-                                        </div>
+                                        @if (!item.hasError) {
+                                            <div class="text-sm text-gray-600 flex flex-row gap-3">
+                                                <span class="font-medium">{{ getTransactionTypeLabel(item.transaction.type) }}</span>
+                                                <span>{{ formatAmount(item.transaction.sourceAmount, item.transaction.sourceCurrency) }}</span>
+                                                <span>{{ formatDate(item.transaction.transactionDate) }}</span>
+                                            </div>
+                                        }
                                     </div>
                                 </div>
                             </ng-template>
-                            <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                            @if (item.hasError) {
+                                <div class="p-4">
+                                    <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.transaction.notes }}</div>
+                                </div>
+                            } @else {
+                                <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                            }
                         </p-accordionTab>
                     }
                 </p-accordion>

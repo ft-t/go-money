@@ -222,7 +222,7 @@ func (s *Service) CreateBulk(
 
 	resp, err := s.CreateBulkInternal(ctx, bulkRequests, tx, UpsertOptions{})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create transactions for request: %v", req)
+		return nil, errors.Wrapf(err, "failed to create transactions for request")
 	}
 
 	if err = tx.Commit().Error; err != nil {

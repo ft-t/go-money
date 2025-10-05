@@ -16,21 +16,33 @@ import { Checkbox } from 'primeng/checkbox';
 import { IftaLabel } from 'primeng/iftalabel';
 import { Button } from 'primeng/button';
 import { AccordionModule } from 'primeng/accordion';
-import { NgIf } from '@angular/common';
+import { NgClass, NgIf } from '@angular/common';
 import { TransactionEditorComponent } from '../../shared/components/transaction-editor/transaction-editor.component';
-import { Transaction } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionsService, CreateTransactionsBulkRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 
 interface TransactionItem {
     transaction: Transaction;
     selected: boolean;
     duplicateTxID?: bigint;
+    hasError: boolean;
+    hasValidationError?: boolean;
 }
 
 @Component({
     selector: 'app-transactions-import',
-    imports: [Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgIf, TransactionEditorComponent],
-    templateUrl: './transactions-import.component.html'
+    imports: [Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgIf, NgClass, TransactionEditorComponent],
+    templateUrl: './transactions-import.component.html',
+    styles: [`
+        :host ::ng-deep .validation-error .p-accordiontab-header {
+            border-left: 4px solid #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+
+        :host ::ng-deep .validation-error .p-accordiontab-header:hover {
+            background-color: #fee2e2 !important;
+        }
+    `]
 })
 export class TransactionsImportComponent {
     public selectedSource: ImportSource = ImportSource.PRIVATE_24;
@@ -47,6 +59,8 @@ export class TransactionsImportComponent {
     public transactionItems: TransactionItem[] = [];
     public showReview: boolean = false;
     public hideDuplicates: boolean = false;
+    public showErrorsOnly: boolean = false;
+    public activeIndices: number[] = [];
 
     @ViewChildren('editor') editors: QueryList<TransactionEditorComponent> = new QueryList();
 
@@ -91,8 +105,9 @@ export class TransactionsImportComponent {
 
             this.transactionItems = response.transactions.map((tx) => ({
                 transaction: tx.transaction!,
-                selected: tx.duplicateTransactionId === undefined,
-                duplicateTxID: tx.duplicateTransactionId
+                selected: tx.duplicateTransactionId === undefined && tx.transaction!.type !== TransactionType.UNSPECIFIED,
+                duplicateTxID: tx.duplicateTransactionId,
+                hasError: tx.transaction!.type === TransactionType.UNSPECIFIED
             }));
 
             if (this.transactionItems.length > 0) {
@@ -165,16 +180,20 @@ export class TransactionsImportComponent {
     }
 
     getSelectedCount(): number {
-        return this.transactionItems.filter((item) => item.selected && item.duplicateTxID === undefined).length;
+        return this.transactionItems.filter((item) => item.selected && item.duplicateTxID === undefined && !item.hasError).length;
     }
 
     getNonDuplicateCount(): number {
-        return this.transactionItems.filter((item) => item.duplicateTxID === undefined).length;
+        return this.transactionItems.filter((item) => item.duplicateTxID === undefined && !item.hasError).length;
+    }
+
+    getErrorCount(): number {
+        return this.transactionItems.filter((item) => item.hasError).length;
     }
 
     selectAll() {
         this.transactionItems.forEach((item) => {
-            if (item.duplicateTxID === undefined) {
+            if (item.duplicateTxID === undefined && !item.hasError) {
                 item.selected = true;
             }
         });
@@ -182,7 +201,7 @@ export class TransactionsImportComponent {
 
     deselectAll() {
         this.transactionItems.forEach((item) => {
-            if (item.duplicateTxID === undefined) {
+            if (item.duplicateTxID === undefined && !item.hasError) {
                 item.selected = false;
             }
         });
@@ -196,27 +215,71 @@ export class TransactionsImportComponent {
         this.hideDuplicates = !this.hideDuplicates;
     }
 
-    getFilteredTransactionItems(): TransactionItem[] {
-        if (this.hideDuplicates) {
-            return this.transactionItems.filter((item) => item.duplicateTxID === undefined);
+    toggleShowErrorsOnly() {
+        this.showErrorsOnly = !this.showErrorsOnly;
+        if (!this.showErrorsOnly) {
+            this.hideDuplicates = false;
         }
-        return this.transactionItems;
+    }
+
+    getFilteredTransactionItems(): TransactionItem[] {
+        let filtered = this.transactionItems;
+
+        if (this.showErrorsOnly) {
+            return filtered.filter((item) => item.hasError);
+        }
+
+        if (this.hideDuplicates) {
+            return filtered.filter((item) => item.duplicateTxID === undefined);
+        }
+
+        return filtered;
     }
 
     async importSelected() {
-        const selectedIndices: number[] = [];
-
-        // Get indices of selected items that are not duplicates
-        this.transactionItems.forEach((item, index) => {
-            if (item.selected && item.duplicateTxID === undefined) {
-                selectedIndices.push(index);
-            }
-        });
-
-        if (selectedIndices.length === 0) {
+        if (this.transactionItems.filter(item => item.selected && !item.hasError && item.duplicateTxID === undefined).length === 0) {
             this.messageService.add({
                 severity: 'warn',
                 detail: 'No transactions selected'
+            });
+            return;
+        }
+
+        this.transactionItems.forEach(item => item.hasValidationError = false);
+
+        let hasValidationErrors = false;
+        const editorArray = this.editors.toArray();
+        const filteredItems = this.getFilteredTransactionItems();
+        let editorIndex = 0;
+
+        filteredItems.forEach((item, filteredIndex) => {
+            if (item.hasError) {
+                return;
+            }
+
+            const editor = editorArray[editorIndex];
+
+            if (item.selected && item.duplicateTxID === undefined) {
+                if (editor && !editor.isValid()) {
+                    hasValidationErrors = true;
+                    item.hasValidationError = true;
+                }
+            }
+
+            editorIndex++;
+        });
+
+        if (hasValidationErrors) {
+            this.activeIndices = [];
+            filteredItems.forEach((item, index) => {
+                if (item.hasValidationError) {
+                    this.activeIndices.push(index);
+                }
+            });
+
+            this.messageService.add({
+                severity: 'error',
+                detail: 'Please fix validation errors before importing'
             });
             return;
         }
@@ -225,16 +288,24 @@ export class TransactionsImportComponent {
             this.isLoading = true;
             this.messageService.add({
                 severity: 'info',
-                detail: `Importing ${selectedIndices.length} transaction(s)...`
+                detail: `Importing ${editorArray.length} transaction(s)...`
             });
 
-            // Build transaction requests from editors
-            const transactionRequests = selectedIndices.map(index => {
-                const editor = this.editors.toArray()[index];
-                return editor.buildTransactionRequest();
-            });
+            const transactionRequests = editorArray
+                .filter((editor, index) => {
+                    let editorIdx = 0;
+                    for (let i = 0; i < filteredItems.length; i++) {
+                        const item = filteredItems[i];
+                        if (item.hasError) continue;
+                        if (editorIdx === index) {
+                            return item.selected && item.duplicateTxID === undefined;
+                        }
+                        editorIdx++;
+                    }
+                    return false;
+                })
+                .map(editor => editor.buildTransactionRequest());
 
-            // Call bulk create API
             const response = await this.transactionService.createTransactionsBulk(
                 create(CreateTransactionsBulkRequestSchema, {
                     transactions: transactionRequests
@@ -290,8 +361,9 @@ export class TransactionsImportComponent {
 
             this.transactionItems = response.transactions.map((tx) => ({
                 transaction: tx.transaction!,
-                selected: tx.duplicateTransactionId === undefined,
-                duplicateTxID: tx.duplicateTransactionId
+                selected: tx.duplicateTransactionId === undefined && tx.transaction!.type !== TransactionType.UNSPECIFIED,
+                duplicateTxID: tx.duplicateTransactionId,
+                hasError: tx.transaction!.type === TransactionType.UNSPECIFIED
             }));
 
             if (this.transactionItems.length > 0) {

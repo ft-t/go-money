@@ -207,7 +207,7 @@ func (b *BaseParser) ToCreateRequests(
 				},
 			}
 		default:
-			continue // this is error transaction, will handle next
+			break // this is error transaction, will handle next
 		}
 
 		requests = append(requests, newTx)

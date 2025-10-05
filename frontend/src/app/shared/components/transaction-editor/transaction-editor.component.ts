@@ -1,4 +1,4 @@
-import { Component, Inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { ChangeDetectorRef, Component, Inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { FluidModule } from 'primeng/fluid';
 import { InputTextModule } from 'primeng/inputtext';
 import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -113,7 +113,8 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         private route: ActivatedRoute,
-        private router: Router
+        private router: Router,
+        private cdr: ChangeDetectorRef
     ) {
         this.transactionTypes = EnumService.getBaseTransactionTypes();
         this.transactionService = createClient(TransactionsService, this.transport);
@@ -150,6 +151,8 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
 
     async ngOnInit() {
         await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags(), this.fetchCategories()]);
+        // Rebuild form after accounts are loaded to properly validate account IDs
+        this.form = this.buildForm(this.transaction);
     }
 
     async search(event: AutoCompleteCompleteEvent) {
@@ -170,14 +173,17 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
     }
 
     buildForm(tx: Transaction) {
+        const sourceAccountId = this.isAccountApplicable(tx.type, true, tx.sourceAccountId) ? tx.sourceAccountId : 0;
+        const destinationAccountId = this.isAccountApplicable(tx.type, false, tx.destinationAccountId) ? tx.destinationAccountId : 0;
+
         const form = new FormGroup({
             id: new FormControl(tx.id, { nonNullable: false }),
             sourceAmount: new FormControl(NumberHelper.toPositiveNumber(tx.sourceAmount), greaterThanZeroValidator()),
             sourceCurrency: new FormControl(tx.sourceCurrency, Validators.required),
-            sourceAccountId: new FormControl(tx.sourceAccountId, Validators.min(1)),
+            sourceAccountId: new FormControl(sourceAccountId, Validators.min(1)),
             destinationAmount: new FormControl(NumberHelper.toPositiveNumber(tx.destinationAmount), greaterThanZeroValidator()),
             destinationCurrency: new FormControl(tx.destinationCurrency, Validators.required),
-            destinationAccountId: new FormControl(tx.destinationAccountId, Validators.min(1)),
+            destinationAccountId: new FormControl(destinationAccountId, Validators.min(1)),
             notes: new FormControl(tx.notes, { nonNullable: false }),
             title: new FormControl(tx.title, Validators.required),
             categoryId: new FormControl(tx.categoryId, { nonNullable: false }),
@@ -341,13 +347,13 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
         }
     }
 
-    isAccountApplicable(type: TransactionType, isSource: boolean, id: number): boolean {
-        let applicable = this.getApplicableAccounts(type, isSource);
-        if (!applicable) {
+    isAccountApplicable(type: TransactionType, isSource: boolean, accountId: bigint | number): boolean {
+        if (!accountId || accountId === BigInt(0) || accountId === 0) {
             return false;
         }
 
-        return applicable.some((a) => a.id == id);
+        const applicableAccounts = this.getApplicableAccounts(type, isSource);
+        return applicableAccounts.some(acc => acc.id == accountId);
     }
 
     getApplicableAccounts(type: TransactionType, isSource: boolean): Account[] {
@@ -467,6 +473,13 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
         if (this.form.get('type')?.value == TransactionType.EXPENSE) return true;
 
         return false;
+    }
+
+    isValid(): boolean {
+        this.form.markAllAsTouched();
+        this.form.updateValueAndValidity();
+        this.cdr.detectChanges();
+        return this.form.valid;
     }
 
     buildTransactionRequest(): CreateTransactionRequest {
