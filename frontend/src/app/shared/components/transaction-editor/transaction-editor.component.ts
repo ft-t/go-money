@@ -151,7 +151,6 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
 
     async ngOnInit() {
         await Promise.all([this.fetchAccounts(), this.fetchCurrencies(), this.fetchTags(), this.fetchCategories()]);
-        // Rebuild form after accounts are loaded to properly validate account IDs
         this.form = this.buildForm(this.transaction);
     }
 

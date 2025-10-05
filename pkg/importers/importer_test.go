@@ -245,6 +245,16 @@ func TestParse(t *testing.T) {
 				{
 					Title:                   "Test Transaction",
 					InternalReferenceNumber: strPtr("ref123"),
+					Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+						Expense: &transactionsv1.Expense{
+							SourceAccountId:      1,
+							SourceAmount:         "-100",
+							SourceCurrency:       "USD",
+							DestinationAccountId: 2,
+							DestinationAmount:    "100",
+							DestinationCurrency:  "USD",
+						},
+					},
 				},
 			},
 		}
@@ -296,6 +306,69 @@ func TestParse(t *testing.T) {
 		})
 		assert.Error(t, err)
 		assert.Nil(t, resp)
+	})
+
+	t.Run("parse with failed transaction (no transaction set)", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		targetTags := []*database.Tag{{Name: "ab", ID: 5}}
+		targetCategories := []*database.Category{{ID: 1, Name: "Category1"}}
+		accounts := []*database.Account{{ID: 1}, {ID: 2}}
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return(targetTags, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return(targetCategories, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{
+					Title:                   "Failed Transaction",
+					Notes:                   "Raw transaction data",
+					InternalReferenceNumber: strPtr("ref456"),
+				},
+			},
+		}
+
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, tx *database.Transaction) *gomoneypbv1.Transaction {
+				assert.Equal(t, "Failed Transaction", tx.Title)
+				assert.Equal(t, "Raw transaction data", tx.Notes)
+				assert.Equal(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_UNSPECIFIED, tx.TransactionType)
+				return &gomoneypbv1.Transaction{
+					Title: tx.Title,
+					Notes: tx.Notes,
+					Type:  gomoneypbv1.TransactionType_TRANSACTION_TYPE_UNSPECIFIED,
+				}
+			})
+
+		resp, err := imp.Parse(context.TODO(), &importv1.ParseTransactionsRequest{
+			Content: []string{"test content"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Transactions, 1)
+		assert.Equal(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_UNSPECIFIED, resp.Transactions[0].Transaction.Type)
+		assert.Equal(t, "Failed Transaction", resp.Transactions[0].Transaction.Title)
 	})
 }
 

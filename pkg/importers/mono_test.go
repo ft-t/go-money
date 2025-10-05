@@ -171,6 +171,8 @@ func TestMonoParseMultipleTransactions(t *testing.T) {
 }
 
 func TestMonoIntegration(t *testing.T) {
+	t.Skip("integration test - requires external file")
+
 	data, err := os.ReadFile("/mnt/c/Users/iqpir/Downloads/report_05-10-2025_10-31-44.csv")
 	assert.NoError(t, err)
 
