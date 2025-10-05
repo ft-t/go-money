@@ -1,0 +1,2 @@
+type,amount,currency_code,date,source_name,destination_name,description,notes,journal_id,foreign_amount,foreign_currency_code,source_type,destination_type,category,budget,bill,tags
+Opening balance,2000.00,USD,2025-01-02T00:00:00+00:00,Initial balance,Test Account,Opening 2,Notes,2,,,,Initial balance account,Asset,,,

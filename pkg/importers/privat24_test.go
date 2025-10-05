@@ -16,78 +16,84 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseHeaderDate(t *testing.T) {
-	tests := []struct {
-		name        string
-		header      string
-		wantTime    time.Time
-		wantErr     bool
-		errContains string
-	}{
+func TestParseHeaderDate_Success(t *testing.T) {
+	type tc struct {
+		name     string
+		header   string
+		wantTime time.Time
+	}
+
+	cases := []tc{
 		{
 			name:     "valid header with AM",
 			header:   "PrivatBank, [10/1/2025 9:50 AM]",
 			wantTime: time.Date(2025, 10, 1, 9, 50, 0, 0, time.UTC),
-			wantErr:  false,
 		},
 		{
 			name:     "valid header with PM",
 			header:   "PrivatBank, [10/1/2025 9:50 PM]",
 			wantTime: time.Date(2025, 10, 1, 21, 50, 0, 0, time.UTC),
-			wantErr:  false,
 		},
 		{
 			name:     "valid header with single digit day",
 			header:   "PrivatBank, [1/5/2025 3:15 PM]",
 			wantTime: time.Date(2025, 1, 5, 15, 15, 0, 0, time.UTC),
-			wantErr:  false,
 		},
 		{
 			name:     "valid header with double digit day and month",
 			header:   "PrivatBank, [12/31/2025 11:59 PM]",
 			wantTime: time.Date(2025, 12, 31, 23, 59, 0, 0, time.UTC),
-			wantErr:  false,
 		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p24 := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+			gotTime, err := p24.ParseHeaderDate(c.header)
+
+			assert.NoError(t, err)
+			assert.Equal(t, c.wantTime, gotTime)
+		})
+	}
+}
+
+func TestParseHeaderDate_Failure(t *testing.T) {
+	type tc struct {
+		name        string
+		header      string
+		errContains string
+	}
+
+	cases := []tc{
 		{
 			name:        "missing opening bracket",
 			header:      "PrivatBank, 10/1/2025 9:50 AM]",
-			wantErr:     true,
 			errContains: "invalid header format",
 		},
 		{
 			name:        "missing closing bracket",
 			header:      "PrivatBank, [10/1/2025 9:50 AM",
-			wantErr:     true,
 			errContains: "invalid header format",
 		},
 		{
 			name:        "invalid date format",
 			header:      "PrivatBank, [2025-10-01 09:50]",
-			wantErr:     true,
 			errContains: "failed to parse date",
 		},
 		{
 			name:        "empty brackets",
 			header:      "PrivatBank, []",
-			wantErr:     true,
 			errContains: "failed to parse date",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
 			p24 := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-			gotTime, err := p24.ParseHeaderDate(tt.header)
+			_, err := p24.ParseHeaderDate(c.header)
 
-			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.errContains != "" {
-					assert.ErrorContains(t, err, tt.errContains)
-				}
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.wantTime, gotTime)
-			}
+			assert.Error(t, err)
+			assert.ErrorContains(t, err, c.errContains)
 		})
 	}
 }
@@ -881,7 +887,7 @@ func TestParseInternalTransferFrom(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Len(t, resp, 1)
 
-	assert.Equal(t, "0.00", resp[0].SourceAmount.StringFixed(2))
+	assert.Equal(t, "0.00", resp[0].SourceAmount.StringFixed(2)) // expected because of merge
 	assert.Equal(t, "", resp[0].SourceCurrency)
 
 	assert.Equal(t, "1.00", resp[0].DestinationAmount.StringFixed(2))
@@ -1357,7 +1363,6 @@ func TestToDbTransactionsIncome(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(decimal.NewFromInt(1), nil).AnyTimes()
 
 	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
 
@@ -1405,7 +1410,13 @@ func TestToDbTransactionsRemoteTransfer(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(decimal.NewFromInt(1), nil).AnyTimes()
+	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, from, to string, amount decimal.Decimal) (decimal.Decimal, error) {
+			assert.Equal(t, "", from)
+			assert.Equal(t, "UAH", to)
+			assert.Equal(t, "0.00", amount.StringFixed(2))
+			return amount, nil
+		})
 
 	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
 
@@ -1445,6 +1456,54 @@ func TestToDbTransactionsRemoteTransfer(t *testing.T) {
 	assert.Equal(t, "Переказ через Приват24 Одержувач: Імя Фамілія ПоБатькові", req.Title)
 	expense := req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
 	assert.EqualValues(t, "-1", expense.Expense.SourceAmount)
+	assert.EqualValues(t, "UAH", expense.Expense.SourceCurrency)
+	assert.EqualValues(t, uahAccount.ID, expense.Expense.SourceAccountId)
+	assert.EqualValues(t, expenseAccount.ID, expense.Expense.DestinationAccountId)
+}
+
+func TestImportExpenseWithDoubleConversion(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockConverter := NewMockCurrencyConverterSvc(ctrl)
+
+	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
+
+	uahAccount := &database.Account{
+		ID:            1,
+		Currency:      "UAH",
+		AccountNumber: "4*03",
+		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
+	}
+	expenseAccount := &database.Account{
+		ID:            2,
+		Currency:      "UAH",
+		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Flags:         database.AccountFlagIsDefault,
+		AccountNumber: "_default_expense_uah",
+	}
+
+	data := []byte(`PrivatBank, [10/1/2025 12:53 AM]
+1504.15UAH Побутова техніка. PAYPAL *MERCHANT, 1234567890 З подвійною конвертацією pb.ua/conv
+4*03 01:53
+Бал. 123.45UAH
+Кред. ліміт 10000.0UAH`)
+
+	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{uahAccount, expenseAccount},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, result.CreateRequests, 1)
+
+	req := result.CreateRequests[0]
+	assert.Equal(t, "Побутова техніка. PAYPAL *MERCHANT, 1234567890 З подвійною конвертацією pb.ua/conv", req.Title)
+	expense := req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
+	assert.EqualValues(t, "-1504.15", expense.Expense.SourceAmount)
 	assert.EqualValues(t, "UAH", expense.Expense.SourceCurrency)
 	assert.EqualValues(t, uahAccount.ID, expense.Expense.SourceAccountId)
 	assert.EqualValues(t, expenseAccount.ID, expense.Expense.DestinationAccountId)

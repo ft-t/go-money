@@ -46,7 +46,7 @@ interface TransactionItem {
     `]
 })
 export class TransactionsImportComponent {
-    public selectedSource: ImportSource = ImportSource.PRIVATE_24;
+    public selectedSource: ImportSource = ImportSource.FIREFLY;
     public sources = EnumService.getImportTypes();
     public skipRules: boolean = false;
     public treatDatesAsUtc: boolean = false;
@@ -96,7 +96,7 @@ export class TransactionsImportComponent {
         }
     }
 
-    async parseForReview() {
+    async parseForReview(content?: string) {
         this.transactionItems = [];
         this.textContent = '';
         this.showReview = false;
@@ -107,7 +107,7 @@ export class TransactionsImportComponent {
 
             const response = await this.importService.parseTransactions(
                 create(ParseTransactionsRequestSchema, {
-                    content: [this.rawText],
+                    content: [content || this.rawText],
                     source: this.selectedSource,
                     treatDatesAsUtc: this.treatDatesAsUtc
                 })
@@ -119,6 +119,15 @@ export class TransactionsImportComponent {
                 duplicateTxID: tx.duplicateTransactionId,
                 hasError: tx.transaction!.type === TransactionType.UNSPECIFIED
             }));
+
+            this.transactionItems = this.transactionItems.sort((a, b) => {
+                if (a.hasError && !b.hasError) return -1;
+                if (!a.hasError && b.hasError) return 1;
+
+                const dateA = a.transaction.transactionDate?.seconds || 0n;
+                const dateB = b.transaction.transactionDate?.seconds || 0n;
+                return dateA > dateB ? -1 : dateA < dateB ? 1 : 0;
+            });
 
             if (this.transactionItems.length > 0) {
                 this.showReview = true;
@@ -144,7 +153,7 @@ export class TransactionsImportComponent {
         }
     }
 
-    async directImport() {
+    async directImport(content?: string) {
         this.textContent = '';
         this.showReview = false;
 
@@ -157,14 +166,16 @@ export class TransactionsImportComponent {
                     skipRules: this.skipRules,
                     treatDatesAsUtc: this.treatDatesAsUtc,
                     source: this.selectedSource,
-                    content: [this.rawText]
+                    content: [content || this.rawText]
                 })
             );
 
             const logText = `Imported ${result.importedCount} transaction(s).\nDuplicate transactions: ${result.duplicateCount}.\n`;
             this.textContent = logText;
             this.messageService.add({ severity: 'success', detail: logText });
-            this.rawText = '';
+            if (!content) {
+                this.rawText = '';
+            }
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {
@@ -187,7 +198,7 @@ export class TransactionsImportComponent {
     formatDate(timestamp?: any): string {
         if (!timestamp) return '';
         const date = new Date(Number(timestamp.seconds) * 1000);
-        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        return date.toISOString().slice(0, 16).replace('T', ' ');
     }
 
     formatAmount(amount: string, currency: string): string {
@@ -348,87 +359,14 @@ export class TransactionsImportComponent {
             const content = btoa(unescape(encodeURIComponent(event2.target!.result as string)));
 
             if (this.stagingMode) {
-                await this.parseForReviewWithContent(content);
+                await this.parseForReview(content);
             } else {
-                await this.directImportWithContent(content);
+                await this.directImport(content);
             }
         };
 
         reader.readAsText(event.files[0]);
     }
 
-    async parseForReviewWithContent(content: string) {
-        this.transactionItems = [];
-        this.textContent = '';
-        this.showReview = false;
 
-        try {
-            this.isLoading = true;
-            this.messageService.add({ severity: 'info', detail: 'Parsing...' });
-
-            const response = await this.importService.parseTransactions(
-                create(ParseTransactionsRequestSchema, {
-                    content: [content],
-                    source: this.selectedSource,
-                    treatDatesAsUtc: this.treatDatesAsUtc
-                })
-            );
-
-            this.transactionItems = response.transactions.map((tx) => ({
-                transaction: tx.transaction!,
-                selected: tx.duplicateTransactionId === undefined && tx.transaction!.type !== TransactionType.UNSPECIFIED,
-                duplicateTxID: tx.duplicateTransactionId,
-                hasError: tx.transaction!.type === TransactionType.UNSPECIFIED
-            }));
-
-            if (this.transactionItems.length > 0) {
-                this.showReview = true;
-                const duplicateCount = this.getDuplicatesCount();
-                const errorCount = this.getErrorCount();
-                const logText = `Parsed ${this.transactionItems.length} transaction(s).\nDuplicate transactions: ${duplicateCount}.\nParsing errors: ${errorCount}.`;
-                this.textContent = logText;
-                this.messageService.add({
-                    severity: 'success',
-                    detail: `Parsed ${this.transactionItems.length} transaction(s)`
-                });
-            } else {
-                this.textContent = 'No transactions found.';
-                this.messageService.add({
-                    severity: 'info',
-                    detail: 'No transactions found'
-                });
-            }
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        } finally {
-            this.isLoading = false;
-        }
-    }
-
-    async directImportWithContent(content: string) {
-        this.textContent = '';
-        this.showReview = false;
-
-        try {
-            this.isLoading = true;
-            this.messageService.add({ severity: 'info', detail: 'Importing...' });
-
-            const result = await this.importService.importTransactions(
-                create(ImportTransactionsRequestSchema, {
-                    skipRules: this.skipRules,
-                    treatDatesAsUtc: this.treatDatesAsUtc,
-                    source: this.selectedSource,
-                    content: [content]
-                })
-            );
-
-            const logText = `Imported ${result.importedCount} transaction(s).\nDuplicate transactions: ${result.duplicateCount}.\n`;
-            this.textContent = logText;
-            this.messageService.add({ severity: 'success', detail: logText });
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-        } finally {
-            this.isLoading = false;
-        }
-    }
 }

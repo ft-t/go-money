@@ -535,6 +535,8 @@ func (p *Privat24) ParseIncomeTransfer(
 		DestinationAccount:  source[0],
 		Raw:                 raw,
 		DateFromMessage:     source[1],
+		SourceCurrency:      matches[2],
+		SourceAmount:        amount.Abs(),
 	}
 
 	return finalTx, nil
@@ -771,6 +773,8 @@ func (p *Privat24) ParseCreditPayment(
 		}
 	}
 
+	p.setDestinationFromSourceIfEmpty(finalTx)
+
 	for _, line := range lines {
 		balMatch := balanceRegex.FindStringSubmatch(line)
 		if len(balMatch) != 2 {
@@ -860,6 +864,8 @@ func (p *Privat24) ParseSimpleExpense(
 		}
 	}
 
+	p.setDestinationFromSourceIfEmpty(finalTx)
+
 	for _, line := range lines {
 		balMatch := balanceRegex.FindStringSubmatch(line)
 		if len(balMatch) != 2 {
@@ -872,6 +878,13 @@ func (p *Privat24) ParseSimpleExpense(
 	}
 
 	return finalTx, nil
+}
+
+func (p *Privat24) setDestinationFromSourceIfEmpty(tx *Transaction) {
+	if tx.DestinationCurrency == "" && tx.DestinationAmount.IsZero() {
+		tx.DestinationCurrency = tx.SourceCurrency
+		tx.DestinationAmount = tx.SourceAmount.Abs()
+	}
 }
 
 func (p *Privat24) ParseHeaderDate(header string) (time.Time, error) {
