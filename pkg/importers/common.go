@@ -2,6 +2,7 @@ package importers
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -205,6 +206,8 @@ func (b *BaseParser) ToCreateRequests(
 					DestinationCurrency:  destinationAccount.Account.Currency,
 				},
 			}
+		default:
+			continue // this is error transaction, will handle next
 		}
 
 		requests = append(requests, newTx)
@@ -350,4 +353,21 @@ func toLines(input string) []string {
 	input = strings.ReplaceAll(input, "\r\n", "\n")
 
 	return strings.Split(input, "\n")
+}
+
+func (b *BaseParser) DecodeFiles(
+	records []string,
+) ([][]byte, error) {
+	var results [][]byte
+
+	for _, record := range records {
+		decoded, err := base64.StdEncoding.DecodeString(record)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to decode file content")
+		}
+
+		results = append(results, decoded)
+	}
+
+	return results, nil
 }

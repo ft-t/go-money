@@ -3,6 +3,8 @@ package importers_test
 import (
 	"context"
 	_ "embed"
+	"encoding/base64"
+	"os"
 	"testing"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
@@ -41,9 +43,11 @@ func TestMonoParseSimpleExpense(t *testing.T) {
 		Flags:    database.AccountFlagIsDefault,
 	}
 
-	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     []string{string(monoChargeOff)},
-		Accounts: []*database.Account{sourceAccount, expenseAccount},
+	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(monoChargeOff)},
+			Accounts: []*database.Account{sourceAccount, expenseAccount},
+		},
 	})
 
 	assert.NoError(t, err)
@@ -56,9 +60,11 @@ func TestMonoParseEmptyFile(t *testing.T) {
 	mockConverter := NewMockCurrencyConverterSvc(ctrl)
 	mono := importers.NewMono(importers.NewBaseParser(mockConverter, nil, nil))
 
-	resp, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     []string{"Header\n"},
-		Accounts: []*database.Account{},
+	resp, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString([]byte("Header\n"))},
+			Accounts: []*database.Account{},
+		},
 	})
 
 	assert.Error(t, err)
@@ -76,9 +82,11 @@ func TestMonoParseInvalidDate(t *testing.T) {
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 invalid-date,Test,5262,-100.00,10.00,USD,10.00,1000.00`)
 
-	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     []string{string(csvData)},
-		Accounts: []*database.Account{},
+	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
+			Accounts: []*database.Account{},
+		},
 	})
 
 	assert.NoError(t, err)
@@ -94,9 +102,11 @@ func TestMonoParseInvalidAmount(t *testing.T) {
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 11.08.2024 12:19:14,Test,5262,invalid,10.00,USD,10.00,1000.00`)
 
-	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     []string{string(csvData)},
-		Accounts: []*database.Account{},
+	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
+			Accounts: []*database.Account{},
+		},
 	})
 
 	assert.NoError(t, err)
@@ -112,9 +122,11 @@ func TestMonoParseIncomeNotSupported(t *testing.T) {
 	csvData := []byte(`Дата і час операції,Опис,MCC,Сума у валюті картки,Сума у валюті операції,Валюта операції,Курс,Баланс після операції
 11.08.2024 12:19:14,Test Income,5262,100.00,10.00,USD,10.00,1000.00`)
 
-	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     []string{string(csvData)},
-		Accounts: []*database.Account{},
+	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
+			Accounts: []*database.Account{},
+		},
 	})
 
 	assert.NoError(t, err)
@@ -148,16 +160,34 @@ func TestMonoParseMultipleTransactions(t *testing.T) {
 11.08.2024 12:19:14,Transaction 1,5262,-1231.79,128.71,PLN,9.57,1000.00
 12.08.2024 13:30:00,Transaction 2,5411,-500.00,50.00,EUR,10.00,500.00`)
 
-	_, err := mono.Import(context.TODO(), &importers.ImportRequest{
-		Data:     []string{string(csvData)},
-		Accounts: []*database.Account{sourceAccount, expenseAccount},
+	_, err := mono.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(csvData)},
+			Accounts: []*database.Account{sourceAccount, expenseAccount},
+		},
 	})
 
 	assert.NoError(t, err)
 }
 
+func TestMonoIntegration(t *testing.T) {
+	data, err := os.ReadFile("/mnt/c/Users/iqpir/Downloads/report_05-10-2025_10-31-44.csv")
+	assert.NoError(t, err)
+
+	parser := importers.NewMono(importers.NewBaseParser(nil, nil, nil))
+
+	resp, err := parser.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(data)},
+			Accounts: nil,
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+}
+
 func TestMonoType(t *testing.T) {
 	mono := importers.NewMono(nil)
 
-	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_UNSPECIFIED, mono.Type())
+	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_MONOBANK, mono.Type())
 }

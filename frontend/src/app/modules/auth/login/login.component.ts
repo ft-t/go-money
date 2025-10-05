@@ -16,7 +16,7 @@ import { CookieInstances } from '../../../objects/cookie-instances';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { ErrorHelper } from '../../../helpers/error.helper';
-import { CacheService } from '../../../core/services/cache.service';
+import { DefaultCache, ShortLivedCache } from '../../../core/services/cache.service';
 
 @Component({
     selector: 'app-login',
@@ -37,7 +37,8 @@ export class LoginComponent implements OnInit {
         private router: Router,
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        private cache: CacheService,
+        private defaultCache: DefaultCache,
+        private shortLivedCache: ShortLivedCache
     ) {
         this.configService = createClient(ConfigurationService, this.transport);
         this.usersService = createClient(UsersService, this.transport);
@@ -76,6 +77,7 @@ export class LoginComponent implements OnInit {
         this.isRegisterFlow = false;
 
         this.messageService.add({ severity: 'info', detail: 'User created successfully. You can now login.' });
-        this.cache.clear(); // config svc
+        this.defaultCache.clear();
+        this.shortLivedCache.clear();
     }
 }

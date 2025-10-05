@@ -5,19 +5,13 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/hex"
-	"fmt"
 	"strings"
 	"time"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
-	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
-	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
-	"github.com/ft-t/go-money/pkg/database"
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Mono struct {
@@ -31,14 +25,16 @@ func NewMono(base *BaseParser) *Mono {
 }
 
 func (m *Mono) Type() importv1.ImportSource {
-	return importv1.ImportSource_IMPORT_SOURCE_UNSPECIFIED
+	return importv1.ImportSource_IMPORT_SOURCE_MONOBANK
 }
 
-func (m *Mono) Import(
-	ctx context.Context,
-	req *ImportRequest,
-) (*importv1.ImportTransactionsResponse, error) {
-	records, err := m.splitCsv(ctx, []byte(req.Data[0])) // single file support only
+func (m *Mono) Parse(ctx context.Context, req *ParseRequest) (*ParseResponse, error) {
+	decodedFiles, err := m.DecodeFiles(req.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	records, err := m.splitCsv(ctx, decodedFiles[0]) // single file support only
 	if err != nil {
 		return nil, err
 	}
@@ -48,14 +44,25 @@ func (m *Mono) Import(
 		return nil, err
 	}
 
-	converted, err := m.toDbTransactions(ctx, req, parsed)
+	accountNumberToAccountMap, err := m.GetAccountMapByNumbers(req.Accounts)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "failed to get account map by numbers")
 	}
 
-	fmt.Println(converted)
+	createRequests, err := m.ToCreateRequests(
+		ctx,
+		parsed,
+		req.SkipRules,
+		accountNumberToAccountMap,
+		m.Type(),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	return &ParseResponse{
+		CreateRequests: createRequests,
+	}, nil
 }
 
 func (m *Mono) splitCsv(
@@ -116,31 +123,18 @@ func (m *Mono) parseMessages(
 
 		linesData, err := reader.ReadAll()
 		if err != nil {
-			transactions = append(transactions, &Transaction{
-				ID:              uuid.NewString(),
-				Raw:             string(raw.Data),
-				OriginalMessage: raw.Message,
-				ParsingError:    err,
-			})
-			continue
+			return nil, errors.Wrapf(err, "failed to parse csv line: %s", string(rawCsv))
 		}
 
 		if len(linesData) == 0 {
-			transactions = append(transactions, &Transaction{
-				ID:              uuid.NewString(),
-				Raw:             string(raw.Data),
-				OriginalMessage: raw.Message,
-				ParsingError:    errors.New("empty file"),
-			})
-			continue
+			return nil, errors.New("empty csv line")
 		}
 
-		tx, parsingErr := m.parseTransaction(linesData[0], raw.Message)
-		if parsingErr != nil {
-			tx.ParsingError = parsingErr
-		}
+		tx, _ := m.parseTransaction(linesData[0], raw.Message)
 
-		transactions = append(transactions, tx)
+		if tx != nil {
+			transactions = append(transactions, tx)
+		}
 	}
 
 	return transactions, nil
@@ -209,85 +203,4 @@ func (m *Mono) parseTransaction(
 	}
 
 	return tx, nil
-}
-
-func (m *Mono) toDbTransactions(
-	ctx context.Context,
-	req *ImportRequest,
-	transactions []*Transaction,
-) ([]*transactionsv1.CreateTransactionRequest, error) {
-	var requests []*transactionsv1.CreateTransactionRequest
-
-	for _, tx := range transactions {
-		if tx.ParsingError != nil {
-			continue
-		}
-
-		key := fmt.Sprintf("mono_%x", m.GenerateHash(tx.Raw))
-
-		newTx := &transactionsv1.CreateTransactionRequest{
-			Notes:                   tx.Raw,
-			Extra:                   make(map[string]string),
-			TransactionDate:         timestamppb.New(tx.Date),
-			Title:                   tx.Description,
-			ReferenceNumber:         nil,
-			InternalReferenceNumber: &key,
-			SkipRules:               req.SkipRules,
-			CategoryId:              nil,
-			Transaction:             nil,
-		}
-
-		accountNumberToAccountMap := map[string]*database.Account{}
-		for _, acc := range req.Accounts {
-			for _, num := range strings.Split(acc.AccountNumber, ",") {
-				accountNumberToAccountMap[strings.TrimSpace(num)] = acc
-			}
-		}
-
-		switch tx.Type {
-		case TransactionTypeExpense:
-			sourceAccount, err := m.GetAccountAndAmount(ctx, &GetAccountRequest{
-				InitialAmount:   tx.SourceAmount.Abs().Neg(),
-				InitialCurrency: tx.SourceCurrency,
-				Accounts:        accountNumberToAccountMap,
-				AccountName:     tx.SourceAccount,
-				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-			})
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get source account for expense")
-			}
-
-			destinationAccount, err := m.GetDefaultAccountAndAmount(
-				ctx,
-				&GetAccountRequest{
-					InitialAmount:   tx.DestinationAmount.Abs(),
-					InitialCurrency: tx.DestinationCurrency,
-					Accounts:        accountNumberToAccountMap,
-					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
-				},
-			)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get destination account for expense")
-			}
-
-			newTx.Transaction = &transactionsv1.CreateTransactionRequest_Expense{
-				Expense: &transactionsv1.Expense{
-					SourceAmount:         sourceAccount.AmountInAccountCurrency.Abs().Neg().String(),
-					SourceCurrency:       sourceAccount.Account.Currency,
-					SourceAccountId:      sourceAccount.Account.ID,
-					FxSourceAmount:       lo.ToPtr(tx.DestinationAmount.Abs().String()),
-					FxSourceCurrency:     &tx.DestinationCurrency,
-					DestinationAccountId: destinationAccount.Account.ID,
-					DestinationAmount:    destinationAccount.AmountInAccountCurrency.Abs().String(),
-					DestinationCurrency:  destinationAccount.Account.Currency,
-				},
-			}
-		default:
-			return nil, errors.Newf("unsupported transaction type: %d", tx.Type)
-		}
-
-		requests = append(requests, newTx)
-	}
-
-	return requests, nil
 }

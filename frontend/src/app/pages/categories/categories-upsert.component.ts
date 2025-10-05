@@ -16,7 +16,7 @@ import { ColorPickerModule } from 'primeng/colorpicker';
 import { Message } from 'primeng/message';
 import { Category, CategorySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { CategoriesService, CreateCategoryRequestSchema, UpdateCategoryRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
-import { CacheService } from '../../core/services/cache.service';
+import { DefaultCache, ShortLivedCache } from '../../core/services/cache.service';
 
 @Component({
     selector: 'app-categories-upsert',
@@ -33,7 +33,8 @@ export class CategoriesUpsertComponent implements OnInit {
         private messageService: MessageService,
         routeSnapshot: ActivatedRoute,
         private router: Router,
-        private cache: CacheService
+        private defaultCache: DefaultCache,
+        private shortLivedCache: ShortLivedCache
     ) {
         this.categoriesService = createClient(CategoriesService, this.transport);
 
@@ -73,7 +74,8 @@ export class CategoriesUpsertComponent implements OnInit {
             return;
         }
 
-        this.cache.clear(); // categories
+        this.defaultCache.clear();
+        this.shortLivedCache.clear();
 
         if (this.category.id) {
             await this.update();

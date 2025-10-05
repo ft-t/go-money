@@ -21,7 +21,7 @@ import { provideHighlightOptions } from 'ngx-highlightjs';
 import { BusService } from './app/core/services/bus.service';
 import { provideMonacoEditor } from 'ngx-monaco-editor-v2';
 import { cacheInterceptor } from './app/core/interceptors/cache';
-import { CacheService } from './app/core/services/cache.service';
+import { DefaultCache, ShortLivedCache } from './app/core/services/cache.service';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -46,7 +46,8 @@ export const appConfig: ApplicationConfig = {
         ConfirmationService,
         DatePipe,
         BusService,
-        CacheService,
+        DefaultCache,
+        ShortLivedCache,
         providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } } }),
         {
             provide: TRANSPORT_TOKEN,

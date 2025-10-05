@@ -257,38 +257,86 @@ export class TransactionsImportComponent {
     }
 
     async onBasicUploadAuto(event: any) {
-        this.textContent = '';
-        this.showReview = false;
-
         const reader = new FileReader();
         reader.onload = async (event2) => {
-            console.log(event2.target!.result);
+            const content = btoa(unescape(encodeURIComponent(event2.target!.result as string)));
 
-            try {
-                this.isLoading = true;
-                this.messageService.add({ severity: 'info', detail: 'Importing...' });
-
-                let result = await this.importService.importTransactions(
-                    create(ImportTransactionsRequestSchema, {
-                        skipRules: this.skipRules,
-                        treatDatesAsUtc: this.treatDatesAsUtc,
-                        source: this.selectedSource,
-                        content: [btoa(unescape(encodeURIComponent(event2.target!.result as string)))] // todo
-                    })
-                );
-
-                let newText = `Imported ${result.importedCount} transaction.\nDuplicate transactions: ${result.duplicateCount}.\n`;
-
-                this.textContent = newText;
-
-                this.messageService.add({ severity: 'info', detail: newText });
-            } catch (e) {
-                this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
-            } finally {
-                this.isLoading = false;
+            if (this.stagingMode) {
+                await this.parseForReviewWithContent(content);
+            } else {
+                await this.directImportWithContent(content);
             }
         };
 
         reader.readAsText(event.files[0]);
+    }
+
+    async parseForReviewWithContent(content: string) {
+        this.transactionItems = [];
+        this.textContent = '';
+        this.showReview = false;
+
+        try {
+            this.isLoading = true;
+            this.messageService.add({ severity: 'info', detail: 'Parsing...' });
+
+            const response = await this.importService.parseTransactions(
+                create(ParseTransactionsRequestSchema, {
+                    content: [content],
+                    source: this.selectedSource,
+                    treatDatesAsUtc: this.treatDatesAsUtc
+                })
+            );
+
+            this.transactionItems = response.transactions.map((tx) => ({
+                transaction: tx.transaction!,
+                selected: tx.duplicateTransactionId === undefined,
+                duplicateTxID: tx.duplicateTransactionId
+            }));
+
+            if (this.transactionItems.length > 0) {
+                this.showReview = true;
+                this.messageService.add({
+                    severity: 'success',
+                    detail: `Parsed ${this.transactionItems.length} transaction(s)`
+                });
+            } else {
+                this.messageService.add({
+                    severity: 'info',
+                    detail: 'No transactions found'
+                });
+            }
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    async directImportWithContent(content: string) {
+        this.textContent = '';
+        this.showReview = false;
+
+        try {
+            this.isLoading = true;
+            this.messageService.add({ severity: 'info', detail: 'Importing...' });
+
+            const result = await this.importService.importTransactions(
+                create(ImportTransactionsRequestSchema, {
+                    skipRules: this.skipRules,
+                    treatDatesAsUtc: this.treatDatesAsUtc,
+                    source: this.selectedSource,
+                    content: [content]
+                })
+            );
+
+            const logText = `Imported ${result.importedCount} transaction(s).\nDuplicate transactions: ${result.duplicateCount}.\n`;
+            this.textContent = logText;
+            this.messageService.add({ severity: 'success', detail: logText });
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        } finally {
+            this.isLoading = false;
+        }
     }
 }

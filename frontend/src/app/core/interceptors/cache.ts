@@ -3,16 +3,26 @@ import { inject } from '@angular/core';
 import { CookieService } from '../../services/cookie.service';
 import { Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
-import { CacheService } from '../services/cache.service';
+import { DefaultCache, ShortLivedCache } from '../services/cache.service';
 import { Rule } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
+import { Mutex } from 'async-mutex';
+
+type CacheInstance = DefaultCache | ShortLivedCache;
 
 export function cacheInterceptor(): Interceptor {
-    const cacheService = inject(CacheService);
-    const cacheableMethods: { [key: string]: any } = {
-        "ListTags": {},
-        "ListCategories": {},
-        "GetConfiguration": {},
+    const defaultCache = inject(DefaultCache);
+    const shortLivedCache = inject(ShortLivedCache);
+
+    const cacheableMethods: { [key: string]: { cache: CacheInstance } } = {
+        "ListTags": { cache: defaultCache },
+        "ListCategories": { cache: defaultCache },
+        "GetConfiguration": { cache: defaultCache },
+        "GetApplicableAccounts": { cache: shortLivedCache },
+        "GetCurrencies": { cache: shortLivedCache },
     };
+
+    const mutexes = new Map<string, Mutex>();
+
     return (next) => async (req) => {
         const targetPath = req.method.name ?? 'unk';
 
@@ -20,17 +30,33 @@ export function cacheInterceptor(): Interceptor {
             return await next(req);
         }
 
+        const config = cacheableMethods[targetPath];
         const key = req.url + JSON.stringify(req.message);
 
-        const cachedData = cacheService.get(key);
+        const cachedData = config.cache.get(key);
         if (cachedData) {
             return cachedData;
         }
 
+        if (!mutexes.has(key)) {
+            mutexes.set(key, new Mutex());
+        }
+        const mutex = mutexes.get(key)!;
 
-        let resp = await next(req);
-        cacheService.set(key, resp);
+        const release = await mutex.acquire();
 
-        return resp;
+        try {
+            const cachedDataAfterLock = config.cache.get(key);
+            if (cachedDataAfterLock) {
+                return cachedDataAfterLock;
+            }
+
+            const resp = await next(req);
+            config.cache.set(key, resp);
+
+            return resp;
+        } finally {
+            release();
+        }
     };
 }

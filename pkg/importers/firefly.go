@@ -3,7 +3,6 @@ package importers
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/csv"
 	"fmt"
 	"strings"
@@ -65,23 +64,6 @@ func (f *FireflyImporter) ParseDate(
 	}
 
 	return parsedDate, nil
-}
-
-func (f *FireflyImporter) DecodeFiles(
-	records []string,
-) ([][]byte, error) {
-	var results [][]byte
-
-	for _, record := range records {
-		decoded, err := base64.StdEncoding.DecodeString(record)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to decode file content")
-		}
-
-		results = append(results, decoded)
-	}
-
-	return results, nil
 }
 
 func (f *FireflyImporter) Parse(

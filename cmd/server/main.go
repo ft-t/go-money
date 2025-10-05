@@ -211,6 +211,7 @@ func main() {
 			baseParser,
 		),
 		importers.NewPrivat24(baseParser),
+		importers.NewMono(baseParser),
 	)
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)
