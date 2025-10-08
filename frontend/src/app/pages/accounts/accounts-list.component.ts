@@ -226,9 +226,15 @@ export class AccountsListComponent implements OnInit {
         return parseFloat(amount.toString()).toFixed(2);
     }
 
+    getFilteredAccounts(): ListAccountsResponse_AccountItem[] {
+        // Use filtered accounts if available (when user applies filters), otherwise use all accounts
+        return this.table?.filteredValue || this.accounts;
+    }
+
     getUniqueCurrencies(): string[] {
         const currencies = new Set<string>();
-        for (let accountItem of this.accounts) {
+        const filteredAccounts = this.getFilteredAccounts();
+        for (let accountItem of filteredAccounts) {
             if (accountItem.account && accountItem.account.currency) {
                 currencies.add(accountItem.account.currency);
             }
@@ -238,7 +244,8 @@ export class AccountsListComponent implements OnInit {
 
     getTotalBalanceByCurrency(currency: string): number {
         let total = 0;
-        for (let accountItem of this.accounts) {
+        const filteredAccounts = this.getFilteredAccounts();
+        for (let accountItem of filteredAccounts) {
             if (accountItem.account &&
                 accountItem.account.currency === currency &&
                 accountItem.account.currentBalance) {
@@ -250,7 +257,8 @@ export class AccountsListComponent implements OnInit {
 
     getTotalDebitsByCurrency(currency: string): number {
         let total = 0;
-        for (let accountItem of this.accounts) {
+        const filteredAccounts = this.getFilteredAccounts();
+        for (let accountItem of filteredAccounts) {
             if (accountItem.account &&
                 accountItem.account.currency === currency) {
                 const analytics = this.analyticsMap[accountItem.account.id];
@@ -264,7 +272,8 @@ export class AccountsListComponent implements OnInit {
 
     getTotalCreditsByCurrency(currency: string): number {
         let total = 0;
-        for (let accountItem of this.accounts) {
+        const filteredAccounts = this.getFilteredAccounts();
+        for (let accountItem of filteredAccounts) {
             if (accountItem.account &&
                 accountItem.account.currency === currency) {
                 const analytics = this.analyticsMap[accountItem.account.id];
