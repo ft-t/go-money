@@ -2,8 +2,18 @@ apiVersion: v1
 entries:
   go-money:
   - apiVersion: v2
+    appVersion: 0.2.11
+    created: "2025-10-08T21:00:01.667976791Z"
+    description: A Helm chart for Kubernetes
+    digest: 1f6006e18a83f495023b4e0aab17ce979a888135dccacf99b412d772f591ef1d
+    name: go-money
+    type: application
+    urls:
+    - go-money-0.2.11.tgz
+    version: 0.2.11
+  - apiVersion: v2
     appVersion: 0.2.10
-    created: "2025-10-05T17:56:04.623984503Z"
+    created: "2025-10-08T21:00:01.667650561Z"
     description: A Helm chart for Kubernetes
     digest: 0e1f6141b5620b8d22e6e93bb57210d296853e1286454c5a3cb568e4b695357c
     name: go-money
@@ -13,7 +23,7 @@ entries:
     version: 0.2.10
   - apiVersion: v2
     appVersion: 0.2.9
-    created: "2025-10-05T17:56:04.6272824Z"
+    created: "2025-10-08T21:00:01.670254169Z"
     description: A Helm chart for Kubernetes
     digest: c336f32ac1ddaf3c1409df710a0d9f8fb3e25da30159f5a12d421bf1b1c2232c
     name: go-money
@@ -23,7 +33,7 @@ entries:
     version: 0.2.9
   - apiVersion: v2
     appVersion: 0.2.8
-    created: "2025-10-05T17:56:04.627005361Z"
+    created: "2025-10-08T21:00:01.669998351Z"
     description: A Helm chart for Kubernetes
     digest: 8ec164e7460799758becf601f029f5b202e609035ae1b26dca3df81dca7b8175
     name: go-money
@@ -33,7 +43,7 @@ entries:
     version: 0.2.8
   - apiVersion: v2
     appVersion: 0.2.7
-    created: "2025-10-05T17:56:04.626685932Z"
+    created: "2025-10-08T21:00:01.669672682Z"
     description: A Helm chart for Kubernetes
     digest: ec5ea3650f0a0510c57915ec8b445020b95afec3e132a1a58bb1b215b1184e2f
     name: go-money
@@ -43,7 +53,7 @@ entries:
     version: 0.2.7
   - apiVersion: v2
     appVersion: 0.2.6
-    created: "2025-10-05T17:56:04.626060741Z"
+    created: "2025-10-08T21:00:01.669379434Z"
     description: A Helm chart for Kubernetes
     digest: 8bb18329a0c62980df0ce1bfcfcff5a15d238757c3150ae0ba14ff692550aeb6
     name: go-money
@@ -53,7 +63,7 @@ entries:
     version: 0.2.6
   - apiVersion: v2
     appVersion: 0.2.5
-    created: "2025-10-05T17:56:04.625303213Z"
+    created: "2025-10-08T21:00:01.669116081Z"
     description: A Helm chart for Kubernetes
     digest: caa4416459d1b22a0d3f6341b76769aaea211d6cd300d73ac1392ed396b82ab9
     name: go-money
@@ -63,7 +73,7 @@ entries:
     version: 0.2.5
   - apiVersion: v2
     appVersion: 0.2.4
-    created: "2025-10-05T17:56:04.62487474Z"
+    created: "2025-10-08T21:00:01.668865573Z"
     description: A Helm chart for Kubernetes
     digest: 4ba96e4fa50afb187844cb79dc573c626eb723c6dd27bc9b21c382996818a480
     name: go-money
@@ -73,7 +83,7 @@ entries:
     version: 0.2.4
   - apiVersion: v2
     appVersion: 0.2.3
-    created: "2025-10-05T17:56:04.624574618Z"
+    created: "2025-10-08T21:00:01.66858567Z"
     description: A Helm chart for Kubernetes
     digest: 8737e9f4df0411e7baa0303d8320c720d23684fa5731a98f880c3a8211809347
     name: go-money
@@ -83,7 +93,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 0.2.2
-    created: "2025-10-05T17:56:04.624284445Z"
+    created: "2025-10-08T21:00:01.668305415Z"
     description: A Helm chart for Kubernetes
     digest: 60bd2a783e2cc74ee9f886b9e09416b2250935e36129e1f8bba6284f1ed5ec07
     name: go-money
@@ -91,4 +101,4 @@ entries:
     urls:
     - go-money-0.2.2.tgz
     version: 0.2.2
-generated: "2025-10-05T17:56:04.623543627Z"
+generated: "2025-10-08T21:00:01.667222901Z"
