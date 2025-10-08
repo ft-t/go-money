@@ -63,6 +63,12 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
     public categories: Category[] = [];
 
     public maxSelectedLabels = 1;
+    public totalExpenses: number = 0;
+    public totalIncome: number = 0;
+    public totalTransfers: number = 0;
+    public expenseCount: number = 0;
+    public incomeCount: number = 0;
+    public transferCount: number = 0;
 
     @Input() filtersWrapper: FilterWrapper | undefined;
 
@@ -332,10 +338,39 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
             this.transactions = resp.transactions;
             this.totalRecords = Number(resp.totalCount);
+            this.calculateSummary();
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {
             this.loading = false;
+        }
+    }
+
+    calculateSummary() {
+        this.totalExpenses = 0;
+        this.totalIncome = 0;
+        this.totalTransfers = 0;
+        this.expenseCount = 0;
+        this.incomeCount = 0;
+        this.transferCount = 0;
+
+        for (let tx of this.transactions) {
+            const amount = Math.abs(parseFloat(tx.sourceAmount || '0'));
+
+            switch (tx.type) {
+                case TransactionType.EXPENSE:
+                    this.totalExpenses += amount;
+                    this.expenseCount++;
+                    break;
+                case TransactionType.INCOME:
+                    this.totalIncome += amount;
+                    this.incomeCount++;
+                    break;
+                case TransactionType.TRANSFER_BETWEEN_ACCOUNTS:
+                    this.totalTransfers += amount;
+                    this.transferCount++;
+                    break;
+            }
         }
     }
 
@@ -354,6 +389,20 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
     getTransactionTypeColor(transaction: Transaction): string[] {
         return ['text-wrap', 'break-all', this.getAmountColor(transaction)];
+    }
+
+    getTransactionTypeIcon(transaction: Transaction): string {
+        const color = this.getAmountColor(transaction);
+        switch (transaction.type) {
+            case TransactionType.EXPENSE:
+                return 'pi-arrow-down ' + color;
+            case TransactionType.INCOME:
+                return 'pi-arrow-up ' + color;
+            case TransactionType.TRANSFER_BETWEEN_ACCOUNTS:
+                return 'pi-arrow-right-arrow-left ' + color;
+            default:
+                return 'pi-question text-gray-500';
+        }
     }
 
     getTransactionLink(id: number): string {
@@ -449,5 +498,11 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
         return val.trim();
     }
 
+    formatAmount(amount: string | undefined): string {
+        if (!amount) return '0.00';
+        return parseFloat(amount).toFixed(2);
+    }
+
     protected readonly TimestampHelper = TimestampHelper;
+    protected readonly parseFloat = parseFloat;
 }

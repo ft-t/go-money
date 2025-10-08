@@ -226,5 +226,55 @@ export class AccountsListComponent implements OnInit {
         return parseFloat(amount.toString()).toFixed(2);
     }
 
+    getUniqueCurrencies(): string[] {
+        const currencies = new Set<string>();
+        for (let accountItem of this.accounts) {
+            if (accountItem.account && accountItem.account.currency) {
+                currencies.add(accountItem.account.currency);
+            }
+        }
+        return Array.from(currencies).sort();
+    }
+
+    getTotalBalanceByCurrency(currency: string): number {
+        let total = 0;
+        for (let accountItem of this.accounts) {
+            if (accountItem.account &&
+                accountItem.account.currency === currency &&
+                accountItem.account.currentBalance) {
+                total += parseFloat(accountItem.account.currentBalance);
+            }
+        }
+        return total;
+    }
+
+    getTotalDebitsByCurrency(currency: string): number {
+        let total = 0;
+        for (let accountItem of this.accounts) {
+            if (accountItem.account &&
+                accountItem.account.currency === currency) {
+                const analytics = this.analyticsMap[accountItem.account.id];
+                if (analytics) {
+                    total += analytics.totalDebitsAmount;
+                }
+            }
+        }
+        return total;
+    }
+
+    getTotalCreditsByCurrency(currency: string): number {
+        let total = 0;
+        for (let accountItem of this.accounts) {
+            if (accountItem.account &&
+                accountItem.account.currency === currency) {
+                const analytics = this.analyticsMap[accountItem.account.id];
+                if (analytics) {
+                    total += analytics.totalCreditsAmount;
+                }
+            }
+        }
+        return total;
+    }
+
     protected readonly TimestampHelper = TimestampHelper;
 }
