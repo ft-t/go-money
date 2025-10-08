@@ -30,6 +30,7 @@ import { AnalyticsService, GetDebitsAndCreditsSummaryRequestSchema, GetDebitsAnd
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { SelectedDateService } from '../../core/services/selected-date.service';
 import { ConfigurationService, GetConfigurationResponse, GetConfigurationResponseSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
+import { combineLatest, skip } from 'rxjs';
 
 @Component({
     selector: 'app-account-list',
@@ -114,11 +115,12 @@ export class AccountsListComponent implements OnInit {
         await this.loadAccounts();
         await this.loadAnalytics();
 
-        this.selectedDateService.fromDate.subscribe(async () => {
-            await this.loadAnalytics();
-        });
-
-        this.selectedDateService.toDate.subscribe(async () => {
+        combineLatest([
+            this.selectedDateService.fromDate,
+            this.selectedDateService.toDate
+        ]).pipe(
+            skip(1)
+        ).subscribe(async () => {
             await this.loadAnalytics();
         });
     }
@@ -263,7 +265,7 @@ export class AccountsListComponent implements OnInit {
                 accountItem.account.currency === currency) {
                 const analytics = this.analyticsMap[accountItem.account.id];
                 if (analytics) {
-                    total += analytics.totalDebitsAmount;
+                    total += parseFloat(analytics.totalDebitsAmount);
                 }
             }
         }
@@ -278,7 +280,7 @@ export class AccountsListComponent implements OnInit {
                 accountItem.account.currency === currency) {
                 const analytics = this.analyticsMap[accountItem.account.id];
                 if (analytics) {
-                    total += analytics.totalCreditsAmount;
+                    total += parseFloat(analytics.totalCreditsAmount);
                 }
             }
         }

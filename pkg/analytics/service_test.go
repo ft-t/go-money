@@ -10,6 +10,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/analytics"
 	"github.com/ft-t/go-money/pkg/configuration"
+	"github.com/ft-t/go-money/pkg/currency"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/shopspring/decimal"
@@ -30,6 +31,11 @@ func TestMain(m *testing.M) {
 
 func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	assert.NoError(t, gormDB.Create(&database.Currency{
+		ID:            "USD",
+		DecimalPlaces: 2,
+	}).Error)
 
 	account1ID := int32(1)
 	account2ID := int32(2)
@@ -83,7 +89,11 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 		assert.NoError(t, gormDB.Create(entry).Error)
 	}
 
-	service := analytics.NewService()
+	decimalSvc := currency.NewDecimalService()
+	service := analytics.NewService(&analytics.ServiceConfig{
+		DecimalSvc:   decimalSvc,
+		BaseCurrency: "USD",
+	})
 
 	t.Run("calculate summary for account 1", func(t *testing.T) {
 		req := &analyticsv1.GetDebitsAndCreditsSummaryRequest{
@@ -101,8 +111,8 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 		assert.Contains(t, resp.Items, account1ID)
 
 		item := resp.Items[account1ID]
-		assert.Equal(t, int32(700), item.TotalDebitsAmount)
-		assert.Equal(t, int32(1000), item.TotalCreditsAmount)
+		assert.Equal(t, "700.00", item.TotalDebitsAmount)
+		assert.Equal(t, "1000.00", item.TotalCreditsAmount)
 		assert.Equal(t, int32(2), item.TotalDebitsCount)
 		assert.Equal(t, int32(1), item.TotalCreditsCount)
 	})
@@ -123,8 +133,8 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 		assert.Contains(t, resp.Items, account2ID)
 
 		item := resp.Items[account2ID]
-		assert.Equal(t, int32(0), item.TotalDebitsAmount)
-		assert.Equal(t, int32(500), item.TotalCreditsAmount)
+		assert.Equal(t, "0.00", item.TotalDebitsAmount)
+		assert.Equal(t, "500.00", item.TotalCreditsAmount)
 		assert.Equal(t, int32(0), item.TotalDebitsCount)
 		assert.Equal(t, int32(2), item.TotalCreditsCount)
 	})
@@ -145,8 +155,8 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 		assert.Contains(t, resp.Items, account1ID)
 
 		item := resp.Items[account1ID]
-		assert.Equal(t, int32(200), item.TotalDebitsAmount)
-		assert.Equal(t, int32(0), item.TotalCreditsAmount)
+		assert.Equal(t, "200.00", item.TotalDebitsAmount)
+		assert.Equal(t, "0.00", item.TotalCreditsAmount)
 		assert.Equal(t, int32(1), item.TotalDebitsCount)
 		assert.Equal(t, int32(0), item.TotalCreditsCount)
 	})
@@ -214,8 +224,8 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 		assert.Contains(t, resp.Items, int32(999))
 
 		item := resp.Items[int32(999)]
-		assert.Equal(t, int32(0), item.TotalDebitsAmount)
-		assert.Equal(t, int32(0), item.TotalCreditsAmount)
+		assert.Equal(t, "0.00", item.TotalDebitsAmount)
+		assert.Equal(t, "0.00", item.TotalCreditsAmount)
 		assert.Equal(t, int32(0), item.TotalDebitsCount)
 		assert.Equal(t, int32(0), item.TotalCreditsCount)
 	})

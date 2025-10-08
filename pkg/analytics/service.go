@@ -10,10 +10,17 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type Service struct{}
+type Service struct {
+	cfg *ServiceConfig
+}
 
-func NewService() *Service {
-	return &Service{}
+type ServiceConfig struct {
+	DecimalSvc   DecimalSvc
+	BaseCurrency string
+}
+
+func NewService(cfg *ServiceConfig) *Service {
+	return &Service{cfg: cfg}
 }
 
 func (s *Service) GetDebitsAndCreditsSummary(
@@ -47,14 +54,11 @@ func (s *Service) GetDebitsAndCreditsSummary(
 	items := make(map[int32]*analyticsv1.GetDebitsAndCreditsSummaryResponse_SummaryItem)
 
 	for accountId, summary := range summaries {
-		debitsAmount, _ := summary.TotalDebits.Truncate(0).Float64()
-		creditsAmount, _ := summary.TotalCredits.Truncate(0).Float64()
-
 		items[accountId] = &analyticsv1.GetDebitsAndCreditsSummaryResponse_SummaryItem{
 			TotalDebitsCount:   summary.DebitsCount,
 			TotalCreditsCount:  summary.CreditsCount,
-			TotalDebitsAmount:  int32(debitsAmount),
-			TotalCreditsAmount: int32(creditsAmount),
+			TotalDebitsAmount:  s.cfg.DecimalSvc.ToString(ctx, summary.TotalDebits, s.cfg.BaseCurrency),
+			TotalCreditsAmount: s.cfg.DecimalSvc.ToString(ctx, summary.TotalCredits, s.cfg.BaseCurrency),
 		}
 	}
 
