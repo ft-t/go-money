@@ -75,7 +75,7 @@
             <p-inputgroup>
                 <p-inputnumber formControlName="amount"
                                mode="decimal"
-                               [minFractionDigits]="0" [maxFractionDigits]="5"
+                               [minFractionDigits]="2" [maxFractionDigits]="5"
                                placeholder="Amount"></p-inputnumber>
                 <p-inputgroup-addon
                     [style]="{'color': 'deepskyblue'}">{{ expenseSplitForm.get('sourceCurrency')?.value }}

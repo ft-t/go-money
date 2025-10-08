@@ -44,7 +44,7 @@
                             <p-inputnumber formControlName="sourceAmount"
                                            placeholder="Amount *"
                                            mode="decimal"
-                                           [minFractionDigits]="0" [maxFractionDigits]="5"
+                                           [minFractionDigits]="2" [maxFractionDigits]="5"
                             ></p-inputnumber>
                             <p-inputgroup-addon
                                 [style]="{'color': 'deepskyblue'}">{{ form.get('sourceCurrency')?.value ?? '' }}
@@ -81,7 +81,7 @@
                         <p-inputgroup>
                             <p-inputnumber formControlName="fxSourceAmount"
                                            mode="decimal"
-                                           [minFractionDigits]="0" [maxFractionDigits]="5"
+                                           [minFractionDigits]="2" [maxFractionDigits]="5"
                                            placeholder="Amount"></p-inputnumber>
                             <p-inputgroup-addon
                                 [style]="{'color': 'deepskyblue'}">{{ this.form.get('fxSourceCurrency')?.value ?? '' }}
@@ -118,7 +118,7 @@
                     <p-inputgroup>
                         <p-inputnumber formControlName="destinationAmount" placeholder="Amount *"
                                        mode="decimal"
-                                       [minFractionDigits]="0" [maxFractionDigits]="5"
+                                       [minFractionDigits]="2" [maxFractionDigits]="5"
                         ></p-inputnumber>
                         <p-inputgroup-addon
                             [style]="{'color': 'deepskyblue'}">{{ form.get('destinationCurrency')?.value ?? '' }}
