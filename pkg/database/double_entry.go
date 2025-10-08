@@ -16,6 +16,7 @@ type DoubleEntry struct {
 
 	AccountID int32
 
-	CreatedAt time.Time
-	DeletedAt gorm.DeletedAt
+	TransactionDate time.Time
+	CreatedAt       time.Time
+	DeletedAt       gorm.DeletedAt
 }

@@ -49,6 +49,7 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 			AmountInBaseCurrency: decimal.NewFromInt(1000),
 			BaseCurrency:         "USD",
 			AccountID:            account1ID,
+			TransactionDate:      baseTime.Add(-2 * time.Hour),
 			CreatedAt:            baseTime.Add(-2 * time.Hour),
 		},
 		{
@@ -57,6 +58,7 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 			AmountInBaseCurrency: decimal.NewFromInt(500),
 			BaseCurrency:         "USD",
 			AccountID:            account1ID,
+			TransactionDate:      baseTime.Add(-1 * time.Hour),
 			CreatedAt:            baseTime.Add(-1 * time.Hour),
 		},
 		{
@@ -65,6 +67,7 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 			AmountInBaseCurrency: decimal.NewFromInt(200),
 			BaseCurrency:         "USD",
 			AccountID:            account1ID,
+			TransactionDate:      baseTime,
 			CreatedAt:            baseTime,
 		},
 		{
@@ -73,6 +76,7 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 			AmountInBaseCurrency: decimal.NewFromInt(200),
 			BaseCurrency:         "USD",
 			AccountID:            account2ID,
+			TransactionDate:      baseTime,
 			CreatedAt:            baseTime,
 		},
 		{
@@ -81,6 +85,7 @@ func TestService_GetDebitsAndCreditsSummary(t *testing.T) {
 			AmountInBaseCurrency: decimal.NewFromInt(300),
 			BaseCurrency:         "USD",
 			AccountID:            account2ID,
+			TransactionDate:      baseTime.Add(1 * time.Hour),
 			CreatedAt:            baseTime.Add(1 * time.Hour),
 		},
 	}

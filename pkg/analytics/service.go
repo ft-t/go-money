@@ -85,7 +85,7 @@ func (s *Service) calculateAccountSummary(
 	err := db.Table("double_entries").
 		Select("account_id, is_debit, COALESCE(SUM(ABS(amount_in_base_currency)), 0) as total_amount, COUNT(*) as count").
 		Where("account_id IN ? AND deleted_at IS NULL", accountIds).
-		Where("created_at >= ? AND created_at <= ?", startDate, endDate).
+		Where("transaction_date >= ? AND transaction_date <= ?", startDate, endDate).
 		Group("account_id, is_debit").
 		Scan(&results).Error
 
