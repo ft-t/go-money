@@ -26,6 +26,10 @@ import { InputGroupAddon } from 'primeng/inputgroupaddon';
 import { InputNumber } from 'primeng/inputnumber';
 import { ReconciliationModalComponent } from '../transactions/modals/reconciliation-modal/reconciliation-modal.component';
 import { TooltipModule } from 'primeng/tooltip';
+import { AnalyticsService, GetDebitsAndCreditsSummaryRequestSchema, GetDebitsAndCreditsSummaryResponse_SummaryItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/analytics/v1/analytics_pb';
+import { TimestampSchema } from '@bufbuild/protobuf/wkt';
+import { SelectedDateService } from '../../core/services/selected-date.service';
+import { ConfigurationService, GetConfigurationResponse, GetConfigurationResponseSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
 
 @Component({
     selector: 'app-account-list',
@@ -65,6 +69,8 @@ export class AccountsListComponent implements OnInit {
 
     public accounts: ListAccountsResponse_AccountItem[] = [];
     private accountService;
+    private analyticsService;
+    private configService;
     public accountTypes = EnumService.getAccountTypes();
     public filters: { [s: string]: FilterMetadata } = {};
     public accountCurrencies: Currency[] = [];
@@ -76,14 +82,19 @@ export class AccountsListComponent implements OnInit {
         }
     ];
     @ViewChild('filter') filter!: ElementRef;
+    public analyticsMap: { [accountId: number]: GetDebitsAndCreditsSummaryResponse_SummaryItem } = {};
+    public serverConfig: GetConfigurationResponse = create(GetConfigurationResponseSchema, {});
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         public router: Router,
-        route: ActivatedRoute
+        route: ActivatedRoute,
+        private selectedDateService: SelectedDateService
     ) {
         this.accountService = createClient(AccountsService, this.transport);
+        this.analyticsService = createClient(AnalyticsService, this.transport);
+        this.configService = createClient(ConfigurationService, this.transport);
 
         if (route.snapshot.data['filters']) {
             for (let ob of route.snapshot.data['filters']) {
@@ -99,7 +110,17 @@ export class AccountsListComponent implements OnInit {
     }
 
     async ngOnInit() {
+        await this.loadConfig();
         await this.loadAccounts();
+        await this.loadAnalytics();
+
+        this.selectedDateService.fromDate.subscribe(async () => {
+            await this.loadAnalytics();
+        });
+
+        this.selectedDateService.toDate.subscribe(async () => {
+            await this.loadAnalytics();
+        });
     }
 
     async loadAccounts() {
@@ -153,11 +174,57 @@ export class AccountsListComponent implements OnInit {
         }
 
         await this.loadAccounts();
+        await this.loadAnalytics();
         console.log("Refreshing table data");
 
         this.table.filter('', '', '');
     }
 
+    async loadConfig() {
+        try {
+            this.serverConfig = await this.configService.getConfiguration({});
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async loadAnalytics() {
+        if (this.accounts.length === 0) {
+            return;
+        }
+
+        try {
+            const fromDate = this.selectedDateService.fromDate.value;
+            const toDate = this.selectedDateService.toDate.value;
+            const accountIds = this.accounts.map(a => a.account!.id);
+
+            const response = await this.analyticsService.getDebitsAndCreditsSummary(
+                create(GetDebitsAndCreditsSummaryRequestSchema, {
+                    accountIds: accountIds,
+                    startAt: create(TimestampSchema, {
+                        seconds: BigInt(Math.floor(fromDate.getTime() / 1000)),
+                        nanos: (fromDate.getMilliseconds() % 1000) * 1_000_000
+                    }),
+                    endAt: create(TimestampSchema, {
+                        seconds: BigInt(Math.floor(toDate.getTime() / 1000)),
+                        nanos: (toDate.getMilliseconds() % 1000) * 1_000_000
+                    })
+                })
+            );
+
+            this.analyticsMap = response.items;
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    getAnalytics(accountId: number): GetDebitsAndCreditsSummaryResponse_SummaryItem | undefined {
+        return this.analyticsMap[accountId];
+    }
+
+    formatAmount(amount: number): string {
+        return parseFloat(amount.toString()).toFixed(2);
+    }
 
     protected readonly TimestampHelper = TimestampHelper;
 }
