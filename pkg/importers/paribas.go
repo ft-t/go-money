@@ -103,7 +103,7 @@ func (p *Paribas) ParseMessages(
 	var transactions []*Transaction
 
 	for _, raw := range rawArr {
-		fileData, err := xlsx.OpenBinary([]byte(raw.Data))
+		fileData, err := xlsx.OpenBinary(raw.Data)
 		if err != nil {
 			tx := &Transaction{
 				ID:              uuid.NewString(),
@@ -186,20 +186,20 @@ func (p *Paribas) parseRow(
 	message *Message,
 ) *Transaction {
 	tx := &Transaction{
-		ID:              uuid.NewString(),
-		Type:            0,
-		SourceAmount:    decimal.Decimal{},
-		SourceCurrency:  "",
-		DestinationAmount: decimal.Decimal{},
-		DestinationCurrency: "",
-		Description:     "",
-		SourceAccount:   "",
-		DestinationAccount: "",
-		DateFromMessage: "",
-		Raw:             "",
+		ID:                          uuid.NewString(),
+		Type:                        0,
+		SourceAmount:                decimal.Decimal{},
+		SourceCurrency:              "",
+		DestinationAmount:           decimal.Decimal{},
+		DestinationCurrency:         "",
+		Description:                 "",
+		SourceAccount:               "",
+		DestinationAccount:          "",
+		DateFromMessage:             "",
+		Raw:                         "",
 		InternalTransferDirectionTo: false,
-		DuplicateTransactions: nil,
-		OriginalMessage: message,
+		DuplicateTransactions:       nil,
+		OriginalMessage:             message,
 	}
 
 	tx.DeduplicationKeys = append(tx.DeduplicationKeys, p.extractFromCellV1(row.Cells))

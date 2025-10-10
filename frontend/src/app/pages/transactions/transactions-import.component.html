@@ -34,14 +34,34 @@
                     <p-fileupload mode="basic" name="demo[]"
                                   chooseIcon="pi pi-upload"
                                   maxFileSize="100000000"
-                                  accept="text/csv"
-                                  customUpload="true"
-                                  (uploadHandler)="onBasicUploadAuto($event)"
+                                  accept="text/csv,.xlsx,.xls"
+                                  [multiple]="true"
+                                  (onSelect)="onFileSelect($event)"
                                   [disabled]="isLoading"
-                                  [auto]="true" chooseLabel="Select file to import" />
+                                  chooseLabel="Select file(s) to import" />
+
+                    @if (selectedFiles.length > 0) {
+                        <div class="flex flex-col gap-2">
+                            <div class="text-sm text-gray-600">
+                                Selected {{ selectedFiles.length }} file(s):
+                                @for (file of selectedFiles; track file.name) {
+                                    <div class="ml-2">• {{ file.name }}</div>
+                                }
+                            </div>
+                            <p-button
+                                label="Clear Selection"
+                                severity="secondary"
+                                size="small"
+                                (onClick)="clearSelectedFiles()"
+                                [disabled]="isLoading" />
+                        </div>
+                    }
                 }
 
-                <p-button [label]="stagingMode ? 'Parse' : 'Import'" (onClick)="submit()" [disabled]="isLoading" />
+                <p-button
+                    [label]="stagingMode ? 'Parse' : 'Import'"
+                    (onClick)="isRawTextImport() ? submit() : processFiles()"
+                    [disabled]="isLoading || (!isRawTextImport() && selectedFiles.length === 0)" />
 
                 <textarea *ngIf="!showReview" readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
             </div>

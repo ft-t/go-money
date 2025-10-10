@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/samber/lo"
+	"github.com/samber/lo/mutable"
 	"github.com/shopspring/decimal"
 	"github.com/tealeg/xlsx"
 )
@@ -53,8 +53,11 @@ func (d ParibasDataExtractorV1) Extract(_ context.Context, cells []*xlsx.Cell) (
 	description := cells[6].String()
 
 	rawAccount := cells[7].String()
+
 	accountArr := toLines(strings.ToLower(rawAccount))
-	account := lo.Reverse(accountArr)[0]
+	
+	mutable.Reverse(accountArr)
+	account := accountArr[0]
 
 	transactionType := cells[8].String()
 
@@ -113,7 +116,9 @@ func (d ParibasDataExtractorV2) Extract(_ context.Context, cells []*xlsx.Cell) (
 
 	rawAccount := cells[8].String()
 	accountArr := toLines(strings.ToLower(rawAccount))
-	account := lo.Reverse(accountArr)[0]
+
+	mutable.Reverse(accountArr)
+	account := accountArr[0]
 
 	transactionType := cells[9].String()
 

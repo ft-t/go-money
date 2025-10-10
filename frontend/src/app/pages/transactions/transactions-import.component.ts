@@ -62,6 +62,7 @@ export class TransactionsImportComponent {
     public hideDuplicates: boolean = false;
     public showErrorsOnly: boolean = false;
     public activeIndices: number[] = [];
+    public selectedFiles: File[] = [];
 
     @ViewChildren('editor') editors: QueryList<TransactionEditorComponent> = new QueryList();
 
@@ -97,6 +98,10 @@ export class TransactionsImportComponent {
     }
 
     async parseForReview(content?: string) {
+        await this.parseForReviewMultiple([content || this.rawText]);
+    }
+
+    async parseForReviewMultiple(contents: string[]) {
         this.transactionItems = [];
         this.textContent = '';
         this.showReview = false;
@@ -107,7 +112,7 @@ export class TransactionsImportComponent {
 
             const response = await this.importService.parseTransactions(
                 create(ParseTransactionsRequestSchema, {
-                    content: [content || this.rawText],
+                    content: contents,
                     source: this.selectedSource,
                     treatDatesAsUtc: this.treatDatesAsUtc
                 })
@@ -154,6 +159,13 @@ export class TransactionsImportComponent {
     }
 
     async directImport(content?: string) {
+        await this.directImportMultiple([content || this.rawText]);
+        if (!content) {
+            this.rawText = '';
+        }
+    }
+
+    async directImportMultiple(contents: string[]) {
         this.textContent = '';
         this.showReview = false;
 
@@ -166,16 +178,13 @@ export class TransactionsImportComponent {
                     skipRules: this.skipRules,
                     treatDatesAsUtc: this.treatDatesAsUtc,
                     source: this.selectedSource,
-                    content: [content || this.rawText]
+                    content: contents
                 })
             );
 
             const logText = `Imported ${result.importedCount} transaction(s).\nDuplicate transactions: ${result.duplicateCount}.\n`;
             this.textContent = logText;
             this.messageService.add({ severity: 'success', detail: logText });
-            if (!content) {
-                this.rawText = '';
-            }
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {
@@ -353,19 +362,53 @@ export class TransactionsImportComponent {
         }
     }
 
-    async onBasicUploadAuto(event: any) {
-        const reader = new FileReader();
-        reader.onload = async (event2) => {
-            const content = btoa(unescape(encodeURIComponent(event2.target!.result as string)));
+    onFileSelect(event: any) {
+        this.selectedFiles = Array.from(event.files);
+    }
+
+    clearSelectedFiles() {
+        this.selectedFiles = [];
+    }
+
+    async processFiles() {
+        if (this.selectedFiles.length === 0) {
+            this.messageService.add({
+                severity: 'warn',
+                detail: 'Please select at least one file'
+            });
+            return;
+        }
+
+        try {
+            const contents: string[] = [];
+
+            for (const file of this.selectedFiles) {
+                const content = await this.readFileAsBase64(file);
+                contents.push(content);
+            }
 
             if (this.stagingMode) {
-                await this.parseForReview(content);
+                await this.parseForReviewMultiple(contents);
             } else {
-                await this.directImport(content);
+                await this.directImportMultiple(contents);
             }
-        };
 
-        reader.readAsText(event.files[0]);
+            this.selectedFiles = [];
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    private readFileAsBase64(file: File): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const content = btoa(unescape(encodeURIComponent(event.target!.result as string)));
+                resolve(content);
+            };
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
     }
 
 
