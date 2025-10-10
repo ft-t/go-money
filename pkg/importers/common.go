@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
@@ -370,4 +371,22 @@ func (b *BaseParser) DecodeFiles(
 	}
 
 	return results, nil
+}
+
+func stripAccountPrefix(account string) string {
+	account = strings.ToLower(account)
+	var accountStriped strings.Builder
+
+	for idx, l := range account {
+		if !unicode.IsLetter(l) && idx == 0 {
+			return account
+		}
+
+		if unicode.IsLetter(l) {
+			continue
+		}
+		accountStriped.WriteRune(l)
+	}
+
+	return accountStriped.String()
 }
