@@ -104,7 +104,7 @@
                                         (click)="$event.stopPropagation()" />
                                     <div class="flex flex-col gap-1 flex-1">
                                         <div class="flex flex-row gap-2 items-center">
-                                            <span class="font-semibold">{{ getTransactionTitle(item.transaction) }}</span>
+                                            <span class="font-semibold text-gray-800 dark:text-gray-200">{{ getTransactionTitle(item.transaction) }}</span>
                                             @if (item.hasError) {
                                                 <span class="text-red-500 text-sm">PARSING ERROR</span>
                                             }
@@ -120,10 +120,13 @@
                                             }
                                         </div>
                                         @if (!item.hasError) {
-                                            <div class="text-sm text-gray-600 flex flex-row gap-3">
-                                                <span class="font-medium">{{ getTransactionTypeLabel(item.transaction.type) }}</span>
-                                                <span>{{ formatAmount(item.transaction.sourceAmount, item.transaction.sourceCurrency) }}</span>
-                                                <span>{{ formatDate(item.transaction.transactionDate) }}</span>
+                                            <div class="text-sm flex flex-row gap-3 items-center">
+                                                <span class="flex flex-row gap-2 items-center">
+                                                    <i [class]="getTransactionTypeIcon(item.transaction.type)"></i>
+                                                    <span class="font-medium" [class]="getTransactionTypeColor(item.transaction.type)">{{ getTransactionTypeLabel(item.transaction.type) }}</span>
+                                                </span>
+                                                <span class="text-gray-700 dark:text-gray-300">{{ formatAmount(item.transaction.sourceAmount, item.transaction.sourceCurrency) }}</span>
+                                                <span class="text-gray-700 dark:text-gray-300">{{ formatDate(item.transaction.transactionDate) }}</span>
                                             </div>
                                         }
                                     </div>

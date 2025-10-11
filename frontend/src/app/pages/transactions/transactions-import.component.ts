@@ -204,6 +204,20 @@ export class TransactionsImportComponent {
         return transactionType?.name || 'Unknown';
     }
 
+    getTransactionTypeIcon(type: number): string {
+        const transactionType = EnumService.getAllTransactionTypes().find(t => t.value === type);
+        return transactionType?.icon || '';
+    }
+
+    getTransactionTypeColor(type: number): string {
+        const transactionType = EnumService.getAllTransactionTypes().find(t => t.value === type);
+        const icon = transactionType?.icon || '';
+        if (icon.includes('text-green-500')) return 'text-green-500';
+        if (icon.includes('text-red-500')) return 'text-red-500';
+        if (icon.includes('text-blue-500')) return 'text-blue-500';
+        return '';
+    }
+
     formatDate(timestamp?: any): string {
         if (!timestamp) return '';
         const date = new Date(Number(timestamp.seconds) * 1000);

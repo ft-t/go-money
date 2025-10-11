@@ -329,5 +329,8 @@ func (r *Revolut) parseTransaction(
 		return errors.New("income transactions not supported")
 	}
 
+	tx.DestinationAmount = tx.SourceAmount
+	tx.DestinationCurrency = tx.SourceCurrency
+
 	return nil
 }

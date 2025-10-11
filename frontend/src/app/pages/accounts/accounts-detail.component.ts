@@ -16,6 +16,8 @@ import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { EnumService } from '../../services/enum.service';
 import { CommonModule } from '@angular/common';
 import { ConfigurationService, GetConfigurationResponse, GetConfigurationResponseSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
+import { combineLatest } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
     selector: 'app-accounts-detail',
@@ -55,13 +57,11 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
             busService.currentAccountId.next(parsed);
         });
 
-        this.selectedDateService.fromDate.subscribe(async () => {
-            await this.loadAnalytics();
-        });
-
-        this.selectedDateService.toDate.subscribe(async () => {
-            await this.loadAnalytics();
-        });
+        combineLatest([this.selectedDateService.fromDate, this.selectedDateService.toDate])
+            .pipe(takeUntil(this.cancellableSubject$))
+            .subscribe(async () => {
+                await this.loadAnalytics();
+            });
 
         this.initializeConfig();
     }
@@ -144,7 +144,20 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
         this.accountTypeName = accountType?.name || 'Unknown';
     }
 
-    formatAmount(amount: number): string {
-        return parseFloat(amount.toString()).toFixed(2);
+    getNetChange(): number {
+        if (!this.analytics) {
+            return 0;
+        }
+        const debits = parseFloat(this.analytics.totalDebitsAmount);
+        const credits = parseFloat(this.analytics.totalCreditsAmount);
+        return debits - credits;
+    }
+
+    formatAmount(amount: string | number): string {
+        const num = parseFloat(String(amount));
+        if (isNaN(num)) {
+            return '0.00';
+        }
+        return num.toFixed(2);
     }
 }

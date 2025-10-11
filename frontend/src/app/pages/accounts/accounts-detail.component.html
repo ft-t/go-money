@@ -59,8 +59,8 @@
                 <div class="flex flex-col gap-2">
                     <div class="flex justify-between items-center">
                         <span class="text-sm text-gray-600 dark:text-gray-400">Amount:</span>
-                        <span class="font-bold text-base" [class.text-green-600]="analytics.totalDebitsAmount - analytics.totalCreditsAmount > 0" [class.dark:text-green-400]="analytics.totalDebitsAmount - analytics.totalCreditsAmount > 0" [class.text-red-600]="analytics.totalDebitsAmount - analytics.totalCreditsAmount < 0" [class.dark:text-red-400]="analytics.totalDebitsAmount - analytics.totalCreditsAmount < 0">
-                            {{ formatAmount(analytics.totalDebitsAmount - analytics.totalCreditsAmount) }}
+                        <span class="font-bold text-base" [class.text-green-600]="getNetChange() > 0" [class.dark:text-green-400]="getNetChange() > 0" [class.text-red-600]="getNetChange() < 0" [class.dark:text-red-400]="getNetChange() < 0">
+                            {{ formatAmount(getNetChange()) }}
                         </span>
                     </div>
                 </div>

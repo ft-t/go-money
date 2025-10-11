@@ -2,11 +2,16 @@ package importers_test
 
 import (
 	"context"
+	"encoding/base64"
 	_ "embed"
 	"testing"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
+	"github.com/golang/mock/gomock"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -872,4 +877,111 @@ func TestParibasParse_InvalidBase64(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to decode file content")
 	assert.Nil(t, resp)
+}
+
+func TestParibasParse_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	currencyConverter := NewMockCurrencyConverterSvc(ctrl)
+	txSvc := NewMockTransactionSvc(ctrl)
+	mapperSvc := NewMockMapperSvc(ctrl)
+
+	base := importers.NewBaseParser(currencyConverter, txSvc, mapperSvc)
+	srv := importers.NewParibas(base)
+
+	account1 := &database.Account{
+		ID:            1,
+		Name:          "Test Account",
+		Currency:      "PLN",
+		AccountNumber: "11112222333344455556777",
+		Type:          gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+	}
+
+	expenseAccount := &database.Account{
+		ID:       2,
+		Name:     "Default Expense",
+		Currency: "EUR",
+		Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Flags:    database.AccountFlagIsDefault,
+	}
+
+	accounts := []*database.Account{account1, expenseAccount}
+
+	currencyConverter.EXPECT().
+		Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, from string, to string, amount decimal.Decimal) (decimal.Decimal, error) {
+			assert.Equal(t, "PLN", from)
+			assert.Equal(t, "EUR", to)
+			return amount, nil
+		}).
+		Times(1)
+
+	resp, err := srv.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(blik)},
+			Accounts: accounts,
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.CreateRequests, 1)
+}
+
+func TestParibasParse_ParseMessagesError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	currencyConverter := NewMockCurrencyConverterSvc(ctrl)
+	txSvc := NewMockTransactionSvc(ctrl)
+	mapperSvc := NewMockMapperSvc(ctrl)
+
+	base := importers.NewBaseParser(currencyConverter, txSvc, mapperSvc)
+	srv := importers.NewParibas(base)
+
+	invalidData := []byte("not excel data")
+
+	resp, err := srv.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(invalidData)},
+			Accounts: []*database.Account{},
+		},
+	})
+
+	// ParseMessages returns transactions with errors, not an error itself
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func TestParibasParse_GetAccountMapError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	currencyConverter := NewMockCurrencyConverterSvc(ctrl)
+	txSvc := NewMockTransactionSvc(ctrl)
+	mapperSvc := NewMockMapperSvc(ctrl)
+
+	base := importers.NewBaseParser(currencyConverter, txSvc, mapperSvc)
+	srv := importers.NewParibas(base)
+
+	account1 := &database.Account{
+		ID:            1,
+		AccountNumber: "duplicate",
+	}
+	account2 := &database.Account{
+		ID:            2,
+		AccountNumber: "duplicate",
+	}
+
+	resp, err := srv.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(blik)},
+			Accounts: []*database.Account{account1, account2},
+		},
+	})
+
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "failed to get account map by numbers")
 }
