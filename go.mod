@@ -3,8 +3,8 @@ module github.com/ft-t/go-money
 go 1.24.0
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.0-20251003185146-da628952f53e.1
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20251003185146-da628952f53e.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.0-20251008223221-a414938be6b9.1
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20251008223221-a414938be6b9.1
 	connectrpc.com/connect v1.19.0
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -98,6 +98,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/tealeg/xlsx v1.0.5 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	golang.org/x/sync v0.16.0 // indirect

@@ -42,6 +42,10 @@ export class CurrenciesListComponent implements OnInit {
         {
             field: 'isActive',
             order: -1
+        },
+        {
+            field: 'id',
+            order: 1
         }
     ];
 

@@ -43,8 +43,8 @@ func TestAnalyticsApi_GetDebitsAndCreditsSummary(t *testing.T) {
 				123: {
 					TotalDebitsCount:   2,
 					TotalCreditsCount:  3,
-					TotalDebitsAmount:  1000,
-					TotalCreditsAmount: 2000,
+					TotalDebitsAmount:  "1000.00",
+					TotalCreditsAmount: "2000.00",
 				},
 			},
 		}

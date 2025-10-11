@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
@@ -199,7 +200,7 @@ func (b *BaseParser) ToCreateRequests(
 					SourceAccountId:      sourceAccount.Account.ID,
 					SourceAmount:         sourceAccount.AmountInAccountCurrency.Abs().Neg().String(),
 					SourceCurrency:       sourceAccount.Account.Currency,
-					FxSourceAmount:       lo.ToPtr(tx.DestinationAmount.Abs().String()),
+					FxSourceAmount:       lo.ToPtr(tx.DestinationAmount.Abs().Neg().String()),
 					FxSourceCurrency:     &tx.DestinationCurrency,
 					DestinationAccountId: destinationAccount.Account.ID,
 					DestinationAmount:    destinationAccount.AmountInAccountCurrency.Abs().String(),
@@ -207,6 +208,12 @@ func (b *BaseParser) ToCreateRequests(
 				},
 			}
 		default:
+			if newTx.Extra == nil {
+				newTx.Extra = make(map[string]string)
+			}
+			if tx.ParsingError != nil {
+				newTx.Extra["parsing_error"] = tx.ParsingError.Error()
+			}
 			// this is error transaction, will handle next
 		}
 
@@ -370,4 +377,22 @@ func (b *BaseParser) DecodeFiles(
 	}
 
 	return results, nil
+}
+
+func stripAccountPrefix(account string) string {
+	account = strings.ToLower(account)
+	var accountStriped strings.Builder
+
+	for idx, l := range account {
+		if !unicode.IsLetter(l) && idx == 0 {
+			return account
+		}
+
+		if unicode.IsLetter(l) {
+			continue
+		}
+		accountStriped.WriteRune(l)
+	}
+
+	return accountStriped.String()
 }

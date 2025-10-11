@@ -3,8 +3,12 @@ al.essio.dev/pkg/shellescape v1.6.0 h1:NxFcEqzFSEVCGN2yq7Huv/9hyCEGVa/TncnOOBBeX
 al.essio.dev/pkg/shellescape v1.6.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
 buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.0-20251003185146-da628952f53e.1 h1:6L6OrgGxjgmmD+tPiD1PMBd3WlUn9ZETmFWTPCHJyxk=
 buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.0-20251003185146-da628952f53e.1/go.mod h1:Dz4vqef+HYDH4EhepPLa8PJXqa2ytvRVyMIiNwTTz6E=
+buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.0-20251008223221-a414938be6b9.1 h1:8i1Za9e63WNgkpQqescKwc3dC+vJDxmJwWcCVTch0MA=
+buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.0-20251008223221-a414938be6b9.1/go.mod h1:rsHop5eMHof0WmxdiMtQR0PFsue0Hikekrpq9NTnk64=
 buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20251003185146-da628952f53e.1 h1:XhY2++JRkvTzWN3BYuVu2IkNii0B9I5Jj1Is7Kg+rX8=
 buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20251003185146-da628952f53e.1/go.mod h1:L/kzm7gmdKADITAY4WRLwODHmmYkb3/LhU7TaIVgttU=
+buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20251008223221-a414938be6b9.1 h1:oMukcyNlhoLbBbv7iLX8dq/ZRV5CoO1Qpopz/tcHL70=
+buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20251008223221-a414938be6b9.1/go.mod h1:L/kzm7gmdKADITAY4WRLwODHmmYkb3/LhU7TaIVgttU=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 connectrpc.com/connect v1.19.0 h1:LuqUbq01PqbtL0o7vn0WMRXzR2nNsiINe5zfcJ24pJM=
 connectrpc.com/connect v1.19.0/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
@@ -289,6 +293,8 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+github.com/tealeg/xlsx v1.0.5 h1:+f8oFmvY8Gw1iUXzPk+kz+4GpbDZPK1FhPiQRd+ypgE=
+github.com/tealeg/xlsx v1.0.5/go.mod h1:btRS8dz54TDnvKNosuAqxrM1QgN1udgk9O34bDCnORM=
 github.com/technoweenie/multipartstreamer v1.0.1 h1:XRztA5MXiR1TIRHxH2uNxXxaIkKQDeX7m2XsSOlQEnM=
 github.com/technoweenie/multipartstreamer v1.0.1/go.mod h1:jNVxdtShOxzAsukZwTSw6MDx5eUJoiEBsSvzDU9uzog=
 github.com/tiendc/go-deepcopy v1.6.1 h1:uVRTItFeNHkMcLueHS7OCsxgxT9P8MzGB/taUa2Y4Tk=

@@ -32,6 +32,9 @@
                         <div class="flex flex-col gap-2">
                             <label for="accountName">Color</label>
                             <p-colorpicker formControlName="color" inputId="cp-hex"></p-colorpicker>
+                            @if (colorControl.invalid && (colorControl.dirty || colorControl.touched)) {
+                                <p-message severity="error" variant="simple" size="small">Color is required</p-message>
+                            }
                         </div>
                     </div>
 
@@ -41,8 +44,8 @@
 
         <div class="flex mt-8">
             <div class="card flex flex-wrap gap-6 w-full justify-end">
-                <p-button *ngIf="!tag.id" label="Create" [fluid]="false" (click)="submit()"></p-button>
-                <p-button *ngIf="tag.id" label="Update" [fluid]="false" (click)="submit()"></p-button>
+                <p-button *ngIf="!tag.id" label="Create" [fluid]="false" type="submit"></p-button>
+                <p-button *ngIf="tag.id" label="Update" [fluid]="false" type="submit"></p-button>
             </div>
         </div>
     </form>

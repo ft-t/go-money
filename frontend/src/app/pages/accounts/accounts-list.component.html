@@ -1,5 +1,27 @@
 <div class="card accountListTable">
     <div class="font-semibold text-xl mb-4">Accounts List</div>
+    <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6" *ngIf="accounts.length > 0 && !loading">
+        <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Summary by Currency</div>
+        <div class="flex flex-wrap gap-4">
+            <div *ngFor="let currency of getUniqueCurrencies()" class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">{{ currency }}</div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Balance:</span>
+                        <span class="font-bold text-base text-gray-900 dark:text-gray-100">{{ formatAmount(getTotalBalanceByCurrency(currency).toString()) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center" *ngIf="serverConfig.baseCurrency">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Debits (Period):</span>
+                        <span class="font-bold text-green-600 dark:text-green-400">{{ formatAmount(getTotalDebitsByCurrency(currency).toString()) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center" *ngIf="serverConfig.baseCurrency">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Credits (Period):</span>
+                        <span class="font-bold text-red-600 dark:text-red-400">{{ formatAmount(getTotalCreditsByCurrency(currency).toString()) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <p-table #dt1
              dataKey="id"
              [value]="accounts"
@@ -50,14 +72,13 @@
                     </p>
                 </th>
                 <th>
-                    <p class="text-left">
+                    <p class="text-center">
                         Current Balance
                     </p>
                 </th>
-                <th pSortableColumn="account.displayOrder">
-                    <p class="text-left">
-                        Order
-                        <p-sortIcon field="account.displayOrder" />
+                <th>
+                    <p class="text-center">
+                        Debit/Credit
                     </p>
                 </th>
                 <th>
@@ -65,7 +86,7 @@
                         Account number
                     </p>
                 </th>
-                <th></th>
+                <th style="width: 1%; white-space: nowrap;"></th>
             </tr>
             <tr>
                 <th>
@@ -119,8 +140,7 @@
                                     matchMode="contains"
                                     placeholder="Filter"></p-columnFilter>
                 </th>
-                <th>
-                </th>
+                <th></th>
             </tr>
         </ng-template>
         <ng-template #body let-accountItem>
@@ -136,18 +156,29 @@
                 <td>
                     {{ accountItem.account.currency }}
                 </td>
-                <td>
-                    <p class="{{accountItem.account.currentBalance < 0 ? 'text-red-500' : 'text-green-500'}}">
-                        <i class="pi"
-                           [ngClass]="{'pi-arrow-down': accountItem.account.currentBalance < 0, 'pi-arrow-up': accountItem.account.currentBalance >= 0}"></i>
-                        {{ accountItem.account.currentBalance }} ({{ accountItem.account.currency }})
-                    </p>
+                <td class="text-center" style="width: 1%; white-space: nowrap;">
+                    <div class="flex flex-col gap-1 items-center">
+                        <div class="{{accountItem.account.currentBalance < 0 ? 'text-red-500' : 'text-green-500'}} font-semibold text-base">
+                            <i class="pi text-xs"
+                               [ngClass]="{'pi-arrow-down': accountItem.account.currentBalance < 0, 'pi-arrow-up': accountItem.account.currentBalance >= 0}"></i>
+                            {{ accountItem.account.currentBalance }}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            {{ accountItem.account.currency }}
+                        </div>
+                    </div>
                 </td>
-                <td>
-                    <p class="text-left">
-                        {{ accountItem.account.displayOrder }}
-                    </p>
-                    <!--                    {{ TimestampHelper.timestampToDate(accountItem.account.updatedAt) | date: 'MM/dd/yyyy' }}-->
+                <td class="text-center">
+                    <div *ngIf="getAnalytics(accountItem.account.id)" class="flex flex-col gap-1 items-center">
+                        <div class="flex items-center gap-1 text-base">
+                            <span class="text-green-600 dark:text-green-500 font-semibold">↑ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalDebitsAmount) }}</span>
+                            <span class="text-gray-400">/</span>
+                            <span class="text-red-600 dark:text-red-500 font-semibold">↓ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalCreditsAmount) }}</span>
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            {{ serverConfig.baseCurrency }}
+                        </div>
+                    </div>
                 </td>
                 <td style="max-width: 10rem">
                     <p class="text-wrap break-all">

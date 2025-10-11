@@ -375,5 +375,19 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 					`alter table transactions add column if not exists deleted_at timestamp;`)
 			},
 		},
+		{
+			ID: "2025-10-09-AddTransactionDateToDoubleEntry",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table double_entries add column if not exists transaction_date timestamp;`,
+					`update double_entries de
+					 set transaction_date = t.transaction_date_time
+					 from transactions t
+					 where de.transaction_id = t.id
+					 and de.transaction_date is null;`,
+					`create index if not exists ix_double_entries_transaction_date on double_entries(account_id, transaction_date) where deleted_at is null;`,
+				)
+			},
+		},
 	}
 }

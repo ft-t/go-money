@@ -486,7 +486,7 @@ func TestCheckDuplicates(t *testing.T) {
 		result, err := imp.CheckDuplicates(context.TODO(), requests)
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "duplicate reference number found in import data: ref_duplicate")
+		assert.Contains(t, err.Error(), "duplicate reference number found in import data: ref=ref_duplicate")
 	})
 
 	t.Run("db error on check", func(t *testing.T) {

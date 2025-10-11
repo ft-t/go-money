@@ -1,5 +1,82 @@
 <div class="card">
-    <div class="font-semibold text-xl mb-4">Account details for "{{ currentAccount.name }}"</div>
+    <div class="font-semibold text-xl mb-6">Account details for "{{ currentAccount.name }}"</div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div class="flex flex-col gap-1">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Type</span>
+            <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ accountTypeName }}</span>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Current Balance</span>
+            <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ currentAccount.currentBalance }} {{ currentAccount.currency }}</span>
+        </div>
+
+        <div class="flex flex-col gap-1" *ngIf="currentAccount.iban">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">IBAN</span>
+            <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ currentAccount.iban }}</span>
+        </div>
+
+        <div class="flex flex-col gap-1" *ngIf="currentAccount.accountNumber">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Account Number</span>
+            <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ currentAccount.accountNumber }}</span>
+        </div>
+    </div>
+
+    <div class="border-t border-gray-200 dark:border-gray-700 pt-6" *ngIf="analytics && serverConfig.baseCurrency">
+        <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Period Summary ({{ serverConfig.baseCurrency }})</div>
+        <div class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">Debits</div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Amount:</span>
+                        <span class="font-bold text-base text-green-600 dark:text-green-400">{{ formatAmount(analytics.totalDebitsAmount) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Transactions:</span>
+                        <span class="font-bold text-gray-900 dark:text-gray-100">{{ analytics.totalDebitsCount }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">Credits</div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Amount:</span>
+                        <span class="font-bold text-base text-red-600 dark:text-red-400">{{ formatAmount(analytics.totalCreditsAmount) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Transactions:</span>
+                        <span class="font-bold text-gray-900 dark:text-gray-100">{{ analytics.totalCreditsCount }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">Net Change</div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Amount:</span>
+                        <span class="font-bold text-base" [class.text-green-600]="getNetChange() > 0" [class.dark:text-green-400]="getNetChange() > 0" [class.text-red-600]="getNetChange() < 0" [class.dark:text-red-400]="getNetChange() < 0">
+                            {{ formatAmount(getNetChange()) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">Total</div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Transactions:</span>
+                        <span class="font-bold text-base text-gray-900 dark:text-gray-100">{{ analytics.totalDebitsCount + analytics.totalCreditsCount }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <div class="card">
     <app-transaction-table [currentAccountId]="currentAccount.id"

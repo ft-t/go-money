@@ -121,6 +121,7 @@ func (s *DoubleEntryService) Calculate(
 			AccountID:            tx.SourceAccountID,
 			BaseCurrency:         s.cfg.BaseCurrency,
 			AmountInBaseCurrency: baseAmount.Abs(),
+			TransactionDate:      tx.TransactionDateTime,
 			CreatedAt:            time.Now().UTC(),
 		},
 		{
@@ -129,6 +130,7 @@ func (s *DoubleEntryService) Calculate(
 			AccountID:            tx.DestinationAccountID,
 			BaseCurrency:         s.cfg.BaseCurrency,
 			AmountInBaseCurrency: baseAmount.Abs(),
+			TransactionDate:      tx.TransactionDateTime,
 			CreatedAt:            time.Now().UTC(),
 		},
 	}

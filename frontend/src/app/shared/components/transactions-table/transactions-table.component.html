@@ -1,4 +1,50 @@
 <div class="transactionListingTable">
+    <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6" *ngIf="transactions.length > 0 && !loading">
+        <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Current Page Summary</div>
+        <div class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">Expenses</div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Amount:</span>
+                        <span class="font-bold text-base text-red-600 dark:text-red-400">{{ formatAmount(totalExpenses.toString()) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Transactions:</span>
+                        <span class="font-bold text-gray-900 dark:text-gray-100">{{ expenseCount }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">Income</div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Amount:</span>
+                        <span class="font-bold text-base text-green-600 dark:text-green-400">{{ formatAmount(totalIncome.toString()) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Transactions:</span>
+                        <span class="font-bold text-gray-900 dark:text-gray-100">{{ incomeCount }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">Transfers</div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Amount:</span>
+                        <span class="font-bold text-base text-blue-600 dark:text-blue-400">{{ formatAmount(totalTransfers.toString()) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Transactions:</span>
+                        <span class="font-bold text-gray-900 dark:text-gray-100">{{ transferCount }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <p-table #dt1
              dataKey="id"
              [value]="transactions"
@@ -49,7 +95,7 @@
                         Types
                     </div>
                 </th>
-                <th style="min-width: 8rem">
+                <th style="min-width: 10rem">
                     <div class="flex justify-between items-center">
                         Amount
                     </div>
@@ -179,18 +225,23 @@
                         {{ getTransactionType(transactionItem) }}
                     </p>
                 </td>
-                <td>
-                    <p [class]="getAmountColor(transactionItem)" *ngIf="this.formatAmountV2(transactionItem)[0] != ''">
-                        <i class="pi"
-                           [ngClass]="{'pi-arrow-down': transactionItem.sourceAmount < 0, 'pi-arrow-up': transactionItem.sourceAmount >= 0}"></i>
-                        {{ this.formatAmountV2(transactionItem)[0] }}
-                    </p>
-                    <p [class]="getAmountColor(transactionItem)"
-                       *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''">
-                        <i class="pi"
-                           [ngClass]="{'pi-arrow-down': transactionItem.sourceAmount < 0, 'pi-arrow-up': transactionItem.sourceAmount >= 0}"></i>
-                        {{ this.formatAmountV2(transactionItem)[1] }}
-                    </p>
+                <td style="min-width: 15rem;">
+                    <div class="flex flex-col gap-1 items-center">
+                        <div class="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
+                            <span *ngIf="this.formatAmountV2(transactionItem)[0] != ''" class="text-blue-600 dark:text-blue-400">{{ formatAmount(transactionItem.sourceAmount) }}</span>
+                            <span *ngIf="transactionItem.fxSourceAmount && this.formatAmountV2(transactionItem)[0] != ''" class="text-gray-400">/</span>
+                            <span *ngIf="transactionItem.fxSourceAmount" class="text-orange-600 dark:text-orange-400">{{ formatAmount(transactionItem.fxSourceAmount) }}</span>
+                            <span *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''" class="text-gray-400">/</span>
+                            <span *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''" class="text-teal-600 dark:text-teal-400">{{ formatAmount(transactionItem.destinationAmount) }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
+                            <span *ngIf="this.formatAmountV2(transactionItem)[0] != ''" class="text-blue-600 dark:text-blue-400">{{ transactionItem.sourceCurrency }}</span>
+                            <span *ngIf="transactionItem.fxSourceAmount && this.formatAmountV2(transactionItem)[0] != ''" class="text-gray-400">/</span>
+                            <span *ngIf="transactionItem.fxSourceAmount" class="text-orange-600 dark:text-orange-400">{{ transactionItem.fxSourceCurrency }}</span>
+                            <span *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''" class="text-gray-400">/</span>
+                            <span *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''" class="text-teal-600 dark:text-teal-400">{{ transactionItem.destinationCurrency }}</span>
+                        </div>
+                    </div>
                 </td>
                 <td>
                     <p class="text-wrap break-all">

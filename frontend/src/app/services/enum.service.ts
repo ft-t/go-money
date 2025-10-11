@@ -26,8 +26,18 @@ export class EnumService {
                 icon: ''
             },
             {
+                name: 'Revolut',
+                value: ImportSource.REVOLUT,
+                icon: ''
+            },
+            {
                 name: 'Monobank',
                 value: ImportSource.MONOBANK,
+                icon: ''
+            },
+            {
+                name: 'BNP Paribas Polska',
+                value: ImportSource.BNP_PARIBAS_POLSKA,
                 icon: ''
             }
         ];

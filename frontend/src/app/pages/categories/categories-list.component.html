@@ -10,7 +10,8 @@
              [filters]="filters"
              [paginator]="false"
              [globalFilterFields]="['id', 'name']"
-             responsiveLayout="scroll">
+             responsiveLayout="scroll"
+             [multiSortMeta]="multiSortMeta">
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
                 <div class="flex flex-col justify-items-start">

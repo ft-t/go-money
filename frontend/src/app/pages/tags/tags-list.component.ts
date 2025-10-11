@@ -41,6 +41,12 @@ export class TagsListComponent implements OnInit {
     private tagsService;
 
     public filters: { [s: string]: FilterMetadata } = {};
+    public multiSortMeta: any[] = [
+        {
+            field: 'tag.id',
+            order: 1
+        }
+    ];
 
     @ViewChild('filter') filter!: ElementRef;
 

@@ -43,6 +43,12 @@ export class CategoriesListComponent implements OnInit {
     private categoriesService;
 
     public filters: { [s: string]: FilterMetadata } = {};
+    public multiSortMeta: any[] = [
+        {
+            field: 'id',
+            order: 1
+        }
+    ];
 
     @ViewChild('filter') filter!: ElementRef;
 

@@ -189,7 +189,10 @@ func main() {
 		SchedulerSvc:     ruleScheduler,
 	})
 
-	analyticsSvc := analytics.NewService()
+	analyticsSvc := analytics.NewService(&analytics.ServiceConfig{
+		DecimalSvc:   decimalSvc,
+		BaseCurrency: config.CurrencyConfig.BaseCurrency,
+	})
 
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 	_ = handlers.NewMaintenanceApi(grpcServer, recalculateSvc)
@@ -212,6 +215,7 @@ func main() {
 		),
 		importers.NewPrivat24(baseParser),
 		importers.NewMono(baseParser),
+		importers.NewParibas(baseParser),
 	)
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)
