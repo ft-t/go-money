@@ -68,16 +68,21 @@ export class TagsUpsertComponent implements OnInit {
             id: new FormControl(this.tag.id, { nonNullable: false }),
             name: new FormControl(this.tag.name, Validators.required),
             icon: new FormControl(this.tag.icon),
-            color: new FormControl(this.tag.color ?? '#a35050', Validators.required)
+            color: new FormControl((this.tag.color ?? '#a35050').replace('#', ''), Validators.required)
         });
     }
 
     async submit() {
         this.form!.markAllAsTouched();
 
-        this.tag = this.form!.value as Tag;
         if (!this.form!.valid) {
             return;
+        }
+
+        this.tag = this.form!.value as Tag;
+
+        if (this.tag.color && !this.tag.color.startsWith('#')) {
+            this.tag.color = '#' + this.tag.color;
         }
 
         this.defaultCache.clear();
@@ -92,6 +97,10 @@ export class TagsUpsertComponent implements OnInit {
 
     get name() {
         return this.form!.get('name')!;
+    }
+
+    get colorControl() {
+        return this.form!.get('color')!;
     }
 
     async update() {

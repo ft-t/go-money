@@ -208,6 +208,12 @@ func (b *BaseParser) ToCreateRequests(
 				},
 			}
 		default:
+			if newTx.Extra == nil {
+				newTx.Extra = make(map[string]string)
+			}
+			if tx.ParsingError != nil {
+				newTx.Extra["parsing_error"] = tx.ParsingError.Error()
+			}
 			// this is error transaction, will handle next
 		}
 
