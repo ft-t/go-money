@@ -59,8 +59,9 @@ func (i *Importer) CheckDuplicates(
 			return nil, errors.New("all transactions must have a reference number for deduplication")
 		}
 
-		if _, exists := references[ref]; exists {
-			return nil, errors.New(fmt.Sprintf("duplicate reference number found in import data: %s", ref))
+		if c, exists := references[ref]; exists {
+			return nil, errors.New(fmt.Sprintf("duplicate reference number found in import data: ref=%s. raw=%v", ref,
+				c.CreateRequest.Notes))
 		}
 
 		references[ref] = &DeduplicationItem{

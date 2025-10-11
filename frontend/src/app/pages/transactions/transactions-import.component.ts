@@ -402,12 +402,12 @@ export class TransactionsImportComponent {
     private readFileAsBase64(file: File): Promise<string> {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = (event) => {
-                const content = btoa(unescape(encodeURIComponent(event.target!.result as string)));
-                resolve(content);
+            reader.onload = () => {
+                const base64 = (reader.result as string).split(',')[1];
+                resolve(base64);
             };
             reader.onerror = reject;
-            reader.readAsText(file);
+            reader.readAsDataURL(file);
         });
     }
 
