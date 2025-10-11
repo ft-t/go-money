@@ -32,7 +32,6 @@ type ParibasData struct {
 	Account                 string
 	DestinationAccount      string
 	TransactionType         string
-	Raw                     string
 	ExecutedAt              string
 }
 
@@ -55,7 +54,7 @@ func (d ParibasDataExtractorV1) Extract(_ context.Context, cells []*xlsx.Cell) (
 	rawAccount := cells[7].String()
 
 	accountArr := toLines(strings.ToLower(rawAccount))
-	
+
 	mutable.Reverse(accountArr)
 	account := accountArr[0]
 
@@ -81,7 +80,6 @@ func (d ParibasDataExtractorV1) Extract(_ context.Context, cells []*xlsx.Cell) (
 		Date:                    date,
 		DateFromMessage:         date.Format("15:04"),
 		TransactionType:         transactionType,
-		Raw:                     strings.Join([]string{description, senderOrReceiver, rawAccount, transactionType}, "\n"),
 		Description:             description,
 		TransactionCurrency:     transactionCurrency,
 		Currency:                currency,
@@ -149,7 +147,6 @@ func (d ParibasDataExtractorV2) Extract(_ context.Context, cells []*xlsx.Cell) (
 		Date:                    date,
 		DateFromMessage:         date.Format("15:04"),
 		TransactionType:         transactionType,
-		Raw:                     strings.Join([]string{description, destinationAccountRaw, rawAccount, transactionType}, "\n"),
 		Description:             description,
 		TransactionCurrency:     transactionCurrency,
 		Currency:                currency,

@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"testing"
 
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -834,4 +835,41 @@ func TestParibasBetweenAccounts_Success(t *testing.T) {
 			assert.Equal(t, "Przelew środków", resp[0].Description)
 		})
 	}
+}
+
+func TestParibasParseMessages_NoSheets(t *testing.T) {
+	srv := importers.NewParibas(importers.NewBaseParser(nil, nil, nil))
+
+	records := []*importers.Record{
+		{
+			Data: []byte("corrupted excel data"),
+		},
+	}
+
+	parsedRecords, err := srv.ParseMessages(context.Background(), records)
+	require.NoError(t, err)
+	require.Len(t, parsedRecords, 1)
+	assert.Error(t, parsedRecords[0].ParsingError)
+	assert.Contains(t, parsedRecords[0].ParsingError.Error(), "failed to open excel")
+}
+
+func TestParibasType(t *testing.T) {
+	srv := importers.NewParibas(importers.NewBaseParser(nil, nil, nil))
+
+	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_BNP_PARIBAS_POLSKA, srv.Type())
+}
+
+func TestParibasParse_InvalidBase64(t *testing.T) {
+	srv := importers.NewParibas(importers.NewBaseParser(nil, nil, nil))
+
+	resp, err := srv.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{"invalid-base64!!!"},
+			Accounts: nil,
+		},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to decode file content")
+	assert.Nil(t, resp)
 }

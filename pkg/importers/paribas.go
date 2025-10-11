@@ -214,7 +214,7 @@ func (p *Paribas) parseRow(
 	tx.Date = data.Date
 	tx.DateFromMessage = data.DateFromMessage
 	tx.OriginalTxType = data.TransactionType
-	tx.Raw = data.Raw
+	tx.Raw = p.extractFromCellV1(row.Cells)
 	tx.Description = data.Description
 
 	var transactionType = data.TransactionType

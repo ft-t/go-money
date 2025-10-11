@@ -200,7 +200,7 @@ func (b *BaseParser) ToCreateRequests(
 					SourceAccountId:      sourceAccount.Account.ID,
 					SourceAmount:         sourceAccount.AmountInAccountCurrency.Abs().Neg().String(),
 					SourceCurrency:       sourceAccount.Account.Currency,
-					FxSourceAmount:       lo.ToPtr(tx.DestinationAmount.Abs().String()),
+					FxSourceAmount:       lo.ToPtr(tx.DestinationAmount.Abs().Neg().String()),
 					FxSourceCurrency:     &tx.DestinationCurrency,
 					DestinationAccountId: destinationAccount.Account.ID,
 					DestinationAmount:    destinationAccount.AmountInAccountCurrency.Abs().String(),
