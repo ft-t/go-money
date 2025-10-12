@@ -35,7 +35,22 @@
                         optionLabel="name"
                         optionValue="id"
                         placeholder="Select source account"
-                    />
+                    >
+                        <ng-template #item let-account>
+                            <div class="flex flex-col text-sm leading-tight py-1 w-full">
+                                <div class="font-semibold mb-1 text-center">{{ account.name }}</div>
+                                <div class="flex gap-3 text-xs text-gray-600 dark:text-gray-400 justify-center">
+                                    <span class="flex-shrink-0">Type: <span class="text-gray-900 dark:text-gray-100">{{ getAccountTypeName(account.type) }}</span></span>
+                                    <span class="flex-shrink-0">Currency: <span class="text-gray-900 dark:text-gray-100">{{ account.currency }}</span></span>
+                                    <span class="flex-shrink-0">Balance: <span class="font-mono"
+                                        [class.text-green-600]="parseFloat(account.currentBalance) > 0"
+                                        [class.dark:text-green-400]="parseFloat(account.currentBalance) > 0"
+                                        [class.text-red-600]="parseFloat(account.currentBalance) < 0"
+                                        [class.dark:text-red-400]="parseFloat(account.currentBalance) < 0">{{ account.currentBalance }}</span></span>
+                                </div>
+                            </div>
+                        </ng-template>
+                    </p-select>
                     @if (sourceAccountId.invalid && (sourceAccountId.dirty || sourceAccountId.touched)) {
                         <p-message severity="error" variant="simple" size="small">Source Account is required</p-message>
                     }
@@ -105,7 +120,22 @@
                     optionLabel="name"
                     optionValue="id"
                     placeholder="Select destination account"
-                />
+                >
+                    <ng-template #item let-account>
+                        <div class="flex flex-col text-sm leading-tight py-1 w-full">
+                            <div class="font-semibold mb-1 text-center">{{ account.name }}</div>
+                            <div class="flex gap-3 text-xs text-gray-600 dark:text-gray-400 justify-center">
+                                <span class="flex-shrink-0">Type: <span class="text-gray-900 dark:text-gray-100">{{ getAccountTypeName(account.type) }}</span></span>
+                                <span class="flex-shrink-0">Currency: <span class="text-gray-900 dark:text-gray-100">{{ account.currency }}</span></span>
+                                <span class="flex-shrink-0">Balance: <span class="font-mono"
+                                    [class.text-green-600]="parseFloat(account.currentBalance) > 0"
+                                    [class.dark:text-green-400]="parseFloat(account.currentBalance) > 0"
+                                    [class.text-red-600]="parseFloat(account.currentBalance) < 0"
+                                    [class.dark:text-red-400]="parseFloat(account.currentBalance) < 0">{{ account.currentBalance }}</span></span>
+                            </div>
+                        </div>
+                    </ng-template>
+                </p-select>
                 @if (destinationAccountId.invalid && (destinationAccountId.dirty || destinationAccountId.touched)) {
                     <p-message severity="error" variant="simple" size="small">Destination Account is required</p-message>
                 }
