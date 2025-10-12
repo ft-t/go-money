@@ -34,7 +34,7 @@ export class RulesUpsertComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        routeSnapshot: ActivatedRoute,
+        private routeSnapshot: ActivatedRoute,
         private router: Router
     ) {
         this.rulesService = createClient(RulesService, this.transport);
@@ -47,11 +47,26 @@ export class RulesUpsertComponent implements OnInit {
     }
 
     async ngOnInit() {
-        if (this.rule.id) {
+        const cloneFrom = this.routeSnapshot.snapshot.queryParams['clone_from'];
+
+        if (cloneFrom) {
+            try {
+                let response = await this.rulesService.listRules({ ids: [+cloneFrom] });
+                if (response.rules && response.rules.length == 0) {
+                    this.messageService.add({ severity: 'error', detail: 'rule not found' });
+                    return;
+                }
+
+                this.rule = response.rules[0] ?? create(RuleSchema, {});
+                this.rule.id = 0;
+            } catch (e) {
+                this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+            }
+        } else if (this.rule.id) {
             try {
                 let response = await this.rulesService.listRules({ ids: [+this.rule.id] });
                 if (response.rules && response.rules.length == 0) {
-                    this.messageService.add({ severity: 'error', detail: 'tag not found' });
+                    this.messageService.add({ severity: 'error', detail: 'rule not found' });
                     return;
                 }
 

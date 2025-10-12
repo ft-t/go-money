@@ -81,7 +81,7 @@ export class EnumService {
                 icon: 'pi pi-arrows-h text-blue-500'
             },
             {
-                name: 'Withdrawal',
+                name: 'Expense',
                 value: TransactionType.EXPENSE,
                 icon: 'pi pi-arrow-up text-red-500'
             }

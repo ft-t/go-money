@@ -21,6 +21,7 @@ import { OverlayModule } from 'primeng/overlay';
 import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { RulesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
 import { Rule } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
+import { Tooltip } from 'primeng/tooltip';
 
 class RuleGroup {
     title: string = 'Default';
@@ -30,7 +31,7 @@ class RuleGroup {
 @Component({
     selector: 'app-rule-list',
     templateUrl: 'rule-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, Tooltip],
     styles: `
         :host ::ng-deep .tagListingTable .p-datatable-header {
             border-width: 0 !important;
@@ -48,6 +49,12 @@ export class RuleListComponent implements OnInit {
     private ruleService;
 
     public filters: { [s: string]: FilterMetadata } = {};
+    public multiSortMeta: any[] = [
+        {
+            field: 'id',
+            order: 1
+        }
+    ];
 
     @ViewChild('filter') filter!: ElementRef;
 

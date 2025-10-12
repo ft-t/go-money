@@ -17,7 +17,8 @@
                      [filters]="filters"
                      [paginator]="false"
                      [globalFilterFields]="['id', 'title']"
-                     responsiveLayout="scroll">
+                     responsiveLayout="scroll"
+                     [multiSortMeta]="multiSortMeta">
                 <ng-template #caption>
                     <div class="flex flex-column sm:flex-row gap-2 justify-between">
                         <div class="flex flex-col justify-items-start">
@@ -48,10 +49,16 @@
                                 <p-sortIcon field="title" />
                             </div>
                         </th>
-                        <th style="min-width: 15rem" pSortableColumn="title">
+                        <th pSortableColumn="enabled">
+                            <div class="flex justify-between items-center">
+                                Enabled
+                                <p-sortIcon field="enabled" />
+                            </div>
+                        </th>
+                        <th pSortableColumn="isFinalRule">
                             <div class="flex justify-between items-center">
                                 Is Final Rule
-                                <p-sortIcon field="title" />
+                                <p-sortIcon field="isFinalRule" />
                             </div>
                         </th>
                         <th>
@@ -79,6 +86,7 @@
                         </th>
                         <th></th>
                         <th></th>
+                        <th></th>
                     </tr>
                 </ng-template>
                 <ng-template #body let-accountItem>
@@ -94,14 +102,24 @@
                             </a>
                         </td>
                         <td>
+                            <a [style]="{color : accountItem.enabled ? 'green' : ''}" [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
+                                {{ accountItem.enabled }}
+                            </a>
+                        </td>
+                        <td>
                             <a [href]="getRuleUrl(accountItem)" [routerLink]="getRuleUrl(accountItem)">
                                 {{ accountItem.isFinalRule }}
                             </a>
                         </td>
-                        <td style="max-width: 1rem">
-                            <p-button icon="pi pi-pencil"
-                                      (onClick)="this.router.navigate(['/', 'rules', 'edit', accountItem.id])"
-                                      severity="secondary" rounded />
+                        <td>
+                            <div class="flex gap-2">
+                                <p-button icon="pi pi-pencil" pTooltip="Edit rule" tooltipPosition="top"
+                                          (onClick)="this.router.navigate(['/', 'rules', 'edit', accountItem.id])"
+                                          severity="secondary" rounded />
+                                <p-button icon="pi pi-clone" pTooltip="Clone rule" tooltipPosition="top"
+                                          (onClick)="this.router.navigate(['/rules', 'new'], { queryParams: { clone_from: accountItem.id } })"
+                                          severity="secondary" rounded />
+                            </div>
                         </td>
                     </tr>
                 </ng-template>
