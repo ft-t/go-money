@@ -319,7 +319,10 @@ func (s *Service) CreateBulkInternal(
 	var transactionWithoutRules []*database.Transaction
 
 	var originalTxs []*database.Transaction
+
 	var toCreate []*database.Transaction
+	var toUpdate []*database.Transaction
+
 	for _, req := range reqs {
 		if req.OriginalTx != nil { // save list of original transactions for update
 			originalTxs = append(originalTxs, req.OriginalTx)
@@ -339,21 +342,13 @@ func (s *Service) CreateBulkInternal(
 		if req.OriginalTx == nil {
 			toCreate = append(toCreate, newTx)
 		} else {
-			if err = tx.Updates(newTx).Error; err != nil {
-				return nil, errors.WithStack(err)
-			}
+			toUpdate = append(toUpdate, newTx)
 		}
 
 		if req.Req.SkipRules {
 			transactionWithoutRules = append(transactionWithoutRules, newTx)
 		} else {
 			transactionWithRules = append(transactionWithRules, newTx)
-		}
-	}
-
-	if len(toCreate) > 0 {
-		if err := tx.CreateInBatches(toCreate, boilerplate.DefaultBatchSize).Error; err != nil {
-			return nil, errors.WithStack(err)
 		}
 	}
 
@@ -364,6 +359,18 @@ func (s *Service) CreateBulkInternal(
 		}
 
 		transactionWithRules = modifiedTxs
+	}
+
+	if len(toCreate) > 0 {
+		if err := tx.CreateInBatches(toCreate, boilerplate.DefaultBatchSize).Error; err != nil {
+			return nil, errors.WithStack(err)
+		}
+	}
+
+	for _, newTx := range toUpdate {
+		if err := tx.Updates(newTx).Error; err != nil {
+			return nil, errors.WithStack(err)
+		}
 	}
 
 	created := append(transactionWithRules, transactionWithoutRules...)

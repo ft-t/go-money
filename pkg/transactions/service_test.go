@@ -436,6 +436,95 @@ func TestCreateReconciliation(t *testing.T) {
 	assert.EqualValues(t, accounts[0].ID, createdTx.DestinationAccountID)
 }
 
+func TestAndUpdateWithRuleExecuted(t *testing.T) {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
+			assert.Len(t, i, 1)
+
+			return nil
+		})
+
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 1)
+			i[0].Title = "Changed by rule"
+			return i, nil
+		})
+
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEnty := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+	doubleEnty.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		RuleSvc:           ruleEngine,
+		BaseAmountService: baseCurrency,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEnty,
+	})
+
+	accounts := []*database.Account{
+		{
+			Name:     "Private [UAH]",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+		},
+		{
+			Name:     "Adjustment",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+			Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT,
+		},
+	}
+	assert.NoError(t, gormDB.Create(&accounts).Error)
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	accountSvc.EXPECT().GetDefaultAccount(gomock.Any(), gomoneypbv1.AccountType_ACCOUNT_TYPE_ADJUSTMENT).
+		Return(accounts[1], nil)
+
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, transaction *database.Transaction) *gomoneypbv1.Transaction {
+			return &gomoneypbv1.Transaction{
+				Id: transaction.ID,
+			}
+		})
+
+	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
+	resp, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
+		TransactionDate: timestamppb.New(expenseDate),
+		Transaction: &transactionsv1.CreateTransactionRequest_Adjustment{
+			Adjustment: &transactionsv1.Adjustment{
+				DestinationAmount:    "556",
+				DestinationCurrency:  accounts[0].Currency,
+				DestinationAccountId: accounts[0].ID,
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	var createdTx *database.Transaction
+	assert.NoError(t, gormDB.Where("id = ?", resp.Transaction.Id).Find(&createdTx).Error)
+
+	assert.EqualValues(t, gomoneypbv1.TransactionType_TRANSACTION_TYPE_ADJUSTMENT, createdTx.TransactionType)
+	assert.EqualValues(t, "Changed by rule", createdTx.Title)
+}
+
 func TestCreateBulk(t *testing.T) {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
