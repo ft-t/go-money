@@ -9,7 +9,7 @@ import { FilterMetadata, MessageService, ConfirmationService } from 'primeng/api
 import { ToastModule } from 'primeng/toast';
 import { DatePickerModule } from 'primeng/datepicker';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
-import { NgClass, NgIf } from '@angular/common';
+import { NgIf, NgFor } from '@angular/common';
 import { TextareaModule } from 'primeng/textarea';
 import { ButtonModule } from 'primeng/button';
 import { MultiSelectModule } from 'primeng/multiselect';
@@ -362,11 +362,13 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             return [];
         }
 
-        if (isSource) {
-            return applicable.sourceAccounts || [];
-        } else {
-            return applicable.destinationAccounts || [];
-        }
+        const accounts = isSource ? applicable.sourceAccounts || [] : applicable.destinationAccounts || [];
+
+        return accounts.sort((a, b) => {
+            const orderA = a.displayOrder ?? 999999;
+            const orderB = b.displayOrder ?? 999999;
+            return orderA - orderB;
+        });
     }
 
     getAccountById(id: number | undefined): Account | null {
@@ -602,5 +604,15 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
+    }
+
+    getAccountTypeName(type: number): string {
+        const accountTypes = EnumService.getAccountTypes();
+        const accountType = accountTypes.find(t => t.value === type);
+        return accountType?.name || 'Unknown';
+    }
+
+    parseFloat(value: string): number {
+        return parseFloat(value);
     }
 }

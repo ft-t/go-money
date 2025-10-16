@@ -38,7 +38,7 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         activeRoute: ActivatedRoute,
         private messageService: MessageService,
-        busService: BusService,
+        private busService: BusService,
         private selectedDateService: SelectedDateService
     ) {
         super();
@@ -47,15 +47,13 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
         this.analyticsService = createClient(AnalyticsService, this.transport);
         this.configService = createClient(ConfigurationService, this.transport);
 
-        busService.currentAccountId.subscribe(async (accountId) => {
-            await this.setAccount(accountId);
-        });
-
-        activeRoute.params.subscribe((params) => {
-            let parsed = parseInt(params['id']) ?? undefined;
-
-            busService.currentAccountId.next(parsed);
-        });
+        activeRoute.params
+            .pipe(takeUntil(this.cancellableSubject$))
+            .subscribe(async (params) => {
+                let parsed = parseInt(params['id']) ?? undefined;
+                busService.currentAccountId.next(parsed);
+                await this.setAccount(parsed);
+            });
 
         combineLatest([this.selectedDateService.fromDate, this.selectedDateService.toDate])
             .pipe(takeUntil(this.cancellableSubject$))

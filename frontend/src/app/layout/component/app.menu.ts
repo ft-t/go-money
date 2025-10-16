@@ -67,31 +67,6 @@ export class AppMenu implements OnInit {
                 ]
             },
             {
-                label: 'Accounts',
-                items: [
-                    {
-                        label: 'Assets',
-                        icon: 'pi pi-fw pi-wallet',
-                        routerLink: ['/accounts']
-                    },
-                    {
-                        label: 'Income',
-                        icon: 'pi pi-fw pi-money-bill',
-                        routerLink: ['/accounts/income']
-                    },
-                    {
-                        label: 'Expense',
-                        icon: 'pi pi-fw pi-cart-minus',
-                        routerLink: ['/accounts/expense']
-                    },
-                    {
-                        label: 'Liabilities',
-                        icon: 'pi pi-fw pi-credit-card',
-                        routerLink: ['/accounts/liabilities']
-                    }
-                ]
-            },
-            {
                 label: 'Transactions',
                 items: [
                     {
@@ -113,6 +88,31 @@ export class AppMenu implements OnInit {
                         label: 'All',
                         icon: 'pi pi-fw pi-asterisk',
                         routerLink: ['/transactions']
+                    }
+                ]
+            },
+            {
+                label: 'Accounts',
+                items: [
+                    {
+                        label: 'Assets',
+                        icon: 'pi pi-fw pi-wallet',
+                        routerLink: ['/accounts']
+                    },
+                    {
+                        label: 'Income',
+                        icon: 'pi pi-fw pi-money-bill',
+                        routerLink: ['/accounts/income']
+                    },
+                    {
+                        label: 'Expense',
+                        icon: 'pi pi-fw pi-cart-minus',
+                        routerLink: ['/accounts/expense']
+                    },
+                    {
+                        label: 'Liabilities',
+                        icon: 'pi pi-fw pi-credit-card',
+                        routerLink: ['/accounts/liabilities']
                     }
                 ]
             },
