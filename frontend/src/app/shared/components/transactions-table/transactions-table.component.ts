@@ -44,7 +44,7 @@ export class FilterWrapper {
         }
     `
 })
-export class TransactionsTableComponent implements OnInit, OnChanges {
+export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewInit {
     private transactionsService;
     public loading = true;
     public transactions: Transaction[] = [];
@@ -142,8 +142,8 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
         });
     }
 
-    async ngOnInit() {
-        await Promise.all([this.fetchAccounts(), this.fetchTags(), this.fetchCategories()]);
+    ngOnInit() {
+        Promise.all([this.fetchAccounts(), this.fetchTags(), this.fetchCategories()]);
 
         if (this.filtersWrapper && this.filtersWrapper.filters) {
             Object.assign(this.filters, this.filtersWrapper.filters);
@@ -156,8 +156,9 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
         this.selectedDateService.toDate.pipe(skip(1)).subscribe(() => {
             this.refreshTable();
         });
+    }
 
-        this.refreshTable();
+    ngAfterViewInit() {
     }
 
     async fetchTags() {
