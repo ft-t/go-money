@@ -103,6 +103,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     public isReconciliationTransaction = false;
     private destroy$ = new Subject<void>();
     public showPresetsSidebar = false;
+    private currentPresetTargetIndex = 0;
     public presets: TransactionPreset[] = [
         {
             id: 'monthly-salary',
@@ -556,24 +557,36 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     handleKeyboardEvent(event: KeyboardEvent) {
         if (event.shiftKey && event.key === 'P') {
             event.preventDefault();
-            this.togglePresetsSidebar();
+            this.openPresetsSidebar(0);
         }
     }
 
-    togglePresetsSidebar() {
-        this.showPresetsSidebar = !this.showPresetsSidebar;
+    openPresetsSidebar(index: number) {
+        this.currentPresetTargetIndex = index;
+        this.showPresetsSidebar = true;
     }
 
     applyPreset(preset: TransactionPreset) {
-        this.targetTransaction = preset.transactions.map(tx => {
+        const startIndex = this.currentPresetTargetIndex;
+
+        preset.transactions.forEach((presetTx, i) => {
+            const targetIndex = startIndex + i;
+            const existingTx = this.targetTransaction[targetIndex];
+            const existingId = existingTx?.id || BigInt(0);
+
             const transaction = create(TransactionSchema, {
-                id: BigInt(0),
-                type: tx.type || TransactionType.EXPENSE,
-                title: tx.title || '',
-                sourceAmount: tx.sourceAmount || '',
-                destinationAmount: tx.destinationAmount || ''
+                id: existingId,
+                type: presetTx.type || TransactionType.EXPENSE,
+                title: presetTx.title || '',
+                sourceAmount: presetTx.sourceAmount || '',
+                destinationAmount: presetTx.destinationAmount || ''
             });
-            return transaction;
+
+            if (targetIndex < this.targetTransaction.length) {
+                this.targetTransaction[targetIndex] = transaction;
+            } else {
+                this.targetTransaction.push(transaction);
+            }
         });
 
         this.showPresetsSidebar = false;

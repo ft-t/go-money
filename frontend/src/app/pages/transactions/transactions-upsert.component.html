@@ -13,16 +13,6 @@
             </div>
         </div>
     } @else {
-        <div class="flex gap-2 mb-4 justify-end">
-            <p-button
-                icon="pi pi-bolt"
-                label="Quick Presets"
-                severity="secondary"
-                (click)="togglePresetsSidebar()"
-                pTooltip="Browse and apply transaction templates (Shift + P)"
-                tooltipPosition="left" />
-        </div>
-
         <form>
             @for (tx of targetTransaction; track tx; let idx = $index) {
                 <div class="flex flex-col card gap-2">
@@ -37,6 +27,7 @@
                                     <p-button pTooltip="Refresh data" tooltipPosition="top"  icon="pi pi-refresh" severity="secondary" (onClick)="refresh()" />
                                     <p-button pTooltip="Split" tooltipPosition="top"  icon="pi pi-link" severity="secondary" (onClick)="addSplit()" />
                                     <p-button pTooltip="Add Comission" tooltipPosition="top"  icon="pi pi-cart-minus" severity="secondary" (onClick)="showCommissionSplit(idx)" />
+                                    <p-button pTooltip="Browse and apply transaction templates (Shift + P)" tooltipPosition="top"  icon="pi pi-bolt" severity="secondary" (onClick)="openPresetsSidebar(idx)" />
                                 </div>
                                 <div class="flex flex-row">
                                     <p-button *ngIf="canDeleteTransaction(tx)" pTooltip="Delete transaction" tooltipPosition="top"  icon="pi pi-trash" severity="danger" (onClick)="confirmDelete(idx)" />
