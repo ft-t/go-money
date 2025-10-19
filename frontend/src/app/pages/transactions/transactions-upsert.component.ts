@@ -104,6 +104,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     private destroy$ = new Subject<void>();
     public showPresetsSidebar = false;
     private currentPresetTargetIndex = 0;
+    public selectedPreset: TransactionPreset | null = null;
     public presets: TransactionPreset[] = [
         {
             id: 'monthly-salary',
@@ -558,12 +559,39 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
         if (event.shiftKey && event.key === 'P') {
             event.preventDefault();
             this.openPresetsSidebar(0);
+            return;
+        }
+
+        if (this.showPresetsSidebar) {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                this.navigatePresets(1);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                this.navigatePresets(-1);
+            } else if (event.key === 'Enter' && this.selectedPreset) {
+                event.preventDefault();
+                this.applyPreset(this.selectedPreset);
+            }
         }
     }
 
     openPresetsSidebar(index: number) {
         this.currentPresetTargetIndex = index;
         this.showPresetsSidebar = true;
+        this.selectedPreset = this.presets.length > 0 ? this.presets[0] : null;
+    }
+
+    navigatePresets(direction: number) {
+        if (!this.selectedPreset || this.presets.length === 0) return;
+
+        const currentIndex = this.presets.findIndex(p => p.id === this.selectedPreset?.id);
+        let newIndex = currentIndex + direction;
+
+        if (newIndex < 0) newIndex = this.presets.length - 1;
+        if (newIndex >= this.presets.length) newIndex = 0;
+
+        this.selectedPreset = this.presets[newIndex];
     }
 
     applyPreset(preset: TransactionPreset) {

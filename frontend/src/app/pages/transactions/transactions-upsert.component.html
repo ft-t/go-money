@@ -74,6 +74,7 @@
 
             <p-listbox
                 [options]="presets"
+                [(ngModel)]="selectedPreset"
                 optionLabel="name"
                 [filter]="true"
                 filterPlaceholder="Search presets..."
