@@ -32,7 +32,7 @@
         </ng-template>
         <ng-template #header>
             <tr>
-                <th style="min-width: 3rem" pSortableColumn="id">
+                <th style="max-width: 5rem" pSortableColumn="id">
                     <div class="flex justify-between items-center">
                         ID <p-sortIcon field="id" />
                     </div>
@@ -46,7 +46,7 @@
                 </th>
             </tr>
             <tr>
-                <th>
+                <th style="max-width: 5rem">
                     <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="id"
                                     showMenu="true"
                                     placeholder="ID" ariaLabel="Filter Name"></p-columnFilter>
