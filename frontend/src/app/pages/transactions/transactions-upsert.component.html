@@ -13,6 +13,16 @@
             </div>
         </div>
     } @else {
+        <div class="flex gap-2 mb-4 justify-end">
+            <p-button
+                icon="pi pi-bolt"
+                label="Quick Presets"
+                severity="secondary"
+                (click)="togglePresetsSidebar()"
+                pTooltip="Browse and apply transaction templates (Shift + P)"
+                tooltipPosition="left" />
+        </div>
+
         <form>
             @for (tx of targetTransaction; track tx; let idx = $index) {
                 <div class="flex flex-col card gap-2">
@@ -62,6 +72,39 @@
 
             </div>
         </form>
+
+        <p-sidebar [(visible)]="showPresetsSidebar" position="right" [style]="{width: '320px'}">
+            <ng-template #header>
+                <div class="flex items-center gap-2">
+                    <i class="pi pi-bolt text-xl"></i>
+                    <span class="font-semibold text-lg">Quick Presets</span>
+                </div>
+            </ng-template>
+
+            <p-listbox
+                [options]="presets"
+                optionLabel="name"
+                [filter]="true"
+                filterPlaceholder="Search presets..."
+                [listStyle]="{'max-height':'100%'}"
+                (onChange)="applyPreset($event.value)">
+                <ng-template #item let-preset>
+                    <div class="flex items-start gap-3 p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0">
+                            <i [class]="'pi ' + preset.icon + ' text-white text-2xl'"></i>
+                        </div>
+                        <div class="flex flex-col flex-1 min-w-0">
+                            <div class="font-semibold text-sm mb-1">{{ preset.name }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ preset.description }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1">
+                                <i class="pi pi-list"></i>
+                                <span>{{ preset.transactions.length }} transaction(s)</span>
+                            </div>
+                        </div>
+                    </div>
+                </ng-template>
+            </p-listbox>
+        </p-sidebar>
     }
 </p-fluid>
 <p-toast />

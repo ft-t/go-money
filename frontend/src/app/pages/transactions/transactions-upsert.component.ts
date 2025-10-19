@@ -1,4 +1,4 @@
-import { Component, Inject, OnDestroy, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { Component, HostListener, Inject, OnDestroy, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { FluidModule } from 'primeng/fluid';
 import { InputTextModule } from 'primeng/inputtext';
 import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -47,8 +47,18 @@ import { Tooltip } from 'primeng/tooltip';
 import { Dialog } from 'primeng/dialog';
 import { Message } from 'primeng/message';
 import { Subject, takeUntil } from 'rxjs';
+import { Sidebar } from 'primeng/sidebar';
+import { Listbox } from 'primeng/listbox';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
+
+interface TransactionPreset {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    transactions: Partial<Transaction>[];
+}
 
 @Component({
     selector: 'transaction-upsert',
@@ -75,7 +85,9 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         TransactionEditorComponent,
         Tooltip,
         Dialog,
-        Message
+        Message,
+        Sidebar,
+        Listbox
     ]
 })
 export class TransactionUpsertComponent implements OnInit, OnDestroy {
@@ -90,6 +102,57 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     public allAccounts: { [s: number]: Account } = {};
     public isReconciliationTransaction = false;
     private destroy$ = new Subject<void>();
+    public showPresetsSidebar = false;
+    public presets: TransactionPreset[] = [
+        {
+            id: 'monthly-salary',
+            name: 'Monthly Salary',
+            description: 'Record your monthly salary income',
+            icon: 'pi-wallet',
+            transactions: [
+                {
+                    type: TransactionType.INCOME,
+                    title: 'Monthly Salary',
+                    sourceAmount: '5000',
+                    destinationAmount: '5000'
+                }
+            ]
+        },
+        {
+            id: 'grocery-shopping',
+            name: 'Grocery Shopping',
+            description: 'Weekly grocery shopping expense',
+            icon: 'pi-shopping-cart',
+            transactions: [
+                {
+                    type: TransactionType.EXPENSE,
+                    title: 'Grocery Shopping',
+                    sourceAmount: '150',
+                    destinationAmount: '150'
+                }
+            ]
+        },
+        {
+            id: 'restaurant-with-tip',
+            name: 'Restaurant with Tip',
+            description: 'Dining out with service tip (2 transactions)',
+            icon: 'pi-book',
+            transactions: [
+                {
+                    type: TransactionType.EXPENSE,
+                    title: 'Restaurant Meal',
+                    sourceAmount: '85',
+                    destinationAmount: '85'
+                },
+                {
+                    type: TransactionType.EXPENSE,
+                    title: 'Restaurant Tip',
+                    sourceAmount: '15',
+                    destinationAmount: '15'
+                }
+            ]
+        }
+    ];
 
     @ViewChildren('editor') components: QueryList<TransactionEditorComponent> = new QueryList();
 
@@ -487,6 +550,38 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
 
     parseFloat(value: string): number {
         return AccountHelper.parseFloat(value);
+    }
+
+    @HostListener('window:keydown', ['$event'])
+    handleKeyboardEvent(event: KeyboardEvent) {
+        if (event.shiftKey && event.key === 'P') {
+            event.preventDefault();
+            this.togglePresetsSidebar();
+        }
+    }
+
+    togglePresetsSidebar() {
+        this.showPresetsSidebar = !this.showPresetsSidebar;
+    }
+
+    applyPreset(preset: TransactionPreset) {
+        this.targetTransaction = preset.transactions.map(tx => {
+            const transaction = create(TransactionSchema, {
+                id: BigInt(0),
+                type: tx.type || TransactionType.EXPENSE,
+                title: tx.title || '',
+                sourceAmount: tx.sourceAmount || '',
+                destinationAmount: tx.destinationAmount || ''
+            });
+            return transaction;
+        });
+
+        this.showPresetsSidebar = false;
+
+        this.messageService.add({
+            severity: 'success',
+            detail: `Applied preset: ${preset.name}`
+        });
     }
 
     ngOnDestroy(): void {
