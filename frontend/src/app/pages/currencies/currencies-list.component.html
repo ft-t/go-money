@@ -98,7 +98,7 @@
                 <td>
                     <p-button icon="pi pi-pencil"
                               (onClick)="this.router.navigate(['/', 'currencies', 'edit', accountItem.id])"
-                              severity="secondary" rounded />
+                              severity="secondary" [rounded]="true" />
                 </td>
             </tr>
         </ng-template>

@@ -29,6 +29,7 @@ import { FancyTagComponent } from '../fancy-tag/fancy-tag.component';
 import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
 import { Tooltip } from 'primeng/tooltip';
+import { TransactionSummaryComponent } from '../transaction-summary/transaction-summary.component';
 
 export class FilterWrapper {
     public filters: { [s: string]: FilterMetadata } | undefined;
@@ -37,14 +38,14 @@ export class FilterWrapper {
 @Component({
     selector: 'app-transaction-table',
     templateUrl: 'transactions-table.component.html',
-    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent, Tooltip],
+    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent, Tooltip, TransactionSummaryComponent],
     styles: `
         :host ::ng-deep .transactionListingTable .p-datatable-header {
             border-width: 0 !important;
         }
     `
 })
-export class TransactionsTableComponent implements OnInit, OnChanges {
+export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewInit {
     private transactionsService;
     public loading = true;
     public transactions: Transaction[] = [];
@@ -63,12 +64,6 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
     public categories: Category[] = [];
 
     public maxSelectedLabels = 1;
-    public totalExpenses: number = 0;
-    public totalIncome: number = 0;
-    public totalTransfers: number = 0;
-    public expenseCount: number = 0;
-    public incomeCount: number = 0;
-    public transferCount: number = 0;
 
     @Input() filtersWrapper: FilterWrapper | undefined;
 
@@ -142,8 +137,8 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
         });
     }
 
-    async ngOnInit() {
-        await Promise.all([this.fetchAccounts(), this.fetchTags(), this.fetchCategories()]);
+    ngOnInit() {
+        Promise.all([this.fetchAccounts(), this.fetchTags(), this.fetchCategories()]);
 
         if (this.filtersWrapper && this.filtersWrapper.filters) {
             Object.assign(this.filters, this.filtersWrapper.filters);
@@ -156,18 +151,17 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
         this.selectedDateService.toDate.pipe(skip(1)).subscribe(() => {
             this.refreshTable();
         });
+    }
 
-        this.refreshTable();
+    ngAfterViewInit() {
     }
 
     async fetchTags() {
-        this.tags = [];
-
         try {
             let resp = await this.tagsService.listTags({});
+            this.tags = resp.tags.map(t => t.tag!);
             for (let account of resp.tags) {
                 this.tagsMap[account.tag!.id] = account.tag!;
-                this.tags.push(account.tag!);
             }
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
@@ -338,39 +332,10 @@ export class TransactionsTableComponent implements OnInit, OnChanges {
 
             this.transactions = resp.transactions;
             this.totalRecords = Number(resp.totalCount);
-            this.calculateSummary();
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {
             this.loading = false;
-        }
-    }
-
-    calculateSummary() {
-        this.totalExpenses = 0;
-        this.totalIncome = 0;
-        this.totalTransfers = 0;
-        this.expenseCount = 0;
-        this.incomeCount = 0;
-        this.transferCount = 0;
-
-        for (let tx of this.transactions) {
-            const amount = Math.abs(parseFloat(tx.sourceAmount || '0'));
-
-            switch (tx.type) {
-                case TransactionType.EXPENSE:
-                    this.totalExpenses += amount;
-                    this.expenseCount++;
-                    break;
-                case TransactionType.INCOME:
-                    this.totalIncome += amount;
-                    this.incomeCount++;
-                    break;
-                case TransactionType.TRANSFER_BETWEEN_ACCOUNTS:
-                    this.totalTransfers += amount;
-                    this.transferCount++;
-                    break;
-            }
         }
     }
 

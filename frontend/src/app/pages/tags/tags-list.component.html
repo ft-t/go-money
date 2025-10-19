@@ -32,7 +32,7 @@
         </ng-template>
         <ng-template #header>
             <tr>
-                <th pSortableColumn="tag.id">
+                <th style="max-width: 5rem" pSortableColumn="tag.id">
                     <div class="flex justify-between items-center">
                         ID <p-sortIcon field="tag.id" />
                     </div>
@@ -46,7 +46,7 @@
                 </th>
             </tr>
             <tr>
-                <th style="max-width: 3rem">
+                <th style="max-width: 5rem">
                     <p-columnFilter type="numeric" showAddButton="false" showMatchModes="false" field="tag.id"
                                     showMenu="true"
                                     placeholder="ID" ariaLabel="Filter Name"></p-columnFilter>
@@ -82,7 +82,7 @@
                 <td style="max-width: 1rem">
                     <p-button icon="pi pi-pencil"
                               (onClick)="this.router.navigate(['/', 'tags', 'edit', accountItem.tag.id])"
-                              severity="secondary" rounded />
+                              severity="secondary" [rounded]="true" />
                 </td>
             </tr>
         </ng-template>
@@ -93,7 +93,7 @@
         </ng-template>
         <ng-template #loadingbody>
             <tr>
-                <td colspan="8">Loading accounts data. Please wait.</td>
+                <td colspan="8">Loading tags data. Please wait.</td>
             </tr>
         </ng-template>
     </p-table>

@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { FluidModule } from 'primeng/fluid';
 import { InputTextModule } from 'primeng/inputtext';
 import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -28,6 +28,8 @@ import {
     TransferBetweenAccountsSchema,
     UpdateTransactionRequestSchema
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { Account, AccountType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
+import { CurrencyService, ExchangeRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -40,8 +42,11 @@ import { greaterThanZeroValidator } from '../../validators/greaterthenzero';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TransactionEditorComponent } from '../../shared/components/transaction-editor/transaction-editor.component';
 import { NumberHelper } from '../../helpers/number.helper';
+import { AccountHelper } from '../../helpers/account.helper';
 import { Tooltip } from 'primeng/tooltip';
 import { Dialog } from 'primeng/dialog';
+import { Message } from 'primeng/message';
+import { Subject, takeUntil } from 'rxjs';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -69,16 +74,22 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         ConfirmDialogModule,
         TransactionEditorComponent,
         Tooltip,
-        Dialog
+        Dialog,
+        Message
     ]
 })
-export class TransactionUpsertComponent implements OnInit {
+export class TransactionUpsertComponent implements OnInit, OnDestroy {
     private transactionService;
+    private currencyService;
     private lastTxID = 0;
     public targetTransaction: Transaction[] = [];
     public showExpenseSplit = false;
     public expenseSplitForm: FormGroup | undefined = undefined;
     private currentSplitIndex = 0;
+    public accounts: { [s: number]: GetApplicableAccountsResponse_ApplicableRecord } = {};
+    public allAccounts: { [s: number]: Account } = {};
+    public isReconciliationTransaction = false;
+    private destroy$ = new Subject<void>();
 
     @ViewChildren('editor') components: QueryList<TransactionEditorComponent> = new QueryList();
 
@@ -90,6 +101,7 @@ export class TransactionUpsertComponent implements OnInit {
         private route: ActivatedRoute
     ) {
         this.transactionService = createClient(TransactionsService, this.transport);
+        this.currencyService = createClient(CurrencyService, this.transport);
 
         let targetType = TransactionType.EXPENSE;
         this.route.queryParams.subscribe(async (data) => {
@@ -114,7 +126,13 @@ export class TransactionUpsertComponent implements OnInit {
         });
     }
 
-    ngOnInit(): void {}
+    async ngOnInit(): Promise<void> {
+        await this.fetchAccounts();
+    }
+
+    async refresh() {
+        await this.fetchAccounts();
+    }
 
     showCommissionSplit(index: number) {
         this.currentSplitIndex = index;
@@ -125,8 +143,10 @@ export class TransactionUpsertComponent implements OnInit {
         const sourceCurrency = result?.get('sourceCurrency')?.value;
         const sourceAmount = parseFloat(result?.get('sourceAmount')?.value || '0');
         const transactionDate = result?.get('transactionDate')?.value;
-        const destinationAccountId = result?.get('destinationAccountId')?.value;
-        const destinationCurrency = result?.get('destinationCurrency')?.value;
+
+        const defaultDestinationAccount = AccountHelper.getExpenseAccountByNameOrDefault(this.accounts, 'bank commissions');
+        const destinationAccountId = defaultDestinationAccount?.id || 0;
+        const destinationCurrency = defaultDestinationAccount?.currency || sourceCurrency;
 
         this.expenseSplitForm = new FormGroup({
             sourceAccountId: new FormControl(sourceAccountId),
@@ -134,17 +154,32 @@ export class TransactionUpsertComponent implements OnInit {
             title: new FormControl('Commission Split', Validators.required),
             sourceCurrency: new FormControl(sourceCurrency),
             transactionDate: new FormControl(transactionDate),
-            destinationAccountId: new FormControl(destinationAccountId),
+            destinationAccountId: new FormControl(destinationAccountId, Validators.min(1)),
             destinationCurrency: new FormControl(destinationCurrency),
             amount: new FormControl(undefined, [Validators.required, greaterThanZeroValidator, Validators.max(Math.abs(sourceAmount))])
         });
 
         this.expenseSplitForm.get('sourceAccountName')!.disable();
 
+        this.expenseSplitForm.get('destinationAccountId')!.valueChanges
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(async (newVal) => {
+                let curr = this.expenseSplitForm!.get('destinationCurrency');
+                curr?.setValue('', { emitEvent: false });
+
+                let account = AccountHelper.getAccountById(this.allAccounts, newVal!);
+                if (!account) {
+                    return;
+                }
+
+                curr?.setValue(account.currency, { emitEvent: false });
+            });
+
         this.showExpenseSplit = true;
     }
 
     onHideExpenseSplit() {
+        this.destroy$.next();
         this.showExpenseSplit = false;
         this.expenseSplitForm = undefined;
     }
@@ -168,11 +203,34 @@ export class TransactionUpsertComponent implements OnInit {
         const editor = this.components.get(this.currentSplitIndex);
         let originalForm = editor!.getForm();
 
+        const sourceCurrency = this.expenseSplitForm.get('sourceCurrency')!.value;
+        const destinationCurrency = this.expenseSplitForm.get('destinationCurrency')!.value;
+        let destinationAmount = delta;
+
+        if (sourceCurrency !== destinationCurrency) {
+            try {
+                let converted = await this.currencyService.exchange(
+                    create(ExchangeRequestSchema, {
+                        amount: delta,
+                        fromCurrency: sourceCurrency,
+                        toCurrency: destinationCurrency
+                    })
+                );
+                destinationAmount = converted.amount;
+            } catch (e) {
+                this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+                return;
+            }
+        }
+
         const newTransaction = create(TransactionSchema, {
             type: TransactionType.EXPENSE,
             sourceAccountId: this.expenseSplitForm.get('sourceAccountId')!.value,
-            sourceCurrency: this.expenseSplitForm.get('sourceCurrency')!.value,
+            sourceCurrency: sourceCurrency,
             sourceAmount: delta,
+            destinationAccountId: this.expenseSplitForm.get('destinationAccountId')!.value,
+            destinationCurrency: destinationCurrency,
+            destinationAmount: destinationAmount,
             title: this.expenseSplitForm.get('title')!.value,
             transactionDate: create(TimestampSchema, {
                 seconds: BigInt(Math.floor(originalForm!.get('transactionDate')!.value.getTime() / 1000)),
@@ -224,6 +282,12 @@ export class TransactionUpsertComponent implements OnInit {
         }
 
         let tx = resp.transactions[0];
+
+        if (tx.type === TransactionType.ADJUSTMENT) {
+            this.isReconciliationTransaction = true;
+            this.targetTransaction[index] = tx;
+            return;
+        }
 
         if (tx.sourceAmount) tx.sourceAmount = NumberHelper.toPositiveNumber(tx.sourceAmount)!;
 
@@ -394,4 +458,39 @@ export class TransactionUpsertComponent implements OnInit {
     }
 
     protected readonly BigInt = BigInt;
+
+    async fetchAccounts() {
+        try {
+            let resp = await this.transactionService.getApplicableAccounts({});
+            for (let applicable of resp.applicableRecords) {
+                this.accounts[applicable.transactionType] = applicable;
+
+                for (let source of applicable.sourceAccounts || []) {
+                    this.allAccounts[source.id] = source;
+                }
+                for (let destination of applicable.destinationAccounts || []) {
+                    this.allAccounts[destination.id] = destination;
+                }
+            }
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    getApplicableAccounts(type: TransactionType, isSource: boolean): Account[] {
+        return AccountHelper.getApplicableAccounts(this.accounts, type, isSource);
+    }
+
+    getAccountTypeName(type: number): string {
+        return AccountHelper.getAccountTypeName(type);
+    }
+
+    parseFloat(value: string): number {
+        return AccountHelper.parseFloat(value);
+    }
+
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
 }

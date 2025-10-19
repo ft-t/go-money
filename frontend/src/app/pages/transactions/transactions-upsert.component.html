@@ -1,77 +1,120 @@
 <!--suppress TypeScriptValidateTypes -->
 <p-fluid>
-    <form>
-        @for (tx of targetTransaction; track tx; let idx = $index) {
-            <div class="flex flex-col card gap-2">
-                <div class="flex flex-row gap-2 justify-between">
-                    <div class="flex flex-col align-middle">
-                        <div class="font-semibold align-middle text-center">{{this.getTitle(tx)}}</div>
-                    </div>
-                    <div class="flex flex-col justify-end">
-                        <div class="flex flex-row gap-4">
-                            <div class="flex flex-row gap-2">
-                                <p-button *ngIf="canDeleteSplit(idx, tx)" pTooltip="Delete split" tooltipPosition="top"  icon="pi pi-minus" severity="secondary" (onClick)="deleteSplit(idx)" />
-                                <p-button pTooltip="Refresh data" tooltipPosition="top"  icon="pi pi-refresh" severity="secondary" (onClick)="refresh()" />
-                                <p-button pTooltip="Split" tooltipPosition="top"  icon="pi pi-link" severity="secondary" (onClick)="addSplit()" />
-                                <p-button pTooltip="Add Comission" tooltipPosition="top"  icon="pi pi-cart-minus" severity="secondary" (onClick)="showCommissionSplit(idx)" />
-                            </div>
-                            <div class="flex flex-row">
-                                <p-button *ngIf="canDeleteTransaction(tx)" pTooltip="Delete transaction" tooltipPosition="top"  icon="pi pi-trash" severity="danger" (onClick)="confirmDelete(idx)" />
+    @if (isReconciliationTransaction) {
+        <div class="flex flex-col card gap-4 items-center justify-center p-8">
+            <i class="pi pi-exclamation-triangle text-red-500" style="font-size: 4rem;"></i>
+            <h2 class="text-2xl font-semibold text-center">Editing Reconciliation Not Supported</h2>
+            <p class="text-center text-gray-600 dark:text-gray-400 max-w-md">
+                Editing reconciliation transactions is not supported. Please create a new reconciliation instead.
+            </p>
+            <div class="flex gap-2 mt-4">
+                <p-button label="Go to Transactions" severity="secondary" (click)="router.navigate(['/transactions'])" />
+                <p-button label="Create New Reconciliation" (click)="router.navigate(['/accounts'])" />
+            </div>
+        </div>
+    } @else {
+        <form>
+            @for (tx of targetTransaction; track tx; let idx = $index) {
+                <div class="flex flex-col card gap-2">
+                    <div class="flex flex-row gap-2 justify-between">
+                        <div class="flex flex-col align-middle">
+                            <div class="font-semibold align-middle text-center">{{this.getTitle(tx)}}</div>
+                        </div>
+                        <div class="flex flex-col justify-end">
+                            <div class="flex flex-row gap-4">
+                                <div class="flex flex-row gap-2">
+                                    <p-button *ngIf="canDeleteSplit(idx, tx)" pTooltip="Delete split" tooltipPosition="top"  icon="pi pi-minus" severity="secondary" (onClick)="deleteSplit(idx)" />
+                                    <p-button pTooltip="Refresh data" tooltipPosition="top"  icon="pi pi-refresh" severity="secondary" (onClick)="refresh()" />
+                                    <p-button pTooltip="Split" tooltipPosition="top"  icon="pi pi-link" severity="secondary" (onClick)="addSplit()" />
+                                    <p-button pTooltip="Add Comission" tooltipPosition="top"  icon="pi pi-cart-minus" severity="secondary" (onClick)="showCommissionSplit(idx)" />
+                                </div>
+                                <div class="flex flex-row">
+                                    <p-button *ngIf="canDeleteTransaction(tx)" pTooltip="Delete transaction" tooltipPosition="top"  icon="pi pi-trash" severity="danger" (onClick)="confirmDelete(idx)" />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <transaction-editor #editor [transaction]="tx" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                    <transaction-editor #editor [transaction]="tx" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
 
-                <div class="flex flex-col justify-end gap-2">
-                    <div class="flex gap-2">
+                    <div class="flex flex-col justify-end gap-2">
+                        <div class="flex gap-2">
+                        </div>
                     </div>
                 </div>
-            </div>
-        }
+            }
 
 
-        <div class="flex mt-8">
-            <div class="card flex flex-wrap gap-4 w-full justify-end">
+            <div class="flex mt-8">
+                <div class="card flex flex-wrap gap-4 w-full justify-end">
 <!--                <div class="flex flex-row items-center gap-2">-->
 <!--                    <p-checkbox id="chkbox2" formControlName="skipRules" [binary]="true" />-->
 <!--                    <label for="chkbox2">Skip rules</label>-->
 <!--                </div>-->
 
-                <div class="flex flex-col items-end gap-1">
-                    <p-button [label]="getSaveButtonLabel()" [fluid]="false" (click)="saveAll()"></p-button>
-                    <span class="text-base text-gray-600" *ngIf="getSaveButtonDescription()">
-                        {{ getSaveButtonDescription() }}
-                    </span>
+                    <div class="flex flex-col items-end gap-1">
+                        <p-button [label]="getSaveButtonLabel()" [fluid]="false" (click)="saveAll()"></p-button>
+                        <span class="text-base text-gray-600" *ngIf="getSaveButtonDescription()">
+                            {{ getSaveButtonDescription() }}
+                        </span>
+                    </div>
                 </div>
-            </div>
 
-        </div>
-    </form>
+            </div>
+        </form>
+    }
 </p-fluid>
 <p-toast />
 <p-confirmdialog></p-confirmdialog>
 
 <p-dialog header="Add Expense split" [modal]="true" [(visible)]="showExpenseSplit" (onHide)="onHideExpenseSplit()" [style]="{ width: '50rem' }" [breakpoints]="{ '1199px': '75vw', '575px': '90vw' }" [maximizable]="true">
     <form [formGroup]="expenseSplitForm" *ngIf="expenseSplitForm">
-        <div class="flex items-center gap-4 mb-4 text-balance">
-            <label for="sourceAccount" class="font-semibold w-24">Account</label>
-            <p-inputgroup>
-                <input pInputText type="text" formControlName="sourceAccountName"
-                       readonly="true"
-                       placeholder="Account name"/>
-            </p-inputgroup>
+        <div class="flex flex-col gap-2 mb-4">
+            <label for="sourceAccount" class="font-semibold">Source Account</label>
+            <input pInputText type="text" formControlName="sourceAccountName"
+                   readonly="true"
+                   placeholder="Account name"/>
         </div>
-        <div class="flex items-center gap-4 mb-4">
-            <label for="title" class="font-semibold w-24">Title</label>
-            <p-inputgroup>
-                <input pInputText type="text" formControlName="title"
-                       placeholder="Title"/>
-            </p-inputgroup>
+        <div class="flex flex-col gap-2 mb-4">
+            <label for="title" class="font-semibold">Title *</label>
+            <input pInputText type="text" formControlName="title"
+                   placeholder="Title"/>
+            @if (expenseSplitForm.get('title')?.invalid && expenseSplitForm.get('title')?.touched) {
+                <p-message severity="error" variant="simple" size="small">Title is required</p-message>
+            }
         </div>
-        <div class="flex items-center gap-4 mb-8">
-            <label for="amount" class="font-semibold w-24">Amount</label>
+        <div class="flex flex-col gap-2 mb-4">
+            <label for="destinationAccount" class="font-semibold">Destination Account *</label>
+            <p-select
+                [options]="getApplicableAccounts(3, false)"
+                formControlName="destinationAccountId"
+                [filter]="true"
+                filterBy="name"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Select destination account"
+            >
+                <ng-template #item let-account>
+                    <div class="flex flex-col text-sm leading-tight py-1 w-full">
+                        <div class="font-semibold mb-1 text-center">{{ account.name }}</div>
+                        <div class="flex gap-3 text-xs text-gray-600 dark:text-gray-400 justify-center">
+                            <span class="flex-shrink-0">Type: <span class="text-gray-900 dark:text-gray-100">{{ getAccountTypeName(account.type) }}</span></span>
+                            <span class="flex-shrink-0">Currency: <span class="text-gray-900 dark:text-gray-100">{{ account.currency }}</span></span>
+                            <span class="flex-shrink-0">Balance: <span class="font-mono"
+                                [class.text-green-600]="parseFloat(account.currentBalance) > 0"
+                                [class.dark:text-green-400]="parseFloat(account.currentBalance) > 0"
+                                [class.text-red-600]="parseFloat(account.currentBalance) < 0"
+                                [class.dark:text-red-400]="parseFloat(account.currentBalance) < 0">{{ account.currentBalance }}</span></span>
+                        </div>
+                    </div>
+                </ng-template>
+            </p-select>
+            @if (expenseSplitForm.get('destinationAccountId')?.invalid && expenseSplitForm.get('destinationAccountId')?.touched) {
+                <p-message severity="error" variant="simple" size="small">Destination Account is required</p-message>
+            }
+        </div>
+        <div class="flex flex-col gap-2 mb-4">
+            <label for="amount" class="font-semibold">Amount *</label>
             <p-inputgroup>
                 <p-inputnumber formControlName="amount"
                                mode="decimal"
@@ -81,9 +124,9 @@
                     [style]="{'color': 'deepskyblue'}">{{ expenseSplitForm.get('sourceCurrency')?.value }}
                 </p-inputgroup-addon>
             </p-inputgroup>
-            <small *ngIf="expenseSplitForm.get('amount')?.invalid && expenseSplitForm.get('amount')?.touched" class="p-error">
-                Amount must be greater than 0 and less than the source amount
-            </small>
+            @if (expenseSplitForm.get('amount')?.invalid && expenseSplitForm.get('amount')?.touched) {
+                <p-message severity="error" variant="simple" size="small">Amount must be greater than 0 and less than the source amount</p-message>
+            }
         </div>
         <div class="flex justify-end gap-2">
             <p-button label="Cancel" severity="secondary" (click)="onHideExpenseSplit()" />
