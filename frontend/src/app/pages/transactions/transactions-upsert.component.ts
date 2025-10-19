@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { FluidModule } from 'primeng/fluid';
 import { InputTextModule } from 'primeng/inputtext';
 import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -46,6 +46,7 @@ import { AccountHelper } from '../../helpers/account.helper';
 import { Tooltip } from 'primeng/tooltip';
 import { Dialog } from 'primeng/dialog';
 import { Message } from 'primeng/message';
+import { Subject, takeUntil } from 'rxjs';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -77,7 +78,7 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         Message
     ]
 })
-export class TransactionUpsertComponent implements OnInit {
+export class TransactionUpsertComponent implements OnInit, OnDestroy {
     private transactionService;
     private currencyService;
     private lastTxID = 0;
@@ -88,6 +89,7 @@ export class TransactionUpsertComponent implements OnInit {
     public accounts: { [s: number]: GetApplicableAccountsResponse_ApplicableRecord } = {};
     public allAccounts: { [s: number]: Account } = {};
     public isReconciliationTransaction = false;
+    private destroy$ = new Subject<void>();
 
     @ViewChildren('editor') components: QueryList<TransactionEditorComponent> = new QueryList();
 
@@ -159,22 +161,25 @@ export class TransactionUpsertComponent implements OnInit {
 
         this.expenseSplitForm.get('sourceAccountName')!.disable();
 
-        this.expenseSplitForm.get('destinationAccountId')!.valueChanges.subscribe(async (newVal) => {
-            let curr = this.expenseSplitForm!.get('destinationCurrency');
-            curr?.setValue('', { emitEvent: false });
+        this.expenseSplitForm.get('destinationAccountId')!.valueChanges
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(async (newVal) => {
+                let curr = this.expenseSplitForm!.get('destinationCurrency');
+                curr?.setValue('', { emitEvent: false });
 
-            let account = AccountHelper.getAccountById(this.allAccounts, newVal!);
-            if (!account) {
-                return;
-            }
+                let account = AccountHelper.getAccountById(this.allAccounts, newVal!);
+                if (!account) {
+                    return;
+                }
 
-            curr?.setValue(account.currency, { emitEvent: false });
-        });
+                curr?.setValue(account.currency, { emitEvent: false });
+            });
 
         this.showExpenseSplit = true;
     }
 
     onHideExpenseSplit() {
+        this.destroy$.next();
         this.showExpenseSplit = false;
         this.expenseSplitForm = undefined;
     }
@@ -482,5 +487,10 @@ export class TransactionUpsertComponent implements OnInit {
 
     parseFloat(value: string): number {
         return AccountHelper.parseFloat(value);
+    }
+
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
     }
 }

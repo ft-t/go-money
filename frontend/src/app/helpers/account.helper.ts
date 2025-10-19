@@ -17,11 +17,7 @@ export class AccountHelper {
 
         const accountList = isSource ? applicable.sourceAccounts || [] : applicable.destinationAccounts || [];
 
-        return accountList.sort((a, b) => {
-            const orderA = a.displayOrder ?? 999999;
-            const orderB = b.displayOrder ?? 999999;
-            return orderA - orderB;
-        });
+        return AccountHelper.sortByDisplayOrder(accountList);
     }
 
     static sortByDisplayOrder(accounts: Account[]): Account[] {
