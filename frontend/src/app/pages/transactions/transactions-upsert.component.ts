@@ -87,6 +87,7 @@ export class TransactionUpsertComponent implements OnInit {
     private currentSplitIndex = 0;
     public accounts: { [s: number]: GetApplicableAccountsResponse_ApplicableRecord } = {};
     public allAccounts: { [s: number]: Account } = {};
+    public isReconciliationTransaction = false;
 
     @ViewChildren('editor') components: QueryList<TransactionEditorComponent> = new QueryList();
 
@@ -276,6 +277,12 @@ export class TransactionUpsertComponent implements OnInit {
         }
 
         let tx = resp.transactions[0];
+
+        if (tx.type === TransactionType.ADJUSTMENT) {
+            this.isReconciliationTransaction = true;
+            this.targetTransaction[index] = tx;
+            return;
+        }
 
         if (tx.sourceAmount) tx.sourceAmount = NumberHelper.toPositiveNumber(tx.sourceAmount)!;
 
