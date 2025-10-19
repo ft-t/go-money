@@ -55,23 +55,52 @@
 
 <p-dialog header="Add Expense split" [modal]="true" [(visible)]="showExpenseSplit" (onHide)="onHideExpenseSplit()" [style]="{ width: '50rem' }" [breakpoints]="{ '1199px': '75vw', '575px': '90vw' }" [maximizable]="true">
     <form [formGroup]="expenseSplitForm" *ngIf="expenseSplitForm">
-        <div class="flex items-center gap-4 mb-4 text-balance">
-            <label for="sourceAccount" class="font-semibold w-24">Account</label>
-            <p-inputgroup>
-                <input pInputText type="text" formControlName="sourceAccountName"
-                       readonly="true"
-                       placeholder="Account name"/>
-            </p-inputgroup>
+        <div class="flex flex-col gap-2 mb-4">
+            <label for="sourceAccount" class="font-semibold">Source Account</label>
+            <input pInputText type="text" formControlName="sourceAccountName"
+                   readonly="true"
+                   placeholder="Account name"/>
         </div>
-        <div class="flex items-center gap-4 mb-4">
-            <label for="title" class="font-semibold w-24">Title</label>
-            <p-inputgroup>
-                <input pInputText type="text" formControlName="title"
-                       placeholder="Title"/>
-            </p-inputgroup>
+        <div class="flex flex-col gap-2 mb-4">
+            <label for="title" class="font-semibold">Title *</label>
+            <input pInputText type="text" formControlName="title"
+                   placeholder="Title"/>
+            @if (expenseSplitForm.get('title')?.invalid && expenseSplitForm.get('title')?.touched) {
+                <p-message severity="error" variant="simple" size="small">Title is required</p-message>
+            }
         </div>
-        <div class="flex items-center gap-4 mb-8">
-            <label for="amount" class="font-semibold w-24">Amount</label>
+        <div class="flex flex-col gap-2 mb-4">
+            <label for="destinationAccount" class="font-semibold">Destination Account *</label>
+            <p-select
+                [options]="getApplicableAccounts(3, false)"
+                formControlName="destinationAccountId"
+                [filter]="true"
+                filterBy="name"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Select destination account"
+            >
+                <ng-template #item let-account>
+                    <div class="flex flex-col text-sm leading-tight py-1 w-full">
+                        <div class="font-semibold mb-1 text-center">{{ account.name }}</div>
+                        <div class="flex gap-3 text-xs text-gray-600 dark:text-gray-400 justify-center">
+                            <span class="flex-shrink-0">Type: <span class="text-gray-900 dark:text-gray-100">{{ getAccountTypeName(account.type) }}</span></span>
+                            <span class="flex-shrink-0">Currency: <span class="text-gray-900 dark:text-gray-100">{{ account.currency }}</span></span>
+                            <span class="flex-shrink-0">Balance: <span class="font-mono"
+                                [class.text-green-600]="parseFloat(account.currentBalance) > 0"
+                                [class.dark:text-green-400]="parseFloat(account.currentBalance) > 0"
+                                [class.text-red-600]="parseFloat(account.currentBalance) < 0"
+                                [class.dark:text-red-400]="parseFloat(account.currentBalance) < 0">{{ account.currentBalance }}</span></span>
+                        </div>
+                    </div>
+                </ng-template>
+            </p-select>
+            @if (expenseSplitForm.get('destinationAccountId')?.invalid && expenseSplitForm.get('destinationAccountId')?.touched) {
+                <p-message severity="error" variant="simple" size="small">Destination Account is required</p-message>
+            }
+        </div>
+        <div class="flex flex-col gap-2 mb-4">
+            <label for="amount" class="font-semibold">Amount *</label>
             <p-inputgroup>
                 <p-inputnumber formControlName="amount"
                                mode="decimal"
@@ -81,9 +110,9 @@
                     [style]="{'color': 'deepskyblue'}">{{ expenseSplitForm.get('sourceCurrency')?.value }}
                 </p-inputgroup-addon>
             </p-inputgroup>
-            <small *ngIf="expenseSplitForm.get('amount')?.invalid && expenseSplitForm.get('amount')?.touched" class="p-error">
-                Amount must be greater than 0 and less than the source amount
-            </small>
+            @if (expenseSplitForm.get('amount')?.invalid && expenseSplitForm.get('amount')?.touched) {
+                <p-message severity="error" variant="simple" size="small">Amount must be greater than 0 and less than the source amount</p-message>
+            }
         </div>
         <div class="flex justify-end gap-2">
             <p-button label="Cancel" severity="secondary" (click)="onHideExpenseSplit()" />

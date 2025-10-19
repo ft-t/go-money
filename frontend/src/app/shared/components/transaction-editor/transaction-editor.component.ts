@@ -51,6 +51,7 @@ import { ErrorHelper } from '../../../helpers/error.helper';
 import { AccountTypeEnum, EnumService } from '../../../services/enum.service';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { NumberHelper } from '../../../helpers/number.helper';
+import { AccountHelper } from '../../../helpers/account.helper';
 import { Tooltip } from 'primeng/tooltip';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
@@ -356,25 +357,11 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
     }
 
     getApplicableAccounts(type: TransactionType, isSource: boolean): Account[] {
-        const applicable = this.accounts[type];
-
-        if (!applicable) {
-            return [];
-        }
-
-        const accounts = isSource ? applicable.sourceAccounts || [] : applicable.destinationAccounts || [];
-
-        return accounts.sort((a, b) => {
-            const orderA = a.displayOrder ?? 999999;
-            const orderB = b.displayOrder ?? 999999;
-            return orderA - orderB;
-        });
+        return AccountHelper.getApplicableAccounts(this.accounts, type, isSource);
     }
 
     getAccountById(id: number | undefined): Account | null {
-        if (!id) return null;
-
-        return this.allAccounts[id] || null;
+        return AccountHelper.getAccountById(this.allAccounts, id);
     }
 
     canConvert(): boolean {
@@ -607,12 +594,10 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
     }
 
     getAccountTypeName(type: number): string {
-        const accountTypes = EnumService.getAccountTypes();
-        const accountType = accountTypes.find(t => t.value === type);
-        return accountType?.name || 'Unknown';
+        return AccountHelper.getAccountTypeName(type);
     }
 
     parseFloat(value: string): number {
-        return parseFloat(value);
+        return AccountHelper.parseFloat(value);
     }
 }
