@@ -115,22 +115,22 @@
                             <div class="flex gap-2">
                                 <p-button icon="pi pi-pencil" pTooltip="Edit rule" tooltipPosition="top"
                                           (onClick)="this.router.navigate(['/', 'rules', 'edit', accountItem.id])"
-                                          severity="secondary" rounded />
+                                          severity="secondary" [rounded]="true" />
                                 <p-button icon="pi pi-clone" pTooltip="Clone rule" tooltipPosition="top"
                                           (onClick)="this.router.navigate(['/rules', 'new'], { queryParams: { clone_from: accountItem.id } })"
-                                          severity="secondary" rounded />
+                                          severity="secondary" [rounded]="true" />
                             </div>
                         </td>
                     </tr>
                 </ng-template>
                 <ng-template #emptymessage>
                     <tr>
-                        <td colspan="8">No tags found.</td>
+                        <td colspan="8">No rules found.</td>
                     </tr>
                 </ng-template>
                 <ng-template #loadingbody>
                     <tr>
-                        <td colspan="8">Loading accounts data. Please wait.</td>
+                        <td colspan="8">Loading rules data. Please wait.</td>
                     </tr>
                 </ng-template>
             </p-table>

@@ -204,18 +204,17 @@
             </tr>
         </ng-template>
         <ng-template #body let-transactionItem>
-            <tr [routerLink]="getTransactionLink(transactionItem.id)" href="https://test">
+            <tr [routerLink]="getTransactionLink(transactionItem.id)">
                 <td>
                     <p class="text-wrap break-all" style="min-width: 3rem; max-width: 5rem">
-                        <a [href]="getTransactionLink(transactionItem.id)"
-                           [routerLink]="getTransactionLink(transactionItem.id)">
+                        <a [routerLink]="getTransactionLink(transactionItem.id)">
                             {{ transactionItem.id }}
                         </a>
                     </p>
                 </td>
                 <td style="max-width: 20rem;">
                     <p class="text-wrap break-all">
-                        <a [href]="getTransactionLink(transactionItem.id)">
+                        <a [routerLink]="getTransactionLink(transactionItem.id)">
                             {{ transactionItem.title }}
                         </a>
                     </p>
@@ -250,16 +249,14 @@
                 </td>
                 <td>
                     <p [ngClass]="getAccountColorClass(transactionItem.sourceAccountId)">
-                        <a [href]="getAccountUrl(transactionItem.sourceAccountId)"
-                           [routerLink]="getAccountUrl(transactionItem.sourceAccountId)">
+                        <a [routerLink]="getAccountUrl(transactionItem.sourceAccountId)">
                             {{ this.getAccountName(transactionItem.sourceAccountId) }}
                         </a>
                     </p>
                 </td>
                 <td>
                     <p [ngClass]="getAccountColorClass(transactionItem.destinationAccountId)">
-                        <a [href]="getAccountUrl(transactionItem.destinationAccountId)"
-                           [routerLink]="getAccountUrl(transactionItem.destinationAccountId)">
+                        <a [routerLink]="getAccountUrl(transactionItem.destinationAccountId)">
                             {{ this.getAccountName(transactionItem.destinationAccountId) }}
                         </a>
                     </p>
@@ -278,16 +275,14 @@
                 </td>
                 <td>
                     <div class="flex gap-2">
-                        <a [href]="'/transactions/edit/' + transactionItem.id"
-                           [routerLink]="['/', 'transactions', 'edit', transactionItem.id]">
+                        <a [routerLink]="['/', 'transactions', 'edit', transactionItem.id]">
                             <p-button icon="pi pi-pencil"
-                                      severity="secondary" rounded pTooltip="Edit transaction" tooltipPosition="top" />
+                                      severity="secondary" [rounded]="true" pTooltip="Edit transaction" tooltipPosition="top" />
                         </a>
-                        <a [href]="'/transactions/new?clone_from=' + transactionItem.id"
-                           [routerLink]="['/', 'transactions', 'new']"
+                        <a [routerLink]="['/', 'transactions', 'new']"
                            [queryParams]="{ clone_from: transactionItem.id }">
                             <p-button icon="pi pi-clone" pTooltip="Clone & Edit transaction" tooltipPosition="top"
-                                      severity="secondary" rounded />
+                                      severity="secondary" [rounded]="true" />
                         </a>
                     </div>
                 </td>
@@ -295,12 +290,12 @@
         </ng-template>
         <ng-template #emptymessage>
             <tr>
-                <td colspan="8">No transactions found.</td>
+                <td colspan="10">No transactions found.</td>
             </tr>
         </ng-template>
         <ng-template #loadingbody>
             <tr>
-                <td colspan="8">Loading Transaction data. Please wait.</td>
+                <td colspan="10">Loading transaction data. Please wait.</td>
             </tr>
         </ng-template>
     </p-table>

@@ -191,12 +191,12 @@
                            [routerLink]="['/', 'accounts', 'edit', accountItem.account.id]">
                             <p-button icon="pi pi-pencil"
                                       pTooltip="Edit account" tooltipPosition="top" placeholder="Top"
-                                      severity="secondary" rounded />
+                                      severity="secondary" [rounded]="true" />
                         </a>
                         <p-button icon="pi pi-receipt"
                                   (onClick)="showReconcile(accountItem)"
                                   pTooltip="Reconcile account" tooltipPosition="top" placeholder="Top"
-                                  severity="secondary" rounded />
+                                  severity="secondary" [rounded]="true" />
                     </div>
                 </td>
             </tr>

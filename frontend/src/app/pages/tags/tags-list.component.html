@@ -82,7 +82,7 @@
                 <td style="max-width: 1rem">
                     <p-button icon="pi pi-pencil"
                               (onClick)="this.router.navigate(['/', 'tags', 'edit', accountItem.tag.id])"
-                              severity="secondary" rounded />
+                              severity="secondary" [rounded]="true" />
                 </td>
             </tr>
         </ng-template>
@@ -93,7 +93,7 @@
         </ng-template>
         <ng-template #loadingbody>
             <tr>
-                <td colspan="8">Loading accounts data. Please wait.</td>
+                <td colspan="8">Loading tags data. Please wait.</td>
             </tr>
         </ng-template>
     </p-table>

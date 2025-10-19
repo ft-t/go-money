@@ -113,18 +113,18 @@
                         <td style="max-width: 1rem">
                             <p-button icon="pi pi-pencil"
                                       (onClick)="this.router.navigate(['/', 'schedules', 'edit', accountItem.id])"
-                                      severity="secondary" rounded />
+                                      severity="secondary" [rounded]="true" />
                         </td>
                     </tr>
                 </ng-template>
                 <ng-template #emptymessage>
                     <tr>
-                        <td colspan="8">No tags found.</td>
+                        <td colspan="8">No schedules found.</td>
                     </tr>
                 </ng-template>
                 <ng-template #loadingbody>
                     <tr>
-                        <td colspan="8">Loading accounts data. Please wait.</td>
+                        <td colspan="8">Loading schedules data. Please wait.</td>
                     </tr>
                 </ng-template>
             </p-table>
