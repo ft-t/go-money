@@ -389,5 +389,16 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 				)
 			},
 		},
+		{
+			ID: "2025-10-19-AddTransactionActiveDateTypeIndex",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`CREATE INDEX if not exists idx_transactions_active_date_type ON transactions (transaction_date_time DESC, transaction_type)
+    WHERE deleted_at IS NULL;`,
+					`CREATE INDEX if not exists idx_transactions_active_date ON transactions (transaction_date_time DESC)
+    WHERE deleted_at IS NULL;`,
+				)
+			},
+		},
 	}
 }
