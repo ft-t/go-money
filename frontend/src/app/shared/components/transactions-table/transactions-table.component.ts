@@ -137,8 +137,10 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
         });
     }
 
-    ngOnInit() {
-        Promise.all([this.fetchAccounts(), this.fetchTags(), this.fetchCategories()]);
+    async ngOnInit() {
+        Promise.all([this.fetchAccounts(), this.fetchTags(), this.fetchCategories()]).then(r => {
+            console.log('Fetched all supporting data');
+        });
 
         if (this.filtersWrapper && this.filtersWrapper.filters) {
             Object.assign(this.filters, this.filtersWrapper.filters);
@@ -154,6 +156,10 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
     }
 
     ngAfterViewInit() {
+        setTimeout(() => {
+            console.log("Refreshing table after view init");
+            this.refreshTable();
+        }, 10)
     }
 
     async fetchTags() {
