@@ -73,6 +73,12 @@ func TestBaseAmountService(t *testing.T) {
 				Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
 				Currency: "RAND",
 			},
+			{
+				Name:     "Default Income",
+				Extra:    map[string]string{},
+				Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_INCOME,
+				Currency: baseCurrency,
+			},
 		}
 		assert.NoError(t, gormDB.Create(&acc).Error)
 
@@ -237,6 +243,17 @@ func TestBaseAmountService(t *testing.T) {
 				// source base
 				// dest different
 			},
+			{
+				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+				SourceCurrency:  baseCurrency,
+				SourceAmount:    decimal.NewNullDecimal(decimal.NewFromInt(1000)),
+				SourceAccountID: acc[6].ID,
+
+				DestinationCurrency:  baseCurrency,
+				DestinationAccountID: acc[1].ID,
+				DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(1000)),
+				Extra:                make(map[string]string),
+			},
 		}
 
 		txSrv := validation.NewValidationService(&validation.ServiceConfig{})
@@ -289,6 +306,9 @@ func TestBaseAmountService(t *testing.T) {
 
 		assert.EqualValues(t, -55, updatedTxs[9].SourceAmountInBaseCurrency.Decimal.IntPart())
 		assert.EqualValues(t, 55, updatedTxs[9].DestinationAmountInBaseCurrency.Decimal.IntPart())
+
+		assert.EqualValues(t, 1000, updatedTxs[10].DestinationAmountInBaseCurrency.Decimal.IntPart())
+		assert.EqualValues(t, -1000, updatedTxs[10].SourceAmountInBaseCurrency.Decimal.IntPart())
 	})
 
 	t.Run("success with partial update", func(t *testing.T) {

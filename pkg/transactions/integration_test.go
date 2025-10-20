@@ -321,6 +321,75 @@ func TestUpdateTransaction(t *testing.T) {
 	assert.EqualValues(t, "-20.5", updatedAccounts[1].CurrentBalance.String())
 }
 
+func TestBasicIncome(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		Return(&gomoneypbv1.Transaction{})
+
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 1)
+			return i, nil
+		})
+
+	baseCurrency := transactions.NewBaseAmountService("USD")
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEntry := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
+		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEntry,
+	})
+
+	accounts := []*database.Account{
+		{
+			Name:     "Asset 1",
+			Currency: "USD",
+			Extra:    map[string]string{},
+		},
+		{
+			Name:     "Income 1",
+			Currency: "USD",
+			Extra:    map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	depositDate2 := time.Date(2025, 6, 7, 0, 0, 0, 0, time.UTC)
+	_, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
+		TransactionDate: timestamppb.New(depositDate2),
+		Transaction: &transactionsv1.CreateTransactionRequest_Income{
+			Income: &transactionsv1.Income{
+				DestinationAmount:    "100",
+				DestinationCurrency:  "USD",
+				DestinationAccountId: accounts[0].ID,
+
+				SourceAmount:    "-100",
+				SourceCurrency:  "USD",
+				SourceAccountId: accounts[1].ID,
+			},
+		},
+	})
+	assert.NoError(t, err)
+}
+
 func TestBasicCalc(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 

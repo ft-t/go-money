@@ -321,9 +321,6 @@ func (s *Service) CreateBulkInternal(
 
 	var originalTxs []*database.Transaction
 
-	var toCreate []*database.Transaction
-	var toUpdate []*database.Transaction
-
 	for _, req := range reqs {
 		if req.OriginalTx != nil { // save list of original transactions for update
 			originalTxs = append(originalTxs, req.OriginalTx)
@@ -340,12 +337,6 @@ func (s *Service) CreateBulkInternal(
 
 		// validate wallet transaction date
 
-		if req.OriginalTx == nil {
-			toCreate = append(toCreate, newTx)
-		} else {
-			toUpdate = append(toUpdate, newTx)
-		}
-
 		if req.Req.SkipRules {
 			transactionWithoutRules = append(transactionWithoutRules, newTx)
 		} else {
@@ -360,6 +351,17 @@ func (s *Service) CreateBulkInternal(
 		}
 
 		transactionWithRules = modifiedTxs
+	}
+
+	var toCreate []*database.Transaction
+	var toUpdate []*database.Transaction
+
+	for _, newTx := range append(transactionWithRules, transactionWithoutRules...) {
+		if newTx.ID == 0 {
+			toCreate = append(toCreate, newTx)
+		} else {
+			toUpdate = append(toUpdate, newTx)
+		}
 	}
 
 	zerolog.Ctx(ctx).Info().
