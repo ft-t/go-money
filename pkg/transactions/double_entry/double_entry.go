@@ -2,12 +2,14 @@ package double_entry
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -43,7 +45,15 @@ func (s *DoubleEntryService) Record(
 
 	txIds := make([]int64, 0, len(txs))
 
+	zerolog.Ctx(ctx).Info().Int("count", len(txs)).Msg("recording double entry transactions")
+	
 	for _, tx := range txs {
+		b, _ := json.Marshal(tx)
+
+		zerolog.Ctx(ctx).Info().
+			RawJSON("transaction", b).
+			Msg("processing double entry tx")
+
 		sourceAccount, ok := accounts[tx.SourceAccountID]
 		if !ok {
 			return errors.New("source account not found for double entry transaction")
