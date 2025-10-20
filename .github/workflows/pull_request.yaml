@@ -7,7 +7,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    container: golang:1.24-alpine
+    container: golang:1.25-alpine
     env:
       ENVIRONMENT: ci
     steps:
@@ -20,7 +20,7 @@ jobs:
           args: --timeout=5m --tests=false ./...
   test:
     runs-on: ubuntu-latest
-    container: golang:1.24-alpine
+    container: golang:1.25-alpine
     services:
       postgres:
         image: postgres:latest

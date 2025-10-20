@@ -14,6 +14,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -360,6 +361,11 @@ func (s *Service) CreateBulkInternal(
 
 		transactionWithRules = modifiedTxs
 	}
+
+	zerolog.Ctx(ctx).Info().
+		Int("to_create", len(toCreate)).
+		Int("to_update", len(toUpdate)).
+		Msg("Creating transactions bulk")
 
 	if len(toCreate) > 0 {
 		if err := tx.CreateInBatches(toCreate, boilerplate.DefaultBatchSize).Error; err != nil {
