@@ -1222,4 +1222,76 @@ func TestDeleteTransaction(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.EqualValues(t, 0, resp.DeletedCount)
 	})
+
+	t.Run("double entry deletion error", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		tx := &database.Transaction{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			TransactionDateTime: time.Now(),
+			Title:               "Test Transaction",
+			Extra:               map[string]string{},
+		}
+		assert.NoError(t, gormDB.Create(tx).Error)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		doubleEntry := NewMockDoubleEntrySvc(ctrl)
+
+		doubleEntry.EXPECT().
+			DeleteByTransactionIDs(gomock.Any(), gomock.Any(), gomock.Eq([]int64{tx.ID})).
+			Return(errors.New("double entry deletion failed"))
+
+		srv := transactions.NewService(&transactions.ServiceConfig{
+			DoubleEntry: doubleEntry,
+		})
+
+		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{tx.ID},
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.ErrorContains(t, err, "failed to delete double entry records")
+	})
+
+	t.Run("stats service error", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		tx := &database.Transaction{
+			TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_INCOME,
+			TransactionDateTime: time.Now(),
+			Title:               "Test Transaction",
+			Extra:               map[string]string{},
+		}
+		assert.NoError(t, gormDB.Create(tx).Error)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		doubleEntry := NewMockDoubleEntrySvc(ctrl)
+		statsSvc := NewMockStatsSvc(ctrl)
+
+		doubleEntry.EXPECT().
+			DeleteByTransactionIDs(gomock.Any(), gomock.Any(), gomock.Eq([]int64{tx.ID})).
+			Return(nil)
+
+		statsSvc.EXPECT().
+			HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(errors.New("stats update failed"))
+
+		srv := transactions.NewService(&transactions.ServiceConfig{
+			DoubleEntry: doubleEntry,
+			StatsSvc:    statsSvc,
+		})
+
+		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
+			Ids: []int64{tx.ID},
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.ErrorContains(t, err, "failed to update statistics after transaction deletion")
+	})
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
@@ -543,5 +544,23 @@ func TestDeleteByTransactionIDs(t *testing.T) {
 		var deletedRecords []*database.DoubleEntry
 		assert.NoError(t, gormDB.Where("transaction_id = ? AND deleted_at IS NULL", 300).Find(&deletedRecords).Error)
 		assert.Len(t, deletedRecords, 0)
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, mockDB, sql := testingutils.GormMock()
+		defer func() {
+			_ = mockDB.Close()
+		}()
+
+		srv := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+			BaseCurrency: "USD",
+		})
+
+		sql.ExpectExec("update double_entries set deleted_at").
+			WillReturnError(errors.New("database error"))
+
+		err := srv.DeleteByTransactionIDs(context.TODO(), mockGorm, []int64{100})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "failed to delete double entries for transactions")
 	})
 }
