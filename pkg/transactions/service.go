@@ -713,10 +713,24 @@ func (s *Service) DeleteTransaction(
 	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
 	defer tx.Rollback()
 
-	result := tx.Where("id IN ? AND deleted_at IS NULL", req.Ids).
-		Delete(&database.Transaction{})
-	if result.Error != nil {
-		return nil, errors.WithStack(result.Error)
+	var selectedTxs []*database.Transaction
+	if err := tx.Where("id IN ? AND deleted_at IS NULL", req.Ids).
+		Find(&selectedTxs).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to find transactions to delete")
+	}
+
+	for _, txToDelete := range selectedTxs {
+		if err := tx.Delete(txToDelete).Error; err != nil {
+			return nil, errors.Wrapf(err, "failed to delete transaction id %d", txToDelete.ID)
+		}
+	}
+
+	if err := s.cfg.DoubleEntry.DeleteByTransactionIDs(ctx, tx, req.Ids); err != nil {
+		return nil, errors.Wrap(err, "failed to delete double entry records")
+	}
+
+	if err := s.cfg.StatsSvc.HandleTransactions(ctx, tx, selectedTxs); err != nil {
+		return nil, errors.Wrap(err, "failed to update statistics after transaction deletion")
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -724,6 +738,6 @@ func (s *Service) DeleteTransaction(
 	}
 
 	return &transactionsv1.DeleteTransactionsResponse{
-		DeletedCount: int32(result.RowsAffected),
+		DeletedCount: int32(len(selectedTxs)),
 	}, nil
 }

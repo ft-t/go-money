@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
@@ -389,5 +390,177 @@ func TestRecord(t *testing.T) {
 		})
 		assert.Error(t, err)
 		assert.EqualError(t, err, "source account not found for double entry transaction")
+	})
+}
+
+func TestDeleteByTransactionIDs(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+			BaseCurrency: "USD",
+		})
+
+		testRecords := []*database.DoubleEntry{
+			{
+				TransactionID: 100,
+				IsDebit:       false,
+				AccountID:     1,
+				BaseCurrency:  "USD",
+			},
+			{
+				TransactionID: 100,
+				IsDebit:       true,
+				AccountID:     2,
+				BaseCurrency:  "USD",
+			},
+			{
+				TransactionID: 101,
+				IsDebit:       false,
+				AccountID:     1,
+				BaseCurrency:  "USD",
+			},
+			{
+				TransactionID: 101,
+				IsDebit:       true,
+				AccountID:     2,
+				BaseCurrency:  "USD",
+			},
+		}
+		assert.NoError(t, gormDB.Create(&testRecords).Error)
+
+		err := srv.DeleteByTransactionIDs(context.TODO(), gormDB, []int64{100})
+		assert.NoError(t, err)
+
+		var remainingRecords []*database.DoubleEntry
+		assert.NoError(t, gormDB.Where("transaction_id = ? AND deleted_at IS NULL", 100).Find(&remainingRecords).Error)
+		assert.Len(t, remainingRecords, 0)
+
+		var untouchedRecords []*database.DoubleEntry
+		assert.NoError(t, gormDB.Where("transaction_id = ? AND deleted_at IS NULL", 101).Find(&untouchedRecords).Error)
+		assert.Len(t, untouchedRecords, 2)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		srv := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+			BaseCurrency: "USD",
+		})
+
+		err := srv.DeleteByTransactionIDs(context.TODO(), gormDB, []int64{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("multiple transaction ids", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+			BaseCurrency: "USD",
+		})
+
+		testRecords := []*database.DoubleEntry{
+			{
+				TransactionID: 200,
+				IsDebit:       false,
+				AccountID:     1,
+				BaseCurrency:  "USD",
+			},
+			{
+				TransactionID: 200,
+				IsDebit:       true,
+				AccountID:     2,
+				BaseCurrency:  "USD",
+			},
+			{
+				TransactionID: 201,
+				IsDebit:       false,
+				AccountID:     1,
+				BaseCurrency:  "USD",
+			},
+			{
+				TransactionID: 201,
+				IsDebit:       true,
+				AccountID:     2,
+				BaseCurrency:  "USD",
+			},
+			{
+				TransactionID: 202,
+				IsDebit:       false,
+				AccountID:     1,
+				BaseCurrency:  "USD",
+			},
+		}
+		assert.NoError(t, gormDB.Create(&testRecords).Error)
+
+		err := srv.DeleteByTransactionIDs(context.TODO(), gormDB, []int64{200, 201})
+		assert.NoError(t, err)
+
+		var deletedRecords []*database.DoubleEntry
+		assert.NoError(t, gormDB.Where("transaction_id IN (?, ?) AND deleted_at IS NULL", 200, 201).Find(&deletedRecords).Error)
+		assert.Len(t, deletedRecords, 0)
+
+		var remainingRecords []*database.DoubleEntry
+		assert.NoError(t, gormDB.Where("transaction_id = ? AND deleted_at IS NULL", 202).Find(&remainingRecords).Error)
+		assert.Len(t, remainingRecords, 1)
+	})
+
+	t.Run("non existent transaction ids", func(t *testing.T) {
+		srv := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+			BaseCurrency: "USD",
+		})
+
+		err := srv.DeleteByTransactionIDs(context.TODO(), gormDB, []int64{9999, 8888})
+		assert.NoError(t, err)
+	})
+
+	t.Run("already deleted entries", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		srv := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+			BaseCurrency: "USD",
+		})
+
+		testRecords := []*database.DoubleEntry{
+			{
+				TransactionID: 300,
+				IsDebit:       false,
+				AccountID:     1,
+				BaseCurrency:  "USD",
+			},
+			{
+				TransactionID: 300,
+				IsDebit:       true,
+				AccountID:     2,
+				BaseCurrency:  "USD",
+			},
+		}
+		assert.NoError(t, gormDB.Create(&testRecords).Error)
+
+		err := srv.DeleteByTransactionIDs(context.TODO(), gormDB, []int64{300})
+		assert.NoError(t, err)
+
+		err = srv.DeleteByTransactionIDs(context.TODO(), gormDB, []int64{300})
+		assert.NoError(t, err)
+
+		var deletedRecords []*database.DoubleEntry
+		assert.NoError(t, gormDB.Where("transaction_id = ? AND deleted_at IS NULL", 300).Find(&deletedRecords).Error)
+		assert.Len(t, deletedRecords, 0)
+	})
+
+	t.Run("db error", func(t *testing.T) {
+		mockGorm, mockDB, sql := testingutils.GormMock()
+		defer func() {
+			_ = mockDB.Close()
+		}()
+
+		srv := double_entry.NewDoubleEntryService(&double_entry.DoubleEntryConfig{
+			BaseCurrency: "USD",
+		})
+
+		sql.ExpectExec("update double_entries set deleted_at").
+			WillReturnError(errors.New("database error"))
+
+		err := srv.DeleteByTransactionIDs(context.TODO(), mockGorm, []int64{100})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "failed to delete double entries for transactions")
 	})
 }

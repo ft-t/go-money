@@ -11,7 +11,8 @@ with upd as (select t.id,
                             then
                             t.destination_amount
                         when t.source_currency != @baseCurrency then
-                            round(t.source_amount / sourceCurrency.rate, sourceCurrency.decimal_places)
+                            coalesce(nullif(round(t.source_amount / sourceCurrency.rate, sourceCurrency.decimal_places), 0::numeric), 
+                                                                     (t.source_amount / sourceCurrency.rate))
                         else t.source_amount
                         end as sourceInBase
              from transactions t

@@ -35,6 +35,26 @@ func NewDoubleEntryService(
 	}
 }
 
+func (s *DoubleEntryService) DeleteByTransactionIDs(
+	_ context.Context,
+	dbTx *gorm.DB,
+	txIds []int64,
+) error {
+	if len(txIds) == 0 {
+		return nil
+	}
+
+	for _, chunk := range lo.Chunk(txIds, boilerplate.DefaultBatchSize) {
+		if err := dbTx.
+			Exec("update double_entries set deleted_at = now() where transaction_id in ? and deleted_at is null",
+				chunk).Error; err != nil {
+			return errors.Wrap(err, "failed to delete double entries for transactions")
+		}
+	}
+
+	return nil
+}
+
 func (s *DoubleEntryService) Record(
 	ctx context.Context,
 	dbTx *gorm.DB,
@@ -46,7 +66,7 @@ func (s *DoubleEntryService) Record(
 	txIds := make([]int64, 0, len(txs))
 
 	zerolog.Ctx(ctx).Info().Int("count", len(txs)).Msg("recording double entry transactions")
-	
+
 	for _, tx := range txs {
 		b, _ := json.Marshal(tx)
 
