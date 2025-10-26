@@ -1062,7 +1062,24 @@ func TestDeleteTransaction(t *testing.T) {
 		}
 		assert.NoError(t, gormDB.Create(tx).Error)
 
-		srv := transactions.NewService(&transactions.ServiceConfig{})
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		doubleEntry := NewMockDoubleEntrySvc(ctrl)
+		statsSvc := NewMockStatsSvc(ctrl)
+
+		doubleEntry.EXPECT().
+			DeleteByTransactionIDs(gomock.Any(), gomock.Any(), gomock.Eq([]int64{tx.ID})).
+			Return(nil)
+
+		statsSvc.EXPECT().
+			HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
+		srv := transactions.NewService(&transactions.ServiceConfig{
+			DoubleEntry: doubleEntry,
+			StatsSvc:    statsSvc,
+		})
 
 		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
 			Ids: []int64{tx.ID},
@@ -1098,7 +1115,24 @@ func TestDeleteTransaction(t *testing.T) {
 		}
 		assert.NoError(t, gormDB.Create(&txs).Error)
 
-		srv := transactions.NewService(&transactions.ServiceConfig{})
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		doubleEntry := NewMockDoubleEntrySvc(ctrl)
+		statsSvc := NewMockStatsSvc(ctrl)
+
+		doubleEntry.EXPECT().
+			DeleteByTransactionIDs(gomock.Any(), gomock.Any(), gomock.Eq([]int64{txs[0].ID, txs[1].ID})).
+			Return(nil)
+
+		statsSvc.EXPECT().
+			HandleTransactions(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil)
+
+		srv := transactions.NewService(&transactions.ServiceConfig{
+			DoubleEntry: doubleEntry,
+			StatsSvc:    statsSvc,
+		})
 
 		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
 			Ids: []int64{txs[0].ID, txs[1].ID},
@@ -1121,7 +1155,24 @@ func TestDeleteTransaction(t *testing.T) {
 	t.Run("nonexistent ids ignored", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-		srv := transactions.NewService(&transactions.ServiceConfig{})
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		doubleEntry := NewMockDoubleEntrySvc(ctrl)
+		statsSvc := NewMockStatsSvc(ctrl)
+
+		doubleEntry.EXPECT().
+			DeleteByTransactionIDs(gomock.Any(), gomock.Any(), gomock.Eq([]int64{99999})).
+			Return(nil)
+
+		statsSvc.EXPECT().
+			HandleTransactions(gomock.Any(), gomock.Any(), gomock.Len(0)).
+			Return(nil)
+
+		srv := transactions.NewService(&transactions.ServiceConfig{
+			DoubleEntry: doubleEntry,
+			StatsSvc:    statsSvc,
+		})
 
 		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
 			Ids: []int64{99999},
@@ -1144,7 +1195,24 @@ func TestDeleteTransaction(t *testing.T) {
 		assert.NoError(t, gormDB.Create(tx).Error)
 		assert.NoError(t, gormDB.Delete(tx).Error)
 
-		srv := transactions.NewService(&transactions.ServiceConfig{})
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		doubleEntry := NewMockDoubleEntrySvc(ctrl)
+		statsSvc := NewMockStatsSvc(ctrl)
+
+		doubleEntry.EXPECT().
+			DeleteByTransactionIDs(gomock.Any(), gomock.Any(), gomock.Eq([]int64{tx.ID})).
+			Return(nil)
+
+		statsSvc.EXPECT().
+			HandleTransactions(gomock.Any(), gomock.Any(), gomock.Len(0)).
+			Return(nil)
+
+		srv := transactions.NewService(&transactions.ServiceConfig{
+			DoubleEntry: doubleEntry,
+			StatsSvc:    statsSvc,
+		})
 
 		resp, err := srv.DeleteTransaction(context.TODO(), &transactionsv1.DeleteTransactionsRequest{
 			Ids: []int64{tx.ID},
