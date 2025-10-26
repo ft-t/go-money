@@ -9,9 +9,9 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
-import { FilterMetadata, MessageService, SortMeta } from 'primeng/api';
+import { ConfirmationService, FilterMetadata, MessageService, SortMeta } from 'primeng/api';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ListTransactionsRequest_SortSchema, ListTransactionsRequestSchema, SortField, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { DeleteTransactionsRequestSchema, ListTransactionsRequest_SortSchema, ListTransactionsRequestSchema, SortField, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TimestampHelper } from '../../../helpers/timestamp.helper';
 import { AccountsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
@@ -30,6 +30,7 @@ import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/cate
 import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
 import { Tooltip } from 'primeng/tooltip';
 import { TransactionSummaryComponent } from '../transaction-summary/transaction-summary.component';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 
 export class FilterWrapper {
     public filters: { [s: string]: FilterMetadata } | undefined;
@@ -38,7 +39,7 @@ export class FilterWrapper {
 @Component({
     selector: 'app-transaction-table',
     templateUrl: 'transactions-table.component.html',
-    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent, Tooltip, TransactionSummaryComponent],
+    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent, Tooltip, TransactionSummaryComponent, ConfirmDialogModule],
     styles: `
         :host ::ng-deep .transactionListingTable .p-datatable-header {
             border-width: 0 !important;
@@ -88,6 +89,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
+        private confirmationService: ConfirmationService,
         public router: Router,
         private selectedDateService: SelectedDateService,
         routeSnapshot: ActivatedRoute
@@ -472,6 +474,41 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
     formatAmount(amount: string | undefined): string {
         if (!amount) return '0.00';
         return parseFloat(amount).toFixed(2);
+    }
+
+    async deleteTransaction(event: Event, transactionId: bigint) {
+        event.stopPropagation();
+        event.preventDefault();
+
+        this.confirmationService.confirm({
+            target: event.target as EventTarget,
+            message: 'Are you sure you want to delete this transaction?',
+            header: 'Delete Confirmation',
+            icon: 'pi pi-exclamation-triangle',
+            acceptButtonStyleClass: 'p-button-danger p-button-text',
+            rejectButtonStyleClass: 'p-button-text p-button-text',
+            acceptIcon: 'none',
+            rejectIcon: 'none',
+            accept: async () => {
+                try {
+                    await this.transactionsService.deleteTransactions(
+                        create(DeleteTransactionsRequestSchema, {
+                            ids: [transactionId]
+                        })
+                    );
+
+                    this.messageService.add({
+                        severity: 'success',
+                        summary: 'Success',
+                        detail: 'Transaction deleted successfully'
+                    });
+
+                    this.refreshTable();
+                } catch (e) {
+                    this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+                }
+            }
+        });
     }
 
     protected readonly TimestampHelper = TimestampHelper;

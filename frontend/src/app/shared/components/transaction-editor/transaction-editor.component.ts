@@ -80,7 +80,8 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         Message,
         AutoComplete,
         ConfirmDialogModule,
-        Tooltip
+        Tooltip,
+        Checkbox
     ]
 })
 export class TransactionEditorComponent implements OnInit, OnChanges {
@@ -93,7 +94,6 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
     public tags: Tag[] = [];
     public categories: Category[] = [];
 
-    public skipRules: false = false;
     public accounts: { [s: number]: GetApplicableAccountsResponse_ApplicableRecord } = {};
     public allAccounts: { [s: number]: Account } = {};
 
@@ -190,7 +190,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             transactionDate: new FormControl(tx.transactionDate != null ? TimestampHelper.timestampToDate(tx.transactionDate!) : new Date(), Validators.required),
             type: new FormControl(tx.type, Validators.required),
             tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
-            skipRules: new FormControl(this.skipRules, { nonNullable: false }),
+            skipRules: new FormControl(false, { nonNullable: false }),
             fxSourceAmount: new FormControl(NumberHelper.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
             fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false }),
             internalReferenceNumber: new FormControl(tx.internalReferenceNumber, { nonNullable: false })

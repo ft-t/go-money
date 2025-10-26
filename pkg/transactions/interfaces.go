@@ -73,4 +73,10 @@ type DoubleEntrySvc interface {
 		txs []*database.Transaction,
 		accounts map[int32]*database.Account,
 	) error
+
+	DeleteByTransactionIDs(
+		_ context.Context,
+		dbTx *gorm.DB,
+		txIds []int64,
+	) error
 }

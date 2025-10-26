@@ -1,4 +1,5 @@
 <div class="transactionListingTable">
+    <p-confirmDialog />
     <app-transaction-summary [transactions]="transactions" [loading]="loading"></app-transaction-summary>
     <p-table #dt1
              dataKey="id"
@@ -239,6 +240,10 @@
                             <p-button icon="pi pi-clone" pTooltip="Clone & Edit transaction" tooltipPosition="top"
                                       severity="secondary" [rounded]="true" />
                         </a>
+                        <p-button icon="pi pi-trash"
+                                  severity="danger" [rounded]="true"
+                                  pTooltip="Delete transaction" tooltipPosition="top"
+                                  (click)="deleteTransaction($event, transactionItem.id)" />
                     </div>
                 </td>
             </tr>
