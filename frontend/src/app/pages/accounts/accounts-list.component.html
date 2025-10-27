@@ -49,8 +49,13 @@
                               (click)="clear(dt1)"></p-button>
                 </p-iconfield>
 
-                <p-button label="Create new account" class="p-button-link"
-                          (click)="this.router.navigate(['/accounts', 'new'])" />
+                <div class="flex gap-2">
+                    <p-button icon="pi pi-refresh" severity="secondary"
+                              pTooltip="Refresh table" tooltipPosition="top"
+                              (click)="refreshTable()" />
+                    <p-button label="Create new account" class="p-button-link"
+                              (click)="this.router.navigate(['/accounts', 'new'])" />
+                </div>
             </div>
         </ng-template>
         <ng-template #header>

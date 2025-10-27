@@ -25,6 +25,9 @@
                 </div>
                 <div class="flex flex-col">
                     <div class="flex flex-row gap-4">
+                        <p-button icon="pi pi-refresh" severity="secondary"
+                                  pTooltip="Refresh table" tooltipPosition="top"
+                                  (click)="refreshTable()" />
                         <p-button [icon]="getFilterIcon()" severity="warn"
                                   [label]="ignoreDateFilter ? 'Enable date filter' : 'Disable date filter'"
                                   (click)="switchDateFilter()" />
