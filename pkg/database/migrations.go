@@ -400,5 +400,17 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 				)
 			},
 		},
+		{
+			ID: "2025-11-29-MigrateInternalReferenceNumbers",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS internal_reference_numbers text[];`,
+					`UPDATE transactions SET internal_reference_numbers = ARRAY[internal_reference_number]
+						WHERE internal_reference_number IS NOT NULL AND internal_reference_numbers IS NULL;`,
+					`ALTER TABLE transactions DROP COLUMN IF EXISTS internal_reference_number;`,
+					`CREATE INDEX IF NOT EXISTS idx_transactions_internal_ref_numbers ON transactions USING GIN (internal_reference_numbers) WHERE deleted_at IS NULL;`,
+				)
+			},
+		},
 	}
 }

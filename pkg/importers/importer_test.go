@@ -48,8 +48,8 @@ func TestImport(t *testing.T) {
 		parseResp := &importers.ParseResponse{
 			CreateRequests: []*transactionsv1.CreateTransactionRequest{
 				{
-					Title:                   "Test Transaction",
-					InternalReferenceNumber: strPtr("test_ref_123"),
+					Title:                    "Test Transaction",
+					InternalReferenceNumbers: []string{"test_ref_123"},
 				},
 			},
 		}
@@ -188,8 +188,8 @@ func TestImport(t *testing.T) {
 		parseResp := &importers.ParseResponse{
 			CreateRequests: []*transactionsv1.CreateTransactionRequest{
 				{
-					Title:                   "Test Transaction",
-					InternalReferenceNumber: strPtr("test_ref_123"),
+					Title:                    "Test Transaction",
+					InternalReferenceNumbers: []string{"test_ref_123"},
 				},
 			},
 		}
@@ -243,8 +243,8 @@ func TestParse(t *testing.T) {
 		parseResp := &importers.ParseResponse{
 			CreateRequests: []*transactionsv1.CreateTransactionRequest{
 				{
-					Title:                   "Test Transaction",
-					InternalReferenceNumber: strPtr("ref123"),
+					Title:                    "Test Transaction",
+					InternalReferenceNumbers: []string{"ref123"},
 					Transaction: &transactionsv1.CreateTransactionRequest_Expense{
 						Expense: &transactionsv1.Expense{
 							SourceAccountId:      1,
@@ -340,9 +340,9 @@ func TestParse(t *testing.T) {
 		parseResp := &importers.ParseResponse{
 			CreateRequests: []*transactionsv1.CreateTransactionRequest{
 				{
-					Title:                   "Failed Transaction",
-					Notes:                   "Raw transaction data",
-					InternalReferenceNumber: strPtr("ref456"),
+					Title:                    "Failed Transaction",
+					Notes:                    "Raw transaction data",
+					InternalReferenceNumbers: []string{"ref456"},
 				},
 			},
 		}
@@ -383,12 +383,12 @@ func TestCheckDuplicates(t *testing.T) {
 
 		requests := []*transactionsv1.CreateTransactionRequest{
 			{
-				Title:                   "Transaction 1",
-				InternalReferenceNumber: strPtr("ref_001"),
+				Title:                    "Transaction 1",
+				InternalReferenceNumbers: []string{"ref_001"},
 			},
 			{
-				Title:                   "Transaction 2",
-				InternalReferenceNumber: strPtr("ref_002"),
+				Title:                    "Transaction 2",
+				InternalReferenceNumbers: []string{"ref_002"},
 			},
 		}
 
@@ -411,15 +411,15 @@ func TestCheckDuplicates(t *testing.T) {
 
 		requests := []*transactionsv1.CreateTransactionRequest{
 			{
-				Title:                   "Transaction 1",
-				InternalReferenceNumber: nil,
+				Title:                    "Transaction 1",
+				InternalReferenceNumbers: nil,
 			},
 		}
 
 		result, err := imp.CheckDuplicates(context.TODO(), requests)
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "all transactions must have a reference number for deduplication")
+		assert.Contains(t, err.Error(), "all transactions must have at least one reference number for deduplication")
 	})
 
 	t.Run("error when empty internal reference number", func(t *testing.T) {
@@ -432,15 +432,15 @@ func TestCheckDuplicates(t *testing.T) {
 
 		requests := []*transactionsv1.CreateTransactionRequest{
 			{
-				Title:                   "Transaction 1",
-				InternalReferenceNumber: strPtr(""),
+				Title:                    "Transaction 1",
+				InternalReferenceNumbers: []string{""},
 			},
 		}
 
 		result, err := imp.CheckDuplicates(context.TODO(), requests)
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "all transactions must have a reference number for deduplication")
+		assert.Contains(t, err.Error(), "all transactions must have at least one reference number for deduplication")
 	})
 
 	t.Run("error when whitespace-only internal reference number", func(t *testing.T) {
@@ -453,15 +453,15 @@ func TestCheckDuplicates(t *testing.T) {
 
 		requests := []*transactionsv1.CreateTransactionRequest{
 			{
-				Title:                   "Transaction 1",
-				InternalReferenceNumber: strPtr("   "),
+				Title:                    "Transaction 1",
+				InternalReferenceNumbers: []string{"   "},
 			},
 		}
 
 		result, err := imp.CheckDuplicates(context.TODO(), requests)
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "all transactions must have a reference number for deduplication")
+		assert.Contains(t, err.Error(), "all transactions must have at least one reference number for deduplication")
 	})
 
 	t.Run("error on duplicate reference in import data", func(t *testing.T) {
@@ -474,12 +474,12 @@ func TestCheckDuplicates(t *testing.T) {
 
 		requests := []*transactionsv1.CreateTransactionRequest{
 			{
-				Title:                   "Transaction 1",
-				InternalReferenceNumber: strPtr("ref_duplicate"),
+				Title:                    "Transaction 1",
+				InternalReferenceNumbers: []string{"ref_duplicate"},
 			},
 			{
-				Title:                   "Transaction 2",
-				InternalReferenceNumber: strPtr("ref_duplicate"),
+				Title:                    "Transaction 2",
+				InternalReferenceNumbers: []string{"ref_duplicate"},
 			},
 		}
 
@@ -499,15 +499,15 @@ func TestCheckDuplicates(t *testing.T) {
 		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
 		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
 
-		sql.ExpectQuery("SELECT internal_reference_number, id FROM \"transactions\"").
+		sql.ExpectQuery("SELECT internal_reference_numbers, id FROM \"transactions\"").
 			WillReturnError(errors.New("failed to check existing transactions"))
 
 		ctx := database.WithContext(context.TODO(), mockGorm)
 
 		requests := []*transactionsv1.CreateTransactionRequest{
 			{
-				Title:                   "Transaction 1",
-				InternalReferenceNumber: strPtr("ref_001"),
+				Title:                    "Transaction 1",
+				InternalReferenceNumbers: []string{"ref_001"},
 			},
 		}
 
@@ -516,8 +516,4 @@ func TestCheckDuplicates(t *testing.T) {
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "failed to check existing transactions")
 	})
-}
-
-func strPtr(s string) *string {
-	return &s
 }

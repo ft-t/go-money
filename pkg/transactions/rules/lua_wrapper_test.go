@@ -107,24 +107,79 @@ func TestBasicFields(t *testing.T) {
 		assert.Equal(t, "67890", *tx.ReferenceNumber)
 	})
 
-	t.Run("internal reference number", func(t *testing.T) {
+	t.Run("get internal reference numbers", func(t *testing.T) {
 		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
 
 		script := `
-		if tx:internalReferenceNumber() == "12345" then
-			tx:internalReferenceNumber("67890")
+		local refs = tx:getInternalReferenceNumbers()
+		if refs[1] == "ref1" and refs[2] == "ref2" then
+			tx:notes("found_both")
 		end
 	`
 
 		tx := &database.Transaction{
-			InternalReferenceNumber: lo.ToPtr("12345"),
+			InternalReferenceNumbers: []string{"ref1", "ref2"},
 		}
 
 		result, err := interpreter.Run(context.TODO(), script, tx)
 		assert.NoError(t, err)
 
 		assert.True(t, result)
-		assert.Equal(t, "67890", *tx.InternalReferenceNumber)
+		assert.Equal(t, "found_both", tx.Notes)
+	})
+
+	t.Run("add internal reference number", func(t *testing.T) {
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
+
+		script := `
+		tx:addInternalReferenceNumber("new_ref")
+	`
+
+		tx := &database.Transaction{
+			InternalReferenceNumbers: []string{"existing_ref"},
+		}
+
+		result, err := interpreter.Run(context.TODO(), script, tx)
+		assert.NoError(t, err)
+
+		assert.True(t, result)
+		assert.Equal(t, []string{"existing_ref", "new_ref"}, []string(tx.InternalReferenceNumbers))
+	})
+
+	t.Run("set internal reference numbers", func(t *testing.T) {
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
+
+		script := `
+		tx:setInternalReferenceNumbers({"new1", "new2"})
+	`
+
+		tx := &database.Transaction{
+			InternalReferenceNumbers: []string{"old_ref"},
+		}
+
+		result, err := interpreter.Run(context.TODO(), script, tx)
+		assert.NoError(t, err)
+
+		assert.True(t, result)
+		assert.Equal(t, []string{"new1", "new2"}, []string(tx.InternalReferenceNumbers))
+	})
+
+	t.Run("remove internal reference number", func(t *testing.T) {
+		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{})
+
+		script := `
+		tx:removeInternalReferenceNumber("ref2")
+	`
+
+		tx := &database.Transaction{
+			InternalReferenceNumbers: []string{"ref1", "ref2", "ref3"},
+		}
+
+		result, err := interpreter.Run(context.TODO(), script, tx)
+		assert.NoError(t, err)
+
+		assert.True(t, result)
+		assert.Equal(t, []string{"ref1", "ref3"}, []string(tx.InternalReferenceNumbers))
 	})
 
 	t.Run("source account ID", func(t *testing.T) {

@@ -261,10 +261,10 @@ func (s *Service) ConvertRequestToTransaction(
 		Extra:                   req.Extra,
 		TransactionDateTime:     req.TransactionDate.AsTime(),
 		TransactionDateOnly:     req.TransactionDate.AsTime(),
-		Title:                   req.Title,
-		ReferenceNumber:         req.ReferenceNumber,
-		InternalReferenceNumber: req.InternalReferenceNumber,
-		CategoryID:              req.CategoryId,
+		Title:                    req.Title,
+		ReferenceNumber:          req.ReferenceNumber,
+		InternalReferenceNumbers: req.InternalReferenceNumbers,
+		CategoryID:               req.CategoryId,
 	}
 
 	if originalTx != nil {

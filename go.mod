@@ -3,9 +3,9 @@ module github.com/ft-t/go-money
 go 1.24.0
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.0-20251008223221-a414938be6b9.1
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.9-20251008223221-a414938be6b9.1
-	connectrpc.com/connect v1.19.0
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20251129144639-0ccfac860e2a.2
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.10-20251129144639-0ccfac860e2a.1
+	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/aws/aws-lambda-go v1.49.0
@@ -32,13 +32,14 @@ require (
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.10.0
+	github.com/tealeg/xlsx v1.0.5
 	github.com/tiendc/go-deepcopy v1.6.1
 	github.com/twmb/murmur3 v1.1.8
 	github.com/vadv/gopher-lua-libs v0.7.0
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.41.0
 	golang.org/x/net v0.43.0
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.10
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.1
 	layeh.com/gopher-luar v1.0.11
@@ -98,7 +99,6 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/tealeg/xlsx v1.0.5 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	golang.org/x/sync v0.16.0 // indirect

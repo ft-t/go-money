@@ -163,14 +163,14 @@ func (f *FireflyImporter) ParseSingleFile(
 		key := fmt.Sprintf("firefly_%v", journalID)
 
 		targetTx := &transactionsv1.CreateTransactionRequest{
-			Notes:                   notes,
-			Extra:                   make(map[string]string),
-			TagIds:                  nil, // mapped
-			TransactionDate:         timestamppb.New(parsedDate.UTC()),
-			Title:                   description,
-			Transaction:             nil,
-			InternalReferenceNumber: &key,
-			SkipRules:               req.SkipRules,
+			Notes:                    notes,
+			Extra:                    make(map[string]string),
+			TagIds:                   nil, // mapped
+			TransactionDate:          timestamppb.New(parsedDate.UTC()),
+			Title:                    description,
+			Transaction:              nil,
+			InternalReferenceNumbers: []string{key},
+			SkipRules:                req.SkipRules,
 		}
 
 		if v, ok := req.Categories[categoryName]; ok {

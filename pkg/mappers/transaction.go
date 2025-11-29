@@ -23,10 +23,10 @@ func (m *Mapper) MapTransaction(ctx context.Context, tx *database.Transaction) *
 		Type:                    tx.TransactionType,
 		Notes:                   tx.Notes,
 		Extra:                   tx.Extra,
-		Title:                   tx.Title,
-		InternalReferenceNumber: tx.InternalReferenceNumber,
-		ReferenceNumber:         tx.ReferenceNumber,
-		CategoryId:              tx.CategoryID,
+		Title:                    tx.Title,
+		ReferenceNumber:          tx.ReferenceNumber,
+		InternalReferenceNumbers: tx.InternalReferenceNumbers,
+		CategoryId:               tx.CategoryID,
 		FxSourceCurrency:        lo.EmptyableToPtr(tx.FxSourceCurrency),
 	}
 

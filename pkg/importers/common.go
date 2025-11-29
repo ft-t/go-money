@@ -50,15 +50,14 @@ func (b *BaseParser) ToCreateRequests(
 		key := fmt.Sprintf("%v_%x", importSource.String(), b.GenerateHash(tx.Raw))
 
 		newTx := &transactionsv1.CreateTransactionRequest{
-			Notes:                   tx.Raw,
-			Extra:                   make(map[string]string),
-			TransactionDate:         timestamppb.New(tx.Date),
-			Title:                   tx.Description,
-			ReferenceNumber:         nil,
-			InternalReferenceNumber: &key,
-			SkipRules:               skipRules,
-			CategoryId:              nil,
-			Transaction:             nil,
+			Notes:                    tx.Raw,
+			Extra:                    make(map[string]string),
+			TransactionDate:          timestamppb.New(tx.Date),
+			Title:                    tx.Description,
+			InternalReferenceNumbers: []string{key},
+			SkipRules:                skipRules,
+			CategoryId:               nil,
+			Transaction:              nil,
 		}
 
 		switch tx.Type {

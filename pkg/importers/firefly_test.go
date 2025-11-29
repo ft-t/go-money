@@ -136,7 +136,7 @@ func TestFireflyImport(t *testing.T) {
 
 		assert.EqualValues(t, "55", tx.Expense.DestinationAmount)
 
-		assert.EqualValues(t, "firefly_2805", *req.InternalReferenceNumber)
+		assert.EqualValues(t, []string{"firefly_2805"}, req.InternalReferenceNumbers)
 
 		assert.EqualValues(t, []int32{1}, req.TagIds)
 	})
@@ -166,7 +166,7 @@ func TestFireflyImport(t *testing.T) {
 		assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
 		assert.EqualValues(t, "-3900", tx.Adjustment.DestinationAmount)
 		assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
-		assert.EqualValues(t, "firefly_1869", *req.InternalReferenceNumber)
+		assert.EqualValues(t, []string{"firefly_1869"}, req.InternalReferenceNumbers)
 	})
 
 	t.Run("open balance", func(t *testing.T) {
@@ -194,7 +194,7 @@ func TestFireflyImport(t *testing.T) {
 		assert.EqualValues(t, tx.Adjustment.DestinationCurrency, "PLN")
 		assert.EqualValues(t, "3520.42", tx.Adjustment.DestinationAmount)
 		assert.EqualValues(t, accountsData[1].ID, tx.Adjustment.DestinationAccountId)
-		assert.EqualValues(t, "firefly_18691", *req.InternalReferenceNumber)
+		assert.EqualValues(t, []string{"firefly_18691"}, req.InternalReferenceNumbers)
 	})
 
 	t.Run("reconciliation (minus)", func(t *testing.T) {
@@ -222,7 +222,7 @@ func TestFireflyImport(t *testing.T) {
 		assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
 		assert.EqualValues(t, "-296", tx.Adjustment.DestinationAmount)
 		assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
-		assert.EqualValues(t, "firefly_2848", *req.InternalReferenceNumber)
+		assert.EqualValues(t, []string{"firefly_2848"}, req.InternalReferenceNumbers)
 	})
 
 	t.Run("reconciliation (plus)", func(t *testing.T) {
@@ -250,7 +250,7 @@ func TestFireflyImport(t *testing.T) {
 		assert.EqualValues(t, "USD", tx.Adjustment.DestinationCurrency)
 		assert.EqualValues(t, "49.37", tx.Adjustment.DestinationAmount)
 		assert.EqualValues(t, accountsData[2].ID, tx.Adjustment.DestinationAccountId)
-		assert.EqualValues(t, "firefly_2830", *req.InternalReferenceNumber)
+		assert.EqualValues(t, []string{"firefly_2830"}, req.InternalReferenceNumbers)
 	})
 
 	t.Run("transfer (same currency)", func(t *testing.T) {
@@ -281,7 +281,7 @@ func TestFireflyImport(t *testing.T) {
 		assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.DestinationCurrency)
 		assert.EqualValues(t, "1000", tx.TransferBetweenAccounts.DestinationAmount)
 		assert.EqualValues(t, accountsData[3].ID, tx.TransferBetweenAccounts.DestinationAccountId)
-		assert.EqualValues(t, "firefly_2856", *req.InternalReferenceNumber)
+		assert.EqualValues(t, []string{"firefly_2856"}, req.InternalReferenceNumbers)
 	})
 
 	t.Run("debt withdrawal -> transfer", func(t *testing.T) {
@@ -314,7 +314,7 @@ func TestFireflyImport(t *testing.T) {
 		assert.EqualValues(t, "USD", tx.TransferBetweenAccounts.DestinationCurrency)
 		assert.EqualValues(t, "200", tx.TransferBetweenAccounts.DestinationAmount)
 		assert.EqualValues(t, accountsData[4].ID, tx.TransferBetweenAccounts.DestinationAccountId)
-		assert.EqualValues(t, "firefly_2004", *req.InternalReferenceNumber)
+		assert.EqualValues(t, []string{"firefly_2004"}, req.InternalReferenceNumbers)
 	})
 
 }
