@@ -2,7 +2,6 @@ package importers
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/samber/lo"
 )
 
@@ -48,49 +48,65 @@ func NewImporter(
 func (i *Importer) CheckDuplicates(
 	ctx context.Context,
 	requests []*transactionsv1.CreateTransactionRequest,
-) (map[string]*DeduplicationItem, error) {
-	var journalIDs []string
-	references := map[string]*DeduplicationItem{}
+) ([]*DeduplicationItem, error) {
+	var allRefs []string
+	refToItem := map[string]*DeduplicationItem{}
+	var items []*DeduplicationItem
 
 	for _, req := range requests {
-		ref := strings.TrimSpace(lo.FromPtr(req.InternalReferenceNumber))
-
-		if ref == "" {
-			return nil, errors.New("all transactions must have a reference number for deduplication")
+		var validRefs []string
+		for _, ref := range req.InternalReferenceNumbers {
+			trimmed := strings.TrimSpace(ref)
+			if trimmed != "" {
+				validRefs = append(validRefs, trimmed)
+			}
 		}
 
-		if c, exists := references[ref]; exists {
-			return nil, errors.New(fmt.Sprintf("duplicate reference number found in import data: ref=%s. raw=%v", ref,
-				c.CreateRequest.Notes))
+		if len(validRefs) == 0 {
+			return nil, errors.New("all transactions must have at least one reference number for deduplication")
 		}
 
-		references[ref] = &DeduplicationItem{
-			CreateRequest: req,
+		for _, ref := range validRefs {
+			if existing, exists := refToItem[ref]; exists {
+				return nil, errors.Errorf("duplicate reference number found in import data: ref=%s. raw=%v", ref,
+					existing.CreateRequest.Notes)
+			}
 		}
 
-		journalIDs = append(journalIDs, ref)
+		item := &DeduplicationItem{CreateRequest: req}
+		items = append(items, item)
+
+		for _, ref := range validRefs {
+			refToItem[ref] = item
+		}
+
+		allRefs = append(allRefs, validRefs...)
 	}
 
-	for _, chunk := range lo.Chunk(journalIDs, boilerplate.DefaultBatchSize) {
+	for _, chunk := range lo.Chunk(allRefs, boilerplate.DefaultBatchSize) {
 		var existingTransactions []*struct {
-			InternalReferenceNumber string
-			ID                      int64
+			InternalReferenceNumbers pq.StringArray `gorm:"type:text[]"`
+			ID                       int64
 		}
 
 		if err := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
 			Model(&database.Transaction{}).
 			Where("deleted_at is null").
-			Where("internal_reference_number in ?", chunk).
-			Select("internal_reference_number, id").Find(&existingTransactions).Error; err != nil {
+			Where("internal_reference_numbers && ?", pq.Array(chunk)).
+			Select("internal_reference_numbers, id").Find(&existingTransactions).Error; err != nil {
 			return nil, errors.Wrap(err, "failed to check existing transactions")
 		}
 
 		for _, record := range existingTransactions {
-			references[record.InternalReferenceNumber].DuplicationTransactionID = &record.ID
+			for _, ref := range record.InternalReferenceNumbers {
+				if item, exists := refToItem[ref]; exists {
+					item.DuplicationTransactionID = &record.ID
+				}
+			}
 		}
 	}
 
-	return references, nil
+	return items, nil
 }
 
 func (i *Importer) Import(
@@ -227,21 +243,16 @@ func (i *Importer) ParseInternal(
 		r.Extra["import_batch_id"] = batchID
 	}
 
-	deduplicated, err := i.CheckDuplicates(ctx, parsed.CreateRequests)
+	items, err := i.CheckDuplicates(ctx, parsed.CreateRequests)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check for duplicate transactions")
 	}
 
-	var dedupArr []*DeduplicationItem
-	for _, item := range deduplicated {
-		dedupArr = append(dedupArr, item)
-	}
-
-	sort.Slice(dedupArr, func(i, j int) bool {
-		return dedupArr[i].CreateRequest.TransactionDate.AsTime().Before(dedupArr[j].CreateRequest.TransactionDate.AsTime())
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreateRequest.TransactionDate.AsTime().Before(items[j].CreateRequest.TransactionDate.AsTime())
 	})
 
-	return dedupArr, nil
+	return items, nil
 }
 
 func (i *Importer) ConvertRequestsToTransactions(
@@ -263,6 +274,7 @@ func (i *Importer) ConvertRequestsToTransactions(
 
 			continue
 		}
+
 		converted, err := i.cfg.TransactionSvc.ConvertRequestToTransaction(ctx, req.CreateRequest, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert request to transaction")

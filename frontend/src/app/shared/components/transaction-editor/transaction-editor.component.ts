@@ -53,6 +53,7 @@ import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { NumberHelper } from '../../../helpers/number.helper';
 import { AccountHelper } from '../../../helpers/account.helper';
 import { Tooltip } from 'primeng/tooltip';
+import { ChipsModule } from 'primeng/chips';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -81,7 +82,8 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         AutoComplete,
         ConfirmDialogModule,
         Tooltip,
-        Checkbox
+        Checkbox,
+        ChipsModule
     ]
 })
 export class TransactionEditorComponent implements OnInit, OnChanges {
@@ -193,7 +195,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             skipRules: new FormControl(false, { nonNullable: false }),
             fxSourceAmount: new FormControl(NumberHelper.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
             fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false }),
-            internalReferenceNumber: new FormControl(tx.internalReferenceNumber, { nonNullable: false })
+            internalReferenceNumbers: new FormControl(tx.internalReferenceNumbers || [], { nonNullable: false })
         });
 
         form.get('destinationAccountId')!.valueChanges.subscribe(async (newVal) => {
@@ -479,7 +481,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             title: this.form.get('title')!.value,
             categoryId: this.form.get('categoryId')!.value,
             skipRules: this.form.get('skipRules')!.value,
-            internalReferenceNumber: this.form.get('internalReferenceNumber')!.value
+            internalReferenceNumbers: this.form.get('internalReferenceNumbers')!.value || []
         });
 
         let destinationAccountId = this.form.get('destinationAccountId')!.value;

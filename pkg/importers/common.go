@@ -37,6 +37,10 @@ func NewBaseParser(
 	}
 }
 
+func (b *BaseParser) toKey(tx *Transaction, importSource importv1.ImportSource) string {
+	return fmt.Sprintf("%v_%x", importSource.String(), b.GenerateHash(tx.Raw))
+}
+
 func (b *BaseParser) ToCreateRequests(
 	ctx context.Context,
 	transactions []*Transaction,
@@ -47,18 +51,20 @@ func (b *BaseParser) ToCreateRequests(
 	var requests []*transactionsv1.CreateTransactionRequest
 
 	for _, tx := range transactions {
-		key := fmt.Sprintf("%v_%x", importSource.String(), b.GenerateHash(tx.Raw))
+		key := b.toKey(tx, importSource)
 
 		newTx := &transactionsv1.CreateTransactionRequest{
-			Notes:                   tx.Raw,
-			Extra:                   make(map[string]string),
-			TransactionDate:         timestamppb.New(tx.Date),
-			Title:                   tx.Description,
-			ReferenceNumber:         nil,
-			InternalReferenceNumber: &key,
-			SkipRules:               skipRules,
-			CategoryId:              nil,
-			Transaction:             nil,
+			Notes:                    tx.Raw,
+			Extra:                    make(map[string]string),
+			TransactionDate:          timestamppb.New(tx.Date),
+			Title:                    tx.Description,
+			InternalReferenceNumbers: []string{key},
+			SkipRules:                skipRules,
+			CategoryId:               nil,
+			Transaction:              nil,
+		}
+		for _, dup := range tx.DuplicateTransactions {
+			newTx.InternalReferenceNumbers = append(newTx.InternalReferenceNumbers, b.toKey(dup, importSource))
 		}
 
 		switch tx.Type {

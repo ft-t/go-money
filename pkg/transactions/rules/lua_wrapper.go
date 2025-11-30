@@ -70,10 +70,46 @@ func (w *LuaTransactionWrapper) ReferenceNumber(l *lua.LState) int {
 	})
 }
 
-func (w *LuaTransactionWrapper) InternalReferenceNumber(l *lua.LState) int {
-	return w.getSetStringField(l, lo.FromPtr(w.tx.InternalReferenceNumber), func(val string) {
-		w.tx.InternalReferenceNumber = lo.ToPtr(val)
+func (w *LuaTransactionWrapper) GetInternalReferenceNumbers(l *lua.LState) int {
+	tbl := l.NewTable()
+	for i, ref := range w.tx.InternalReferenceNumbers {
+		tbl.RawSetInt(i+1, lua.LString(ref))
+	}
+	l.Push(tbl)
+	return 1
+}
+
+func (w *LuaTransactionWrapper) AddInternalReferenceNumber(l *lua.LState) int {
+	w.modified = true
+	val := l.CheckString(2)
+	w.tx.InternalReferenceNumbers = append(w.tx.InternalReferenceNumbers, val)
+	return 0
+}
+
+func (w *LuaTransactionWrapper) SetInternalReferenceNumbers(l *lua.LState) int {
+	w.modified = true
+	tbl := l.CheckTable(2)
+	var refs []string
+	tbl.ForEach(func(k, v lua.LValue) {
+		if str, ok := v.(lua.LString); ok {
+			refs = append(refs, string(str))
+		}
 	})
+	w.tx.InternalReferenceNumbers = refs
+	return 0
+}
+
+func (w *LuaTransactionWrapper) RemoveInternalReferenceNumber(l *lua.LState) int {
+	w.modified = true
+	val := l.CheckString(2)
+	var filtered []string
+	for _, ref := range w.tx.InternalReferenceNumbers {
+		if ref != val {
+			filtered = append(filtered, ref)
+		}
+	}
+	w.tx.InternalReferenceNumbers = filtered
+	return 0
 }
 
 func (w *LuaTransactionWrapper) getSetNullInt32Field(l *lua.LState, val *int32, setter func(*int32)) int {

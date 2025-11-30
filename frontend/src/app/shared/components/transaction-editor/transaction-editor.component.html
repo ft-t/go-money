@@ -222,12 +222,20 @@
             </div>
         </div>
         <hr class="my-1 border-gray-200 dark:border-gray-700" />
-        <div class="flex gap-2 justify-between items-center">
+        <div class="flex flex-col gap-2">
             <label class="text-gray-600 dark:text-gray-400 font-semibold text-sm">Advanced Options</label>
-            <div class="surface-card border-round shadow-2 p-2 border-1 surface-border">
-                <div class="flex items-center gap-2">
-                    <p-checkbox formControlName="skipRules" [binary]="true" inputId="skipRules" />
-                    <label for="skipRules" class="cursor-pointer text-sm">Skip rule execution</label>
+            <div class="flex gap-2 justify-between items-center">
+                <div class="flex flex-col gap-2 w-1/2">
+                    <label class="text-sm">Internal Reference Numbers</label>
+                    <p-chips formControlName="internalReferenceNumbers"
+                             placeholder="Add reference numbers"
+                             [allowDuplicate]="false"></p-chips>
+                </div>
+                <div class="surface-card border-round shadow-2 p-2 border-1 surface-border">
+                    <div class="flex items-center gap-2">
+                        <p-checkbox formControlName="skipRules" [binary]="true" inputId="skipRules" />
+                        <label for="skipRules" class="cursor-pointer text-sm">Skip rule execution</label>
+                    </div>
                 </div>
             </div>
         </div>

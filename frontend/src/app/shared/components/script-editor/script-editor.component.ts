@@ -148,7 +148,7 @@ export class ScriptEditorComponent {
             documentation: `Convert currency from one to another using exchange rate`
         });
 
-        const simpleFields = ['title', 'categoryID', 'destinationAmount', 'sourceAmount', 'sourceCurrency', 'destinationCurrency', 'sourceAccountID', 'destinationAccountID', 'notes', 'transactionType', 'referenceNumber', 'internalReferenceNumber'];
+        const simpleFields = ['title', 'categoryID', 'destinationAmount', 'sourceAmount', 'sourceCurrency', 'destinationCurrency', 'sourceAccountID', 'destinationAccountID', 'notes', 'transactionType', 'referenceNumber'];
 
         const intFields = new Set(['sourceAmount', 'destinationAmount', 'sourceAccountID', 'destinationAccountID', 'transactionType']);
 
@@ -230,6 +230,37 @@ export class ScriptEditorComponent {
             insertText: `tx:transactionDateTimeAddDate(\${1:value},\${2:value},\${2:value})`,
             insertTextRules: snippet,
             documentation: `Adds 2 years, 3 months and 4 days to transaction date`
+        });
+
+        suggestions.push({
+            label: `tx:getInternalReferenceNumbers()`,
+            kind: kind,
+            insertText: `tx:getInternalReferenceNumbers()`,
+            documentation: `Get all internal reference numbers as a Lua table`
+        });
+
+        suggestions.push({
+            label: `tx:addInternalReferenceNumber("value")`,
+            kind: kind,
+            insertText: `tx:addInternalReferenceNumber("\${1:value}")`,
+            insertTextRules: snippet,
+            documentation: `Add a new internal reference number`
+        });
+
+        suggestions.push({
+            label: `tx:setInternalReferenceNumbers(table)`,
+            kind: kind,
+            insertText: `tx:setInternalReferenceNumbers({"\${1:value1}", "\${2:value2}"})`,
+            insertTextRules: snippet,
+            documentation: `Replace all internal reference numbers with given table`
+        });
+
+        suggestions.push({
+            label: `tx:removeInternalReferenceNumber("value")`,
+            kind: kind,
+            insertText: `tx:removeInternalReferenceNumber("\${1:value}")`,
+            insertTextRules: snippet,
+            documentation: `Remove a specific internal reference number`
         });
 
         return suggestions;

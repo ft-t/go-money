@@ -45,9 +45,9 @@ type Transaction struct {
 
 	DeletedAt gorm.DeletedAt
 
-	ReferenceNumber         *string
-	InternalReferenceNumber *string
-	CategoryID              *int32
+	ReferenceNumber          *string
+	InternalReferenceNumbers pq.StringArray `gorm:"type:text[]"`
+	CategoryID               *int32
 }
 
 type TransactionFlags int64

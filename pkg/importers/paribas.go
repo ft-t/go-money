@@ -8,6 +8,7 @@ import (
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/tealeg/xlsx"
 )
@@ -49,6 +50,20 @@ func (p *Paribas) Parse(ctx context.Context, req *ParseRequest) (*ParseResponse,
 	parsed, err := p.ParseMessages(ctx, allRecords)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, record := range parsed {
+		if len(record.DuplicateTransactions) == 0 {
+			continue
+		}
+
+		for _, dup := range record.DuplicateTransactions {
+			record.DeduplicationKeys = append(record.DeduplicationKeys, dup.DeduplicationKeys...)
+
+			dup.DeduplicationKeys = lo.Uniq(append(dup.DeduplicationKeys, record.DeduplicationKeys...))
+		}
+
+		record.DeduplicationKeys = lo.Uniq(record.DeduplicationKeys)
 	}
 
 	accountNumberToAccountMap, err := p.GetAccountMapByNumbers(req.Accounts)
@@ -354,7 +369,6 @@ func (p *Paribas) merge(
 	}
 
 	for _, tx := range filteredTransactions {
-
 		isDuplicate := false
 
 		for _, f := range final {
@@ -440,7 +454,6 @@ func (p *Paribas) merge(
 		}
 
 		final = append(final, tx)
-
 	}
 
 	return final, nil
