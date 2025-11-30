@@ -203,14 +203,8 @@ export class AccountsListComponent implements OnInit {
             const response = await this.analyticsService.getDebitsAndCreditsSummary(
                 create(GetDebitsAndCreditsSummaryRequestSchema, {
                     accountIds: accountIds,
-                    startAt: create(TimestampSchema, {
-                        seconds: BigInt(Math.floor(fromDate.getTime() / 1000)),
-                        nanos: (fromDate.getMilliseconds() % 1000) * 1_000_000
-                    }),
-                    endAt: create(TimestampSchema, {
-                        seconds: BigInt(Math.floor(toDate.getTime() / 1000)),
-                        nanos: (toDate.getMilliseconds() % 1000) * 1_000_000
-                    })
+                    startAt: create(TimestampSchema, TimestampHelper.dateToTimestamp(fromDate)),
+                    endAt: create(TimestampSchema, TimestampHelper.dateToTimestamp(toDate))
                 })
             );
 

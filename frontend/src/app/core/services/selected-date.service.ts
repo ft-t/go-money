@@ -83,10 +83,12 @@ export class SelectedDateService {
     }
 
     public setToDate(date: Date): void {
-        this.cookieService.set(this.TO_DATE_COOKIE_NAME, date.toISOString(), {
+        const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+
+        this.cookieService.set(this.TO_DATE_COOKIE_NAME, endOfDay.toISOString(), {
             path: '/'
         });
 
-        this.toDate.next(date)
+        this.toDate.next(endOfDay)
     }
 }

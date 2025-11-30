@@ -47,6 +47,7 @@ import { Tooltip } from 'primeng/tooltip';
 import { Dialog } from 'primeng/dialog';
 import { Message } from 'primeng/message';
 import { Subject, takeUntil } from 'rxjs';
+import { TimestampHelper } from '../../helpers/timestamp.helper';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -232,10 +233,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
             destinationCurrency: destinationCurrency,
             destinationAmount: destinationAmount,
             title: this.expenseSplitForm.get('title')!.value,
-            transactionDate: create(TimestampSchema, {
-                seconds: BigInt(Math.floor(originalForm!.get('transactionDate')!.value.getTime() / 1000)),
-                nanos: (originalForm!.get('transactionDate')!.value.getMilliseconds() % 1000) * 1_000_000
-            }),
+            transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(originalForm!.get('transactionDate')!.value)),
         });
 
         console.log(newTransaction);
