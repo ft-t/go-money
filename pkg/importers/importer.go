@@ -81,7 +81,7 @@ func (i *Importer) CheckDuplicates(
 
 	for _, chunk := range lo.Chunk(allRefs, boilerplate.DefaultBatchSize) {
 		var existingTransactions []*struct {
-			InternalReferenceNumbers pq.StringArray
+			InternalReferenceNumbers pq.StringArray `gorm:"type:text[]"`
 			ID                       int64
 		}
 
