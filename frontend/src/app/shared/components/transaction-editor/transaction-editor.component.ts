@@ -471,13 +471,15 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
     }
 
     buildTransactionRequest(): CreateTransactionRequest {
+        const transactionDateTs = TimestampHelper.dateToTimestamp(this.form.get('transactionDate')!.value);
+
         let req = create(CreateTransactionRequestSchema, {
             notes: this.form.get('notes')!.value,
             extra: {}, // todo
             tagIds: this.form.get('tagIds')!.value || [],
             transactionDate: create(TimestampSchema, {
-                seconds: BigInt(Math.floor(this.form.get('transactionDate')!.value.getTime() / 1000)),
-                nanos: (this.form.get('transactionDate')!.value.getMilliseconds() % 1000) * 1_000_000
+                seconds: transactionDateTs.seconds,
+                nanos: transactionDateTs.nanos
             }),
             title: this.form.get('title')!.value,
             categoryId: this.form.get('categoryId')!.value,
