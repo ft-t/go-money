@@ -48,9 +48,10 @@ func NewImporter(
 func (i *Importer) CheckDuplicates(
 	ctx context.Context,
 	requests []*transactionsv1.CreateTransactionRequest,
-) (map[string]*DeduplicationItem, error) {
+) ([]*DeduplicationItem, error) {
 	var allRefs []string
-	references := map[string]*DeduplicationItem{}
+	refToItem := map[string]*DeduplicationItem{}
+	var items []*DeduplicationItem
 
 	for _, req := range requests {
 		var validRefs []string
@@ -66,14 +67,17 @@ func (i *Importer) CheckDuplicates(
 		}
 
 		for _, ref := range validRefs {
-			if existing, exists := references[ref]; exists {
+			if existing, exists := refToItem[ref]; exists {
 				return nil, errors.Errorf("duplicate reference number found in import data: ref=%s. raw=%v", ref,
 					existing.CreateRequest.Notes)
 			}
+		}
 
-			references[ref] = &DeduplicationItem{
-				CreateRequest: req,
-			}
+		item := &DeduplicationItem{CreateRequest: req}
+		items = append(items, item)
+
+		for _, ref := range validRefs {
+			refToItem[ref] = item
 		}
 
 		allRefs = append(allRefs, validRefs...)
@@ -95,14 +99,14 @@ func (i *Importer) CheckDuplicates(
 
 		for _, record := range existingTransactions {
 			for _, ref := range record.InternalReferenceNumbers {
-				if item, exists := references[ref]; exists {
+				if item, exists := refToItem[ref]; exists {
 					item.DuplicationTransactionID = &record.ID
 				}
 			}
 		}
 	}
 
-	return references, nil
+	return items, nil
 }
 
 func (i *Importer) Import(
@@ -239,21 +243,16 @@ func (i *Importer) ParseInternal(
 		r.Extra["import_batch_id"] = batchID
 	}
 
-	deduplicated, err := i.CheckDuplicates(ctx, parsed.CreateRequests)
+	items, err := i.CheckDuplicates(ctx, parsed.CreateRequests)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check for duplicate transactions")
 	}
 
-	var dedupArr []*DeduplicationItem
-	for _, item := range deduplicated {
-		dedupArr = append(dedupArr, item)
-	}
-
-	sort.Slice(dedupArr, func(i, j int) bool {
-		return dedupArr[i].CreateRequest.TransactionDate.AsTime().Before(dedupArr[j].CreateRequest.TransactionDate.AsTime())
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreateRequest.TransactionDate.AsTime().Before(items[j].CreateRequest.TransactionDate.AsTime())
 	})
 
-	return dedupArr, nil
+	return items, nil
 }
 
 func (i *Importer) ConvertRequestsToTransactions(

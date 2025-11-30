@@ -395,10 +395,10 @@ func TestCheckDuplicates(t *testing.T) {
 		result, err := imp.CheckDuplicates(context.TODO(), requests)
 		assert.NoError(t, err)
 		assert.Len(t, result, 2)
-		assert.NotNil(t, result["ref_001"])
-		assert.NotNil(t, result["ref_002"])
-		assert.Nil(t, result["ref_001"].DuplicationTransactionID)
-		assert.Nil(t, result["ref_002"].DuplicationTransactionID)
+		assert.Equal(t, "Transaction 1", result[0].CreateRequest.Title)
+		assert.Equal(t, "Transaction 2", result[1].CreateRequest.Title)
+		assert.Nil(t, result[0].DuplicationTransactionID)
+		assert.Nil(t, result[1].DuplicationTransactionID)
 	})
 
 	t.Run("error when missing internal reference number", func(t *testing.T) {
