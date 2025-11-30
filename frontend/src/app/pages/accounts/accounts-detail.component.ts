@@ -117,20 +117,11 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
             const fromDate = this.selectedDateService.fromDate.value;
             const toDate = this.selectedDateService.toDate.value;
 
-            const fromTs = TimestampHelper.dateToTimestamp(fromDate);
-            const toTs = TimestampHelper.dateToTimestamp(toDate);
-
             const response = await this.analyticsService.getDebitsAndCreditsSummary(
                 create(GetDebitsAndCreditsSummaryRequestSchema, {
                     accountIds: [this.currentAccount.id],
-                    startAt: create(TimestampSchema, {
-                        seconds: fromTs.seconds,
-                        nanos: fromTs.nanos
-                    }),
-                    endAt: create(TimestampSchema, {
-                        seconds: toTs.seconds,
-                        nanos: toTs.nanos
-                    })
+                    startAt: create(TimestampSchema, TimestampHelper.dateToTimestamp(fromDate)),
+                    endAt: create(TimestampSchema, TimestampHelper.dateToTimestamp(toDate))
                 })
             );
 

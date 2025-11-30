@@ -200,20 +200,11 @@ export class AccountsListComponent implements OnInit {
             const toDate = this.selectedDateService.toDate.value;
             const accountIds = this.accounts.map(a => a.account!.id);
 
-            const fromTs = TimestampHelper.dateToTimestamp(fromDate);
-            const toTs = TimestampHelper.dateToTimestamp(toDate);
-
             const response = await this.analyticsService.getDebitsAndCreditsSummary(
                 create(GetDebitsAndCreditsSummaryRequestSchema, {
                     accountIds: accountIds,
-                    startAt: create(TimestampSchema, {
-                        seconds: fromTs.seconds,
-                        nanos: fromTs.nanos
-                    }),
-                    endAt: create(TimestampSchema, {
-                        seconds: toTs.seconds,
-                        nanos: toTs.nanos
-                    })
+                    startAt: create(TimestampSchema, TimestampHelper.dateToTimestamp(fromDate)),
+                    endAt: create(TimestampSchema, TimestampHelper.dateToTimestamp(toDate))
                 })
             );
 

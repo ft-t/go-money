@@ -88,16 +88,11 @@ export class ReconciliationModalComponent implements OnChanges {
         }
 
         try {
-            const transactionDateTs = TimestampHelper.dateToTimestamp(this.transactionDate);
-
             let baseRequest = create(CreateTransactionRequestSchema, {
                 notes: this.form!.get('title')!.value,
                 extra: {},
                 tagIds: [],
-                transactionDate: create(TimestampSchema, {
-                    seconds: transactionDateTs.seconds,
-                    nanos: transactionDateTs.nanos
-                }),
+                transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(this.transactionDate)),
                 title: this.form!.get('title')!.value
             });
 
