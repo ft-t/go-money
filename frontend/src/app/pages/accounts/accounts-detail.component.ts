@@ -18,6 +18,7 @@ import { CommonModule } from '@angular/common';
 import { ConfigurationService, GetConfigurationResponse, GetConfigurationResponseSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
 import { combineLatest } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { TimestampHelper } from '../../helpers/timestamp.helper';
 
 @Component({
     selector: 'app-accounts-detail',
@@ -119,14 +120,8 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
             const response = await this.analyticsService.getDebitsAndCreditsSummary(
                 create(GetDebitsAndCreditsSummaryRequestSchema, {
                     accountIds: [this.currentAccount.id],
-                    startAt: create(TimestampSchema, {
-                        seconds: BigInt(Math.floor(fromDate.getTime() / 1000)),
-                        nanos: (fromDate.getMilliseconds() % 1000) * 1_000_000
-                    }),
-                    endAt: create(TimestampSchema, {
-                        seconds: BigInt(Math.floor(toDate.getTime() / 1000)),
-                        nanos: (toDate.getMilliseconds() % 1000) * 1_000_000
-                    })
+                    startAt: create(TimestampSchema, TimestampHelper.dateToTimestamp(fromDate)),
+                    endAt: create(TimestampSchema, TimestampHelper.dateToTimestamp(toDate))
                 })
             );
 

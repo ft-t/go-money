@@ -262,15 +262,8 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
         let toDate = this.selectedDateService.toDate.value;
 
         if (!this.ignoreDateFilter) {
-            req.fromDate = create(TimestampSchema, {
-                seconds: BigInt(Math.floor(fromDate.getTime() / 1000)),
-                nanos: (fromDate.getMilliseconds() % 1000) * 1_000_000
-            });
-
-            req.toDate = create(TimestampSchema, {
-                seconds: BigInt(Math.floor(toDate.getTime() / 1000)),
-                nanos: (toDate.getMilliseconds() % 1000) * 1_000_000
-            });
+            req.fromDate = create(TimestampSchema, TimestampHelper.dateToTimestamp(fromDate));
+            req.toDate = create(TimestampSchema, TimestampHelper.dateToTimestamp(toDate));
         }
 
         if (this.currentAccountId) {

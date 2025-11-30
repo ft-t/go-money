@@ -16,6 +16,7 @@ import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { create } from '@bufbuild/protobuf';
 import { InputText } from 'primeng/inputtext';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
+import { TimestampHelper } from '../../../../helpers/timestamp.helper';
 
 @Component({
     selector: 'app-reconciliation-modal',
@@ -91,10 +92,7 @@ export class ReconciliationModalComponent implements OnChanges {
                 notes: this.form!.get('title')!.value,
                 extra: {},
                 tagIds: [],
-                transactionDate: create(TimestampSchema, {
-                    seconds: BigInt(Math.floor(this.transactionDate.getTime() / 1000)),
-                    nanos: (this.transactionDate.getMilliseconds() % 1000) * 1_000_000
-                }),
+                transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(this.transactionDate)),
                 title: this.form!.get('title')!.value
             });
 
