@@ -49,7 +49,6 @@ import { Message } from 'primeng/message';
 import { Subject, takeUntil } from 'rxjs';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { SnippetSpotlightComponent } from '../../shared/components/snippet-spotlight/snippet-spotlight.component';
-import { SnippetTransaction } from '../../models/snippet.model';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -495,8 +494,8 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
         this.snippetSpotlightVisible = !this.snippetSpotlightVisible;
     }
 
-    getCurrentTransactionsAsSnippet(): SnippetTransaction[] {
-        const result: SnippetTransaction[] = [];
+    getCurrentTransactionsAsSnippet(): Transaction[] {
+        const result: Transaction[] = [];
 
         for (let i = 0; i < this.components.length; i++) {
             const editor = this.components.get(i);
@@ -504,45 +503,45 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
 
             const form = editor.getForm();
 
-            result.push({
+            result.push(create(TransactionSchema, {
                 type: form.get('type')?.value ?? 0,
                 title: form.get('title')?.value ?? '',
                 notes: form.get('notes')?.value ?? '',
-                sourceAccountId: Number(form.get('sourceAccountId')?.value ?? 0),
+                sourceAccountId: form.get('sourceAccountId')?.value ?? 0,
                 sourceCurrency: form.get('sourceCurrency')?.value ?? '',
                 sourceAmount: form.get('sourceAmount')?.value?.toString() ?? '',
-                destinationAccountId: Number(form.get('destinationAccountId')?.value ?? 0),
+                destinationAccountId: form.get('destinationAccountId')?.value ?? 0,
                 destinationCurrency: form.get('destinationCurrency')?.value ?? '',
                 destinationAmount: form.get('destinationAmount')?.value?.toString() ?? '',
-                categoryId: Number(form.get('categoryId')?.value ?? 0),
-                tagIds: (form.get('tagIds')?.value ?? []).map((id: bigint | number) => Number(id)),
+                categoryId: form.get('categoryId')?.value ?? 0,
+                tagIds: form.get('tagIds')?.value ?? [],
                 fxSourceAmount: form.get('fxSourceAmount')?.value?.toString() ?? '',
                 fxSourceCurrency: form.get('fxSourceCurrency')?.value ?? '',
                 internalReferenceNumbers: form.get('internalReferenceNumbers')?.value ?? []
-            });
+            }));
         }
 
         return result;
     }
 
-    applySnippetTransactions(snippetTxs: SnippetTransaction[]): void {
-        this.targetTransaction = snippetTxs.map(stx =>
+    applySnippetTransactions(transactions: Transaction[]): void {
+        this.targetTransaction = transactions.map(tx =>
             create(TransactionSchema, {
-                type: stx.type,
-                title: stx.title,
-                notes: stx.notes,
-                sourceAccountId: stx.sourceAccountId,
-                sourceCurrency: stx.sourceCurrency,
-                sourceAmount: stx.sourceAmount,
-                destinationAccountId: stx.destinationAccountId,
-                destinationCurrency: stx.destinationCurrency,
-                destinationAmount: stx.destinationAmount,
-                categoryId: stx.categoryId,
-                tagIds: stx.tagIds,
+                type: tx.type,
+                title: tx.title,
+                notes: tx.notes,
+                sourceAccountId: tx.sourceAccountId,
+                sourceCurrency: tx.sourceCurrency,
+                sourceAmount: tx.sourceAmount,
+                destinationAccountId: tx.destinationAccountId,
+                destinationCurrency: tx.destinationCurrency,
+                destinationAmount: tx.destinationAmount,
+                categoryId: tx.categoryId,
+                tagIds: tx.tagIds,
                 transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(new Date())),
-                fxSourceAmount: stx.fxSourceAmount,
-                fxSourceCurrency: stx.fxSourceCurrency,
-                internalReferenceNumbers: stx.internalReferenceNumbers
+                fxSourceAmount: tx.fxSourceAmount,
+                fxSourceCurrency: tx.fxSourceCurrency,
+                internalReferenceNumbers: tx.internalReferenceNumbers
             })
         );
     }

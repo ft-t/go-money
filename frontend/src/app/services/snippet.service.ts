@@ -1,7 +1,8 @@
 import { Injectable, signal, computed, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
-import { Snippet, SnippetTransaction } from '../models/snippet.model';
+import { Transaction } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { Snippet, serializeTransactions, deserializeTransactions } from '../models/snippet.model';
 
 @Injectable({
     providedIn: 'root'
@@ -12,7 +13,7 @@ export class SnippetService {
 
     private snippetsSignal = signal<Snippet[]>([]);
 
-    public snippets = computed(() => this.snippetsSignal());
+    public snippets = computed(() => this.snippetsSignal().sort((a, b) => a.order - b.order));
 
     constructor(@Inject(PLATFORM_ID) platformId: Object) {
         this.isBrowser = isPlatformBrowser(platformId);
@@ -26,7 +27,11 @@ export class SnippetService {
             const stored = localStorage.getItem(this.STORAGE_KEY);
             if (stored) {
                 const parsed = JSON.parse(stored) as Snippet[];
-                this.snippetsSignal.set(parsed);
+                const migrated = parsed.map((s, idx) => ({
+                    ...s,
+                    order: s.order ?? idx
+                }));
+                this.snippetsSignal.set(migrated);
             }
         } catch (e) {
             console.error('Failed to load snippets from localStorage:', e);
@@ -48,12 +53,19 @@ export class SnippetService {
         return crypto.randomUUID();
     }
 
-    createSnippet(name: string, transactions: SnippetTransaction[]): Snippet {
+    private getNextOrder(): number {
+        const current = this.snippetsSignal();
+        if (current.length === 0) return 0;
+        return Math.max(...current.map(s => s.order)) + 1;
+    }
+
+    createSnippet(name: string, transactions: Transaction[]): Snippet {
         const now = new Date().toISOString();
         const snippet: Snippet = {
             id: this.generateId(),
             name,
-            transactions,
+            transactions: serializeTransactions(transactions),
+            order: this.getNextOrder(),
             createdAt: now,
             updatedAt: now
         };
@@ -64,11 +76,11 @@ export class SnippetService {
         return snippet;
     }
 
-    updateSnippet(id: string, transactions: SnippetTransaction[]): void {
+    updateSnippet(id: string, transactions: Transaction[]): void {
         this.snippetsSignal.update(current =>
             current.map(s =>
                 s.id === id
-                    ? { ...s, transactions, updatedAt: new Date().toISOString() }
+                    ? { ...s, transactions: serializeTransactions(transactions), updatedAt: new Date().toISOString() }
                     : s
             )
         );
@@ -91,7 +103,17 @@ export class SnippetService {
         this.saveToStorage();
     }
 
+    reorderSnippets(snippets: Snippet[]): void {
+        const reordered = snippets.map((s, idx) => ({ ...s, order: idx }));
+        this.snippetsSignal.set(reordered);
+        this.saveToStorage();
+    }
+
     getSnippetById(id: string): Snippet | undefined {
         return this.snippetsSignal().find(s => s.id === id);
+    }
+
+    getTransactions(snippet: Snippet): Transaction[] {
+        return deserializeTransactions(snippet.transactions);
     }
 }
