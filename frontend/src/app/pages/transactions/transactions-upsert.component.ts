@@ -48,6 +48,8 @@ import { Dialog } from 'primeng/dialog';
 import { Message } from 'primeng/message';
 import { Subject, takeUntil } from 'rxjs';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
+import { SnippetSpotlightComponent } from '../../shared/components/snippet-spotlight/snippet-spotlight.component';
+import { SnippetTransaction } from '../../models/snippet.model';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -76,7 +78,8 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         TransactionEditorComponent,
         Tooltip,
         Dialog,
-        Message
+        Message,
+        SnippetSpotlightComponent
     ]
 })
 export class TransactionUpsertComponent implements OnInit, OnDestroy {
@@ -90,6 +93,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     public accounts: { [s: number]: GetApplicableAccountsResponse_ApplicableRecord } = {};
     public allAccounts: { [s: number]: Account } = {};
     public isReconciliationTransaction = false;
+    public snippetSpotlightVisible = false;
     private destroy$ = new Subject<void>();
 
     @ViewChildren('editor') components: QueryList<TransactionEditorComponent> = new QueryList();
@@ -485,6 +489,62 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
 
     parseFloat(value: string): number {
         return AccountHelper.parseFloat(value);
+    }
+
+    toggleSnippetSpotlight(): void {
+        this.snippetSpotlightVisible = !this.snippetSpotlightVisible;
+    }
+
+    getCurrentTransactionsAsSnippet(): SnippetTransaction[] {
+        const result: SnippetTransaction[] = [];
+
+        for (let i = 0; i < this.components.length; i++) {
+            const editor = this.components.get(i);
+            if (!editor) continue;
+
+            const form = editor.getForm();
+
+            result.push({
+                type: form.get('type')?.value ?? 0,
+                title: form.get('title')?.value ?? '',
+                notes: form.get('notes')?.value ?? '',
+                sourceAccountId: Number(form.get('sourceAccountId')?.value ?? 0),
+                sourceCurrency: form.get('sourceCurrency')?.value ?? '',
+                sourceAmount: form.get('sourceAmount')?.value?.toString() ?? '',
+                destinationAccountId: Number(form.get('destinationAccountId')?.value ?? 0),
+                destinationCurrency: form.get('destinationCurrency')?.value ?? '',
+                destinationAmount: form.get('destinationAmount')?.value?.toString() ?? '',
+                categoryId: Number(form.get('categoryId')?.value ?? 0),
+                tagIds: (form.get('tagIds')?.value ?? []).map((id: bigint | number) => Number(id)),
+                fxSourceAmount: form.get('fxSourceAmount')?.value?.toString() ?? '',
+                fxSourceCurrency: form.get('fxSourceCurrency')?.value ?? '',
+                internalReferenceNumbers: form.get('internalReferenceNumbers')?.value ?? []
+            });
+        }
+
+        return result;
+    }
+
+    applySnippetTransactions(snippetTxs: SnippetTransaction[]): void {
+        this.targetTransaction = snippetTxs.map(stx =>
+            create(TransactionSchema, {
+                type: stx.type,
+                title: stx.title,
+                notes: stx.notes,
+                sourceAccountId: stx.sourceAccountId,
+                sourceCurrency: stx.sourceCurrency,
+                sourceAmount: stx.sourceAmount,
+                destinationAccountId: stx.destinationAccountId,
+                destinationCurrency: stx.destinationCurrency,
+                destinationAmount: stx.destinationAmount,
+                categoryId: stx.categoryId,
+                tagIds: stx.tagIds,
+                transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(new Date())),
+                fxSourceAmount: stx.fxSourceAmount,
+                fxSourceCurrency: stx.fxSourceCurrency,
+                internalReferenceNumbers: stx.internalReferenceNumbers
+            })
+        );
     }
 
     ngOnDestroy(): void {
