@@ -208,6 +208,12 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             }
 
             curr?.setValue(account.currency, { emitEvent: false });
+
+            let sourceCurrency = form.get('sourceCurrency')!.value;
+            let sourceAmount = form.get('sourceAmount')!.value;
+            if (sourceCurrency === account.currency && sourceAmount && parseFloat(sourceAmount) > 0) {
+                form.get('destinationAmount')!.setValue(sourceAmount, { emitEvent: false });
+            }
         });
 
         form.get('sourceAccountId')!.valueChanges.subscribe(async (newVal) => {
@@ -220,6 +226,12 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             }
 
             curr?.setValue(account.currency, { emitEvent: false });
+
+            let destinationCurrency = form.get('destinationCurrency')!.value;
+            let destinationAmount = form.get('destinationAmount')!.value;
+            if (destinationCurrency === account.currency && destinationAmount && parseFloat(destinationAmount) > 0) {
+                form.get('sourceAmount')!.setValue(destinationAmount, { emitEvent: false });
+            }
         });
 
         // handle amounts
