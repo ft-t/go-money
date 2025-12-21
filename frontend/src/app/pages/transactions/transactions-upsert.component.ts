@@ -48,6 +48,7 @@ import { Dialog } from 'primeng/dialog';
 import { Message } from 'primeng/message';
 import { Subject, takeUntil } from 'rxjs';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
+import { SnippetSpotlightComponent } from '../../shared/components/snippet-spotlight/snippet-spotlight.component';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -76,7 +77,8 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         TransactionEditorComponent,
         Tooltip,
         Dialog,
-        Message
+        Message,
+        SnippetSpotlightComponent
     ]
 })
 export class TransactionUpsertComponent implements OnInit, OnDestroy {
@@ -90,6 +92,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     public accounts: { [s: number]: GetApplicableAccountsResponse_ApplicableRecord } = {};
     public allAccounts: { [s: number]: Account } = {};
     public isReconciliationTransaction = false;
+    public snippetSpotlightVisible = false;
     private destroy$ = new Subject<void>();
 
     @ViewChildren('editor') components: QueryList<TransactionEditorComponent> = new QueryList();
@@ -485,6 +488,62 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
 
     parseFloat(value: string): number {
         return AccountHelper.parseFloat(value);
+    }
+
+    toggleSnippetSpotlight(): void {
+        this.snippetSpotlightVisible = !this.snippetSpotlightVisible;
+    }
+
+    getCurrentTransactionsAsSnippet(): Transaction[] {
+        const result: Transaction[] = [];
+
+        for (let i = 0; i < this.components.length; i++) {
+            const editor = this.components.get(i);
+            if (!editor) continue;
+
+            const form = editor.getForm();
+
+            result.push(create(TransactionSchema, {
+                type: form.get('type')?.value ?? 0,
+                title: form.get('title')?.value ?? '',
+                notes: form.get('notes')?.value ?? '',
+                sourceAccountId: form.get('sourceAccountId')?.value ?? 0,
+                sourceCurrency: form.get('sourceCurrency')?.value ?? '',
+                sourceAmount: form.get('sourceAmount')?.value?.toString() ?? '',
+                destinationAccountId: form.get('destinationAccountId')?.value ?? 0,
+                destinationCurrency: form.get('destinationCurrency')?.value ?? '',
+                destinationAmount: form.get('destinationAmount')?.value?.toString() ?? '',
+                categoryId: form.get('categoryId')?.value ?? 0,
+                tagIds: form.get('tagIds')?.value ?? [],
+                fxSourceAmount: form.get('fxSourceAmount')?.value?.toString() ?? '',
+                fxSourceCurrency: form.get('fxSourceCurrency')?.value ?? '',
+                internalReferenceNumbers: form.get('internalReferenceNumbers')?.value ?? []
+            }));
+        }
+
+        return result;
+    }
+
+    applySnippetTransactions(transactions: Transaction[]): void {
+        this.targetTransaction = transactions.map(tx =>
+            create(TransactionSchema, {
+                type: tx.type,
+                title: tx.title,
+                notes: tx.notes,
+                sourceAccountId: tx.sourceAccountId,
+                sourceCurrency: tx.sourceCurrency,
+                sourceAmount: tx.sourceAmount,
+                destinationAccountId: tx.destinationAccountId,
+                destinationCurrency: tx.destinationCurrency,
+                destinationAmount: tx.destinationAmount,
+                categoryId: tx.categoryId,
+                tagIds: tx.tagIds,
+                transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(new Date())),
+                fxSourceAmount: tx.fxSourceAmount,
+                fxSourceCurrency: tx.fxSourceCurrency,
+                internalReferenceNumbers: tx.internalReferenceNumbers
+            })
+        );
     }
 
     ngOnDestroy(): void {

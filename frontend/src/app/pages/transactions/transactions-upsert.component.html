@@ -27,6 +27,7 @@
                                     <p-button pTooltip="Refresh data" tooltipPosition="top"  icon="pi pi-refresh" severity="secondary" (onClick)="refresh()" />
                                     <p-button pTooltip="Split" tooltipPosition="top"  icon="pi pi-link" severity="secondary" (onClick)="addSplit()" />
                                     <p-button pTooltip="Add Comission" tooltipPosition="top"  icon="pi pi-cart-minus" severity="secondary" (onClick)="showCommissionSplit(idx)" />
+                                    <p-button pTooltip="Snippets (Ctrl+K)" tooltipPosition="top" icon="pi pi-bookmark" severity="secondary" (onClick)="toggleSnippetSpotlight()" />
                                 </div>
                                 <div class="flex flex-row">
                                     <p-button *ngIf="canDeleteTransaction(tx)" pTooltip="Delete transaction" tooltipPosition="top"  icon="pi pi-trash" severity="danger" (onClick)="confirmDelete(idx)" />
@@ -134,3 +135,8 @@
         </div>
     </form>
 </p-dialog>
+
+<snippet-spotlight
+    [(visible)]="snippetSpotlightVisible"
+    [currentTransactions]="getCurrentTransactionsAsSnippet()"
+    (applySnippet)="applySnippetTransactions($event)" />

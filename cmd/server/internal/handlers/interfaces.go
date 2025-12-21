@@ -108,6 +108,16 @@ type ConfigSvc interface {
 		ctx context.Context,
 		_ *configurationv1.GetConfigurationRequest,
 	) (*configurationv1.GetConfigurationResponse, error)
+
+	GetConfigsByKeys(
+		ctx context.Context,
+		req *configurationv1.GetConfigsByKeysRequest,
+	) (*configurationv1.GetConfigsByKeysResponse, error)
+
+	SetConfigByKey(
+		ctx context.Context,
+		req *configurationv1.SetConfigByKeyRequest,
+	) (*configurationv1.SetConfigByKeyResponse, error)
 }
 
 type CurrencySvc interface {
