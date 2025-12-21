@@ -412,5 +412,20 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 				)
 			},
 		},
+		{
+			ID: "2025-12-20-AddAppConfigs",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`CREATE TABLE IF NOT EXISTS app_configs (
+						id TEXT NOT NULL,
+						value TEXT NOT NULL,
+						created_at TIMESTAMP NOT NULL,
+						updated_at TIMESTAMP NOT NULL,
+						deleted_at TIMESTAMP
+					);`,
+					`CREATE UNIQUE INDEX IF NOT EXISTS ix_app_configs_id ON app_configs (id) WHERE deleted_at IS NULL;`,
+				)
+			},
+		},
 	}
 }
