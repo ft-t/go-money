@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/golang/mock/gomock"
@@ -210,4 +211,92 @@ func TestSetConfigByKey_FullRoundTrip(t *testing.T) {
 	var activeCount int64
 	assert.NoError(t, gormDB.Model(&database.AppConfig{}).Where("id = ?", "roundtrip_key").Count(&activeCount).Error)
 	assert.Equal(t, int64(1), activeCount)
+}
+
+func TestGetConfigsByKeys_DbError(t *testing.T) {
+	mockGorm, _, sql := testingutils.GormMock()
+
+	srv := appcfg.NewService(&appcfg.ServiceConfig{
+		AppCfg: cfg,
+	})
+
+	ctx := database.WithContext(context.TODO(), mockGorm)
+
+	sql.ExpectQuery("SELECT .*").WillReturnError(errors.New("db error"))
+
+	resp, err := srv.GetConfigsByKeys(ctx, &configurationv1.GetConfigsByKeysRequest{
+		Keys: []string{"test_key"},
+	})
+
+	assert.ErrorContains(t, err, "db error")
+	assert.Nil(t, resp)
+}
+
+func TestSetConfigByKey_DeleteError(t *testing.T) {
+	mockGorm, _, sql := testingutils.GormMock()
+
+	srv := appcfg.NewService(&appcfg.ServiceConfig{
+		AppCfg: cfg,
+	})
+
+	ctx := database.WithContext(context.TODO(), mockGorm)
+
+	sql.ExpectBegin()
+	sql.ExpectExec("UPDATE .*").WillReturnError(errors.New("delete error"))
+	sql.ExpectRollback()
+
+	resp, err := srv.SetConfigByKey(ctx, &configurationv1.SetConfigByKeyRequest{
+		Key:   "test_key",
+		Value: `{"test":"value"}`,
+	})
+
+	assert.ErrorContains(t, err, "delete error")
+	assert.Nil(t, resp)
+}
+
+func TestSetConfigByKey_CreateError(t *testing.T) {
+	mockGorm, _, sql := testingutils.GormMock()
+
+	srv := appcfg.NewService(&appcfg.ServiceConfig{
+		AppCfg: cfg,
+	})
+
+	ctx := database.WithContext(context.TODO(), mockGorm)
+
+	sql.ExpectBegin()
+	sql.ExpectExec("UPDATE .*").WillReturnResult(sqlmock.NewResult(0, 0))
+	sql.ExpectExec("INSERT .*").WillReturnError(errors.New("create error"))
+	sql.ExpectRollback()
+
+	resp, err := srv.SetConfigByKey(ctx, &configurationv1.SetConfigByKeyRequest{
+		Key:   "test_key",
+		Value: `{"test":"value"}`,
+	})
+
+	assert.ErrorContains(t, err, "create error")
+	assert.Nil(t, resp)
+}
+
+func TestSetConfigByKey_CommitError(t *testing.T) {
+	mockGorm, _, sql := testingutils.GormMock()
+
+	srv := appcfg.NewService(&appcfg.ServiceConfig{
+		AppCfg: cfg,
+	})
+
+	ctx := database.WithContext(context.TODO(), mockGorm)
+
+	sql.ExpectBegin()
+	sql.ExpectExec("UPDATE .*").WillReturnResult(sqlmock.NewResult(0, 0))
+	sql.ExpectExec("INSERT .*").WillReturnResult(sqlmock.NewResult(1, 1))
+	sql.ExpectCommit().WillReturnError(errors.New("commit error"))
+	sql.ExpectRollback()
+
+	resp, err := srv.SetConfigByKey(ctx, &configurationv1.SetConfigByKeyRequest{
+		Key:   "test_key",
+		Value: `{"test":"value"}`,
+	})
+
+	assert.ErrorContains(t, err, "commit error")
+	assert.Nil(t, resp)
 }

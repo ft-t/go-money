@@ -58,7 +58,7 @@ func (s *Service) GetConfigsByKeys(
 
 	var configs []*database.AppConfig
 
-	db := database.GetDbWithContext(ctx, database.DbTypeReadonly)
+	db := database.FromContext(ctx, database.GetDb(database.DbTypeReadonly))
 	if err := db.Where("id IN ?", req.Keys).Find(&configs).Error; err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (s *Service) SetConfigByKey(
 	ctx context.Context,
 	req *configurationv1.SetConfigByKeyRequest,
 ) (*configurationv1.SetConfigByKeyResponse, error) {
-	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()
 	defer tx.Rollback()
 
 	if err := tx.Where("id = ?", req.Key).Delete(&database.AppConfig{}).Error; err != nil {
