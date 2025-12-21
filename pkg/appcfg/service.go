@@ -2,11 +2,9 @@ package appcfg
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
-	"gorm.io/gorm"
 
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
@@ -58,7 +56,7 @@ func (s *Service) GetConfigsByKeys(
 		}, nil
 	}
 
-	var configs []database.AppConfig
+	var configs []*database.AppConfig
 
 	db := database.GetDbWithContext(ctx, database.DbTypeReadonly)
 	if err := db.Where("id IN ?", req.Keys).Find(&configs).Error; err != nil {
@@ -79,35 +77,27 @@ func (s *Service) SetConfigByKey(
 	ctx context.Context,
 	req *configurationv1.SetConfigByKeyRequest,
 ) (*configurationv1.SetConfigByKeyResponse, error) {
-	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
 
-	var existing database.AppConfig
-	if err := db.Unscoped().Where("id = ?", req.Key).First(&existing).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
+	if err := tx.Where("id = ?", req.Key).Delete(&database.AppConfig{}).Error; err != nil {
+		return nil, err
 	}
 
 	now := time.Now().UTC()
+	newConfig := database.AppConfig{
+		ID:        req.Key,
+		Value:     req.Value,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
 
-	if existing.ID == "" {
-		existing = database.AppConfig{
-			ID:        req.Key,
-			Value:     req.Value,
-			CreatedAt: now,
-			UpdatedAt: now,
-		}
-		if err := db.Create(&existing).Error; err != nil {
-			return nil, err
-		}
-	} else {
-		existing.Value = req.Value
-		existing.UpdatedAt = now
-		existing.DeletedAt.Valid = false
+	if err := tx.Create(&newConfig).Error; err != nil {
+		return nil, err
+	}
 
-		if err := db.Unscoped().Save(&existing).Error; err != nil {
-			return nil, err
-		}
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
 	}
 
 	return &configurationv1.SetConfigByKeyResponse{

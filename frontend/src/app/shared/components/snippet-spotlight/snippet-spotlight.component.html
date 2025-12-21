@@ -41,7 +41,11 @@
 
         <!-- Content -->
         <div class="max-h-80 overflow-y-auto">
-            @if (filteredSnippets().length === 0) {
+            @if (loading()) {
+                <div class="px-4 py-8 flex justify-center">
+                    <p-progressSpinner [style]="{ width: '40px', height: '40px' }"></p-progressSpinner>
+                </div>
+            } @else if (filteredSnippets().length === 0) {
                 <div class="px-4 py-8 text-center text-surface-600 dark:text-surface-400">
                     @if (filterText()) {
                         <i class="pi pi-search text-4xl mb-3 block"></i>

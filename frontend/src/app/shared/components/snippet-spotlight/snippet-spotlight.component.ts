@@ -8,6 +8,7 @@ import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { Transaction } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { SnippetService } from '../../../services/snippet.service';
@@ -23,6 +24,7 @@ import { Snippet } from '../../../models/snippet.model';
         InputTextModule,
         TooltipModule,
         ConfirmDialogModule,
+        ProgressSpinnerModule,
         IconField,
         InputIcon
     ]
@@ -34,7 +36,18 @@ export class SnippetSpotlightComponent {
 
     @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
 
-    @Input() visible = false;
+    private _visible = false;
+    @Input()
+    get visible(): boolean {
+        return this._visible;
+    }
+    set visible(value: boolean) {
+        const wasVisible = this._visible;
+        this._visible = value;
+        if (value && !wasVisible) {
+            this.onOpen();
+        }
+    }
     @Output() visibleChange = new EventEmitter<boolean>();
     @Output() applySnippet = new EventEmitter<Transaction[]>();
     @Input() currentTransactions: Transaction[] = [];
@@ -45,6 +58,8 @@ export class SnippetSpotlightComponent {
     selectedIndex = signal(0);
     draggedSnippetId = signal<string | null>(null);
     dragOverSnippetId = signal<string | null>(null);
+
+    loading = computed(() => this.snippetService.loading());
 
     filteredSnippets = computed(() => {
         const filter = this.filterText().toLowerCase().trim();
@@ -103,25 +118,28 @@ export class SnippetSpotlightComponent {
         }
     }
 
-    toggle(): void {
-        this.visible = !this.visible;
-        this.visibleChange.emit(this.visible);
+    private onOpen(): void {
+        this.filterText.set('');
+        this.selectedIndex.set(0);
+        this.snippetService.loadSnippets();
+        this.focusSearch();
+    }
 
-        if (this.visible) {
-            this.filterText.set('');
-            this.selectedIndex.set(0);
-            this.focusSearch();
+    toggle(): void {
+        this._visible = !this._visible;
+        this.visibleChange.emit(this._visible);
+
+        if (this._visible) {
+            this.onOpen();
         } else {
             this.cancelEditing();
         }
     }
 
     open(): void {
-        this.visible = true;
+        this._visible = true;
         this.visibleChange.emit(true);
-        this.filterText.set('');
-        this.selectedIndex.set(0);
-        this.focusSearch();
+        this.onOpen();
     }
 
     private focusSearch(): void {
@@ -131,7 +149,7 @@ export class SnippetSpotlightComponent {
     }
 
     close(): void {
-        this.visible = false;
+        this._visible = false;
         this.visibleChange.emit(false);
         this.cancelEditing();
     }
@@ -157,7 +175,7 @@ export class SnippetSpotlightComponent {
         });
     }
 
-    onCreateNew(): void {
+    async onCreateNew(): Promise<void> {
         if (this.currentTransactions.length === 0) {
             this.messageService.add({
                 severity: 'warn',
@@ -167,7 +185,7 @@ export class SnippetSpotlightComponent {
         }
 
         const name = `Snippet ${this.snippetService.snippets().length + 1}`;
-        const created = this.snippetService.createSnippet(name, this.currentTransactions);
+        const created = await this.snippetService.createSnippet(name, this.currentTransactions);
 
         this.messageService.add({
             severity: 'success',
@@ -177,7 +195,7 @@ export class SnippetSpotlightComponent {
         this.startEditing(created.id, created.name);
     }
 
-    onUpdate(snippet: Snippet): void {
+    async onUpdate(snippet: Snippet): Promise<void> {
         if (this.currentTransactions.length === 0) {
             this.messageService.add({
                 severity: 'warn',
@@ -186,7 +204,7 @@ export class SnippetSpotlightComponent {
             return;
         }
 
-        this.snippetService.updateSnippet(snippet.id, this.currentTransactions);
+        await this.snippetService.updateSnippet(snippet.id, this.currentTransactions);
 
         this.messageService.add({
             severity: 'success',
@@ -200,8 +218,8 @@ export class SnippetSpotlightComponent {
             header: 'Confirm Delete',
             icon: 'pi pi-exclamation-triangle',
             acceptButtonStyleClass: 'p-button-danger',
-            accept: () => {
-                this.snippetService.deleteSnippet(snippet.id);
+            accept: async () => {
+                await this.snippetService.deleteSnippet(snippet.id);
                 this.messageService.add({
                     severity: 'success',
                     detail: `Deleted snippet "${snippet.name}"`
@@ -215,12 +233,12 @@ export class SnippetSpotlightComponent {
         this.editingName.set(currentName);
     }
 
-    saveEditing(): void {
+    async saveEditing(): Promise<void> {
         const id = this.editingSnippetId();
         const name = this.editingName().trim();
 
         if (id && name) {
-            this.snippetService.renameSnippet(id, name);
+            await this.snippetService.renameSnippet(id, name);
         }
 
         this.cancelEditing();
@@ -280,7 +298,7 @@ export class SnippetSpotlightComponent {
         this.dragOverSnippetId.set(null);
     }
 
-    onDrop(event: DragEvent, targetSnippet: Snippet): void {
+    async onDrop(event: DragEvent, targetSnippet: Snippet): Promise<void> {
         event.preventDefault();
         const draggedId = this.draggedSnippetId();
         if (!draggedId || draggedId === targetSnippet.id || this.filterText()) {
@@ -300,7 +318,7 @@ export class SnippetSpotlightComponent {
         const [removed] = snippets.splice(draggedIndex, 1);
         snippets.splice(targetIndex, 0, removed);
 
-        this.snippetService.reorderSnippets(snippets);
+        await this.snippetService.reorderSnippets(snippets);
         this.onDragEnd();
     }
 

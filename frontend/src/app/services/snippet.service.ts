@@ -1,51 +1,66 @@
-import { Injectable, signal, computed, Inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Injectable, signal, computed, Inject } from '@angular/core';
+import { createClient, Transport } from '@connectrpc/connect';
 
 import { Transaction } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
-import { Snippet, serializeTransactions, deserializeTransactions } from '../models/snippet.model';
+import { ConfigurationService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
+import { Snippet, SnippetsConfig, serializeTransactions, deserializeTransactions } from '../models/snippet.model';
+import { TRANSPORT_TOKEN } from '../consts/transport';
 
 @Injectable({
     providedIn: 'root'
 })
 export class SnippetService {
-    private readonly STORAGE_KEY = 'go_money_transaction_snippets';
-    private readonly isBrowser: boolean;
+    private readonly CONFIG_KEY = 'transaction_snippets';
+    private readonly configService;
 
     private snippetsSignal = signal<Snippet[]>([]);
+    private loadingSignal = signal<boolean>(false);
+    private loadedSignal = signal<boolean>(false);
 
-    public snippets = computed(() => this.snippetsSignal().sort((a, b) => a.order - b.order));
+    public snippets = computed(() => this.snippetsSignal());
+    public loading = computed(() => this.loadingSignal());
 
-    constructor(@Inject(PLATFORM_ID) platformId: Object) {
-        this.isBrowser = isPlatformBrowser(platformId);
-        this.loadFromStorage();
+    constructor(@Inject(TRANSPORT_TOKEN) transport: Transport) {
+        this.configService = createClient(ConfigurationService, transport);
     }
 
-    private loadFromStorage(): void {
-        if (!this.isBrowser) return;
+    async loadSnippets(): Promise<void> {
+        if (this.loadedSignal()) return;
 
+        this.loadingSignal.set(true);
         try {
-            const stored = localStorage.getItem(this.STORAGE_KEY);
-            if (stored) {
-                const parsed = JSON.parse(stored) as Snippet[];
-                const migrated = parsed.map((s, idx) => ({
-                    ...s,
-                    order: s.order ?? idx
-                }));
-                this.snippetsSignal.set(migrated);
+            const response = await this.configService.getConfigsByKeys({
+                keys: [this.CONFIG_KEY]
+            });
+
+            const configValue = response.configs[this.CONFIG_KEY];
+            if (configValue) {
+                const parsed = JSON.parse(configValue) as SnippetsConfig;
+                this.snippetsSignal.set(parsed.snippets || []);
+            } else {
+                this.snippetsSignal.set([]);
             }
+            this.loadedSignal.set(true);
         } catch (e) {
-            console.error('Failed to load snippets from localStorage:', e);
+            console.error('Failed to load snippets:', e);
             this.snippetsSignal.set([]);
+        } finally {
+            this.loadingSignal.set(false);
         }
     }
 
-    private saveToStorage(): void {
-        if (!this.isBrowser) return;
+    private async saveToBackend(): Promise<void> {
+        const config: SnippetsConfig = {
+            snippets: this.snippetsSignal()
+        };
 
         try {
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.snippetsSignal()));
+            await this.configService.setConfigByKey({
+                key: this.CONFIG_KEY,
+                value: JSON.stringify(config)
+            });
         } catch (e) {
-            console.error('Failed to save snippets to localStorage:', e);
+            console.error('Failed to save snippets:', e);
         }
     }
 
@@ -53,30 +68,23 @@ export class SnippetService {
         return crypto.randomUUID();
     }
 
-    private getNextOrder(): number {
-        const current = this.snippetsSignal();
-        if (current.length === 0) return 0;
-        return Math.max(...current.map(s => s.order)) + 1;
-    }
-
-    createSnippet(name: string, transactions: Transaction[]): Snippet {
+    async createSnippet(name: string, transactions: Transaction[]): Promise<Snippet> {
         const now = new Date().toISOString();
         const snippet: Snippet = {
             id: this.generateId(),
             name,
             transactions: serializeTransactions(transactions),
-            order: this.getNextOrder(),
             createdAt: now,
             updatedAt: now
         };
 
         this.snippetsSignal.update(current => [...current, snippet]);
-        this.saveToStorage();
+        await this.saveToBackend();
 
         return snippet;
     }
 
-    updateSnippet(id: string, transactions: Transaction[]): void {
+    async updateSnippet(id: string, transactions: Transaction[]): Promise<void> {
         this.snippetsSignal.update(current =>
             current.map(s =>
                 s.id === id
@@ -84,10 +92,10 @@ export class SnippetService {
                     : s
             )
         );
-        this.saveToStorage();
+        await this.saveToBackend();
     }
 
-    renameSnippet(id: string, newName: string): void {
+    async renameSnippet(id: string, newName: string): Promise<void> {
         this.snippetsSignal.update(current =>
             current.map(s =>
                 s.id === id
@@ -95,18 +103,17 @@ export class SnippetService {
                     : s
             )
         );
-        this.saveToStorage();
+        await this.saveToBackend();
     }
 
-    deleteSnippet(id: string): void {
+    async deleteSnippet(id: string): Promise<void> {
         this.snippetsSignal.update(current => current.filter(s => s.id !== id));
-        this.saveToStorage();
+        await this.saveToBackend();
     }
 
-    reorderSnippets(snippets: Snippet[]): void {
-        const reordered = snippets.map((s, idx) => ({ ...s, order: idx }));
-        this.snippetsSignal.set(reordered);
-        this.saveToStorage();
+    async reorderSnippets(snippets: Snippet[]): Promise<void> {
+        this.snippetsSignal.set(snippets);
+        await this.saveToBackend();
     }
 
     getSnippetById(id: string): Snippet | undefined {

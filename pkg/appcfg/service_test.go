@@ -205,5 +205,9 @@ func TestSetConfigByKey_FullRoundTrip(t *testing.T) {
 
 	var count int64
 	assert.NoError(t, gormDB.Unscoped().Model(&database.AppConfig{}).Where("id = ?", "roundtrip_key").Count(&count).Error)
-	assert.Equal(t, int64(1), count)
+	assert.Equal(t, int64(2), count)
+
+	var activeCount int64
+	assert.NoError(t, gormDB.Model(&database.AppConfig{}).Where("id = ?", "roundtrip_key").Count(&activeCount).Error)
+	assert.Equal(t, int64(1), activeCount)
 }

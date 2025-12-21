@@ -6,9 +6,12 @@ export interface Snippet {
     id: string;
     name: string;
     transactions: unknown[];
-    order: number;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface SnippetsConfig {
+    snippets: Snippet[];
 }
 
 export function serializeTransactions(transactions: Transaction[]): unknown[] {
