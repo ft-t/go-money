@@ -151,7 +151,9 @@ func (b *BaseParser) ToCreateRequests(
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 			})
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to get source account for internal transfer")
+				return nil, errors.Wrapf(err,
+					"failed to get source account for internal transfer: description=%q, source_account=%q, dest_account=%q, raw=%q",
+					tx.Description, tx.SourceAccount, tx.DestinationAccount, tx.Raw)
 			}
 
 			destinationAccount, err := b.GetAccountAndAmount(ctx, &GetAccountRequest{
@@ -162,7 +164,9 @@ func (b *BaseParser) ToCreateRequests(
 				TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS,
 			})
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to get destination account for internal transfer")
+				return nil, errors.Wrapf(err,
+					"failed to get destination account for internal transfer: description=%q, source_account=%q, dest_account=%q, raw=%q",
+					tx.Description, tx.SourceAccount, tx.DestinationAccount, tx.Raw)
 			}
 
 			newTx.Transaction = &transactionsv1.CreateTransactionRequest_TransferBetweenAccounts{
@@ -235,6 +239,14 @@ func (b *BaseParser) GetAccountAndAmount(
 ) (*GetSecondaryAccountResponse, error) {
 	account, ok := req.Accounts[req.AccountName]
 	if !ok {
+		if req.TransactionType == gomoneypbv1.TransactionType_TRANSACTION_TYPE_TRANSFER_BETWEEN_ACCOUNTS {
+			return nil, errors.Errorf(
+				"account not found for internal transfer: account_name=%q, available_accounts=%v",
+				req.AccountName,
+				b.getAccountNames(req.Accounts),
+			)
+		}
+
 		dest, err := b.getDefaultAccountForTransactionType(
 			req.TransactionType,
 			req.Accounts,
@@ -333,6 +345,14 @@ func (b *BaseParser) getDefaultAccountForTransactionType(
 	}
 
 	return nil, errors.Errorf("unsupported transaction type for default account: %s", transactionType)
+}
+
+func (b *BaseParser) getAccountNames(accounts map[string]*database.Account) []string {
+	names := make([]string, 0, len(accounts))
+	for name := range accounts {
+		names = append(names, name)
+	}
+	return names
 }
 
 func (b *BaseParser) GenerateHash(input string) string {

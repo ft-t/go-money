@@ -372,6 +372,120 @@ func TestParse(t *testing.T) {
 	})
 }
 
+func TestParseInternal_Failure(t *testing.T) {
+	t.Run("convert request to transaction error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		accounts := []*database.Account{{ID: 1}, {ID: 2}}
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{
+					Title:                    "Test Transaction",
+					InternalReferenceNumbers: []string{"ref123"},
+					Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+						Expense: &transactionsv1.Expense{
+							SourceAccountId:      1,
+							SourceAmount:         "-100",
+							SourceCurrency:       "USD",
+							DestinationAccountId: 2,
+							DestinationAmount:    "100",
+							DestinationCurrency:  "USD",
+						},
+					},
+				},
+			},
+		}
+
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+		txSvc.EXPECT().ConvertRequestToTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil, errors.New("conversion failed"))
+
+		resp, err := imp.Parse(context.TODO(), &importv1.ParseTransactionsRequest{
+			Content: []string{"test content"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+		})
+		assert.ErrorContains(t, err, "failed to convert request to transaction")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("check duplicates db error via ParseInternal", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		mockGorm, _, sql := testingutils.GormMock()
+
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		accounts := []*database.Account{{ID: 1}, {ID: 2}}
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{
+					Title:                    "Test Transaction",
+					InternalReferenceNumbers: []string{"ref123"},
+				},
+			},
+		}
+
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+
+		sql.ExpectQuery("SELECT internal_reference_numbers, id FROM \"transactions\"").
+			WillReturnError(errors.New("db connection failed"))
+
+		ctx := database.WithContext(context.TODO(), mockGorm)
+
+		resp, err := imp.Parse(ctx, &importv1.ParseTransactionsRequest{
+			Content: []string{"test content"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+		})
+		assert.ErrorContains(t, err, "failed to check for duplicate transactions")
+		assert.Nil(t, resp)
+	})
+}
+
 func TestCheckDuplicates(t *testing.T) {
 	t.Run("success with no duplicates", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
