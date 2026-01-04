@@ -24,6 +24,7 @@ import (
 	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/ft-t/go-money/pkg/maintenance"
 	"github.com/ft-t/go-money/pkg/mappers"
+	gomoneyMcp "github.com/ft-t/go-money/pkg/mcp"
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
@@ -85,6 +86,12 @@ func main() {
 		logger.Info().Str("dir", config.StaticFilesDirectory).Msg("serving static files from directory")
 		grpcServer.GetMux().Handle("/", handlers.SpaHandler(config.StaticFilesDirectory))
 	}
+
+	mcpServer := gomoneyMcp.NewServer(&gomoneyMcp.ServerConfig{
+		DB: database.GetDb(database.DbTypeReadonly),
+	})
+	grpcServer.GetMux().Handle("/mcp/", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
+	logger.Info().Msg("MCP server enabled at /mcp/")
 
 	userService := users.NewService(&users.ServiceConfig{
 		JwtSvc: jwtService,

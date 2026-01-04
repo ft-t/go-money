@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"net/http"
 
 	"connectrpc.com/connect"
 	"github.com/ft-t/go-money/pkg/auth"
@@ -43,4 +44,30 @@ func FromContext(ctx context.Context) auth.JwtClaims {
 	}
 
 	return *val.(*auth.JwtClaims)
+}
+
+func HTTPAuthMiddleware(jwtParser JwtValidator, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "missing authorization header", http.StatusUnauthorized)
+			return
+		}
+
+		if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
+			http.Error(w, "invalid authorization header format", http.StatusUnauthorized)
+			return
+		}
+
+		token := authHeader[7:]
+
+		claims, err := jwtParser.ValidateToken(r.Context(), token)
+		if err != nil {
+			http.Error(w, "invalid token: "+err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		ctx := WithContext(r.Context(), *claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
