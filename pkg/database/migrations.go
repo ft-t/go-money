@@ -427,5 +427,25 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 				)
 			},
 		},
+		{
+			ID: "2026-01-04-AddServiceTokens",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`CREATE TABLE IF NOT EXISTS service_tokens (
+						id         TEXT PRIMARY KEY,
+						name       TEXT NOT NULL,
+						expires_at TIMESTAMP NOT NULL,
+						created_at TIMESTAMP NOT NULL,
+						deleted_at TIMESTAMP
+					);`,
+					`CREATE INDEX IF NOT EXISTS ix_service_tokens_active ON service_tokens(id) WHERE deleted_at IS NULL;`,
+					`CREATE TABLE IF NOT EXISTS jti_revocations (
+						id         TEXT PRIMARY KEY,
+						expires_at TIMESTAMP NOT NULL
+					);`,
+					`CREATE INDEX IF NOT EXISTS ix_jti_revocations_expires ON jti_revocations(expires_at);`,
+				)
+			},
+		},
 	}
 }

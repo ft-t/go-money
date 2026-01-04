@@ -80,17 +80,56 @@ func (a *ConfigApi) SetConfigByKey(
 	return connect.NewResponse(res), nil
 }
 
-func (a *ConfigApi) GetServiceTokens(ctx context.Context, c *connect.Request[configurationv1.GetServiceTokensRequest]) (*connect.Response[configurationv1.GetServiceTokensResponse], error) {
-	//TODO implement me
-	panic("implement me")
+func (a *ConfigApi) GetServiceTokens(
+	ctx context.Context,
+	c *connect.Request[configurationv1.GetServiceTokensRequest],
+) (*connect.Response[configurationv1.GetServiceTokensResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	res, err := a.serviceTokenSvc.GetServiceTokens(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(res), nil
 }
 
-func (a *ConfigApi) CreateServiceToken(ctx context.Context, c *connect.Request[configurationv1.CreateServiceTokenRequest]) (*connect.Response[configurationv1.CreateServiceTokenResponse], error) {
-	//TODO implement me
-	panic("implement me")
+func (a *ConfigApi) CreateServiceToken(
+	ctx context.Context,
+	c *connect.Request[configurationv1.CreateServiceTokenRequest],
+) (*connect.Response[configurationv1.CreateServiceTokenResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	res, err := a.serviceTokenSvc.CreateServiceToken(ctx, &auth.CreateServiceTokenRequest{
+		Req:           c.Msg,
+		CurrentUserID: jwtData.UserID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(res), nil
 }
 
-func (a *ConfigApi) RevokeServiceToken(ctx context.Context, c *connect.Request[configurationv1.RevokeServiceTokenRequest]) (*connect.Response[configurationv1.RevokeServiceTokenResponse], error) {
-	//TODO implement me
-	panic("implement me")
+func (a *ConfigApi) RevokeServiceToken(
+	ctx context.Context,
+	c *connect.Request[configurationv1.RevokeServiceTokenRequest],
+) (*connect.Response[configurationv1.RevokeServiceTokenResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	res, err := a.serviceTokenSvc.RevokeServiceToken(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(res), nil
 }

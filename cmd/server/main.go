@@ -67,8 +67,12 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create jwt service")
 	}
 
+	serviceTokenSvc := auth.NewServiceTokenService(
+		jwtService,
+	)
+
 	grpcServer := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).
-		AddServerMiddleware(middlewares.GrpcMiddleware(jwtService)).Build()
+		AddServerMiddleware(middlewares.GrpcMiddleware(jwtService, serviceTokenSvc)).Build()
 
 	if config.StaticFilesDirectory != "" {
 		logger.Info().Str("dir", config.StaticFilesDirectory).Msg("serving static files from directory")
@@ -83,10 +87,6 @@ func main() {
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create user handler")
 	}
-
-	serviceTokenSvc := auth.NewServiceTokenService(
-		jwtService,
-	)
 
 	_, err = handlers.NewConfigApi(grpcServer, appcfg.NewService(&appcfg.ServiceConfig{
 		UserSvc: userService,

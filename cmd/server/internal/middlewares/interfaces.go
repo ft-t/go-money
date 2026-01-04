@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+
 	"github.com/ft-t/go-money/pkg/auth"
 )
 
@@ -12,4 +13,8 @@ type JwtValidator interface {
 		_ context.Context,
 		tokenString string,
 	) (*auth.JwtClaims, error)
+}
+
+type ServiceTokenValidator interface {
+	IsRevoked(ctx context.Context, tokenID string) (bool, error)
 }

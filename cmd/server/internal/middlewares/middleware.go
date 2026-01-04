@@ -1,12 +1,16 @@
 package middlewares
 
 import (
-	"connectrpc.com/connect"
 	"context"
+
+	"connectrpc.com/connect"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/auth"
 )
 
-var GrpcMiddleware = func(jwtParser JwtValidator) connect.UnaryInterceptorFunc {
+var ErrTokenRevoked = errors.New("token has been revoked")
+
+var GrpcMiddleware = func(jwtParser JwtValidator, serviceTokenValidator ServiceTokenValidator) connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
 			jwt := request.Header().Get("authorization")
@@ -20,6 +24,16 @@ var GrpcMiddleware = func(jwtParser JwtValidator) connect.UnaryInterceptorFunc {
 			parsed, err := jwtParser.ValidateToken(ctx, jwt)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
+			}
+
+			if parsed.TokenType == auth.ServiceTokenType {
+				revoked, revokeErr := serviceTokenValidator.IsRevoked(ctx, parsed.ID)
+				if revokeErr != nil {
+					return nil, connect.NewError(connect.CodeInternal, revokeErr)
+				}
+				if revoked {
+					return nil, connect.NewError(connect.CodeUnauthenticated, ErrTokenRevoked)
+				}
 			}
 
 			ctx = WithContext(ctx, *parsed)
