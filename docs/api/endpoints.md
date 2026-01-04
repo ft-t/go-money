@@ -1114,3 +1114,12 @@ POST /gomoneypb.maintenance.v1.MaintenanceService/RecalculateAll
 | ACCOUNT_TYPE_EXPENSE | Expense category account |
 | ACCOUNT_TYPE_INCOME | Income category account |
 | ACCOUNT_TYPE_ADJUSTMENT | Adjustment account |
+
+
+---
+
+## See Also
+
+- [Authentication](authentication.md) - JWT and service tokens
+- [Enums Reference](../schema/enums.md) - Enum values for requests
+- [INDEX](../INDEX.md) - Full documentation index

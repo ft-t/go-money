@@ -163,3 +163,11 @@ ORDER BY de.transaction_date, de.id;
 - Use this table for formal accounting reports and reconciliation
 - The unique index ensures data integrity (no duplicate entries)
 - Soft deletes preserve audit trail
+
+
+---
+
+## See Also
+
+- [Double-Entry Overview](../../business-logic/double-entry/overview.md) - Bookkeeping concepts
+- [Schema Quick-Ref](../QUICK-REF.md) - All tables at a glance

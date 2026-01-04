@@ -385,3 +385,12 @@ SELECT
 FROM daily_changes
 ORDER BY date;
 ```
+
+
+---
+
+## See Also
+
+- [Analytics Quick-Ref](QUICK-REF.md) - Compact query templates
+- [MCP Examples](../mcp/examples.md) - Natural language mappings
+- [Schema Quick-Ref](../schema/QUICK-REF.md) - Table reference

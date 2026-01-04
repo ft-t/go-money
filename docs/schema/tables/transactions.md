@@ -192,3 +192,14 @@ WHERE :ref = ANY(internal_reference_numbers)
 - Use `transaction_date_only` for date grouping to avoid timezone issues
 - The `tag_ids` array requires PostgreSQL array operators for queries
 - Base currency amounts are computed at transaction time and cached
+
+
+---
+
+## See Also
+
+- [Transaction Types](../../business-logic/transactions/types.md) - Type-specific behavior
+- [Transaction Overview](../../business-logic/transactions/overview.md) - Processing pipeline
+- [Amount Calculations](../../business-logic/transactions/amount-calculations.md) - Currency conversion
+- [Transaction Queries](../../analytics/query-patterns/transaction-queries.md) - Query patterns
+- [Schema Quick-Ref](../QUICK-REF.md) - All tables at a glance

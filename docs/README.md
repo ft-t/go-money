@@ -2,6 +2,21 @@
 
 Comprehensive documentation for the Go Money personal finance system.
 
+---
+
+## For AI Agents
+
+> **Start here to minimize token usage.**
+
+| Quick Reference | Description |
+|-----------------|-------------|
+| [INDEX.md](INDEX.md) | Master index - find any doc by keyword |
+| [Schema Quick-Ref](schema/QUICK-REF.md) | All tables, columns, enums in one file |
+| [Business Logic Quick-Ref](business-logic/QUICK-REF.md) | Formulas, rules, transaction behavior |
+| [Analytics Quick-Ref](analytics/QUICK-REF.md) | Query templates ready to use |
+
+---
+
 ## Quick Links
 
 ### Schema Reference
@@ -75,7 +90,7 @@ Comprehensive documentation for the Go Money personal finance system.
 
 - Each account has a currency
 - Transactions store amounts in original and base currency
-- `currencies.rate` converts to base currency: `base_amount = amount * rate`
+- `currencies.rate` converts to base currency: `base_amount = amount / rate`
 
 ### Double-Entry Bookkeeping
 

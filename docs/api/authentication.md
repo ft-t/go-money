@@ -287,6 +287,14 @@ Then set the environment variable:
 export JWT_PRIVATE_KEY="$(cat private.pem)"
 ```
 
+**One-liner for environment variables:**
+
+```bash
+openssl genrsa 2048 2>/dev/null | openssl rsa -traditional 2>/dev/null | awk '{printf "%s\\n", $0}'
+```
+
+This outputs the key with escaped newlines, suitable for `.env` files.
+
 ## API Protocol
 
 Go Money uses [Connect](https://connectrpc.com/) protocol (gRPC-compatible HTTP/JSON).
@@ -312,3 +320,12 @@ curl -X POST \
 ### Authenticated Endpoints
 
 All other endpoints require a valid JWT token in the Authorization header.
+
+
+---
+
+## See Also
+
+- [Endpoints](endpoints.md) - All API endpoints
+- [users Table](../schema/tables/users.md) - User schema
+- [INDEX](../INDEX.md) - Full documentation index

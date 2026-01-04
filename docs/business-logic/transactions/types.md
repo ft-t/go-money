@@ -223,3 +223,14 @@ Each transaction type creates two ledger entries:
 **Adjustment:**
 - Destination account and amount required
 - Source account auto-selected
+
+
+---
+
+## See Also
+
+- [transactions Table](../../schema/tables/transactions.md) - Schema definition
+- [Transaction Overview](overview.md) - Processing pipeline
+- [Amount Calculations](amount-calculations.md) - Currency conversion
+- [Account Types](../accounts/types.md) - Valid account pairs
+- [Business Logic Quick-Ref](../QUICK-REF.md) - Key formulas

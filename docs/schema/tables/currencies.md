@@ -154,3 +154,12 @@ ORDER BY exposure_in_base DESC;
 - `decimal_places` determines precision for display and calculations
 - Rates should be updated regularly for accurate conversions
 - Transaction amounts are stored in original currency AND converted to base
+
+
+---
+
+## See Also
+
+- [Currency Conversion](../../business-logic/currencies/conversion.md) - Conversion formulas
+- [Amount Calculations](../../business-logic/transactions/amount-calculations.md) - Multi-currency transactions
+- [Schema Quick-Ref](../QUICK-REF.md) - All tables at a glance

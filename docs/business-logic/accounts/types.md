@@ -281,3 +281,13 @@ GROUP BY currency;
 2. **Default required**: Each type must have at least one default account
 3. **Soft delete**: Accounts are soft-deleted (deleted_at timestamp)
 4. **Currency immutable**: Currency should not change after creation (transactions reference it)
+
+
+---
+
+## See Also
+
+- [accounts Table](../../schema/tables/accounts.md) - Schema definition
+- [Balance Tracking](balance-tracking.md) - Balance updates
+- [Transaction Types](../transactions/types.md) - Valid account pairs
+- [Business Logic Quick-Ref](../QUICK-REF.md) - Key formulas

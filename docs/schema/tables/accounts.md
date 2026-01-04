@@ -179,3 +179,12 @@ WHERE deleted_at IS NULL
 - `first_transaction_at` is set when the first transaction uses this account
 - `liability_percent` can track credit utilization (balance / credit limit * 100)
 - Always filter with `deleted_at IS NULL` for active accounts
+
+
+---
+
+## See Also
+
+- [Account Types](../../business-logic/accounts/types.md) - Detailed account type behavior
+- [Balance Tracking](../../business-logic/accounts/balance-tracking.md) - How balances are updated
+- [Schema Quick-Ref](../QUICK-REF.md) - All tables at a glance

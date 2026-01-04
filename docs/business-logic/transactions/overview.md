@@ -162,3 +162,14 @@ Deleting a transaction:
 1. Soft delete transaction record
 2. Soft delete double entry records
 3. Recalculate statistics for affected accounts
+
+
+---
+
+## See Also
+
+- [transactions Table](../../schema/tables/transactions.md) - Schema definition
+- [Transaction Types](types.md) - Type-specific behavior
+- [Amount Calculations](amount-calculations.md) - Currency conversion
+- [Double-Entry](../double-entry/overview.md) - Ledger entries
+- [Business Logic Quick-Ref](../QUICK-REF.md) - Key formulas

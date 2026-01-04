@@ -325,3 +325,12 @@ This handles floating-point precision issues in currency conversions.
 - Amounts always in base currency
 - Clean accounting view of each account
 - Proper ledger format for reports
+
+
+---
+
+## See Also
+
+- [double_entries Table](../../schema/tables/double_entry.md) - Schema definition
+- [Transaction Types](../transactions/types.md) - Debit/credit rules per type
+- [Business Logic Quick-Ref](../QUICK-REF.md) - Key formulas

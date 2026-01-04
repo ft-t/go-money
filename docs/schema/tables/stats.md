@@ -167,3 +167,12 @@ The daily_stat table is optimized for aggregate queries and should be preferred 
 - No entry means no balance change that day
 - Updated automatically when transactions are created/modified
 - Does not include soft-deleted transactions
+
+
+---
+
+## See Also
+
+- [Daily Stats](../../business-logic/statistics/daily-stats.md) - Recalculation logic
+- [Balance Queries](../../analytics/query-patterns/balance-queries.md) - Historical balance queries
+- [Schema Quick-Ref](../QUICK-REF.md) - All tables at a glance

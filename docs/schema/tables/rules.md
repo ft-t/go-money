@@ -157,3 +157,11 @@ Examples:
 - Scheduled rules run independently on their schedule
 - `is_final_rule` prevents subsequent rules from running
 - Group names help organize related rules
+
+
+---
+
+## See Also
+
+- [Rules Engine](../../business-logic/rules-engine/overview.md) - Lua API reference
+- [Schema Quick-Ref](../QUICK-REF.md) - All tables at a glance
