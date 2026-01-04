@@ -14,6 +14,7 @@ import (
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 )
 
@@ -226,6 +227,14 @@ func (i *Importer) ParseInternal(
 		},
 	})
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("source", req.Source.String()).
+			Int("accounts_count", len(accounts)).
+			Int("tags_count", len(tags)).
+			Int("categories_count", len(categories)).
+			Msg("import parse failed")
+
 		return nil, errors.Wrap(err, "parse failed")
 	}
 
@@ -245,6 +254,12 @@ func (i *Importer) ParseInternal(
 
 	items, err := i.CheckDuplicates(ctx, parsed.CreateRequests)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("source", req.Source.String()).
+			Int("transactions_count", len(parsed.CreateRequests)).
+			Msg("duplicate check failed")
+
 		return nil, errors.Wrap(err, "failed to check for duplicate transactions")
 	}
 
@@ -277,6 +292,12 @@ func (i *Importer) ConvertRequestsToTransactions(
 
 		converted, err := i.cfg.TransactionSvc.ConvertRequestToTransaction(ctx, req.CreateRequest, nil)
 		if err != nil {
+			log.Error().
+				Err(err).
+				Str("title", req.CreateRequest.Title).
+				Str("notes", req.CreateRequest.Notes).
+				Msg("failed to convert request to transaction")
+
 			return nil, errors.Wrap(err, "failed to convert request to transaction")
 		}
 
