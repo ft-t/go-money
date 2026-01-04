@@ -11,11 +11,14 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	jwt2 "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/hashicorp/golang-lru/v2/expirable"
+	"gorm.io/gorm"
 )
 
 type Service struct {
 	privateKey *rsa.PrivateKey
 	ttl        time.Duration
+	cache      *expirable.LRU[string, error]
 }
 
 func NewService(
@@ -35,6 +38,7 @@ func NewService(
 	return &Service{
 		privateKey: privateKey,
 		ttl:        ttl,
+		cache:      expirable.NewLRU[string, bool](1000, nil, time.Minute*5),
 	}, nil
 }
 
@@ -52,7 +56,54 @@ func (j *Service) ValidateToken(
 		return nil, errors.Wrap(err, "failed to parse token")
 	}
 
-	return j.CheckClaims(token)
+	claims, err := j.CheckClaims(token)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to validate token claims")
+	}
+
+	if cachedResult, ok := j.cache.Get(claims.ID); ok {
+		return nil, cachedResult
+	}
+
+	if claims.TokenType == ServiceTokenType {
+		var jtiRevocation database.JtiRevocation
+
+		if err = database.GetDb(database.DbTypeReadonly).
+			Where("id = ?", claims.ID).
+			Limit(1).
+			Find(&jtiRevocation).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to check jti revocation")
+		}
+
+		if jtiRevocation.ID != "" {
+			err = errors.New("token has been revoked")
+			j.cache.Add(claims.ID, err)
+
+			return nil, err
+		}
+	}
+
+	j.cache.Add(claims.ID, err)
+	
+	return claims, err
+}
+
+func (s *ServiceTokenService) IsRevoked(
+	ctx context.Context,
+	tokenID string,
+) (bool, error) {
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly))
+
+	var token database.ServiceToken
+	err := db.Unscoped().Where("id = ?", tokenID).First(&token).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return true, nil
+		}
+		return false, errors.Wrap(err, "failed to check token revocation")
+	}
+
+	return token.DeletedAt.Valid, nil
 }
 
 func (j *Service) CheckClaims(
@@ -87,8 +138,25 @@ func (j *Service) GenerateToken(
 	return token, err
 }
 
-func (j *Service) CreateServiceToken(
+func (j *Service) RevokeServiceToken(
 	ctx context.Context,
+	jti string,
+	originalExpiryTime time.Time,
+) error {
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
+
+	if err := db.Create(&database.JtiRevocation{
+		ID:        jti,
+		ExpiresAt: originalExpiryTime.Add(7 * 24 * time.Hour),
+	}).Error; err != nil {
+		return errors.Wrap(err, "failed to store jti for service token")
+	}
+
+	return nil
+}
+
+func (j *Service) CreateServiceToken(
+	_ context.Context,
 	req *GenerateTokenRequest,
 ) (*JwtClaims, string, error) {
 	if req.User == nil {
@@ -103,15 +171,6 @@ func (j *Service) CreateServiceToken(
 	claims, token, err := j.generateTokenInternal(req)
 	if err != nil {
 		return nil, "", err
-	}
-
-	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
-
-	if err = db.Create(&database.JtiRevocation{
-		ID:        claims.ID,
-		ExpiresAt: claims.ExpiresAt.UTC(),
-	}).Error; err != nil {
-		return nil, "", errors.Wrap(err, "failed to store jti for service token")
 	}
 
 	return claims, token, err

@@ -13,14 +13,14 @@ import (
 )
 
 type ServiceTokenService struct {
-	JwtSvc JwtSvc
+	jwtSvc JwtSvc
 }
 
 func NewServiceTokenService(
 	jwtSvc JwtSvc,
 ) *ServiceTokenService {
 	return &ServiceTokenService{
-		JwtSvc: jwtSvc,
+		jwtSvc: jwtSvc,
 	}
 }
 
@@ -40,7 +40,7 @@ func (s *ServiceTokenService) CreateServiceToken(
 		return nil, err
 	}
 
-	generated, str, err := s.JwtSvc.CreateServiceToken(ctx, &GenerateTokenRequest{
+	generated, str, err := s.jwtSvc.CreateServiceToken(ctx, &GenerateTokenRequest{
 		TTL:  time.Until(req.Req.ExpiresAt.AsTime()),
 		User: user,
 	})
@@ -123,36 +123,29 @@ func (s *ServiceTokenService) RevokeServiceToken(
 	ctx context.Context,
 	req *configurationv1.RevokeServiceTokenRequest,
 ) (*configurationv1.RevokeServiceTokenResponse, error) {
-	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
+	tx := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster)).Begin()
+	defer tx.Rollback()
 
-	result := db.Delete(&database.ServiceToken{}, "id = ?", req.Id)
-	if result.Error != nil {
-		return nil, errors.Wrap(result.Error, "failed to revoke service token")
+	var token database.ServiceToken
+	if err := tx.Where("id = ?", req.Id).First(&token).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to find service token")
 	}
 
-	if result.RowsAffected == 0 {
-		return nil, errors.New("service token not found")
+	token.DeletedAt = gorm.DeletedAt{Time: time.Now().UTC(), Valid: true}
+
+	if err := tx.Save(&token).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to revoke service token")
+	}
+
+	if err := s.jwtSvc.RevokeServiceToken(ctx, token.ID, token.ExpiresAt); err != nil {
+		return nil, errors.Wrap(err, "failed to revoke jwt token")
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.Wrap(err, "failed to commit transaction")
 	}
 
 	return &configurationv1.RevokeServiceTokenResponse{
 		Id: req.Id,
 	}, nil
-}
-
-func (s *ServiceTokenService) IsRevoked(
-	ctx context.Context,
-	tokenID string,
-) (bool, error) {
-	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly))
-
-	var token database.ServiceToken
-	err := db.Unscoped().Where("id = ?", tokenID).First(&token).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return true, nil
-		}
-		return false, errors.Wrap(err, "failed to check token revocation")
-	}
-
-	return token.DeletedAt.Valid, nil
 }
