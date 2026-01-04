@@ -239,3 +239,6 @@ type AnalyticsSvc interface {
 		req *analyticsv1.GetDebitsAndCreditsSummaryRequest,
 	) (*analyticsv1.GetDebitsAndCreditsSummaryResponse, error)
 }
+
+type ServiceTokenSvc interface {
+}

@@ -13,15 +13,18 @@ import (
 )
 
 type ConfigApi struct {
-	configSvc ConfigSvc
+	configSvc       ConfigSvc
+	serviceTokenSvc ServiceTokenSvc
 }
 
 func NewConfigApi(
 	mux *boilerplate.DefaultGrpcServer,
 	userSvc ConfigSvc,
+	serviceTokenSvc ServiceTokenSvc,
 ) (*ConfigApi, error) {
 	res := &ConfigApi{
-		configSvc: userSvc,
+		configSvc:       userSvc,
+		serviceTokenSvc: serviceTokenSvc,
 	}
 
 	mux.GetMux().Handle(

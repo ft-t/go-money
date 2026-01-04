@@ -84,10 +84,14 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create user handler")
 	}
 
+	serviceTokenSvc := auth.NewServiceTokenService(
+		jwtService,
+	)
+
 	_, err = handlers.NewConfigApi(grpcServer, appcfg.NewService(&appcfg.ServiceConfig{
 		UserSvc: userService,
 		AppCfg:  configuration.GetConfiguration(),
-	}))
+	}), serviceTokenSvc)
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
 	}
@@ -180,6 +184,7 @@ func main() {
 		ValidationSvc:  validationSvc,
 		AccountSvc:     accountSvc,
 	})
+
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc, applicableAccountSvc, mapper)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
 	_ = handlers.NewRulesApi(grpcServer, &handlers.RulesApiConfig{

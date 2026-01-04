@@ -87,34 +87,34 @@ func (j *Service) GenerateToken(
 	return token, err
 }
 
-func (j *Service) GenerateServiceToken(
-	_ context.Context,
+func (j *Service) CreateServiceToken(
+	ctx context.Context,
 	req *GenerateTokenRequest,
-) (string, error) {
+) (*JwtClaims, string, error) {
 	if req.User == nil {
-		return "", errors.New("user is required to generate service token")
+		return nil, "", errors.New("user is required to generate service token")
 	}
 
 	req.TokenType = ServiceTokenType
 	if req.TTL == 0 {
-		return "", errors.New("ttl is required to generate service token")
+		return nil, "", errors.New("ttl is required to generate service token")
 	}
 
 	claims, token, err := j.generateTokenInternal(req)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
-	db := database.GetDbWithContext(context.Background(), database.DbTypeMaster)
+	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeMaster))
 
 	if err = db.Create(&database.JtiRevocation{
 		ID:        claims.ID,
 		ExpiresAt: claims.ExpiresAt.UTC(),
 	}).Error; err != nil {
-		return "", errors.Wrap(err, "failed to store jti for service token")
+		return nil, "", errors.Wrap(err, "failed to store jti for service token")
 	}
 
-	return token, err
+	return claims, token, err
 }
 
 func (j *Service) generateTokenInternal(req *GenerateTokenRequest) (*JwtClaims, string, error) {
