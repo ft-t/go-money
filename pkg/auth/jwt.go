@@ -12,7 +12,6 @@ import (
 	jwt2 "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
-	"gorm.io/gorm"
 )
 
 type Service struct {
@@ -90,24 +89,6 @@ func (j *Service) ValidateToken(
 	j.cache.Add(claims.ID, err)
 
 	return claims, err
-}
-
-func (s *ServiceTokenService) IsRevoked(
-	ctx context.Context,
-	tokenID string,
-) (bool, error) {
-	db := database.FromContext(ctx, database.GetDbWithContext(ctx, database.DbTypeReadonly))
-
-	var token database.ServiceToken
-	err := db.Unscoped().Where("id = ?", tokenID).First(&token).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return true, nil
-		}
-		return false, errors.Wrap(err, "failed to check token revocation")
-	}
-
-	return token.DeletedAt.Valid, nil
 }
 
 func (j *Service) CheckClaims(

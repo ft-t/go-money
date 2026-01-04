@@ -256,46 +256,73 @@ func TestServiceTokenService_RevokeServiceToken_Failure(t *testing.T) {
 	})
 }
 
-func TestServiceTokenService_IsRevoked_Success(t *testing.T) {
+func TestJwtService_RevokeServiceToken_Success(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 
-	ctrl := gomock.NewController(t)
-	mockJwtSvc := NewMockJwtSvc(ctrl)
-	mockMapper := NewMockServiceTokenMapper(ctrl)
+	keyGen := auth.NewKeyGenerator()
+	key := keyGen.Generate()
 
-	activeToken := &database.ServiceToken{
-		ID:        "active-token",
-		Name:      "Active Token",
-		ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
-		CreatedAt: time.Now().UTC(),
-	}
-	revokedToken := &database.ServiceToken{
-		ID:        "revoked-token",
-		Name:      "Revoked Token",
-		ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
-		CreatedAt: time.Now().UTC(),
-		DeletedAt: gorm.DeletedAt{Time: time.Now().UTC(), Valid: true},
-	}
-	assert.NoError(t, gormDB.Create(activeToken).Error)
-	assert.NoError(t, gormDB.Create(revokedToken).Error)
+	jwtSvc, err := auth.NewService(string(keyGen.Serialize(key)), 5*time.Minute)
+	assert.NoError(t, err)
 
-	svc := auth.NewServiceTokenService(mockJwtSvc, mockMapper)
+	jti := "test-jti-to-revoke"
+	expiresAt := time.Now().UTC().Add(24 * time.Hour)
 
-	t.Run("active token is not revoked", func(t *testing.T) {
-		revoked, err := svc.IsRevoked(context.TODO(), "active-token")
+	err = jwtSvc.RevokeServiceToken(context.TODO(), jti, expiresAt)
+	assert.NoError(t, err)
+
+	var revocation database.JtiRevocation
+	err = gormDB.Where("id = ?", jti).First(&revocation).Error
+	assert.NoError(t, err)
+	assert.Equal(t, jti, revocation.ID)
+	assert.True(t, revocation.ExpiresAt.After(expiresAt))
+}
+
+func TestJwtService_ValidateServiceToken_WithRevocation(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	keyGen := auth.NewKeyGenerator()
+	key := keyGen.Generate()
+
+	jwtSvc, err := auth.NewService(string(keyGen.Serialize(key)), 5*time.Minute)
+	assert.NoError(t, err)
+
+	t.Run("valid service token not revoked", func(t *testing.T) {
+		claims, tokenStr, err := jwtSvc.CreateServiceToken(context.TODO(), &auth.GenerateTokenRequest{
+			TTL: 24 * time.Hour,
+			User: &database.User{
+				ID:    1,
+				Login: "testuser",
+			},
+		})
 		assert.NoError(t, err)
-		assert.False(t, revoked)
+		assert.NotEmpty(t, tokenStr)
+
+		validatedClaims, err := jwtSvc.ValidateToken(context.TODO(), tokenStr)
+		assert.NoError(t, err)
+		assert.NotNil(t, validatedClaims)
+		assert.Equal(t, claims.ID, validatedClaims.ID)
+		assert.Equal(t, auth.ServiceTokenType, validatedClaims.TokenType)
 	})
 
-	t.Run("revoked token is revoked", func(t *testing.T) {
-		revoked, err := svc.IsRevoked(context.TODO(), "revoked-token")
+	t.Run("revoked service token", func(t *testing.T) {
+		claims, tokenStr, err := jwtSvc.CreateServiceToken(context.TODO(), &auth.GenerateTokenRequest{
+			TTL: 24 * time.Hour,
+			User: &database.User{
+				ID:    2,
+				Login: "testuser2",
+			},
+		})
 		assert.NoError(t, err)
-		assert.True(t, revoked)
-	})
 
-	t.Run("nonexistent token is considered revoked", func(t *testing.T) {
-		revoked, err := svc.IsRevoked(context.TODO(), "nonexistent-token")
+		err = gormDB.Create(&database.JtiRevocation{
+			ID:        claims.ID,
+			ExpiresAt: time.Now().UTC().Add(7 * 24 * time.Hour),
+		}).Error
 		assert.NoError(t, err)
-		assert.True(t, revoked)
+
+		validatedClaims, err := jwtSvc.ValidateToken(context.TODO(), tokenStr)
+		assert.Nil(t, validatedClaims)
+		assert.ErrorContains(t, err, "token has been revoked")
 	})
 }

@@ -26,16 +26,6 @@ var GrpcMiddleware = func(jwtParser JwtValidator, serviceTokenValidator ServiceT
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
-			if parsed.TokenType == auth.ServiceTokenType {
-				revoked, revokeErr := serviceTokenValidator.IsRevoked(ctx, parsed.ID)
-				if revokeErr != nil {
-					return nil, connect.NewError(connect.CodeInternal, revokeErr)
-				}
-				if revoked {
-					return nil, connect.NewError(connect.CodeUnauthenticated, ErrTokenRevoked)
-				}
-			}
-
 			ctx = WithContext(ctx, *parsed)
 
 			return next(ctx, request)
