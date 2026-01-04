@@ -67,8 +67,15 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create jwt service")
 	}
 
+	decimalSvc := currency.NewDecimalService()
+
+	mapper := mappers.NewMapper(&mappers.MapperConfig{
+		DecimalSvc: decimalSvc,
+	})
+
 	serviceTokenSvc := auth.NewServiceTokenService(
 		jwtService,
+		mapper,
 	)
 
 	grpcServer := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).
@@ -96,7 +103,6 @@ func main() {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
 	}
 
-	decimalSvc := currency.NewDecimalService()
 	currencyConverter := currency.NewConverter(config.CurrencyConfig.BaseCurrency)
 
 	_, err = handlers.NewCurrencyApi(
@@ -108,10 +114,6 @@ func main() {
 	if err != nil {
 		log.Logger.Fatal().Err(err).Msg("failed to create config handler")
 	}
-
-	mapper := mappers.NewMapper(&mappers.MapperConfig{
-		DecimalSvc: decimalSvc,
-	})
 
 	accountSvc := accounts.NewService(&accounts.ServiceConfig{
 		MapperSvc:       mapper,

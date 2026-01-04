@@ -8,19 +8,21 @@ import (
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 )
 
 type ServiceTokenService struct {
 	jwtSvc JwtSvc
+	mapper ServiceTokenMapper
 }
 
 func NewServiceTokenService(
 	jwtSvc JwtSvc,
+	mapper ServiceTokenMapper,
 ) *ServiceTokenService {
 	return &ServiceTokenService{
 		jwtSvc: jwtSvc,
+		mapper: mapper,
 	}
 }
 
@@ -63,21 +65,10 @@ func (s *ServiceTokenService) CreateServiceToken(
 		return nil, errors.Wrap(err, "failed to commit transaction")
 	}
 
-	resp := &configurationv1.CreateServiceTokenResponse{
-		ServiceToken: &gomoneypbv1.ServiceToken{
-			Id:        token.ID,
-			Name:      token.Name,
-			CreatedAt: timestamppb.New(token.CreatedAt),
-			ExpiresAt: timestamppb.New(token.ExpiresAt),
-		},
-		Token: str,
-	}
-
-	if token.DeletedAt.Valid {
-		resp.ServiceToken.DeletedAt = timestamppb.New(token.DeletedAt.Time)
-	}
-
-	return resp, nil
+	return &configurationv1.CreateServiceTokenResponse{
+		ServiceToken: s.mapper.MapServiceToken(ctx, token),
+		Token:        str,
+	}, nil
 }
 
 func (s *ServiceTokenService) GetServiceTokens(
@@ -102,18 +93,7 @@ func (s *ServiceTokenService) GetServiceTokens(
 	}
 
 	for _, token := range tokens {
-		pbToken := &gomoneypbv1.ServiceToken{
-			Id:        token.ID,
-			Name:      token.Name,
-			CreatedAt: timestamppb.New(token.CreatedAt),
-			ExpiresAt: timestamppb.New(token.ExpiresAt),
-		}
-
-		if token.DeletedAt.Valid {
-			pbToken.DeletedAt = timestamppb.New(token.DeletedAt.Time)
-		}
-
-		resp.ServiceTokens = append(resp.ServiceTokens, pbToken)
+		resp.ServiceTokens = append(resp.ServiceTokens, s.mapper.MapServiceToken(ctx, token))
 	}
 
 	return resp, nil

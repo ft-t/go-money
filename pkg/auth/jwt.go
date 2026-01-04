@@ -38,7 +38,7 @@ func NewService(
 	return &Service{
 		privateKey: privateKey,
 		ttl:        ttl,
-		cache:      expirable.NewLRU[string, bool](1000, nil, time.Minute*5),
+		cache:      expirable.NewLRU[string, error](1000, nil, time.Minute*5),
 	}, nil
 }
 
@@ -61,8 +61,12 @@ func (j *Service) ValidateToken(
 		return nil, errors.Wrap(err, "failed to validate token claims")
 	}
 
-	if cachedResult, ok := j.cache.Get(claims.ID); ok {
-		return nil, cachedResult
+	if cachedError, ok := j.cache.Get(claims.ID); ok {
+		if cachedError != nil {
+			return nil, cachedError
+		}
+
+		return claims, nil
 	}
 
 	if claims.TokenType == ServiceTokenType {
@@ -84,7 +88,7 @@ func (j *Service) ValidateToken(
 	}
 
 	j.cache.Add(claims.ID, err)
-	
+
 	return claims, err
 }
 
