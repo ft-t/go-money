@@ -8,6 +8,7 @@ import (
 
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/cockroachdb/errors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -135,6 +136,33 @@ func TestServiceTokenService_CreateServiceToken_Failure(t *testing.T) {
 		assert.ErrorContains(t, err, "record not found")
 		assert.Nil(t, resp)
 	})
+
+	t.Run("jwt generation error", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		ctrl := gomock.NewController(t)
+		mockJwtSvc := NewMockJwtSvc(ctrl)
+		mockMapper := NewMockServiceTokenMapper(ctrl)
+
+		user := &database.User{Login: "testuser", Password: "hash"}
+		assert.NoError(t, gormDB.Create(user).Error)
+
+		mockJwtSvc.EXPECT().CreateServiceToken(gomock.Any(), gomock.Any()).
+			Return(nil, "", errors.New("jwt generation failed"))
+
+		svc := auth.NewServiceTokenService(mockJwtSvc, mockMapper)
+
+		resp, err := svc.CreateServiceToken(context.TODO(), &auth.CreateServiceTokenRequest{
+			Req: &configurationv1.CreateServiceTokenRequest{
+				Name:      "Test Token",
+				ExpiresAt: timestamppb.New(time.Now().Add(time.Hour)),
+			},
+			CurrentUserID: user.ID,
+		})
+
+		assert.ErrorContains(t, err, "failed to generate service token")
+		assert.Nil(t, resp)
+	})
 }
 
 func TestServiceTokenService_GetServiceTokens_Success(t *testing.T) {
@@ -252,6 +280,34 @@ func TestServiceTokenService_RevokeServiceToken_Failure(t *testing.T) {
 		})
 
 		assert.ErrorContains(t, err, "failed to find service token")
+		assert.Nil(t, resp)
+	})
+
+	t.Run("jwt revoke error", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		ctrl := gomock.NewController(t)
+		mockJwtSvc := NewMockJwtSvc(ctrl)
+		mockMapper := NewMockServiceTokenMapper(ctrl)
+
+		token := &database.ServiceToken{
+			ID:        "token-revoke-error",
+			Name:      "Token",
+			ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
+			CreatedAt: time.Now().UTC(),
+		}
+		assert.NoError(t, gormDB.Create(token).Error)
+
+		mockJwtSvc.EXPECT().RevokeServiceToken(gomock.Any(), "token-revoke-error", gomock.Any()).
+			Return(errors.New("jwt revoke failed"))
+
+		svc := auth.NewServiceTokenService(mockJwtSvc, mockMapper)
+
+		resp, err := svc.RevokeServiceToken(context.TODO(), &configurationv1.RevokeServiceTokenRequest{
+			Id: "token-revoke-error",
+		})
+
+		assert.ErrorContains(t, err, "failed to revoke jwt token")
 		assert.Nil(t, resp)
 	})
 }
