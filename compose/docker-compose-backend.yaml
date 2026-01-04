@@ -29,7 +29,7 @@ services:
     networks:
       - go-money
     volumes:
-      - ./db_data:/var/lib/postgresql/data:rw
+      - ./db_data:/var/lib/postgresql:rw
  
 volumes:
   grafana_data:

@@ -1,8 +1,9 @@
 package middlewares
 
 import (
-	"connectrpc.com/connect"
 	"context"
+
+	"connectrpc.com/connect"
 	"github.com/ft-t/go-money/pkg/auth"
 )
 

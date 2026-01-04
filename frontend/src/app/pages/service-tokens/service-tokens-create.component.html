@@ -1,0 +1,26 @@
+<p-fluid *ngIf="form">
+    <form (ngSubmit)="submit()">
+        <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-2">
+                <label for="name">Token Name</label>
+                <input type="text" pInputText id="name" [formControl]="name" placeholder="e.g. CI/CD Pipeline" />
+                <small class="text-red-500" *ngIf="name.touched && name.errors?.['required']">
+                    Name is required
+                </small>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label for="expiresAt">Expiration Date</label>
+                <p-datepicker id="expiresAt" [formControl]="expiresAt" [showTime]="true" [minDate]="minDate" dateFormat="yy-mm-dd" appendTo="body" />
+                <small class="text-red-500" *ngIf="expiresAt.touched && expiresAt.errors?.['required']">
+                    Expiration date is required
+                </small>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-4">
+                <p-button label="Cancel" severity="secondary" (onClick)="cancel()" [disabled]="submitting" />
+                <p-button label="Create" type="submit" [loading]="submitting" />
+            </div>
+        </div>
+    </form>
+</p-fluid>

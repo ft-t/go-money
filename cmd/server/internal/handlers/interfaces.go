@@ -14,6 +14,7 @@ import (
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/shopspring/decimal"
@@ -238,4 +239,21 @@ type AnalyticsSvc interface {
 		ctx context.Context,
 		req *analyticsv1.GetDebitsAndCreditsSummaryRequest,
 	) (*analyticsv1.GetDebitsAndCreditsSummaryResponse, error)
+}
+
+type ServiceTokenSvc interface {
+	CreateServiceToken(
+		ctx context.Context,
+		req *auth.CreateServiceTokenRequest,
+	) (*configurationv1.CreateServiceTokenResponse, error)
+
+	GetServiceTokens(
+		ctx context.Context,
+		req *configurationv1.GetServiceTokensRequest,
+	) (*configurationv1.GetServiceTokensResponse, error)
+
+	RevokeServiceToken(
+		ctx context.Context,
+		req *configurationv1.RevokeServiceTokenRequest,
+	) (*configurationv1.RevokeServiceTokenResponse, error)
 }

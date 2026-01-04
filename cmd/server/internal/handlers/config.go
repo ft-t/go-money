@@ -13,15 +13,18 @@ import (
 )
 
 type ConfigApi struct {
-	configSvc ConfigSvc
+	configSvc       ConfigSvc
+	serviceTokenSvc ServiceTokenSvc
 }
 
 func NewConfigApi(
 	mux *boilerplate.DefaultGrpcServer,
 	userSvc ConfigSvc,
+	serviceTokenSvc ServiceTokenSvc,
 ) (*ConfigApi, error) {
 	res := &ConfigApi{
-		configSvc: userSvc,
+		configSvc:       userSvc,
+		serviceTokenSvc: serviceTokenSvc,
 	}
 
 	mux.GetMux().Handle(
@@ -70,6 +73,60 @@ func (a *ConfigApi) SetConfigByKey(
 	}
 
 	res, err := a.configSvc.SetConfigByKey(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(res), nil
+}
+
+func (a *ConfigApi) GetServiceTokens(
+	ctx context.Context,
+	c *connect.Request[configurationv1.GetServiceTokensRequest],
+) (*connect.Response[configurationv1.GetServiceTokensResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	res, err := a.serviceTokenSvc.GetServiceTokens(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(res), nil
+}
+
+func (a *ConfigApi) CreateServiceToken(
+	ctx context.Context,
+	c *connect.Request[configurationv1.CreateServiceTokenRequest],
+) (*connect.Response[configurationv1.CreateServiceTokenResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	res, err := a.serviceTokenSvc.CreateServiceToken(ctx, &auth.CreateServiceTokenRequest{
+		Req:           c.Msg,
+		CurrentUserID: jwtData.UserID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(res), nil
+}
+
+func (a *ConfigApi) RevokeServiceToken(
+	ctx context.Context,
+	c *connect.Request[configurationv1.RevokeServiceTokenRequest],
+) (*connect.Response[configurationv1.RevokeServiceTokenResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	res, err := a.serviceTokenSvc.RevokeServiceToken(ctx, c.Msg)
 	if err != nil {
 		return nil, err
 	}

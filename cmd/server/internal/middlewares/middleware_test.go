@@ -1,26 +1,30 @@
 package middlewares_test
 
 import (
-	"connectrpc.com/connect"
 	"context"
+	"testing"
+
+	"connectrpc.com/connect"
 	"github.com/cockroachdb/errors"
-	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
-	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"testing"
+
+	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
+	"github.com/ft-t/go-money/pkg/auth"
 )
 
-func TestGrpcMiddleware(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+func TestGrpcMiddleware_Success(t *testing.T) {
+	t.Run("valid token", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
 		ctx := context.TODO()
 
-		parser := NewMockJwtValidator(gomock.NewController(t))
+		parser := NewMockJwtValidator(ctrl)
 		req := connect.NewRequest[any](nil)
 		req.Header().Set("Authorization", "Bearer valid_token")
 
 		jwtData := auth.JwtClaims{
-			UserID: 123,
+			UserID:    123,
+			TokenType: "web",
 		}
 
 		parser.EXPECT().ValidateToken(gomock.Any(), "valid_token").Return(&jwtData, nil)
@@ -38,15 +42,18 @@ func TestGrpcMiddleware(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
 	})
+}
 
+func TestGrpcMiddleware_Failure(t *testing.T) {
 	t.Run("invalid token", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
 		ctx := context.TODO()
 
-		parser := NewMockJwtValidator(gomock.NewController(t))
+		parser := NewMockJwtValidator(ctrl)
 		req := connect.NewRequest[any](nil)
-		req.Header().Set("Authorization", "Bearer valid_token")
+		req.Header().Set("Authorization", "Bearer invalid_token")
 
-		parser.EXPECT().ValidateToken(gomock.Any(), "valid_token").Return(nil, errors.New("invalid token"))
+		parser.EXPECT().ValidateToken(gomock.Any(), "invalid_token").Return(nil, errors.New("invalid token"))
 
 		called := false
 		response, err := middlewares.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
@@ -65,22 +72,23 @@ func TestGrpcMiddleware(t *testing.T) {
 			t.Fatalf("expected connect.Error, got %T", err)
 		}
 	})
+}
 
-	t.Run("no token", func(t *testing.T) {
-		ctx := context.TODO()
+func TestGrpcMiddleware_NoToken(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ctx := context.TODO()
 
-		called := false
+	called := false
 
-		parser := NewMockJwtValidator(gomock.NewController(t))
-		response, err := middlewares.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
-			jwtData := middlewares.FromContext(ctx)
-			assert.EqualValues(t, 0, jwtData.UserID)
-			called = true
-			return &connect.Response[any]{}, nil
-		})(ctx, &connect.Request[any]{})
+	parser := NewMockJwtValidator(ctrl)
+	response, err := middlewares.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+		jwtData := middlewares.FromContext(ctx)
+		assert.EqualValues(t, 0, jwtData.UserID)
+		called = true
+		return &connect.Response[any]{}, nil
+	})(ctx, &connect.Request[any]{})
 
-		assert.True(t, called)
-		assert.NoError(t, err)
-		assert.NotNil(t, response)
-	})
+	assert.True(t, called)
+	assert.NoError(t, err)
+	assert.NotNil(t, response)
 }

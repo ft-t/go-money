@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+
 	"github.com/ft-t/go-money/pkg/auth"
 )
 
