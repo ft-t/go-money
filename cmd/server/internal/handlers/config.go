@@ -76,3 +76,18 @@ func (a *ConfigApi) SetConfigByKey(
 
 	return connect.NewResponse(res), nil
 }
+
+func (a *ConfigApi) GetServiceTokens(ctx context.Context, c *connect.Request[configurationv1.GetServiceTokensRequest]) (*connect.Response[configurationv1.GetServiceTokensResponse], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *ConfigApi) CreateServiceToken(ctx context.Context, c *connect.Request[configurationv1.CreateServiceTokenRequest]) (*connect.Response[configurationv1.CreateServiceTokenResponse], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *ConfigApi) RevokeServiceToken(ctx context.Context, c *connect.Request[configurationv1.RevokeServiceTokenRequest]) (*connect.Response[configurationv1.RevokeServiceTokenResponse], error) {
+	//TODO implement me
+	panic("implement me")
+}

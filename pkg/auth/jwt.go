@@ -5,11 +5,12 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"time"
+
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	jwt2 "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"time"
 )
 
 type Service struct {
@@ -77,19 +78,60 @@ func (j *Service) GenerateToken(
 	_ context.Context,
 	user *database.User,
 ) (string, error) {
+	_, token, err := j.generateTokenInternal(&GenerateTokenRequest{
+		TTL:       j.ttl,
+		TokenType: "web",
+		User:      user,
+	})
+
+	return token, err
+}
+
+func (j *Service) GenerateServiceToken(
+	_ context.Context,
+	req *GenerateTokenRequest,
+) (string, error) {
+	if req.User == nil {
+		return "", errors.New("user is required to generate service token")
+	}
+
+	req.TokenType = ServiceTokenType
+	if req.TTL == 0 {
+		return "", errors.New("ttl is required to generate service token")
+	}
+
+	claims, token, err := j.generateTokenInternal(req)
+	if err != nil {
+		return "", err
+	}
+
+	db := database.GetDbWithContext(context.Background(), database.DbTypeMaster)
+
+	if err = db.Create(&database.JtiRevocation{
+		ID:        claims.ID,
+		ExpiresAt: claims.ExpiresAt.UTC(),
+	}).Error; err != nil {
+		return "", errors.Wrap(err, "failed to store jti for service token")
+	}
+
+	return token, err
+}
+
+func (j *Service) generateTokenInternal(req *GenerateTokenRequest) (*JwtClaims, string, error) {
 	claims := &JwtClaims{
 		RegisteredClaims: &jwt2.RegisteredClaims{
 			ExpiresAt: jwt2.NewNumericDate(time.Now().UTC().Add(j.ttl)),
 			ID:        uuid.NewString(),
 		},
-		UserID: user.ID,
+		UserID:    req.User.ID,
+		TokenType: req.TokenType,
 	}
 
 	token := jwt2.NewWithClaims(jwt2.SigningMethodRS256, claims)
 	a, err := token.SignedString(j.privateKey)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
-	return a, nil
+	return claims, a, nil
 }
