@@ -170,6 +170,11 @@ export class AppMenu implements OnInit {
                         routerLink: ['/currencies']
                     },
                     {
+                        label: 'Service Tokens',
+                        icon: 'pi pi-fw pi-key',
+                        routerLink: ['/service-tokens']
+                    },
+                    {
                         label: 'Maintenance & Debug',
                         icon: 'pi pi-fw pi-bolt',
                         routerLink: ['/maintenance']

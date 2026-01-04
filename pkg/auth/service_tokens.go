@@ -79,7 +79,7 @@ func (s *ServiceTokenService) GetServiceTokens(
 
 	var tokens []*database.ServiceToken
 
-	query := db.Model(&database.ServiceToken{})
+	query := db.Unscoped().Model(&database.ServiceToken{}).Order("created_at desc")
 	if len(req.Ids) > 0 {
 		query = query.Where("id IN ?", req.Ids)
 	}
