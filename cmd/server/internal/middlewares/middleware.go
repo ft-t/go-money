@@ -4,13 +4,10 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/auth"
 )
 
-var ErrTokenRevoked = errors.New("token has been revoked")
-
-var GrpcMiddleware = func(jwtParser JwtValidator, serviceTokenValidator ServiceTokenValidator) connect.UnaryInterceptorFunc {
+var GrpcMiddleware = func(jwtParser JwtValidator) connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
 			jwt := request.Header().Get("authorization")

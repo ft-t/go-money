@@ -79,7 +79,7 @@ func main() {
 	)
 
 	grpcServer := boilerplate.NewDefaultGrpcServerBuild(http.NewServeMux()).
-		AddServerMiddleware(middlewares.GrpcMiddleware(jwtService, serviceTokenSvc)).Build()
+		AddServerMiddleware(middlewares.GrpcMiddleware(jwtService)).Build()
 
 	if config.StaticFilesDirectory != "" {
 		logger.Info().Str("dir", config.StaticFilesDirectory).Msg("serving static files from directory")

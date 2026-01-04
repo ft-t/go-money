@@ -14,7 +14,3 @@ type JwtValidator interface {
 		tokenString string,
 	) (*auth.JwtClaims, error)
 }
-
-type ServiceTokenValidator interface {
-	IsRevoked(ctx context.Context, tokenID string) (bool, error)
-}
