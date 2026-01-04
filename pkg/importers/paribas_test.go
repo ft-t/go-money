@@ -954,6 +954,110 @@ func TestParibasParse_ParseMessagesError(t *testing.T) {
 	require.NotNil(t, resp)
 }
 
+func TestCanMatchAsInternalTransfer_Success(t *testing.T) {
+	testCases := []struct {
+		name string
+		f    *importers.Transaction
+		tx   *importers.Transaction
+	}{
+		{
+			name: "income and remote transfer match",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "remote transfer and income match",
+			f:    &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "empty source accounts allowed",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "empty destination accounts allowed",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: ""},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "both source accounts empty",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "", DestinationAccount: "B"},
+		},
+		{
+			name: "both destination accounts empty",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: ""},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "A", DestinationAccount: ""},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := importers.NewParibas(importers.NewBaseParser(nil, nil, nil))
+			result := srv.CanMatchAsInternalTransfer(tc.f, tc.tx)
+			assert.True(t, result)
+		})
+	}
+}
+
+func TestCanMatchAsInternalTransfer_Failure(t *testing.T) {
+	testCases := []struct {
+		name string
+		f    *importers.Transaction
+		tx   *importers.Transaction
+	}{
+		{
+			name: "both income type",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "both remote transfer type",
+			f:    &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "both expense type",
+			f:    &importers.Transaction{Type: importers.TransactionTypeExpense, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeExpense, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "expense and income",
+			f:    &importers.Transaction{Type: importers.TransactionTypeExpense, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "internal transfer types",
+			f:    &importers.Transaction{Type: importers.TransactionTypeInternalTransfer, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+		},
+		{
+			name: "different source accounts",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "C", DestinationAccount: "B"},
+		},
+		{
+			name: "different destination accounts",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "A", DestinationAccount: "D"},
+		},
+		{
+			name: "different source and destination accounts",
+			f:    &importers.Transaction{Type: importers.TransactionTypeIncome, SourceAccount: "A", DestinationAccount: "B"},
+			tx:   &importers.Transaction{Type: importers.TransactionTypeRemoteTransfer, SourceAccount: "C", DestinationAccount: "D"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := importers.NewParibas(importers.NewBaseParser(nil, nil, nil))
+			result := srv.CanMatchAsInternalTransfer(tc.f, tc.tx)
+			assert.False(t, result)
+		})
+	}
+}
+
 func TestParibasParse_GetAccountMapError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

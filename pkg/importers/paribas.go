@@ -343,6 +343,24 @@ func (p *Paribas) parseRow(
 	return tx
 }
 
+func (p *Paribas) CanMatchAsInternalTransfer(f, tx *Transaction) bool {
+	isValidPair := (f.Type == TransactionTypeIncome && tx.Type == TransactionTypeRemoteTransfer) ||
+		(f.Type == TransactionTypeRemoteTransfer && tx.Type == TransactionTypeIncome)
+	if !isValidPair {
+		return false
+	}
+
+	if f.SourceAccount != "" && tx.SourceAccount != "" && f.SourceAccount != tx.SourceAccount {
+		return false
+	}
+
+	if f.DestinationAccount != "" && tx.DestinationAccount != "" && f.DestinationAccount != tx.DestinationAccount {
+		return false
+	}
+
+	return true
+}
+
 func (p *Paribas) merge(
 	_ context.Context,
 	transactions []*Transaction,
@@ -395,6 +413,10 @@ func (p *Paribas) merge(
 			}
 
 			if len(f.DuplicateTransactions) > 0 {
+				continue
+			}
+
+			if !isCreditPaymentTx && !p.CanMatchAsInternalTransfer(f, tx) {
 				continue
 			}
 
