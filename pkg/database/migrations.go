@@ -447,5 +447,18 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 				)
 			},
 		},
+		{
+			ID: "2026-01-11-AddSystemConfigurations",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`CREATE TABLE IF NOT EXISTS system_configurations (
+						id         TEXT PRIMARY KEY,
+						value      TEXT NOT NULL,
+						created_at TIMESTAMP NOT NULL,
+						updated_at TIMESTAMP NOT NULL
+					);`,
+				)
+			},
+		},
 	}
 }

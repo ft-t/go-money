@@ -12,6 +12,12 @@ type Configuration struct {
 	StaticFilesDirectory string               `env:"STATIC_FILES_DIRECTORY"`
 	CurrencyConfig       CurrencyConfig       `env:", prefix=CURRENCY_CONFIG_"`
 	GrafanaConfig        GrafanaConfig        `env:", prefix=GRAFANA_CONFIG_"`
+	MCP                  MCPConfig            `env:", prefix=MCP_"`
+}
+
+type MCPConfig struct {
+	Disable bool   `env:"DISABLE, default=false"`
+	DocsDir string `env:"DOCS_DIR, default=./mcp"`
 }
 
 type CurrencyConfig struct {

@@ -14,5 +14,12 @@ RUN go build -ldflags "-s -w \
 
 FROM alpine:latest as done
 COPY --from=builder /src/dist /opt/app
+
+COPY --from=builder /src/docs/analytics/ /opt/app/mcp/analytics/
+COPY --from=builder /src/docs/mcp/       /opt/app/mcp/mcp/
+COPY --from=builder /src/docs/schema/    /opt/app/mcp/schema/
+
+COPY --from=builder /src/docs/INDEX.md /opt/app/mcp
+
 WORKDIR /opt/app
 ENTRYPOINT ["./app"]

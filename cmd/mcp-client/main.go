@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/mark3labs/mcp-go/util"
 )
 
 func main() {
@@ -39,6 +39,7 @@ func main() {
 		transport.WithHTTPHeaders(map[string]string{
 			"Authorization": "Bearer " + *token,
 		}),
+		transport.WithHTTPLogger(util.DefaultLogger()),
 	)
 	if err != nil {
 		log.Fatalf("failed to create transport: %v", err)
@@ -51,7 +52,7 @@ func main() {
 	}
 	defer func() { _ = mcpClient.Close() }()
 
-	initResult, err := mcpClient.Initialize(ctx, mcp.InitializeRequest{
+	_, err = mcpClient.Initialize(ctx, mcp.InitializeRequest{
 		Params: mcp.InitializeParams{
 			ClientInfo: mcp.Implementation{
 				Name:    "go-money-mcp-client",
@@ -73,6 +74,7 @@ func main() {
 		"go-money-mcp-client",
 		"1.0.0",
 		server.WithToolCapabilities(true),
+		server.WithResourceCapabilities(true, true),
 	)
 
 	for _, tool := range tools.Tools {
@@ -91,9 +93,25 @@ func main() {
 		})
 	}
 
-	fmt.Fprintf(os.Stderr, "Connected to %s (server: %s %s)\n",
-		*serverURL, initResult.ServerInfo.Name, initResult.ServerInfo.Version)
-	fmt.Fprintf(os.Stderr, "Available tools: %d\n", len(tools.Tools))
+	resources, err := mcpClient.ListResources(ctx, mcp.ListResourcesRequest{})
+	if err != nil {
+		log.Fatalf("failed to list resources: %v", err)
+	}
+
+	for _, resource := range resources.Resources {
+		r := resource
+		stdioServer.AddResource(r, func(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+			result, readErr := mcpClient.ReadResource(ctx, mcp.ReadResourceRequest{
+				Params: mcp.ReadResourceParams{
+					URI: req.Params.URI,
+				},
+			})
+			if readErr != nil {
+				return nil, readErr
+			}
+			return result.Contents, nil
+		})
+	}
 
 	if err = server.ServeStdio(stdioServer); err != nil {
 		log.Fatalf("stdio server error: %v", err)

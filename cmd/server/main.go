@@ -104,20 +104,24 @@ func main() {
 		grpcServer.GetMux().Handle("/", handlers.SpaHandler(config.StaticFilesDirectory))
 	}
 
-	mcpServer := gomoneyMcp.NewServer(&gomoneyMcp.ServerConfig{
-		DB: database.GetDb(database.DbTypeReadonly),
-	})
-	grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
-	grpcServer.GetMux().HandleFunc("/mcp-doc", func(writer http.ResponseWriter, request *http.Request) {
-		data, dataErr := gomoneyMcp.GetContext()
-		if dataErr != nil {
-			http.Error(writer, "failed to load documentation", http.StatusInternalServerError)
-			return
+	if !config.MCP.Disable {
+		logger.Info().Str("path", config.MCP.DocsDir).Msg("Reading mcp docs")
+		mcpDocs, mcpErr := gomoneyMcp.ReadDocsFromPath(config.MCP.DocsDir)
+		if err != nil {
+			logger.Fatal().Err(mcpErr).Msg("failed to read mcp docs")
 		}
 
-		writer.Header().Set("Content-Type", "text/markdown")
-		_, _ = writer.Write([]byte(data))
-	})
+		if mcpDocs == "" {
+			logger.Fatal().Msg("mcp docs are empty")
+		}
+
+		mcpServer := gomoneyMcp.NewServer(&gomoneyMcp.ServerConfig{
+			DB:   database.GetDb(database.DbTypeReadonly),
+			Docs: mcpDocs,
+		})
+
+		grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
+	}
 
 	logger.Info().Msg("MCP server enabled at /mcp")
 

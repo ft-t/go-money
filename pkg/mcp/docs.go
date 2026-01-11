@@ -1,18 +1,16 @@
 package mcp
 
 import (
-	"embed"
 	"io/fs"
+	"os"
 	"strings"
 )
 
-//go:embed docs/*
-var docsFS embed.FS
-
-func GetContext() (string, error) {
+func ReadDocsFromPath(path string) (string, error) {
 	var sb strings.Builder
 
-	err := fs.WalkDir(docsFS, "docs", func(path string, d fs.DirEntry, err error) error {
+	docFs := os.DirFS(path)
+	err := fs.WalkDir(docFs, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -25,7 +23,7 @@ func GetContext() (string, error) {
 			return nil
 		}
 
-		content, readErr := docsFS.ReadFile(path)
+		content, readErr := fs.ReadFile(docFs, path)
 		if readErr != nil {
 			return readErr
 		}
