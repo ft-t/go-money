@@ -107,7 +107,7 @@ func main() {
 	if !config.MCP.Disable {
 		logger.Info().Str("path", config.MCP.DocsDir).Msg("Reading mcp docs")
 		mcpDocs, mcpErr := gomoneyMcp.ReadDocsFromPath(config.MCP.DocsDir)
-		if err != nil {
+		if mcpErr != nil {
 			logger.Fatal().Err(mcpErr).Msg("failed to read mcp docs")
 		}
 
@@ -121,9 +121,8 @@ func main() {
 		})
 
 		grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
+		logger.Info().Msg("MCP server enabled at /mcp")
 	}
-
-	logger.Info().Msg("MCP server enabled at /mcp")
 
 	userService := users.NewService(&users.ServiceConfig{
 		JwtSvc: jwtService,

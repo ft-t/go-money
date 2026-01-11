@@ -65,7 +65,7 @@ func (s *Server) handleQuery(ctx context.Context, request mcp.CallToolRequest) (
 		}
 
 		if scanErr := rows.Scan(valuePtrs...); scanErr != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("scan error: %v", scanErr)), nil
+			return mcp.NewToolResultError("error processing query results"), nil
 		}
 
 		row := make(map[string]any)

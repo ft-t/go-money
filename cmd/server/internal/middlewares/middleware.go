@@ -63,7 +63,7 @@ func HTTPAuthMiddleware(jwtParser JwtValidator, next http.Handler) http.Handler 
 
 		claims, err := jwtParser.ValidateToken(r.Context(), token)
 		if err != nil {
-			http.Error(w, "invalid token: "+err.Error(), http.StatusUnauthorized)
+			http.Error(w, "invalid token", http.StatusUnauthorized)
 			return
 		}
 
