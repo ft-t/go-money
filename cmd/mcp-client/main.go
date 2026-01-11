@@ -12,7 +12,6 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/mark3labs/mcp-go/util"
 )
 
 func main() {
@@ -39,7 +38,6 @@ func main() {
 		transport.WithHTTPHeaders(map[string]string{
 			"Authorization": "Bearer " + *token,
 		}),
-		transport.WithHTTPLogger(util.DefaultLogger()),
 	)
 	if err != nil {
 		log.Fatalf("failed to create transport: %v", err)
