@@ -1,18 +1,31 @@
-FROM golang:1.25-alpine as builder
-RUN apk update && apk add openssh-client git
+FROM golang:1.25-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
 
 ARG SOURCE_PATH=""
 ARG VERSION=""
 ARG COMMIT_SHA=""
 
-ADD . /src
-WORKDIR /src/$SOURCE_PATH
+WORKDIR /src/${SOURCE_PATH}
 RUN go build -ldflags "-s -w \
     -X github.com/ft-t/go-money/pkg/boilerplate.version=${VERSION} \
     -X github.com/ft-t/go-money/pkg/boilerplate.commitSHA=${COMMIT_SHA}" \
     -o /src/dist/app
 
-FROM alpine:latest as done
-COPY --from=builder /src/dist /opt/app
+FROM alpine:latest
+
+COPY --from=builder /src/dist/app /opt/app/app
+COPY --from=builder /src/docs/analytics/ /opt/app/mcp/analytics/
+COPY --from=builder /src/docs/mcp/       /opt/app/mcp/mcp/
+COPY --from=builder /src/docs/schema/    /opt/app/mcp/schema/
+COPY --from=builder /src/docs/INDEX.md   /opt/app/mcp/
+
 WORKDIR /opt/app
 ENTRYPOINT ["./app"]

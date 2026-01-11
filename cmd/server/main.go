@@ -24,6 +24,7 @@ import (
 	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/ft-t/go-money/pkg/maintenance"
 	"github.com/ft-t/go-money/pkg/mappers"
+	gomoneyMcp "github.com/ft-t/go-money/pkg/mcp"
 	"github.com/ft-t/go-money/pkg/tags"
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
@@ -52,12 +53,29 @@ func main() {
 	}
 
 	if config.JwtPrivateKey == "" {
-		logger.Warn().Msgf("jwt private key is empty. Will create a new temporary key")
+		sysConfigRepo := database.NewSystemConfigRepository(database.GetDb(database.DbTypeMaster))
 
-		keyGen := auth.NewKeyGenerator()
-		newKey := keyGen.Generate()
+		storedKey, err := sysConfigRepo.Get(context.Background(), database.SystemConfigKeyJwtPrivateKey)
+		if err != nil {
+			log.Logger.Fatal().Err(err).Msg("failed to read jwt key from database")
+		}
 
-		config.JwtPrivateKey = string(keyGen.Serialize(newKey))
+		if storedKey != "" {
+			logger.Info().Msg("using jwt private key from database")
+			config.JwtPrivateKey = storedKey
+		} else {
+			logger.Warn().Msg("jwt private key is empty. Generating new key and storing in database")
+
+			keyGen := auth.NewKeyGenerator()
+			newKey := keyGen.Generate()
+			serializedKey := string(keyGen.Serialize(newKey))
+
+			if err = sysConfigRepo.Set(context.Background(), database.SystemConfigKeyJwtPrivateKey, serializedKey); err != nil {
+				log.Logger.Fatal().Err(err).Msg("failed to store jwt key in database")
+			}
+
+			config.JwtPrivateKey = serializedKey
+		}
 	} else {
 		config.JwtPrivateKey = strings.ReplaceAll(config.JwtPrivateKey, "\\n", "\n")
 	}
@@ -84,6 +102,26 @@ func main() {
 	if config.StaticFilesDirectory != "" {
 		logger.Info().Str("dir", config.StaticFilesDirectory).Msg("serving static files from directory")
 		grpcServer.GetMux().Handle("/", handlers.SpaHandler(config.StaticFilesDirectory))
+	}
+
+	if !config.MCP.Disable {
+		logger.Info().Str("path", config.MCP.DocsDir).Msg("Reading mcp docs")
+		mcpDocs, mcpErr := gomoneyMcp.ReadDocsFromPath(config.MCP.DocsDir)
+		if mcpErr != nil {
+			logger.Fatal().Err(mcpErr).Msg("failed to read mcp docs")
+		}
+
+		if mcpDocs == "" {
+			logger.Fatal().Msg("mcp docs are empty")
+		}
+
+		mcpServer := gomoneyMcp.NewServer(&gomoneyMcp.ServerConfig{
+			DB:   database.GetDb(database.DbTypeReadonly),
+			Docs: mcpDocs,
+		})
+
+		grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
+		logger.Info().Msg("MCP server enabled at /mcp")
 	}
 
 	userService := users.NewService(&users.ServiceConfig{
