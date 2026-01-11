@@ -39,3 +39,5 @@ compose/db_data/
 build/.aws-sam/
 
 server
+
+bin/

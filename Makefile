@@ -31,7 +31,6 @@ update-pb:
 test:
 	AUTO_CREATE_CI_DB=true go test ./...
 
-
 .PHONY: build-docker
 build-docker:
 	docker build -f ./build/Dockerfile.server --build-arg="SOURCE_PATH=cmd/server" --build-arg="VERSION=${VERSION}" --build-arg="COMMIT_SHA=${COMMIT_SHA}" -t ${DOCKER_SERVER_IMAGE_NAME} .
@@ -39,3 +38,11 @@ build-docker:
 .PHONY: sam-deploy
 sam-deploy:
 	cd build && sam build && sam deploy --no-confirm-changeset --stack-name go-money-infra --capabilities CAPABILITY_IAM --resolve-s3 --parameter-overrides BucketName=${AWS_EXCHANGE_RATES_BUCKET} ExchangeRatesApiURL=${EXCHANGE_RATE_API_URL} --region ${AWS_DEFAULT_REGION}
+
+.PHONY: mcp-client
+mcp-client:
+	go build -o bin/mcp-client ./cmd/mcp-client
+
+.PHONY: key-gen
+key-gen:
+	go build -o bin/jwt-key-generator ./cmd/key-gen

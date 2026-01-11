@@ -53,12 +53,29 @@ func main() {
 	}
 
 	if config.JwtPrivateKey == "" {
-		logger.Warn().Msgf("jwt private key is empty. Will create a new temporary key")
+		sysConfigRepo := database.NewSystemConfigRepository(database.GetDb(database.DbTypeMaster))
 
-		keyGen := auth.NewKeyGenerator()
-		newKey := keyGen.Generate()
+		storedKey, err := sysConfigRepo.Get(context.Background(), database.SystemConfigKeyJwtPrivateKey)
+		if err != nil {
+			log.Logger.Fatal().Err(err).Msg("failed to read jwt key from database")
+		}
 
-		config.JwtPrivateKey = string(keyGen.Serialize(newKey))
+		if storedKey != "" {
+			logger.Info().Msg("using jwt private key from database")
+			config.JwtPrivateKey = storedKey
+		} else {
+			logger.Warn().Msg("jwt private key is empty. Generating new key and storing in database")
+
+			keyGen := auth.NewKeyGenerator()
+			newKey := keyGen.Generate()
+			serializedKey := string(keyGen.Serialize(newKey))
+
+			if err = sysConfigRepo.Set(context.Background(), database.SystemConfigKeyJwtPrivateKey, serializedKey); err != nil {
+				log.Logger.Fatal().Err(err).Msg("failed to store jwt key in database")
+			}
+
+			config.JwtPrivateKey = serializedKey
+		}
 	} else {
 		config.JwtPrivateKey = strings.ReplaceAll(config.JwtPrivateKey, "\\n", "\n")
 	}
@@ -90,8 +107,19 @@ func main() {
 	mcpServer := gomoneyMcp.NewServer(&gomoneyMcp.ServerConfig{
 		DB: database.GetDb(database.DbTypeReadonly),
 	})
-	grpcServer.GetMux().Handle("/mcp/", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
-	logger.Info().Msg("MCP server enabled at /mcp/")
+	grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
+	grpcServer.GetMux().HandleFunc("/mcp-doc", func(writer http.ResponseWriter, request *http.Request) {
+		data, dataErr := gomoneyMcp.GetContext()
+		if dataErr != nil {
+			http.Error(writer, "failed to load documentation", http.StatusInternalServerError)
+			return
+		}
+
+		writer.Header().Set("Content-Type", "text/markdown")
+		_, _ = writer.Write([]byte(data))
+	})
+
+	logger.Info().Msg("MCP server enabled at /mcp")
 
 	userService := users.NewService(&users.ServiceConfig{
 		JwtSvc: jwtService,
