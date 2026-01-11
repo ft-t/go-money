@@ -13,7 +13,7 @@ import (
 
 const (
 	queryTimeout = 30 * time.Second
-	maxRows      = 1000
+	maxRows      = 999_999
 )
 
 var (
