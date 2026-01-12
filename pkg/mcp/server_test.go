@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/golang/mock/gomock"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,12 +34,16 @@ func TestNewServer_Success(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
 			gormDB, mockDB, _ := testingutils.GormMock()
 			defer func() { _ = mockDB.Close() }()
 
+			catSvc := NewMockCategoryService(ctrl)
+
 			server := gomcp.NewServer(&gomcp.ServerConfig{
-				DB:   gormDB,
-				Docs: c.docs,
+				DB:          gormDB,
+				Docs:        c.docs,
+				CategorySvc: catSvc,
 			})
 
 			assert.NotNil(t, server)
@@ -70,12 +75,16 @@ func TestServer_HandleSchemaResource_Success(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
 			gormDB, mockDB, _ := testingutils.GormMock()
 			defer func() { _ = mockDB.Close() }()
 
+			catSvc := NewMockCategoryService(ctrl)
+
 			server := gomcp.NewServer(&gomcp.ServerConfig{
-				DB:   gormDB,
-				Docs: c.docs,
+				DB:          gormDB,
+				Docs:        c.docs,
+				CategorySvc: catSvc,
 			})
 
 			mcpServer := server.MCPServer()
@@ -122,6 +131,7 @@ func TestServer_HandleQuery_Success(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
 			gormDB, mockDB, mock := testingutils.GormMock()
 			defer func() { _ = mockDB.Close() }()
 
@@ -131,9 +141,12 @@ func TestServer_HandleQuery_Success(t *testing.T) {
 			}
 			mock.ExpectQuery(".*").WillReturnRows(mockRows)
 
+			catSvc := NewMockCategoryService(ctrl)
+
 			server := gomcp.NewServer(&gomcp.ServerConfig{
-				DB:   gormDB,
-				Docs: "test docs",
+				DB:          gormDB,
+				Docs:        "test docs",
+				CategorySvc: catSvc,
 			})
 
 			mcpServer := server.MCPServer()
@@ -203,12 +216,16 @@ func TestServer_HandleQuery_Failure(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
 			gormDB, mockDB, _ := testingutils.GormMock()
 			defer func() { _ = mockDB.Close() }()
 
+			catSvc := NewMockCategoryService(ctrl)
+
 			server := gomcp.NewServer(&gomcp.ServerConfig{
-				DB:   gormDB,
-				Docs: "test docs",
+				DB:          gormDB,
+				Docs:        "test docs",
+				CategorySvc: catSvc,
 			})
 
 			mcpServer := server.MCPServer()

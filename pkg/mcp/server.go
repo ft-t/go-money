@@ -18,8 +18,9 @@ type Server struct {
 }
 
 type ServerConfig struct {
-	DB   *gorm.DB
-	Docs string
+	DB          *gorm.DB
+	Docs        string
+	CategorySvc CategoryService
 }
 
 func NewServer(cfg *ServerConfig) *Server {
@@ -55,8 +56,49 @@ func (s *Server) registerTools() {
 			mcp.Required(),
 		),
 	)
-
 	s.mcpServer.AddTool(queryTool, s.handleQuery)
+
+	setTransactionCategoryTool := mcp.NewTool(
+		"set_transaction_category",
+		mcp.WithDescription("Set or clear the category of a transaction"),
+		mcp.WithNumber(
+			"transaction_id",
+			mcp.Description("The ID of the transaction to update"),
+			mcp.Required(),
+		),
+		mcp.WithNumber(
+			"category_id",
+			mcp.Description("The category ID to set (omit or null to clear category)"),
+		),
+	)
+	s.mcpServer.AddTool(setTransactionCategoryTool, s.handleSetTransactionCategory)
+
+	createCategoryTool := mcp.NewTool(
+		"create_category",
+		mcp.WithDescription("Create a new category"),
+		mcp.WithString(
+			"name",
+			mcp.Description("The name of the category"),
+			mcp.Required(),
+		),
+	)
+	s.mcpServer.AddTool(createCategoryTool, s.handleCreateCategory)
+
+	updateCategoryTool := mcp.NewTool(
+		"update_category",
+		mcp.WithDescription("Update an existing category"),
+		mcp.WithNumber(
+			"id",
+			mcp.Description("The ID of the category to update"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"name",
+			mcp.Description("The new name for the category"),
+			mcp.Required(),
+		),
+	)
+	s.mcpServer.AddTool(updateCategoryTool, s.handleUpdateCategory)
 }
 
 func (s *Server) registerResources() {
