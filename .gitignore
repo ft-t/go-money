@@ -41,3 +41,5 @@ build/.aws-sam/
 server
 
 bin/
+
+mcp-client

@@ -104,26 +104,6 @@ func main() {
 		grpcServer.GetMux().Handle("/", handlers.SpaHandler(config.StaticFilesDirectory))
 	}
 
-	if !config.MCP.Disable {
-		logger.Info().Str("path", config.MCP.DocsDir).Msg("Reading mcp docs")
-		mcpDocs, mcpErr := gomoneyMcp.ReadDocsFromPath(config.MCP.DocsDir)
-		if mcpErr != nil {
-			logger.Fatal().Err(mcpErr).Msg("failed to read mcp docs")
-		}
-
-		if mcpDocs == "" {
-			logger.Fatal().Msg("mcp docs are empty")
-		}
-
-		mcpServer := gomoneyMcp.NewServer(&gomoneyMcp.ServerConfig{
-			DB:   database.GetDb(database.DbTypeReadonly),
-			Docs: mcpDocs,
-		})
-
-		grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
-		logger.Info().Msg("MCP server enabled at /mcp")
-	}
-
 	userService := users.NewService(&users.ServiceConfig{
 		JwtSvc: jwtService,
 	})
@@ -224,6 +204,29 @@ func main() {
 		ValidationSvc:  validationSvc,
 		AccountSvc:     accountSvc,
 	})
+
+	if !config.MCP.Disable {
+		logger.Info().Str("path", config.MCP.DocsDir).Msg("Reading mcp docs")
+		mcpDocs, mcpErr := gomoneyMcp.ReadDocsFromPath(config.MCP.DocsDir)
+		if mcpErr != nil {
+			logger.Fatal().Err(mcpErr).Msg("failed to read mcp docs")
+		}
+
+		if mcpDocs == "" {
+			logger.Fatal().Msg("mcp docs are empty")
+		}
+
+		mcpServer := gomoneyMcp.NewServer(&gomoneyMcp.ServerConfig{
+			DB:          database.GetDb(database.DbTypeMaster),
+			Docs:        mcpDocs,
+			CategorySvc: categoriesSvc,
+			RulesSvc:    rulesSvc,
+			DryRunSvc:   dryRunSvc,
+		})
+
+		grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
+		logger.Info().Msg("MCP server enabled at /mcp")
+	}
 
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc, applicableAccountSvc, mapper)
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
