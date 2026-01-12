@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/mark3labs/mcp-go/client"
@@ -14,9 +15,23 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+type headerFlags []string
+
+func (h *headerFlags) String() string {
+	return strings.Join(*h, ", ")
+}
+
+func (h *headerFlags) Set(value string) error {
+	*h = append(*h, value)
+	return nil
+}
+
 func main() {
+	var headers headerFlags
+
 	serverURL := flag.String("server", "http://localhost:8080/mcp/", "Go Money MCP server URL")
 	token := flag.String("token", "", "Service token for authentication (required)")
+	flag.Var(&headers, "header", "Additional HTTP header in 'Key: Value' format (can be specified multiple times)")
 	flag.Parse()
 
 	if *token == "" {
@@ -33,11 +48,21 @@ func main() {
 		cancel()
 	}()
 
+	httpHeaders := map[string]string{
+		"Authorization": "Bearer " + *token,
+	}
+
+	for _, h := range headers {
+		parts := strings.SplitN(h, ":", 2)
+		if len(parts) != 2 {
+			log.Fatalf("invalid header format %q, expected 'Key: Value'", h)
+		}
+		httpHeaders[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+
 	httpTransport, err := transport.NewStreamableHTTP(
 		*serverURL,
-		transport.WithHTTPHeaders(map[string]string{
-			"Authorization": "Bearer " + *token,
-		}),
+		transport.WithHTTPHeaders(httpHeaders),
 	)
 	if err != nil {
 		log.Fatalf("failed to create transport: %v", err)
