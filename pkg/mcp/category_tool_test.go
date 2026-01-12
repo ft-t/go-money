@@ -57,10 +57,15 @@ func TestServer_HandleCreateCategory_Success(t *testing.T) {
 					}, nil
 				})
 
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
+
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()
@@ -123,10 +128,15 @@ func TestServer_HandleCreateCategory_Failure(t *testing.T) {
 			catSvc := NewMockCategoryService(ctrl)
 			c.setupMock(catSvc)
 
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
+
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()
@@ -184,10 +194,15 @@ func TestServer_HandleUpdateCategory_Success(t *testing.T) {
 					}, nil
 				})
 
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
+
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()
@@ -250,10 +265,15 @@ func TestServer_HandleUpdateCategory_Failure(t *testing.T) {
 			catSvc := NewMockCategoryService(ctrl)
 			c.setupMock(catSvc)
 
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
+
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()

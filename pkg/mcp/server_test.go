@@ -39,11 +39,15 @@ func TestNewServer_Success(t *testing.T) {
 			defer func() { _ = mockDB.Close() }()
 
 			catSvc := NewMockCategoryService(ctrl)
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
 
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        c.docs,
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			assert.NotNil(t, server)
@@ -80,11 +84,15 @@ func TestServer_HandleSchemaResource_Success(t *testing.T) {
 			defer func() { _ = mockDB.Close() }()
 
 			catSvc := NewMockCategoryService(ctrl)
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
 
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        c.docs,
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()
@@ -142,11 +150,15 @@ func TestServer_HandleQuery_Success(t *testing.T) {
 			mock.ExpectQuery(".*").WillReturnRows(mockRows)
 
 			catSvc := NewMockCategoryService(ctrl)
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
 
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()
@@ -221,11 +233,15 @@ func TestServer_HandleQuery_Failure(t *testing.T) {
 			defer func() { _ = mockDB.Close() }()
 
 			catSvc := NewMockCategoryService(ctrl)
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
 
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()

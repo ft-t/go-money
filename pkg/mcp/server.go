@@ -21,6 +21,8 @@ type ServerConfig struct {
 	DB          *gorm.DB
 	Docs        string
 	CategorySvc CategoryService
+	RulesSvc    RulesService
+	DryRunSvc   DryRunService
 }
 
 func NewServer(cfg *ServerConfig) *Server {
@@ -99,6 +101,101 @@ func (s *Server) registerTools() {
 		),
 	)
 	s.mcpServer.AddTool(updateCategoryTool, s.handleUpdateCategory)
+
+	listRulesTool := mcp.NewTool(
+		"list_rules",
+		mcp.WithDescription("List all transaction rules. Rules are Lua scripts that automatically modify transactions based on conditions."),
+	)
+	s.mcpServer.AddTool(listRulesTool, s.handleListRules)
+
+	dryRunRuleTool := mcp.NewTool(
+		"dry_run_rule",
+		mcp.WithDescription("Test a rule against a transaction without persisting changes. Returns the transaction state before and after rule execution."),
+		mcp.WithNumber(
+			"transaction_id",
+			mcp.Description("The ID of the transaction to test the rule against (use 0 for scheduled rules that create transactions)"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"script",
+			mcp.Description("The Lua script to test"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"title",
+			mcp.Description("Title/name for the rule being tested"),
+		),
+	)
+	s.mcpServer.AddTool(dryRunRuleTool, s.handleDryRunRule)
+
+	createRuleTool := mcp.NewTool(
+		"create_rule",
+		mcp.WithDescription("Create a new transaction rule. Rules are Lua scripts that automatically modify transactions based on conditions."),
+		mcp.WithString(
+			"title",
+			mcp.Description("The title/name of the rule"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"script",
+			mcp.Description("The Lua script for the rule"),
+			mcp.Required(),
+		),
+		mcp.WithNumber(
+			"sort_order",
+			mcp.Description("Order in which the rule is executed (lower numbers run first, default 0)"),
+		),
+		mcp.WithBoolean(
+			"enabled",
+			mcp.Description("Whether the rule is enabled (default true)"),
+		),
+		mcp.WithBoolean(
+			"is_final_rule",
+			mcp.Description("If true, stops rule execution in group when this rule matches (default false)"),
+		),
+		mcp.WithString(
+			"group_name",
+			mcp.Description("Group name for organizing rules (rules in same group are processed together)"),
+		),
+	)
+	s.mcpServer.AddTool(createRuleTool, s.handleCreateRule)
+
+	updateRuleTool := mcp.NewTool(
+		"update_rule",
+		mcp.WithDescription("Update an existing transaction rule"),
+		mcp.WithNumber(
+			"id",
+			mcp.Description("The ID of the rule to update"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"title",
+			mcp.Description("The title/name of the rule"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"script",
+			mcp.Description("The Lua script for the rule"),
+			mcp.Required(),
+		),
+		mcp.WithNumber(
+			"sort_order",
+			mcp.Description("Order in which the rule is executed (lower numbers run first)"),
+		),
+		mcp.WithBoolean(
+			"enabled",
+			mcp.Description("Whether the rule is enabled"),
+		),
+		mcp.WithBoolean(
+			"is_final_rule",
+			mcp.Description("If true, stops rule execution in group when this rule matches"),
+		),
+		mcp.WithString(
+			"group_name",
+			mcp.Description("Group name for organizing rules"),
+		),
+	)
+	s.mcpServer.AddTool(updateRuleTool, s.handleUpdateRule)
 }
 
 func (s *Server) registerResources() {

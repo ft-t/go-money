@@ -58,11 +58,15 @@ func TestServer_HandleSetTransactionCategory_Success(t *testing.T) {
 			mock.ExpectCommit()
 
 			catSvc := NewMockCategoryService(ctrl)
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
 
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()
@@ -130,11 +134,15 @@ func TestServer_HandleSetTransactionCategory_Failure(t *testing.T) {
 			c.setupMock(mock)
 
 			catSvc := NewMockCategoryService(ctrl)
+			rulesSvc := NewMockRulesService(ctrl)
+			dryRunSvc := NewMockDryRunService(ctrl)
 
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
 				CategorySvc: catSvc,
+				RulesSvc:    rulesSvc,
+				DryRunSvc:   dryRunSvc,
 			})
 
 			mcpServer := server.MCPServer()
