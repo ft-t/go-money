@@ -22,10 +22,12 @@ RUN go build -ldflags "-s -w \
 FROM alpine:latest
 
 COPY --from=builder /src/dist/app /opt/app/app
-COPY --from=builder /src/docs/analytics/ /opt/app/mcp/analytics/
-COPY --from=builder /src/docs/mcp/       /opt/app/mcp/mcp/
-COPY --from=builder /src/docs/schema/    /opt/app/mcp/schema/
-COPY --from=builder /src/docs/INDEX.md   /opt/app/mcp/
+
+# MCP docs: Only essential files to minimize token usage (~500 lines vs 6600+)
+# GOLDEN-RULES.md MUST be read first by AI agents
+COPY --from=builder /src/docs/mcp/GOLDEN-RULES.md      /opt/app/mcp/
+COPY --from=builder /src/docs/schema/QUICK-REF.md      /opt/app/mcp/schema/
+COPY --from=builder /src/docs/analytics/QUICK-REF.md   /opt/app/mcp/analytics/
 
 WORKDIR /opt/app
 ENTRYPOINT ["./app"]
