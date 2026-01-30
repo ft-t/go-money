@@ -2,12 +2,13 @@ package auth_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestJwtToken_Success(t *testing.T) {
@@ -166,11 +167,16 @@ func TestCreateServiceToken_Success(t *testing.T) {
 	keyGen := auth.NewKeyGenerator()
 	key := keyGen.Generate()
 
-	jwtGenerator, err := auth.NewService(string(keyGen.Serialize(key)), 5*time.Minute)
+	serviceTTL := 5 * time.Minute
+	requestTTL := 24 * time.Hour
+
+	jwtGenerator, err := auth.NewService(string(keyGen.Serialize(key)), serviceTTL)
 	assert.NoError(t, err)
 
+	beforeGeneration := time.Now().UTC()
+
 	claims, token, err := jwtGenerator.CreateServiceToken(context.TODO(), &auth.GenerateTokenRequest{
-		TTL: 24 * time.Hour,
+		TTL: requestTTL,
 		User: &database.User{
 			ID:    123,
 			Login: "testuser",
@@ -183,6 +189,11 @@ func TestCreateServiceToken_Success(t *testing.T) {
 	assert.EqualValues(t, 123, claims.UserID)
 	assert.Equal(t, auth.ServiceTokenType, claims.TokenType)
 	assert.NotEmpty(t, claims.ID)
+
+	expectedExpiresAt := beforeGeneration.Add(requestTTL)
+	actualExpiresAt := claims.ExpiresAt.Time
+
+	assert.WithinDuration(t, expectedExpiresAt, actualExpiresAt, 5*time.Second)
 }
 
 func TestCreateServiceToken_Failure(t *testing.T) {

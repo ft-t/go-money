@@ -164,7 +164,7 @@ func (j *Service) CreateServiceToken(
 func (j *Service) generateTokenInternal(req *GenerateTokenRequest) (*JwtClaims, string, error) {
 	claims := &JwtClaims{
 		RegisteredClaims: &jwt2.RegisteredClaims{
-			ExpiresAt: jwt2.NewNumericDate(time.Now().UTC().Add(j.ttl)),
+			ExpiresAt: jwt2.NewNumericDate(time.Now().UTC().Add(req.TTL)),
 			ID:        uuid.NewString(),
 		},
 		UserID:    req.User.ID,

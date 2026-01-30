@@ -3,7 +3,6 @@ package mcp_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/golang/mock/gomock"
@@ -15,26 +14,38 @@ import (
 	"github.com/ft-t/go-money/pkg/testingutils"
 )
 
-func TestServer_HandleSetTransactionCategory_Success(t *testing.T) {
+func TestServer_HandleBulkSetTransactionCategory_Success(t *testing.T) {
 	type tc struct {
-		name       string
-		txID       float64
-		categoryID any
-		expected   string
+		name        string
+		assignments []map[string]any
 	}
 
 	cases := []tc{
 		{
-			name:       "set category",
-			txID:       1,
-			categoryID: float64(5),
-			expected:   "Transaction 1 category set to 5",
+			name: "set single category",
+			assignments: []map[string]any{
+				{"transaction_id": float64(1), "category_id": float64(5)},
+			},
 		},
 		{
-			name:       "clear category with nil",
-			txID:       2,
-			categoryID: nil,
-			expected:   "Transaction 2 category cleared",
+			name: "set multiple categories",
+			assignments: []map[string]any{
+				{"transaction_id": float64(1), "category_id": float64(5)},
+				{"transaction_id": float64(2), "category_id": float64(10)},
+			},
+		},
+		{
+			name: "clear category",
+			assignments: []map[string]any{
+				{"transaction_id": float64(1), "category_id": nil},
+			},
+		},
+		{
+			name: "mixed set and clear",
+			assignments: []map[string]any{
+				{"transaction_id": float64(1), "category_id": float64(5)},
+				{"transaction_id": float64(2), "category_id": nil},
+			},
 		},
 	}
 
@@ -44,114 +55,102 @@ func TestServer_HandleSetTransactionCategory_Success(t *testing.T) {
 			gormDB, mockDB, mock := testingutils.GormMock()
 			defer func() { _ = mockDB.Close() }()
 
-			selectRows := sqlmock.NewRows([]string{
-				"id", "source_amount", "source_currency", "destination_amount",
-				"destination_currency", "source_account_id", "destination_account_id",
-				"category_id", "transaction_type", "created_at", "updated_at",
-			}).AddRow(
-				int64(c.txID), nil, "USD", nil, "USD", 1, 2, nil, 3,
-				time.Now(), time.Now(),
-			)
-			mock.ExpectQuery("SELECT \\* FROM \"transactions\"").WillReturnRows(selectRows)
-			mock.ExpectBegin()
-			mock.ExpectExec("UPDATE \"transactions\"").WillReturnResult(sqlmock.NewResult(0, 1))
-			mock.ExpectCommit()
-
-			catSvc := NewMockCategoryService(ctrl)
-			rulesSvc := NewMockRulesService(ctrl)
-			dryRunSvc := NewMockDryRunService(ctrl)
+			for range c.assignments {
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE \"transactions\"").WillReturnResult(sqlmock.NewResult(0, 1))
+				mock.ExpectCommit()
+			}
 
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
-				CategorySvc: catSvc,
-				RulesSvc:    rulesSvc,
-				DryRunSvc:   dryRunSvc,
+				CategorySvc: NewMockCategoryService(ctrl),
+				RulesSvc:    NewMockRulesService(ctrl),
+				DryRunSvc:   NewMockDryRunService(ctrl),
 			})
 
-			mcpServer := server.MCPServer()
-			tool := mcpServer.GetTool("set_transaction_category")
+			tool := server.MCPServer().GetTool("bulk_set_transaction_category")
 			require.NotNil(t, tool)
 
-			args := map[string]any{"transaction_id": c.txID}
-			if c.categoryID != nil {
-				args["category_id"] = c.categoryID
+			assignmentsAny := make([]any, len(c.assignments))
+			for i, a := range c.assignments {
+				assignmentsAny[i] = a
 			}
 
 			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
 				Params: mcp.CallToolParams{
-					Name:      "set_transaction_category",
-					Arguments: args,
+					Name:      "bulk_set_transaction_category",
+					Arguments: map[string]any{"assignments": assignmentsAny},
 				},
 			})
 
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			assert.False(t, result.IsError)
-			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, c.expected)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Updated")
 		})
 	}
 }
 
-func TestServer_HandleSetTransactionCategory_Failure(t *testing.T) {
+func TestServer_HandleBulkSetTransactionCategory_Failure(t *testing.T) {
 	type tc struct {
 		name          string
 		args          map[string]any
-		setupMock     func(sqlmock.Sqlmock)
 		expectedError string
 	}
 
 	cases := []tc{
 		{
-			name:          "missing transaction_id",
+			name:          "missing assignments",
 			args:          map[string]any{},
-			setupMock:     func(m sqlmock.Sqlmock) {},
-			expectedError: "transaction_id parameter is required",
+			expectedError: "assignments parameter is required",
 		},
 		{
-			name:          "invalid category_id type",
-			args:          map[string]any{"transaction_id": float64(1), "category_id": "invalid"},
-			setupMock:     func(m sqlmock.Sqlmock) {},
-			expectedError: "category_id must be a number or null",
+			name:          "empty assignments",
+			args:          map[string]any{"assignments": []any{}},
+			expectedError: "assignments parameter is required and must be a non-empty array",
 		},
 		{
-			name: "transaction not found",
-			args: map[string]any{"transaction_id": float64(999)},
-			setupMock: func(m sqlmock.Sqlmock) {
-				m.ExpectQuery("SELECT \\* FROM \"transactions\"").
-					WillReturnRows(sqlmock.NewRows([]string{"id"}))
-			},
-			expectedError: "transaction not found",
+			name:          "invalid assignment type",
+			args:          map[string]any{"assignments": []any{"not an object"}},
+			expectedError: "assignment[0] must be an object",
+		},
+		{
+			name: "missing transaction_id",
+			args: map[string]any{"assignments": []any{
+				map[string]any{"category_id": float64(5)},
+			}},
+			expectedError: "assignment[0].transaction_id is required",
+		},
+		{
+			name: "invalid category_id type",
+			args: map[string]any{"assignments": []any{
+				map[string]any{"transaction_id": float64(1), "category_id": "invalid"},
+			}},
+			expectedError: "assignment[0].category_id must be a number or null",
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			gormDB, mockDB, mock := testingutils.GormMock()
+			gormDB, mockDB, _ := testingutils.GormMock()
 			defer func() { _ = mockDB.Close() }()
-
-			c.setupMock(mock)
-
-			catSvc := NewMockCategoryService(ctrl)
-			rulesSvc := NewMockRulesService(ctrl)
-			dryRunSvc := NewMockDryRunService(ctrl)
 
 			server := gomcp.NewServer(&gomcp.ServerConfig{
 				DB:          gormDB,
 				Docs:        "test docs",
-				CategorySvc: catSvc,
-				RulesSvc:    rulesSvc,
-				DryRunSvc:   dryRunSvc,
+				CategorySvc: NewMockCategoryService(ctrl),
+				RulesSvc:    NewMockRulesService(ctrl),
+				DryRunSvc:   NewMockDryRunService(ctrl),
 			})
 
-			mcpServer := server.MCPServer()
-			tool := mcpServer.GetTool("set_transaction_category")
+			tool := server.MCPServer().GetTool("bulk_set_transaction_category")
 			require.NotNil(t, tool)
 
 			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
 				Params: mcp.CallToolParams{
-					Name:      "set_transaction_category",
+					Name:      "bulk_set_transaction_category",
 					Arguments: c.args,
 				},
 			})
