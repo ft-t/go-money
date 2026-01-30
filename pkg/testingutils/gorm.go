@@ -41,7 +41,7 @@ func FlushAllTables(config boilerplate.DbConfig) error {
 }
 
 func ensureThatItsLocal(config boilerplate.DbConfig) {
-	allowedHosts := []string{"localhost", "127.0.0.1", "postgres"}
+	allowedHosts := []string{"localhost", "127.0.0.1", "postgres", "tools.lan"}
 
 	for _, h := range allowedHosts {
 		if strings.EqualFold(h, config.Host) {
