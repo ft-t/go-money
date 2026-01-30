@@ -60,20 +60,16 @@ func (s *Server) registerTools() {
 	)
 	s.mcpServer.AddTool(queryTool, s.handleQuery)
 
-	setTransactionCategoryTool := mcp.NewTool(
-		"set_transaction_category",
-		mcp.WithDescription("Set or clear the category of a transaction"),
-		mcp.WithNumber(
-			"transaction_id",
-			mcp.Description("The ID of the transaction to update"),
+	bulkSetTransactionCategoryTool := mcp.NewTool(
+		"bulk_set_transaction_category",
+		mcp.WithDescription("Set or clear categories for multiple transactions in a single call"),
+		mcp.WithArray(
+			"assignments",
+			mcp.Description("Array of objects with transaction_id (required) and category_id (optional, null to clear)"),
 			mcp.Required(),
 		),
-		mcp.WithNumber(
-			"category_id",
-			mcp.Description("The category ID to set (omit or null to clear category)"),
-		),
 	)
-	s.mcpServer.AddTool(setTransactionCategoryTool, s.handleSetTransactionCategory)
+	s.mcpServer.AddTool(bulkSetTransactionCategoryTool, s.handleBulkSetTransactionCategory)
 
 	createCategoryTool := mcp.NewTool(
 		"create_category",
