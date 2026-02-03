@@ -67,6 +67,12 @@ func (b *BaseParser) ToCreateRequests(
 			newTx.InternalReferenceNumbers = append(newTx.InternalReferenceNumbers, b.toKey(dup, importSource))
 		}
 
+		if tx.ParsingError != nil {
+			newTx.Extra["parsing_error"] = tx.ParsingError.Error()
+			requests = append(requests, newTx)
+			continue
+		}
+
 		switch tx.Type {
 		case TransactionTypeIncome:
 			sourceAccount, err := b.GetDefaultAccountAndAmount(
@@ -221,10 +227,7 @@ func (b *BaseParser) ToCreateRequests(
 			if newTx.Extra == nil {
 				newTx.Extra = make(map[string]string)
 			}
-			if tx.ParsingError != nil {
-				newTx.Extra["parsing_error"] = tx.ParsingError.Error()
-			}
-			// this is error transaction, will handle next
+			newTx.Extra["unknown_type"] = fmt.Sprintf("%d", tx.Type)
 		}
 
 		requests = append(requests, newTx)
