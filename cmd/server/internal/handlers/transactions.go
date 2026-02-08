@@ -17,18 +17,18 @@ type TransactionApi struct {
 	mapper               MapperSvc
 }
 
-func (a *TransactionApi) DeleteTransactions(ctx context.Context, c *connect.Request[transactionsv1.DeleteTransactionsRequest]) (*connect.Response[transactionsv1.DeleteTransactionsRequest], error) {
+func (a *TransactionApi) DeleteTransactions(ctx context.Context, c *connect.Request[transactionsv1.DeleteTransactionsRequest]) (*connect.Response[transactionsv1.DeleteTransactionsResponse], error) {
 	jwtData := middlewares.FromContext(ctx)
 	if jwtData.UserID == 0 {
 		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
 	}
 
-	_, err := a.transactionsSvc.DeleteTransaction(ctx, c.Msg)
+	resp, err := a.transactionsSvc.DeleteTransaction(ctx, c.Msg)
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(c.Msg), nil
+	return connect.NewResponse(resp), nil
 }
 
 func (a *TransactionApi) GetApplicableAccounts(

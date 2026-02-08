@@ -13,6 +13,7 @@ type Configuration struct {
 	CurrencyConfig       CurrencyConfig       `env:", prefix=CURRENCY_CONFIG_"`
 	GrafanaConfig        GrafanaConfig        `env:", prefix=GRAFANA_CONFIG_"`
 	MCP                  MCPConfig            `env:", prefix=MCP_"`
+	BackupDir            string               `env:"BACKUP_DIR, default=~/.go-money/backups"`
 }
 
 type MCPConfig struct {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"io"
 
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
 	analyticsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/analytics/v1"
@@ -15,6 +16,7 @@ import (
 	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/auth"
+	"github.com/ft-t/go-money/pkg/backup"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/shopspring/decimal"
@@ -256,4 +258,13 @@ type ServiceTokenSvc interface {
 		ctx context.Context,
 		req *configurationv1.RevokeServiceTokenRequest,
 	) (*configurationv1.RevokeServiceTokenResponse, error)
+}
+
+type BackupSvc interface {
+	Create(ctx context.Context) (*backup.BackupMetadata, error)
+	List(ctx context.Context) ([]backup.BackupMetadata, error)
+	GetFile(ctx context.Context, filename string) (io.ReadCloser, error)
+	Delete(ctx context.Context, filename string) error
+	Restore(ctx context.Context, filename string, dryRun bool) (*backup.RestoreResult, error)
+	RestoreFromReader(ctx context.Context, r io.Reader, dryRun bool) (*backup.RestoreResult, error)
 }

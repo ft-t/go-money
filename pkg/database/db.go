@@ -91,3 +91,14 @@ func FromContext(ctx context.Context, defaultInstance *gorm.DB) *gorm.DB {
 
 	return defaultInstance.WithContext(ctx)
 }
+
+func RunMigrations(db *gorm.DB) error {
+	config := configuration.GetConfiguration()
+	migrations := getMigrations(config)
+	if len(migrations) > 0 {
+		if err := gormigrate.New(db, gormigrate.DefaultOptions, migrations).Migrate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
