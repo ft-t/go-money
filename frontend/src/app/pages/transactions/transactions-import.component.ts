@@ -50,6 +50,7 @@ export class TransactionsImportComponent {
     public sources = EnumService.getImportTypes();
     public skipRules: boolean = false;
     public treatDatesAsUtc: boolean = false;
+    public skipDuplicateReferenceCheck: boolean = false;
     public isLoading: boolean = false;
     public stagingMode: boolean = true;
 
@@ -114,7 +115,8 @@ export class TransactionsImportComponent {
                 create(ParseTransactionsRequestSchema, {
                     content: contents,
                     source: this.selectedSource,
-                    treatDatesAsUtc: this.treatDatesAsUtc
+                    treatDatesAsUtc: this.treatDatesAsUtc,
+                    skipDuplicateReferenceCheck: this.skipDuplicateReferenceCheck
                 })
             );
 
@@ -177,6 +179,7 @@ export class TransactionsImportComponent {
                 create(ImportTransactionsRequestSchema, {
                     skipRules: this.skipRules,
                     treatDatesAsUtc: this.treatDatesAsUtc,
+                    skipDuplicateReferenceCheck: this.skipDuplicateReferenceCheck,
                     source: this.selectedSource,
                     content: contents
                 })
