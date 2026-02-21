@@ -2,6 +2,7 @@ package importers
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -49,6 +50,7 @@ func NewImporter(
 func (i *Importer) CheckDuplicates(
 	ctx context.Context,
 	requests []*transactionsv1.CreateTransactionRequest,
+	skipDuplicateRefCheck bool,
 ) ([]*DeduplicationItem, error) {
 	var allRefs []string
 	refToItem := map[string]*DeduplicationItem{}
@@ -67,12 +69,25 @@ func (i *Importer) CheckDuplicates(
 			return nil, errors.New("all transactions must have at least one reference number for deduplication")
 		}
 
-		for _, ref := range validRefs {
-			if existing, exists := refToItem[ref]; exists {
-				return nil, errors.Errorf("duplicate reference number found in import data: ref=%s. raw=%v", ref,
-					existing.CreateRequest.Notes)
+		for idx, ref := range validRefs {
+			if _, exists := refToItem[ref]; exists {
+				if !skipDuplicateRefCheck {
+					return nil, errors.Errorf("duplicate reference number found in import data: ref=%s. raw=%v", ref,
+						refToItem[ref].CreateRequest.Notes)
+				}
+
+				counter := 1
+				newRef := fmt.Sprintf("%s_%d", ref, counter)
+				for _, exists := refToItem[newRef]; exists; _, exists = refToItem[newRef] {
+					counter++
+					newRef = fmt.Sprintf("%s_%d", ref, counter)
+				}
+
+				validRefs[idx] = newRef
 			}
 		}
+
+		req.InternalReferenceNumbers = validRefs
 
 		item := &DeduplicationItem{CreateRequest: req}
 		items = append(items, item)
@@ -115,9 +130,10 @@ func (i *Importer) Import(
 	req *importv1.ImportTransactionsRequest,
 ) (*importv1.ImportTransactionsResponse, error) {
 	parsed, err := i.ParseInternal(ctx, &importv1.ParseTransactionsRequest{
-		Content:         req.Content,
-		Source:          req.Source,
-		TreatDatesAsUtc: req.TreatDatesAsUtc,
+		Content:                     req.Content,
+		Source:                      req.Source,
+		TreatDatesAsUtc:             req.TreatDatesAsUtc,
+		SkipDuplicateReferenceCheck: req.SkipDuplicateReferenceCheck,
 	})
 	if err != nil {
 		return nil, err
@@ -252,7 +268,7 @@ func (i *Importer) ParseInternal(
 		r.Extra["import_batch_id"] = batchID
 	}
 
-	items, err := i.CheckDuplicates(ctx, parsed.CreateRequests)
+	items, err := i.CheckDuplicates(ctx, parsed.CreateRequests, req.SkipDuplicateReferenceCheck)
 	if err != nil {
 		log.Error().
 			Err(err).

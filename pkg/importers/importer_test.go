@@ -506,7 +506,7 @@ func TestCheckDuplicates(t *testing.T) {
 			},
 		}
 
-		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		result, err := imp.CheckDuplicates(context.TODO(), requests, false)
 		assert.NoError(t, err)
 		assert.Len(t, result, 2)
 		assert.Equal(t, "Transaction 1", result[0].CreateRequest.Title)
@@ -530,7 +530,7 @@ func TestCheckDuplicates(t *testing.T) {
 			},
 		}
 
-		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		result, err := imp.CheckDuplicates(context.TODO(), requests, false)
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "all transactions must have at least one reference number for deduplication")
@@ -551,7 +551,7 @@ func TestCheckDuplicates(t *testing.T) {
 			},
 		}
 
-		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		result, err := imp.CheckDuplicates(context.TODO(), requests, false)
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "all transactions must have at least one reference number for deduplication")
@@ -572,7 +572,7 @@ func TestCheckDuplicates(t *testing.T) {
 			},
 		}
 
-		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		result, err := imp.CheckDuplicates(context.TODO(), requests, false)
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "all transactions must have at least one reference number for deduplication")
@@ -597,10 +597,41 @@ func TestCheckDuplicates(t *testing.T) {
 			},
 		}
 
-		result, err := imp.CheckDuplicates(context.TODO(), requests)
+		result, err := imp.CheckDuplicates(context.TODO(), requests, false)
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "duplicate reference number found in import data: ref=ref_duplicate")
+	})
+
+	t.Run("skip duplicate reference check adds suffix", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		requests := []*transactionsv1.CreateTransactionRequest{
+			{
+				Title:                    "Transaction 1",
+				InternalReferenceNumbers: []string{"ref_duplicate"},
+			},
+			{
+				Title:                    "Transaction 2",
+				InternalReferenceNumbers: []string{"ref_duplicate"},
+			},
+			{
+				Title:                    "Transaction 3",
+				InternalReferenceNumbers: []string{"ref_duplicate"},
+			},
+		}
+
+		result, err := imp.CheckDuplicates(context.TODO(), requests, true)
+		assert.NoError(t, err)
+		assert.Len(t, result, 3)
+		assert.Equal(t, []string{"ref_duplicate"}, result[0].CreateRequest.InternalReferenceNumbers)
+		assert.Equal(t, []string{"ref_duplicate_1"}, result[1].CreateRequest.InternalReferenceNumbers)
+		assert.Equal(t, []string{"ref_duplicate_2"}, result[2].CreateRequest.InternalReferenceNumbers)
 	})
 
 	t.Run("db error on check", func(t *testing.T) {
@@ -625,7 +656,7 @@ func TestCheckDuplicates(t *testing.T) {
 			},
 		}
 
-		result, err := imp.CheckDuplicates(ctx, requests)
+		result, err := imp.CheckDuplicates(ctx, requests, false)
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "failed to check existing transactions")

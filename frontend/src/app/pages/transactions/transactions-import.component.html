@@ -23,6 +23,9 @@
 
                     <p-checkbox id="chkbox3" [(ngModel)]="treatDatesAsUtc" [binary]="true" />
                     <label for="chkbox3">Treat Dates as UTC</label>
+
+                    <p-checkbox id="chkbox4" [(ngModel)]="skipDuplicateReferenceCheck" [binary]="true" />
+                    <label for="chkbox4">Skip Duplicate Reference Check</label>
                 </div>
                 @if (this.isRawTextImport()) {
                     <p-iftalabel>
