@@ -3,8 +3,6 @@ al.essio.dev/pkg/shellescape v1.6.0 h1:NxFcEqzFSEVCGN2yq7Huv/9hyCEGVa/TncnOOBBeX
 al.essio.dev/pkg/shellescape v1.6.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
 buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260221145631-b1f442f55195.2 h1:RKXNh2DP9OU7NJO1zIE7FPr1Hteg/5n5cKk0y7gDx3o=
 buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260221145631-b1f442f55195.2/go.mod h1:VTTULP3xLDXiwW6AkXskKv7ZBgzqh4wgauKnA8Svumc=
-buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260203100816-484edc7bc1c1.1 h1:cP/tnGmWVML8Ajt4da328QUOYduiumEl210QbX63wHs=
-buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260203100816-484edc7bc1c1.1/go.mod h1:h6BlZCpceFTRzghEP6LSlTeYkE05pzKfQCnRYsP4kDA=
 buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260221145631-b1f442f55195.1 h1:TCX0BllmWXkSzbWvPtsD2a7FBELmFhX5NIX1B5Vf6HI=
 buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260221145631-b1f442f55195.1/go.mod h1:h6BlZCpceFTRzghEP6LSlTeYkE05pzKfQCnRYsP4kDA=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -410,8 +408,8 @@ google.golang.org/protobuf v1.20.1-0.20200309200217-e05f789c0967/go.mod h1:A+miE
 google.golang.org/protobuf v1.21.0/go.mod h1:47Nbq4nVaFHyn7ilMalzfO3qCViNmqZ2kzikPIcrTAo=
 google.golang.org/protobuf v1.23.0/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2l/sGQquU=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
-google.golang.org/protobuf v1.36.10 h1:AYd7cD/uASjIL6Q9LiTjz8JLcrh/88q5UObnmY3aOOE=
-google.golang.org/protobuf v1.36.10/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
+google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
+google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
