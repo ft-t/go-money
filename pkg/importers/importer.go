@@ -163,6 +163,7 @@ func (i *Importer) Import(
 		tx,
 		transactions.UpsertOptions{
 			SkipAccountSourceDestValidation: true,
+			SkipValidationErrors:            req.SkipValidationErrors,
 		},
 	)
 
@@ -177,6 +178,7 @@ func (i *Importer) Import(
 	return &importv1.ImportTransactionsResponse{
 		ImportedCount:  int32(len(transactionResp)),
 		DuplicateCount: int32(duplicateCount),
+		SkippedCount:   int32(len(allTransactions) - len(transactionResp)),
 	}, nil
 }
 

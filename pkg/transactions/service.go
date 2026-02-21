@@ -328,6 +328,14 @@ func (s *Service) CreateBulkInternal(
 
 		newTx, err := s.ConvertRequestToTransaction(ctx, req.Req, req.OriginalTx)
 		if err != nil {
+			if opts.SkipValidationErrors {
+				zerolog.Ctx(ctx).Warn().
+					Err(err).
+					Str("title", req.Req.Title).
+					Msg("skipping transaction due to validation error")
+				continue
+			}
+
 			return nil, err
 		}
 

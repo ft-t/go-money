@@ -17,4 +17,5 @@ type CalculateDailyStatRequest struct {
 
 type UpsertOptions struct {
 	SkipAccountSourceDestValidation bool
+	SkipValidationErrors            bool
 }
