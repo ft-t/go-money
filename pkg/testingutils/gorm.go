@@ -97,8 +97,7 @@ func flushInternal(config boilerplate.DbConfig, tables []string) error {
 			}
 
 			if _, ok := existing[strings.ToLower(table)]; ok {
-
-				builder.WriteString(fmt.Sprintf(" truncate table %v CASCADE; ", strings.ToLower(table)))
+				_, _ = fmt.Fprintf(&builder, " truncate table %v CASCADE; ", strings.ToLower(table))
 			} else {
 				log.Warn().Msgf("table %v does not exists", table)
 			}
@@ -108,7 +107,7 @@ func flushInternal(config boilerplate.DbConfig, tables []string) error {
 			if strings.ToLower(name) == "public.migrations" {
 				continue
 			}
-			builder.WriteString(fmt.Sprintf(" truncate table %v CASCADE; ", strings.ToLower(name)))
+			_, _ = fmt.Fprintf(&builder, " truncate table %v CASCADE; ", strings.ToLower(name))
 		}
 	}
 
