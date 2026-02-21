@@ -51,6 +51,7 @@ export class TransactionsImportComponent {
     public skipRules: boolean = false;
     public treatDatesAsUtc: boolean = false;
     public skipDuplicateReferenceCheck: boolean = false;
+    public skipValidationErrors: boolean = false;
     public isLoading: boolean = false;
     public stagingMode: boolean = true;
 
@@ -180,12 +181,20 @@ export class TransactionsImportComponent {
                     skipRules: this.skipRules,
                     treatDatesAsUtc: this.treatDatesAsUtc,
                     skipDuplicateReferenceCheck: this.skipDuplicateReferenceCheck,
+                    skipValidationErrors: this.skipValidationErrors,
                     source: this.selectedSource,
                     content: contents
                 })
             );
 
-            const logText = `Imported ${result.importedCount} transaction(s).\nDuplicate transactions: ${result.duplicateCount}.\n`;
+            const parts = [
+                `Imported ${result.importedCount} transaction(s).`,
+                `Duplicate transactions: ${result.duplicateCount}.`,
+            ];
+            if (result.skippedCount > 0) {
+                parts.push(`Skipped (validation errors): ${result.skippedCount}.`);
+            }
+            const logText = parts.join('\n');
             this.textContent = logText;
             this.messageService.add({ severity: 'success', detail: logText });
         } catch (e) {

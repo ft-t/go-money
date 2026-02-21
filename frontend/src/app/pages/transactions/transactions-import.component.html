@@ -26,6 +26,11 @@
 
                     <p-checkbox id="chkbox4" [(ngModel)]="skipDuplicateReferenceCheck" [binary]="true" />
                     <label for="chkbox4">Skip Duplicate Reference Check</label>
+
+                    @if (!stagingMode) {
+                        <p-checkbox id="chkbox5" [(ngModel)]="skipValidationErrors" [binary]="true" />
+                        <label for="chkbox5">Skip Validation Errors</label>
+                    }
                 </div>
                 @if (this.isRawTextImport()) {
                     <p-iftalabel>
