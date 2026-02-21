@@ -3,8 +3,8 @@ module github.com/ft-t/go-money
 go 1.24.0
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260104141704-8728d2c3d2bb.2
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.10-20260104141704-8728d2c3d2bb.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260221145631-b1f442f55195.2
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260221145631-b1f442f55195.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -40,7 +40,7 @@ require (
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.41.0
 	golang.org/x/net v0.43.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.1
 	layeh.com/gopher-luar v1.0.11
