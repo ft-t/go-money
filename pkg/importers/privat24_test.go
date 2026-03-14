@@ -1566,45 +1566,34 @@ func TestImportNewFormatMultipleMessages(t *testing.T) {
 		AccountNumber: "4*03",
 		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
 	}
-	eurExpenseAccount := &database.Account{
+	expenseAccount := &database.Account{
 		ID:            2,
-		Currency:      "EUR",
+		Currency:      "UAH",
 		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
 		Name:          "_default_expense",
 		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_eur",
-	}
-	plnExpenseAccount := &database.Account{
-		ID:            3,
-		Currency:      "PLN",
-		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Name:          "_default_expense",
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_pln",
+		AccountNumber: "_default_expense_uah",
 	}
 
-	data := []byte(`[3/10/2026 8:30 AM] PrivatBank: 50.00EUR Комуналка та Інтернет. Test Merchant
+	data := []byte(`[3/10/2026 8:30 AM] PrivatBank: 50.00UAH Комуналка та Інтернет. Test Merchant
 4*03 09:30
 Бал. 10000.00UAH
-Курс 40.0000 UAH/EUR
 Кред. ліміт 50000.0UAH
 
-[3/10/2026 2:00 PM] PrivatBank: 100.00PLN Ресторани, кафе, бари. Test Cafe
+[3/10/2026 2:00 PM] PrivatBank: 100.00UAH Ресторани, кафе, бари. Test Cafe
 4*03 15:00
 Бал. 9000.00UAH
-Курс 10.0000 UAH/PLN
 Кред. ліміт 50000.0UAH
 
-[3/11/2026 10:00 AM] PrivatBank: 25.00PLN Авто. Test Auto Service
+[3/11/2026 10:00 AM] PrivatBank: 25.00UAH Авто. Test Auto Service
 4*03 11:00
 Бал. 8500.00UAH
-Курс 10.0000 UAH/PLN
 Кред. ліміт 50000.0UAH`)
 
 	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
 			Data:     []string{string(data)},
-			Accounts: []*database.Account{uahAccount, eurExpenseAccount, plnExpenseAccount},
+			Accounts: []*database.Account{uahAccount, expenseAccount},
 		},
 	})
 
