@@ -95,7 +95,16 @@ func (p *Privat24) Parse(
 	for _, message := range messages {
 		lines := toLines(message)
 
-		header := lines[0] // is header in format PrivatBank, [10/1/2025 9:50 AM]
+		header := lines[0]
+		dataLines := lines[1:]
+
+		// new format: [2/16/2026 4:16 AM] PrivatBank: 22.23EUR Description
+		if strings.HasPrefix(header, "[") && strings.Contains(header, "] PrivatBank: ") {
+			endIdx := strings.Index(header, "] PrivatBank: ")
+			dataLine := header[endIdx+len("] PrivatBank: "):]
+			header = header[:endIdx+1]
+			dataLines = append([]string{dataLine}, dataLines...)
+		}
 
 		createdAt, err := p.ParseHeaderDate(header)
 		if err != nil {
@@ -105,7 +114,7 @@ func (p *Privat24) Parse(
 		}
 
 		records = append(records, &Record{
-			Data: []byte(strings.Join(lines[1:], "\n")),
+			Data: []byte(strings.Join(dataLines, "\n")),
 			Message: &Message{
 				CreatedAt: createdAt,
 			},

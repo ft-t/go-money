@@ -44,6 +44,11 @@ func TestParseHeaderDate_Success(t *testing.T) {
 			header:   "PrivatBank, [12/31/2025 11:59 PM]",
 			wantTime: time.Date(2025, 12, 31, 23, 59, 0, 0, time.UTC),
 		},
+		{
+			name:     "new format header - date only bracket",
+			header:   "[2/16/2026 4:16 AM]",
+			wantTime: time.Date(2026, 2, 16, 4, 16, 0, 0, time.UTC),
+		},
 	}
 
 	for _, c := range cases {
@@ -1507,4 +1512,92 @@ func TestImportExpenseWithDoubleConversion(t *testing.T) {
 	assert.EqualValues(t, "UAH", expense.Expense.SourceCurrency)
 	assert.EqualValues(t, uahAccount.ID, expense.Expense.SourceAccountId)
 	assert.EqualValues(t, expenseAccount.ID, expense.Expense.DestinationAccountId)
+}
+
+func TestImportNewFormatExpense(t *testing.T) {
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+
+	uahAccount := &database.Account{
+		ID:            1,
+		Currency:      "UAH",
+		AccountNumber: "4*03",
+		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
+	}
+	expenseAccount := &database.Account{
+		ID:            2,
+		Currency:      "EUR",
+		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Name:          "_default_expense",
+		Flags:         database.AccountFlagIsDefault,
+		AccountNumber: "_default_expense_eur",
+	}
+
+	data := []byte(`[3/10/2026 8:30 AM] PrivatBank: 50.00EUR Комуналка та Інтернет. Test Merchant
+4*03 09:30
+Бал. 10000.00UAH
+Курс 40.0000 UAH/EUR
+Кред. ліміт 50000.0UAH`)
+
+	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{uahAccount, expenseAccount},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, result.CreateRequests, 1)
+
+	req := result.CreateRequests[0]
+	assert.Equal(t, "Комуналка та Інтернет. Test Merchant", req.Title)
+	expense := req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
+	assert.EqualValues(t, "EUR", expense.Expense.DestinationCurrency)
+	assert.EqualValues(t, uahAccount.ID, expense.Expense.SourceAccountId)
+	assert.EqualValues(t, expenseAccount.ID, expense.Expense.DestinationAccountId)
+}
+
+func TestImportNewFormatMultipleMessages(t *testing.T) {
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+
+	uahAccount := &database.Account{
+		ID:            1,
+		Currency:      "UAH",
+		AccountNumber: "4*03",
+		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
+	}
+	expenseAccount := &database.Account{
+		ID:            2,
+		Currency:      "UAH",
+		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Name:          "_default_expense",
+		Flags:         database.AccountFlagIsDefault,
+		AccountNumber: "_default_expense_uah",
+	}
+
+	data := []byte(`[3/10/2026 8:30 AM] PrivatBank: 50.00UAH Комуналка та Інтернет. Test Merchant
+4*03 09:30
+Бал. 10000.00UAH
+Кред. ліміт 50000.0UAH
+
+[3/10/2026 2:00 PM] PrivatBank: 100.00UAH Ресторани, кафе, бари. Test Cafe
+4*03 15:00
+Бал. 9000.00UAH
+Кред. ліміт 50000.0UAH
+
+[3/11/2026 10:00 AM] PrivatBank: 25.00UAH Авто. Test Auto Service
+4*03 11:00
+Бал. 8500.00UAH
+Кред. ліміт 50000.0UAH`)
+
+	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{uahAccount, expenseAccount},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, result.CreateRequests, 3)
 }
