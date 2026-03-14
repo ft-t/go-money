@@ -1515,12 +1515,7 @@ func TestImportExpenseWithDoubleConversion(t *testing.T) {
 }
 
 func TestImportNewFormatExpense(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-
-	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	uahAccount := &database.Account{
 		ID:            1,
@@ -1530,10 +1525,11 @@ func TestImportNewFormatExpense(t *testing.T) {
 	}
 	expenseAccount := &database.Account{
 		ID:            2,
-		Currency:      "UAH",
+		Currency:      "EUR",
 		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Name:          "_default_expense",
 		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_uah",
+		AccountNumber: "_default_expense_eur",
 	}
 
 	data := []byte(`[3/10/2026 8:30 AM] PrivatBank: 50.00EUR Комуналка та Інтернет. Test Merchant
@@ -1562,12 +1558,7 @@ func TestImportNewFormatExpense(t *testing.T) {
 }
 
 func TestImportNewFormatMultipleMessages(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-
-	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
 	uahAccount := &database.Account{
 		ID:            1,
@@ -1575,12 +1566,21 @@ func TestImportNewFormatMultipleMessages(t *testing.T) {
 		AccountNumber: "4*03",
 		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
 	}
-	expenseAccount := &database.Account{
+	eurExpenseAccount := &database.Account{
 		ID:            2,
-		Currency:      "UAH",
+		Currency:      "EUR",
 		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Name:          "_default_expense",
 		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_uah",
+		AccountNumber: "_default_expense_eur",
+	}
+	plnExpenseAccount := &database.Account{
+		ID:            3,
+		Currency:      "PLN",
+		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Name:          "_default_expense",
+		Flags:         database.AccountFlagIsDefault,
+		AccountNumber: "_default_expense_pln",
 	}
 
 	data := []byte(`[3/10/2026 8:30 AM] PrivatBank: 50.00EUR Комуналка та Інтернет. Test Merchant
@@ -1604,7 +1604,7 @@ func TestImportNewFormatMultipleMessages(t *testing.T) {
 	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
 			Data:     []string{string(data)},
-			Accounts: []*database.Account{uahAccount, expenseAccount},
+			Accounts: []*database.Account{uahAccount, eurExpenseAccount, plnExpenseAccount},
 		},
 	})
 
