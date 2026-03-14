@@ -37,6 +37,7 @@ var (
 	incomeTransferRegex       = simpleExpenseRegex
 	internalTransferToRegex   = regexp.MustCompile(`(\d+.?\d+)([A-Z]{3}) (Переказ на свою карт[^ ]+ (?:(\d+\*\*\d+) )?(.*))$`)
 	internalTransferFromRegex = regexp.MustCompile(`(\d+.?\d+)([A-Z]{3}) (Переказ зі своєї карт[^ ]+ (\*?\d+\*?\*?\d+) ?(.*)?)$`)
+	newFormatHeaderRegex      = regexp.MustCompile(`^\[\d+/\d+/\d+ \d+:\d+ [AP]M\] PrivatBank: `)
 )
 
 type Privat24 struct {
@@ -68,9 +69,16 @@ func (p *Privat24) ExtractMessages(
 		line := strings.TrimSpace(r)
 
 		if line == "\n" || line == "" {
+			if builder.Len() != 0 {
+				messages = append(messages, builder.String())
+				builder.Reset()
+			}
+			continue // end of message
+		}
+
+		if newFormatHeaderRegex.MatchString(line) && builder.Len() != 0 {
 			messages = append(messages, builder.String())
 			builder.Reset()
-			continue // end of message
 		}
 
 		builder.WriteString(line)
@@ -95,7 +103,16 @@ func (p *Privat24) Parse(
 	for _, message := range messages {
 		lines := toLines(message)
 
-		header := lines[0] // is header in format PrivatBank, [10/1/2025 9:50 AM]
+		header := lines[0]
+		dataLines := lines[1:]
+
+		// new format: [2/16/2026 4:16 AM] PrivatBank: 22.23EUR Description
+		if strings.HasPrefix(header, "[") && strings.Contains(header, "] PrivatBank: ") {
+			endIdx := strings.Index(header, "] PrivatBank: ")
+			dataLine := header[endIdx+len("] PrivatBank: "):]
+			header = header[:endIdx+1]
+			dataLines = append([]string{dataLine}, dataLines...)
+		}
 
 		createdAt, err := p.ParseHeaderDate(header)
 		if err != nil {
@@ -105,7 +122,7 @@ func (p *Privat24) Parse(
 		}
 
 		records = append(records, &Record{
-			Data: []byte(strings.Join(lines[1:], "\n")),
+			Data: []byte(strings.Join(dataLines, "\n")),
 			Message: &Message{
 				CreatedAt: createdAt,
 			},
