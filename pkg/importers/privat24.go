@@ -37,6 +37,7 @@ var (
 	incomeTransferRegex       = simpleExpenseRegex
 	internalTransferToRegex   = regexp.MustCompile(`(\d+.?\d+)([A-Z]{3}) (Переказ на свою карт[^ ]+ (?:(\d+\*\*\d+) )?(.*))$`)
 	internalTransferFromRegex = regexp.MustCompile(`(\d+.?\d+)([A-Z]{3}) (Переказ зі своєї карт[^ ]+ (\*?\d+\*?\*?\d+) ?(.*)?)$`)
+	newFormatHeaderRegex      = regexp.MustCompile(`^\[\d+/\d+/\d+ \d+:\d+ [AP]M\] PrivatBank: `)
 )
 
 type Privat24 struct {
@@ -68,9 +69,16 @@ func (p *Privat24) ExtractMessages(
 		line := strings.TrimSpace(r)
 
 		if line == "\n" || line == "" {
+			if builder.Len() != 0 {
+				messages = append(messages, builder.String())
+				builder.Reset()
+			}
+			continue // end of message
+		}
+
+		if newFormatHeaderRegex.MatchString(line) && builder.Len() != 0 {
 			messages = append(messages, builder.String())
 			builder.Reset()
-			continue // end of message
 		}
 
 		builder.WriteString(line)

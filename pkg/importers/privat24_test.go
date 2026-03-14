@@ -1579,12 +1579,10 @@ func TestImportNewFormatMultipleMessages(t *testing.T) {
 4*03 09:30
 Бал. 10000.00UAH
 Кред. ліміт 50000.0UAH
-
 [3/10/2026 2:00 PM] PrivatBank: 100.00UAH Ресторани, кафе, бари. Test Cafe
 4*03 15:00
 Бал. 9000.00UAH
 Кред. ліміт 50000.0UAH
-
 [3/11/2026 10:00 AM] PrivatBank: 25.00UAH Авто. Test Auto Service
 4*03 11:00
 Бал. 8500.00UAH
@@ -1600,4 +1598,40 @@ func TestImportNewFormatMultipleMessages(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Len(t, result.CreateRequests, 3)
+}
+
+func TestImportNewFormatWithCashback(t *testing.T) {
+	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+
+	uahAccount := &database.Account{
+		ID:            1,
+		Currency:      "UAH",
+		AccountNumber: "4*03",
+		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
+	}
+	expenseAccount := &database.Account{
+		ID:            2,
+		Currency:      "UAH",
+		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Name:          "_default_expense",
+		Flags:         database.AccountFlagIsDefault,
+		AccountNumber: "_default_expense_uah",
+	}
+
+	data := []byte(`[3/10/2026 5:48 PM] PrivatBank: 200.00UAH Розваги. Test Game Store
+4*03 18:48
+Кешбек 30.00UAH
+Бал. 10000.00UAH
+Кред. ліміт 50000.0UAH`)
+
+	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{string(data)},
+			Accounts: []*database.Account{uahAccount, expenseAccount},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, result.CreateRequests, 1)
 }
