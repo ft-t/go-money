@@ -23,6 +23,7 @@ type ServerConfig struct {
 	CategorySvc CategoryService
 	RulesSvc    RulesService
 	DryRunSvc   DryRunService
+	TagsSvc     TagsService
 }
 
 func NewServer(cfg *ServerConfig) *Server {
@@ -192,6 +193,77 @@ func (s *Server) registerTools() {
 		),
 	)
 	s.mcpServer.AddTool(updateRuleTool, s.handleUpdateRule)
+
+	listTagsTool := mcp.NewTool(
+		"list_tags",
+		mcp.WithDescription("List all tags"),
+	)
+	s.mcpServer.AddTool(listTagsTool, s.handleListTags)
+
+	createTagTool := mcp.NewTool(
+		"create_tag",
+		mcp.WithDescription("Create a new tag"),
+		mcp.WithString(
+			"name",
+			mcp.Description("The name of the tag"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"color",
+			mcp.Description("The color of the tag"),
+		),
+		mcp.WithString(
+			"icon",
+			mcp.Description("The icon of the tag"),
+		),
+	)
+	s.mcpServer.AddTool(createTagTool, s.handleCreateTag)
+
+	updateTagTool := mcp.NewTool(
+		"update_tag",
+		mcp.WithDescription("Update an existing tag"),
+		mcp.WithNumber(
+			"id",
+			mcp.Description("The ID of the tag to update"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"name",
+			mcp.Description("The new name for the tag"),
+			mcp.Required(),
+		),
+		mcp.WithString(
+			"color",
+			mcp.Description("The color of the tag"),
+		),
+		mcp.WithString(
+			"icon",
+			mcp.Description("The icon of the tag"),
+		),
+	)
+	s.mcpServer.AddTool(updateTagTool, s.handleUpdateTag)
+
+	deleteTagTool := mcp.NewTool(
+		"delete_tag",
+		mcp.WithDescription("Delete a tag"),
+		mcp.WithNumber(
+			"id",
+			mcp.Description("The ID of the tag to delete"),
+			mcp.Required(),
+		),
+	)
+	s.mcpServer.AddTool(deleteTagTool, s.handleDeleteTag)
+
+	bulkSetTransactionTagsTool := mcp.NewTool(
+		"bulk_set_transaction_tags",
+		mcp.WithDescription("Set or replace tags for multiple transactions in a single call"),
+		mcp.WithArray(
+			"assignments",
+			mcp.Description("Array of objects with transaction_id (required, number) and tag_ids (required, array of numbers — replaces all tags; empty array clears)"),
+			mcp.Required(),
+		),
+	)
+	s.mcpServer.AddTool(bulkSetTransactionTagsTool, s.handleBulkSetTransactionTags)
 }
 
 func (s *Server) registerResources() {
