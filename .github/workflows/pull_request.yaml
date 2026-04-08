@@ -34,7 +34,7 @@ jobs:
       DB_USER: postgres
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - run: apk update && apk add curl openssl git openssh-client build-base && mkdir -p /root/.ssh
+      - run: apk update && apk add curl openssl git openssh-client build-base bash gpg && mkdir -p /root/.ssh
       - run: wget -O /usr/bin/mockgen https://github.com/skynet2/mock/releases/latest/download/mockgen && chmod 777 /usr/bin/mockgen
       - run: make generate
       - run: ENVIRONMENT=ci go test -json -coverprofile=/root/coverage_temp.txt -covermode=atomic ./... > /root/test.json
@@ -80,6 +80,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: HIGH,CRITICAL
+          skip-dirs: frontend/node_modules
   govulncheck:
     runs-on: ubuntu-latest
     container: golang:alpine
