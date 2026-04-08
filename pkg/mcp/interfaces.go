@@ -5,6 +5,7 @@ import (
 
 	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
 	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
+	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
 )
 
 //go:generate mockgen -destination interfaces_mocks_test.go -package mcp_test -source=interfaces.go
@@ -22,4 +23,11 @@ type RulesService interface {
 
 type DryRunService interface {
 	DryRunRule(ctx context.Context, req *rulesv1.DryRunRuleRequest) (*rulesv1.DryRunRuleResponse, error)
+}
+
+type TagsService interface {
+	ListTags(ctx context.Context, req *tagsv1.ListTagsRequest) (*tagsv1.ListTagsResponse, error)
+	CreateTag(ctx context.Context, req *tagsv1.CreateTagRequest) (*tagsv1.CreateTagResponse, error)
+	UpdateTag(ctx context.Context, req *tagsv1.UpdateTagRequest) (*tagsv1.UpdateTagResponse, error)
+	DeleteTag(ctx context.Context, req *tagsv1.DeleteTagRequest) error
 }

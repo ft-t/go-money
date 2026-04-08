@@ -222,6 +222,7 @@ func main() {
 			CategorySvc: categoriesSvc,
 			RulesSvc:    rulesSvc,
 			DryRunSvc:   dryRunSvc,
+			TagsSvc:     tagSvc,
 		})
 
 		grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
