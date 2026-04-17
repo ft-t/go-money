@@ -217,12 +217,14 @@ func main() {
 		}
 
 		mcpServer := gomoneyMcp.NewServer(&gomoneyMcp.ServerConfig{
-			DB:          database.GetDb(database.DbTypeMaster),
-			Docs:        mcpDocs,
-			CategorySvc: categoriesSvc,
-			RulesSvc:    rulesSvc,
-			DryRunSvc:   dryRunSvc,
-			TagsSvc:     tagSvc,
+			DB:             database.GetDb(database.DbTypeMaster),
+			Docs:           mcpDocs,
+			CategorySvc:    categoriesSvc,
+			RulesSvc:       rulesSvc,
+			DryRunSvc:      dryRunSvc,
+			TagsSvc:        tagSvc,
+			TransactionSvc: transactionSvc,
+			CurrencySvc:    currencyConverter,
 		})
 
 		grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
