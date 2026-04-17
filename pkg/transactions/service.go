@@ -14,6 +14,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -728,6 +729,27 @@ func (s *Service) BulkSetCategory(
 			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
 			Update("category_id", a.CategoryID).Error; err != nil {
 			return errors.Wrapf(err, "failed to set category on transaction %d", a.TransactionID)
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) BulkSetTags(
+	ctx context.Context,
+	assignments []TagsAssignment,
+) error {
+	if len(assignments) == 0 {
+		return nil
+	}
+
+	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	for _, a := range assignments {
+		tagIDs := pq.Int32Array(a.TagIDs)
+		if err := db.Model(&database.Transaction{}).
+			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
+			Update("tag_ids", tagIDs).Error; err != nil {
+			return errors.Wrapf(err, "failed to set tags on transaction %d", a.TransactionID)
 		}
 	}
 
