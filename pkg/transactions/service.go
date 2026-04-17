@@ -714,6 +714,26 @@ func (s *Service) fillTransferBetweenAccounts(
 	return &FillResponse{}, nil
 }
 
+func (s *Service) BulkSetCategory(
+	ctx context.Context,
+	assignments []CategoryAssignment,
+) error {
+	if len(assignments) == 0 {
+		return nil
+	}
+
+	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	for _, a := range assignments {
+		if err := db.Model(&database.Transaction{}).
+			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
+			Update("category_id", a.CategoryID).Error; err != nil {
+			return errors.Wrapf(err, "failed to set category on transaction %d", a.TransactionID)
+		}
+	}
+
+	return nil
+}
+
 func (s *Service) DeleteTransaction(
 	ctx context.Context,
 	req *transactionsv1.DeleteTransactionsRequest,

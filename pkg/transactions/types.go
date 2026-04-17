@@ -19,3 +19,13 @@ type UpsertOptions struct {
 	SkipAccountSourceDestValidation bool
 	SkipValidationErrors            bool
 }
+
+type CategoryAssignment struct {
+	TransactionID int64
+	CategoryID    *int32 // nil clears the category
+}
+
+type TagsAssignment struct {
+	TransactionID int64
+	TagIDs        []int32 // nil or empty clears all tags
+}
