@@ -18,12 +18,14 @@ type Server struct {
 }
 
 type ServerConfig struct {
-	DB          *gorm.DB
-	Docs        string
-	CategorySvc CategoryService
-	RulesSvc    RulesService
-	DryRunSvc   DryRunService
-	TagsSvc     TagsService
+	DB             *gorm.DB
+	Docs           string
+	CategorySvc    CategoryService
+	RulesSvc       RulesService
+	DryRunSvc      DryRunService
+	TagsSvc        TagsService
+	TransactionSvc TransactionService
+	CurrencySvc    CurrencyConverterService
 }
 
 func NewServer(cfg *ServerConfig) *Server {
@@ -264,6 +266,193 @@ func (s *Server) registerTools() {
 		),
 	)
 	s.mcpServer.AddTool(bulkSetTransactionTagsTool, s.handleBulkSetTransactionTags)
+
+	createExpenseTool := mcp.NewTool(
+		"create_expense",
+		mcp.WithDescription("Create an expense transaction. Required: transaction_date (RFC3339), title, source_account_id, source_amount (negative decimal string), source_currency, destination_account_id, destination_amount (positive decimal string), destination_currency. Optional: fx_source_amount (negative), fx_source_currency, notes, extra (map), tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id."),
+		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
+		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
+		mcp.WithNumber("source_account_id", mcp.Description("Source account id"), mcp.Required()),
+		mcp.WithString("source_amount", mcp.Description("Decimal string; must be negative"), mcp.Required()),
+		mcp.WithString("source_currency", mcp.Description("ISO-4217 source currency"), mcp.Required()),
+		mcp.WithNumber("destination_account_id", mcp.Description("Destination account id"), mcp.Required()),
+		mcp.WithString("destination_amount", mcp.Description("Decimal string; must be positive"), mcp.Required()),
+		mcp.WithString("destination_currency", mcp.Description("ISO-4217 destination currency"), mcp.Required()),
+		mcp.WithString("fx_source_amount", mcp.Description("Optional foreign source amount, negative decimal string")),
+		mcp.WithString("fx_source_currency", mcp.Description("Optional foreign source currency")),
+		mcp.WithString("notes", mcp.Description("Free-text notes")),
+		mcp.WithObject("extra", mcp.Description("String-to-string metadata map")),
+		mcp.WithArray("tag_ids", mcp.Description("Tag ids to attach")),
+		mcp.WithString("reference_number", mcp.Description("External reference number")),
+		mcp.WithArray("internal_reference_numbers", mcp.Description("Internal reference numbers")),
+		mcp.WithString("group_key", mcp.Description("Group key for linked transactions")),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithNumber("category_id", mcp.Description("Category id")),
+	)
+	s.mcpServer.AddTool(createExpenseTool, s.handleCreateExpense)
+
+	createIncomeTool := mcp.NewTool(
+		"create_income",
+		mcp.WithDescription("Create an income transaction. Required: transaction_date (RFC3339), title, source_account_id, source_amount (decimal string), source_currency, destination_account_id, destination_amount (decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id."),
+		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
+		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
+		mcp.WithNumber("source_account_id", mcp.Description("Source account id"), mcp.Required()),
+		mcp.WithString("source_amount", mcp.Description("Decimal string"), mcp.Required()),
+		mcp.WithString("source_currency", mcp.Description("ISO-4217 source currency"), mcp.Required()),
+		mcp.WithNumber("destination_account_id", mcp.Description("Destination account id"), mcp.Required()),
+		mcp.WithString("destination_amount", mcp.Description("Decimal string"), mcp.Required()),
+		mcp.WithString("destination_currency", mcp.Description("ISO-4217 destination currency"), mcp.Required()),
+		mcp.WithString("notes", mcp.Description("Free-text notes")),
+		mcp.WithObject("extra", mcp.Description("String-to-string metadata map")),
+		mcp.WithArray("tag_ids", mcp.Description("Tag ids to attach")),
+		mcp.WithString("reference_number", mcp.Description("External reference number")),
+		mcp.WithArray("internal_reference_numbers", mcp.Description("Internal reference numbers")),
+		mcp.WithString("group_key", mcp.Description("Group key for linked transactions")),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithNumber("category_id", mcp.Description("Category id")),
+	)
+	s.mcpServer.AddTool(createIncomeTool, s.handleCreateIncome)
+
+	createTransferTool := mcp.NewTool(
+		"create_transfer",
+		mcp.WithDescription("Create a transfer between accounts. Required: transaction_date (RFC3339), title, source_account_id, source_amount (negative decimal string), source_currency, destination_account_id, destination_amount (positive decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id."),
+		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
+		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
+		mcp.WithNumber("source_account_id", mcp.Description("Source account id"), mcp.Required()),
+		mcp.WithString("source_amount", mcp.Description("Decimal string; must be negative"), mcp.Required()),
+		mcp.WithString("source_currency", mcp.Description("ISO-4217 source currency"), mcp.Required()),
+		mcp.WithNumber("destination_account_id", mcp.Description("Destination account id"), mcp.Required()),
+		mcp.WithString("destination_amount", mcp.Description("Decimal string; must be positive"), mcp.Required()),
+		mcp.WithString("destination_currency", mcp.Description("ISO-4217 destination currency"), mcp.Required()),
+		mcp.WithString("notes", mcp.Description("Free-text notes")),
+		mcp.WithObject("extra", mcp.Description("String-to-string metadata map")),
+		mcp.WithArray("tag_ids", mcp.Description("Tag ids to attach")),
+		mcp.WithString("reference_number", mcp.Description("External reference number")),
+		mcp.WithArray("internal_reference_numbers", mcp.Description("Internal reference numbers")),
+		mcp.WithString("group_key", mcp.Description("Group key for linked transactions")),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithNumber("category_id", mcp.Description("Category id")),
+	)
+	s.mcpServer.AddTool(createTransferTool, s.handleCreateTransfer)
+
+	createAdjustmentTool := mcp.NewTool(
+		"create_adjustment",
+		mcp.WithDescription("Create a balance adjustment. The source account is resolved automatically (default adjustment account) and the source amount is derived via the currency converter. Required: transaction_date (RFC3339), title, destination_account_id, destination_amount (decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id."),
+		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
+		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
+		mcp.WithNumber("destination_account_id", mcp.Description("Destination account id"), mcp.Required()),
+		mcp.WithString("destination_amount", mcp.Description("Decimal string"), mcp.Required()),
+		mcp.WithString("destination_currency", mcp.Description("ISO-4217 destination currency"), mcp.Required()),
+		mcp.WithString("notes", mcp.Description("Free-text notes")),
+		mcp.WithObject("extra", mcp.Description("String-to-string metadata map")),
+		mcp.WithArray("tag_ids", mcp.Description("Tag ids to attach")),
+		mcp.WithString("reference_number", mcp.Description("External reference number")),
+		mcp.WithArray("internal_reference_numbers", mcp.Description("Internal reference numbers")),
+		mcp.WithString("group_key", mcp.Description("Group key for linked transactions")),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithNumber("category_id", mcp.Description("Category id")),
+	)
+	s.mcpServer.AddTool(createAdjustmentTool, s.handleCreateAdjustment)
+
+	updateExpenseTool := mcp.NewTool(
+		"update_expense",
+		mcp.WithDescription("Create an expense transaction. Required: transaction_date (RFC3339), title, source_account_id, source_amount (negative decimal string), source_currency, destination_account_id, destination_amount (positive decimal string), destination_currency. Optional: fx_source_amount (negative), fx_source_currency, notes, extra (map), tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
+		mcp.WithNumber("id", mcp.Description("Transaction id to replace"), mcp.Required()),
+		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
+		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
+		mcp.WithNumber("source_account_id", mcp.Description("Source account id"), mcp.Required()),
+		mcp.WithString("source_amount", mcp.Description("Decimal string; must be negative"), mcp.Required()),
+		mcp.WithString("source_currency", mcp.Description("ISO-4217 source currency"), mcp.Required()),
+		mcp.WithNumber("destination_account_id", mcp.Description("Destination account id"), mcp.Required()),
+		mcp.WithString("destination_amount", mcp.Description("Decimal string; must be positive"), mcp.Required()),
+		mcp.WithString("destination_currency", mcp.Description("ISO-4217 destination currency"), mcp.Required()),
+		mcp.WithString("fx_source_amount", mcp.Description("Optional foreign source amount, negative decimal string")),
+		mcp.WithString("fx_source_currency", mcp.Description("Optional foreign source currency")),
+		mcp.WithString("notes", mcp.Description("Free-text notes")),
+		mcp.WithObject("extra", mcp.Description("String-to-string metadata map")),
+		mcp.WithArray("tag_ids", mcp.Description("Tag ids to attach")),
+		mcp.WithString("reference_number", mcp.Description("External reference number")),
+		mcp.WithArray("internal_reference_numbers", mcp.Description("Internal reference numbers")),
+		mcp.WithString("group_key", mcp.Description("Group key for linked transactions")),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithNumber("category_id", mcp.Description("Category id")),
+	)
+	s.mcpServer.AddTool(updateExpenseTool, s.handleUpdateExpense)
+
+	updateIncomeTool := mcp.NewTool(
+		"update_income",
+		mcp.WithDescription("Create an income transaction. Required: transaction_date (RFC3339), title, source_account_id, source_amount (decimal string), source_currency, destination_account_id, destination_amount (decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
+		mcp.WithNumber("id", mcp.Description("Transaction id to replace"), mcp.Required()),
+		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
+		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
+		mcp.WithNumber("source_account_id", mcp.Description("Source account id"), mcp.Required()),
+		mcp.WithString("source_amount", mcp.Description("Decimal string"), mcp.Required()),
+		mcp.WithString("source_currency", mcp.Description("ISO-4217 source currency"), mcp.Required()),
+		mcp.WithNumber("destination_account_id", mcp.Description("Destination account id"), mcp.Required()),
+		mcp.WithString("destination_amount", mcp.Description("Decimal string"), mcp.Required()),
+		mcp.WithString("destination_currency", mcp.Description("ISO-4217 destination currency"), mcp.Required()),
+		mcp.WithString("notes", mcp.Description("Free-text notes")),
+		mcp.WithObject("extra", mcp.Description("String-to-string metadata map")),
+		mcp.WithArray("tag_ids", mcp.Description("Tag ids to attach")),
+		mcp.WithString("reference_number", mcp.Description("External reference number")),
+		mcp.WithArray("internal_reference_numbers", mcp.Description("Internal reference numbers")),
+		mcp.WithString("group_key", mcp.Description("Group key for linked transactions")),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithNumber("category_id", mcp.Description("Category id")),
+	)
+	s.mcpServer.AddTool(updateIncomeTool, s.handleUpdateIncome)
+
+	updateTransferTool := mcp.NewTool(
+		"update_transfer",
+		mcp.WithDescription("Create a transfer between accounts. Required: transaction_date (RFC3339), title, source_account_id, source_amount (negative decimal string), source_currency, destination_account_id, destination_amount (positive decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
+		mcp.WithNumber("id", mcp.Description("Transaction id to replace"), mcp.Required()),
+		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
+		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
+		mcp.WithNumber("source_account_id", mcp.Description("Source account id"), mcp.Required()),
+		mcp.WithString("source_amount", mcp.Description("Decimal string; must be negative"), mcp.Required()),
+		mcp.WithString("source_currency", mcp.Description("ISO-4217 source currency"), mcp.Required()),
+		mcp.WithNumber("destination_account_id", mcp.Description("Destination account id"), mcp.Required()),
+		mcp.WithString("destination_amount", mcp.Description("Decimal string; must be positive"), mcp.Required()),
+		mcp.WithString("destination_currency", mcp.Description("ISO-4217 destination currency"), mcp.Required()),
+		mcp.WithString("notes", mcp.Description("Free-text notes")),
+		mcp.WithObject("extra", mcp.Description("String-to-string metadata map")),
+		mcp.WithArray("tag_ids", mcp.Description("Tag ids to attach")),
+		mcp.WithString("reference_number", mcp.Description("External reference number")),
+		mcp.WithArray("internal_reference_numbers", mcp.Description("Internal reference numbers")),
+		mcp.WithString("group_key", mcp.Description("Group key for linked transactions")),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithNumber("category_id", mcp.Description("Category id")),
+	)
+	s.mcpServer.AddTool(updateTransferTool, s.handleUpdateTransfer)
+
+	updateAdjustmentTool := mcp.NewTool(
+		"update_adjustment",
+		mcp.WithDescription("Create a balance adjustment. The source account is resolved automatically (default adjustment account) and the source amount is derived via the currency converter. Required: transaction_date (RFC3339), title, destination_account_id, destination_amount (decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
+		mcp.WithNumber("id", mcp.Description("Transaction id to replace"), mcp.Required()),
+		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
+		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
+		mcp.WithNumber("destination_account_id", mcp.Description("Destination account id"), mcp.Required()),
+		mcp.WithString("destination_amount", mcp.Description("Decimal string"), mcp.Required()),
+		mcp.WithString("destination_currency", mcp.Description("ISO-4217 destination currency"), mcp.Required()),
+		mcp.WithString("notes", mcp.Description("Free-text notes")),
+		mcp.WithObject("extra", mcp.Description("String-to-string metadata map")),
+		mcp.WithArray("tag_ids", mcp.Description("Tag ids to attach")),
+		mcp.WithString("reference_number", mcp.Description("External reference number")),
+		mcp.WithArray("internal_reference_numbers", mcp.Description("Internal reference numbers")),
+		mcp.WithString("group_key", mcp.Description("Group key for linked transactions")),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithNumber("category_id", mcp.Description("Category id")),
+	)
+	s.mcpServer.AddTool(updateAdjustmentTool, s.handleUpdateAdjustment)
+
+	convertCurrencyTool := mcp.NewTool(
+		"convert_currency",
+		mcp.WithDescription("Convert an amount between two currencies using stored exchange rates. Rates are denominated vs base currency: amount / from_rate → base → × to_rate. Same-currency calls pass through (both rates = 1). Returns converted amount plus from_rate, to_rate, and base_currency so the caller can verify the math."),
+		mcp.WithString("from", mcp.Description("ISO-4217 source currency code"), mcp.Required()),
+		mcp.WithString("to", mcp.Description("ISO-4217 target currency code"), mcp.Required()),
+		mcp.WithString("amount", mcp.Description("Decimal amount as string"), mcp.Required()),
+	)
+	s.mcpServer.AddTool(convertCurrencyTool, s.handleConvertCurrency)
 }
 
 func (s *Server) registerResources() {
