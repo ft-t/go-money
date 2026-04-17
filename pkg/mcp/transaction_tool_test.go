@@ -1168,6 +1168,185 @@ func TestServer_HandleUpdateIncome_Failure(t *testing.T) {
 	}
 }
 
+func TestServer_HandleUpdateTransfer_Success(t *testing.T) {
+	type tc struct {
+		name   string
+		args   map[string]any
+		respID int64
+		verify func(t *testing.T, req *transactionsv1.UpdateTransactionRequest)
+	}
+
+	cases := []tc{
+		{
+			name: "full fields",
+			args: map[string]any{
+				"id":                         float64(99),
+				"transaction_date":           "2024-03-10T12:30:00Z",
+				"title":                      "Updated Savings move",
+				"source_account_id":          float64(30),
+				"source_amount":              "-1200.50",
+				"source_currency":            "USD",
+				"destination_account_id":     float64(31),
+				"destination_amount":         "1100.00",
+				"destination_currency":       "EUR",
+				"notes":                      "updated cross-ccy",
+				"extra":                      map[string]any{"batch": "b-2"},
+				"tag_ids":                    []any{float64(11), float64(12)},
+				"reference_number":           "REF-TR-UPD",
+				"internal_reference_numbers": []any{"INT-TU"},
+				"group_key":                  "grp-tr-upd",
+				"skip_rules":                 true,
+				"category_id":                float64(33),
+			},
+			respID: 99,
+			verify: func(t *testing.T, req *transactionsv1.UpdateTransactionRequest) {
+				assert.Equal(t, int64(99), req.Id)
+				require.NotNil(t, req.Transaction)
+				assert.Equal(t, "Updated Savings move", req.Transaction.Title)
+				tr := req.Transaction.GetTransferBetweenAccounts()
+				require.NotNil(t, tr)
+				assert.Equal(t, "-1200.50", tr.SourceAmount)
+				assert.Equal(t, "USD", tr.SourceCurrency)
+				assert.Equal(t, int32(30), tr.SourceAccountId)
+				assert.Equal(t, int32(31), tr.DestinationAccountId)
+				assert.Equal(t, "1100.00", tr.DestinationAmount)
+				assert.Equal(t, "EUR", tr.DestinationCurrency)
+				assert.Equal(t, "updated cross-ccy", req.Transaction.Notes)
+				assert.Equal(t, map[string]string{"batch": "b-2"}, req.Transaction.Extra)
+				assert.Equal(t, []int32{11, 12}, req.Transaction.TagIds)
+				require.NotNil(t, req.Transaction.ReferenceNumber)
+				assert.Equal(t, "REF-TR-UPD", *req.Transaction.ReferenceNumber)
+				assert.Equal(t, []string{"INT-TU"}, req.Transaction.InternalReferenceNumbers)
+				require.NotNil(t, req.Transaction.GroupKey)
+				assert.Equal(t, "grp-tr-upd", *req.Transaction.GroupKey)
+				assert.True(t, req.Transaction.SkipRules)
+				require.NotNil(t, req.Transaction.CategoryId)
+				assert.Equal(t, int32(33), *req.Transaction.CategoryId)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			txSvc := NewMockTransactionService(ctrl)
+			txSvc.EXPECT().Update(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, req *transactionsv1.UpdateTransactionRequest) (*transactionsv1.UpdateTransactionResponse, error) {
+					c.verify(t, req)
+					return &transactionsv1.UpdateTransactionResponse{
+						Transaction: &gomoneypbv1.Transaction{Id: c.respID},
+					}, nil
+				})
+
+			server := newTxServer(t, ctrl, txSvc)
+			tool := server.MCPServer().GetTool("update_transfer")
+			require.NotNil(t, tool)
+
+			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name:      "update_transfer",
+					Arguments: c.args,
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.False(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Transaction 99 updated")
+		})
+	}
+}
+
+func TestServer_HandleUpdateTransfer_Failure(t *testing.T) {
+	baseArgs := func() map[string]any {
+		return map[string]any{
+			"id":                     float64(1),
+			"transaction_date":       "2024-01-15T10:00:00Z",
+			"title":                  "Move cash",
+			"source_account_id":      float64(3),
+			"source_amount":          "-250.00",
+			"source_currency":        "USD",
+			"destination_account_id": float64(4),
+			"destination_amount":     "250.00",
+			"destination_currency":   "USD",
+		}
+	}
+
+	argsWith := func(overrides map[string]any, remove ...string) map[string]any {
+		args := baseArgs()
+		for k, v := range overrides {
+			args[k] = v
+		}
+		for _, k := range remove {
+			delete(args, k)
+		}
+		return args
+	}
+
+	type tc struct {
+		name          string
+		args          map[string]any
+		setupMock     func(*MockTransactionService)
+		expectedError string
+	}
+
+	cases := []tc{
+		{
+			name:          "missing id",
+			args:          argsWith(nil, "id"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "id is required",
+		},
+		{
+			name:          "missing transaction_date",
+			args:          argsWith(nil, "transaction_date"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "transaction_date is required",
+		},
+		{
+			name:          "invalid source_amount",
+			args:          argsWith(map[string]any{"source_amount": "not-a-decimal"}),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "invalid source_amount",
+		},
+		{
+			name: "service returns error",
+			args: baseArgs(),
+			setupMock: func(m *MockTransactionService) {
+				m.EXPECT().Update(gomock.Any(), gomock.Any()).
+					Return(nil, errors.New("not found"))
+			},
+			expectedError: "failed to update transfer",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			txSvc := NewMockTransactionService(ctrl)
+			c.setupMock(txSvc)
+
+			server := newTxServer(t, ctrl, txSvc)
+			tool := server.MCPServer().GetTool("update_transfer")
+			require.NotNil(t, tool)
+
+			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name:      "update_transfer",
+					Arguments: c.args,
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.True(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, c.expectedError)
+		})
+	}
+}
+
 func TestServer_HandleUpdateExpense_Failure(t *testing.T) {
 	baseArgs := func() map[string]any {
 		return map[string]any{
