@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -15,9 +17,7 @@ func (s *Server) handleBulkSetTransactionCategory(ctx context.Context, request m
 		return mcp.NewToolResultError("assignments parameter is required and must be a non-empty array"), nil
 	}
 
-	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
-	defer cancel()
-
+	assignments := make([]transactions.CategoryAssignment, 0, len(assignmentsRaw))
 	for i, item := range assignmentsRaw {
 		itemMap, ok := item.(map[string]any)
 		if !ok {
@@ -35,17 +35,23 @@ func (s *Server) handleBulkSetTransactionCategory(ctx context.Context, request m
 			if !ok {
 				return mcp.NewToolResultError(fmt.Sprintf("assignment[%d].category_id must be a number or null", i)), nil
 			}
-			catIDInt := int32(catIDFloat)
-			categoryID = &catIDInt
+			v := int32(catIDFloat)
+			categoryID = &v
 		}
 
-		if err := s.db.WithContext(queryCtx).
-			Table("transactions").
-			Where("id = ?", int64(txID)).
-			Update("category_id", categoryID).Error; err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("failed to update transaction %d: %v", int64(txID), err)), nil
-		}
+		assignments = append(assignments, transactions.CategoryAssignment{
+			TransactionID: int64(txID),
+			CategoryID:    categoryID,
+		})
 	}
 
-	return mcp.NewToolResultText(fmt.Sprintf("Updated %d transactions", len(assignmentsRaw))), nil
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+	queryCtx = database.WithContext(queryCtx, s.db)
+
+	if err := s.cfg.TransactionSvc.BulkSetCategory(queryCtx, assignments); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to update transactions: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Updated %d transactions", len(assignments))), nil
 }
