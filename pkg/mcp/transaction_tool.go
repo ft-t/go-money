@@ -492,6 +492,36 @@ func (s *Server) handleUpdateTransfer(ctx context.Context, request mcp.CallToolR
 	return mcp.NewToolResultText(fmt.Sprintf("Transaction %d updated", resp.Transaction.Id)), nil
 }
 
-func (s *Server) handleUpdateAdjustment(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultError("not implemented"), nil
+func (s *Server) handleUpdateAdjustment(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := request.GetArguments()
+
+	idF, ok := args["id"].(float64)
+	if !ok {
+		return mcp.NewToolResultError("id is required"), nil
+	}
+
+	req, err := parseCommonTxFields(args)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	adjustment, err := parseAdjustmentFields(args)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	req.Transaction = &transactionsv1.CreateTransactionRequest_Adjustment{Adjustment: adjustment}
+
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+	queryCtx = database.WithContext(queryCtx, s.db)
+
+	resp, err := s.cfg.TransactionSvc.Update(queryCtx, &transactionsv1.UpdateTransactionRequest{
+		Id:          int64(idF),
+		Transaction: req,
+	})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to update adjustment: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Transaction %d updated", resp.Transaction.Id)), nil
 }
