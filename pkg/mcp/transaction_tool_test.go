@@ -989,6 +989,185 @@ func TestServer_HandleUpdateExpense_Success(t *testing.T) {
 	}
 }
 
+func TestServer_HandleUpdateIncome_Success(t *testing.T) {
+	type tc struct {
+		name   string
+		args   map[string]any
+		respID int64
+		verify func(t *testing.T, req *transactionsv1.UpdateTransactionRequest)
+	}
+
+	cases := []tc{
+		{
+			name: "full fields",
+			args: map[string]any{
+				"id":                         float64(88),
+				"transaction_date":           "2024-03-10T12:30:00Z",
+				"title":                      "Updated Bonus",
+				"source_account_id":          float64(10),
+				"source_amount":              "-500.25",
+				"source_currency":            "USD",
+				"destination_account_id":     float64(20),
+				"destination_amount":         "500.25",
+				"destination_currency":       "USD",
+				"notes":                      "updated note",
+				"extra":                      map[string]any{"k": "v"},
+				"tag_ids":                    []any{float64(7), float64(8)},
+				"reference_number":           "REF-INC-UPD",
+				"internal_reference_numbers": []any{"INT-IU"},
+				"group_key":                  "grp-inc-upd",
+				"skip_rules":                 true,
+				"category_id":                float64(42),
+			},
+			respID: 88,
+			verify: func(t *testing.T, req *transactionsv1.UpdateTransactionRequest) {
+				assert.Equal(t, int64(88), req.Id)
+				require.NotNil(t, req.Transaction)
+				assert.Equal(t, "Updated Bonus", req.Transaction.Title)
+				income := req.Transaction.GetIncome()
+				require.NotNil(t, income)
+				assert.Equal(t, "-500.25", income.SourceAmount)
+				assert.Equal(t, "USD", income.SourceCurrency)
+				assert.Equal(t, int32(10), income.SourceAccountId)
+				assert.Equal(t, int32(20), income.DestinationAccountId)
+				assert.Equal(t, "500.25", income.DestinationAmount)
+				assert.Equal(t, "USD", income.DestinationCurrency)
+				assert.Equal(t, "updated note", req.Transaction.Notes)
+				assert.Equal(t, map[string]string{"k": "v"}, req.Transaction.Extra)
+				assert.Equal(t, []int32{7, 8}, req.Transaction.TagIds)
+				require.NotNil(t, req.Transaction.ReferenceNumber)
+				assert.Equal(t, "REF-INC-UPD", *req.Transaction.ReferenceNumber)
+				assert.Equal(t, []string{"INT-IU"}, req.Transaction.InternalReferenceNumbers)
+				require.NotNil(t, req.Transaction.GroupKey)
+				assert.Equal(t, "grp-inc-upd", *req.Transaction.GroupKey)
+				assert.True(t, req.Transaction.SkipRules)
+				require.NotNil(t, req.Transaction.CategoryId)
+				assert.Equal(t, int32(42), *req.Transaction.CategoryId)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			txSvc := NewMockTransactionService(ctrl)
+			txSvc.EXPECT().Update(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, req *transactionsv1.UpdateTransactionRequest) (*transactionsv1.UpdateTransactionResponse, error) {
+					c.verify(t, req)
+					return &transactionsv1.UpdateTransactionResponse{
+						Transaction: &gomoneypbv1.Transaction{Id: c.respID},
+					}, nil
+				})
+
+			server := newTxServer(t, ctrl, txSvc)
+			tool := server.MCPServer().GetTool("update_income")
+			require.NotNil(t, tool)
+
+			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name:      "update_income",
+					Arguments: c.args,
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.False(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Transaction 88 updated")
+		})
+	}
+}
+
+func TestServer_HandleUpdateIncome_Failure(t *testing.T) {
+	baseArgs := func() map[string]any {
+		return map[string]any{
+			"id":                     float64(1),
+			"transaction_date":       "2024-01-15T10:00:00Z",
+			"title":                  "Salary",
+			"source_account_id":      float64(1),
+			"source_amount":          "-1000.00",
+			"source_currency":        "USD",
+			"destination_account_id": float64(2),
+			"destination_amount":     "1000.00",
+			"destination_currency":   "USD",
+		}
+	}
+
+	argsWith := func(overrides map[string]any, remove ...string) map[string]any {
+		args := baseArgs()
+		for k, v := range overrides {
+			args[k] = v
+		}
+		for _, k := range remove {
+			delete(args, k)
+		}
+		return args
+	}
+
+	type tc struct {
+		name          string
+		args          map[string]any
+		setupMock     func(*MockTransactionService)
+		expectedError string
+	}
+
+	cases := []tc{
+		{
+			name:          "missing id",
+			args:          argsWith(nil, "id"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "id is required",
+		},
+		{
+			name:          "missing transaction_date",
+			args:          argsWith(nil, "transaction_date"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "transaction_date is required",
+		},
+		{
+			name:          "invalid source_amount",
+			args:          argsWith(map[string]any{"source_amount": "not-a-decimal"}),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "invalid source_amount",
+		},
+		{
+			name: "service returns error",
+			args: baseArgs(),
+			setupMock: func(m *MockTransactionService) {
+				m.EXPECT().Update(gomock.Any(), gomock.Any()).
+					Return(nil, errors.New("not found"))
+			},
+			expectedError: "failed to update income",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			txSvc := NewMockTransactionService(ctrl)
+			c.setupMock(txSvc)
+
+			server := newTxServer(t, ctrl, txSvc)
+			tool := server.MCPServer().GetTool("update_income")
+			require.NotNil(t, tool)
+
+			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name:      "update_income",
+					Arguments: c.args,
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.True(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, c.expectedError)
+		})
+	}
+}
+
 func TestServer_HandleUpdateExpense_Failure(t *testing.T) {
 	baseArgs := func() map[string]any {
 		return map[string]any{
