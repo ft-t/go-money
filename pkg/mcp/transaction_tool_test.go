@@ -723,6 +723,188 @@ func TestServer_HandleCreateTransfer_Failure(t *testing.T) {
 	}
 }
 
+func TestServer_HandleCreateAdjustment_Success(t *testing.T) {
+	type tc struct {
+		name   string
+		args   map[string]any
+		respID int64
+		verify func(t *testing.T, req *transactionsv1.CreateTransactionRequest)
+	}
+
+	cases := []tc{
+		{
+			name: "minimal valid adjustment",
+			args: map[string]any{
+				"transaction_date":       "2024-01-15T10:00:00Z",
+				"title":                  "Balance fix",
+				"destination_account_id": float64(5),
+				"destination_amount":     "12.34",
+				"destination_currency":   "USD",
+			},
+			respID: 31,
+			verify: func(t *testing.T, req *transactionsv1.CreateTransactionRequest) {
+				assert.Equal(t, "Balance fix", req.Title)
+				assert.Equal(t, int64(1705312800), req.TransactionDate.Seconds)
+				adj := req.GetAdjustment()
+				require.NotNil(t, adj)
+				assert.Equal(t, int32(5), adj.DestinationAccountId)
+				assert.Equal(t, "12.34", adj.DestinationAmount)
+				assert.Equal(t, "USD", adj.DestinationCurrency)
+				assert.Nil(t, req.CategoryId)
+				assert.Empty(t, req.TagIds)
+				assert.Empty(t, req.Notes)
+			},
+		},
+		{
+			name: "full optional fields",
+			args: map[string]any{
+				"transaction_date":       "2024-03-10T12:30:00Z",
+				"title":                  "Audit adj",
+				"destination_account_id": float64(50),
+				"destination_amount":     "-9.99",
+				"destination_currency":   "EUR",
+				"notes":                  "audit correction",
+				"tag_ids":                []any{float64(99)},
+				"category_id":            float64(8),
+			},
+			respID: 32,
+			verify: func(t *testing.T, req *transactionsv1.CreateTransactionRequest) {
+				adj := req.GetAdjustment()
+				require.NotNil(t, adj)
+				assert.Equal(t, int32(50), adj.DestinationAccountId)
+				assert.Equal(t, "-9.99", adj.DestinationAmount)
+				assert.Equal(t, "EUR", adj.DestinationCurrency)
+				assert.Equal(t, "audit correction", req.Notes)
+				assert.Equal(t, []int32{99}, req.TagIds)
+				require.NotNil(t, req.CategoryId)
+				assert.Equal(t, int32(8), *req.CategoryId)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			txSvc := NewMockTransactionService(ctrl)
+			txSvc.EXPECT().Create(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, req *transactionsv1.CreateTransactionRequest) (*transactionsv1.CreateTransactionResponse, error) {
+					c.verify(t, req)
+					return &transactionsv1.CreateTransactionResponse{
+						Transaction: &gomoneypbv1.Transaction{Id: c.respID},
+					}, nil
+				})
+
+			server := newTxServer(t, ctrl, txSvc)
+			tool := server.MCPServer().GetTool("create_adjustment")
+			require.NotNil(t, tool)
+
+			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name:      "create_adjustment",
+					Arguments: c.args,
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.False(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Transaction created with id")
+		})
+	}
+}
+
+func TestServer_HandleCreateAdjustment_Failure(t *testing.T) {
+	baseArgs := func() map[string]any {
+		return map[string]any{
+			"transaction_date":       "2024-01-15T10:00:00Z",
+			"title":                  "Balance fix",
+			"destination_account_id": float64(5),
+			"destination_amount":     "12.34",
+			"destination_currency":   "USD",
+		}
+	}
+
+	argsWith := func(overrides map[string]any, remove ...string) map[string]any {
+		args := baseArgs()
+		for k, v := range overrides {
+			args[k] = v
+		}
+		for _, k := range remove {
+			delete(args, k)
+		}
+		return args
+	}
+
+	type tc struct {
+		name          string
+		args          map[string]any
+		setupMock     func(*MockTransactionService)
+		expectedError string
+	}
+
+	cases := []tc{
+		{
+			name:          "missing transaction_date",
+			args:          argsWith(nil, "transaction_date"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "transaction_date is required",
+		},
+		{
+			name:          "missing destination_account_id",
+			args:          argsWith(nil, "destination_account_id"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "destination_account_id is required",
+		},
+		{
+			name:          "missing destination_amount",
+			args:          argsWith(nil, "destination_amount"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "destination_amount is required",
+		},
+		{
+			name:          "invalid destination_amount",
+			args:          argsWith(map[string]any{"destination_amount": "not-a-decimal"}),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "invalid destination_amount",
+		},
+		{
+			name: "service returns error",
+			args: baseArgs(),
+			setupMock: func(m *MockTransactionService) {
+				m.EXPECT().Create(gomock.Any(), gomock.Any()).
+					Return(nil, errors.New("db down"))
+			},
+			expectedError: "failed to create adjustment",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			txSvc := NewMockTransactionService(ctrl)
+			c.setupMock(txSvc)
+
+			server := newTxServer(t, ctrl, txSvc)
+			tool := server.MCPServer().GetTool("create_adjustment")
+			require.NotNil(t, tool)
+
+			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name:      "create_adjustment",
+					Arguments: c.args,
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.True(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, c.expectedError)
+		})
+	}
+}
+
 func TestServer_HandleUpdateExpense_Success(t *testing.T) {
 	type tc struct {
 		name   string
