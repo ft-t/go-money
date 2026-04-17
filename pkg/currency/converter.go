@@ -54,6 +54,47 @@ func (c *Converter) Convert(
 	return amountInBase.Mul(toRate), nil
 }
 
+func (c *Converter) Quote(
+	ctx context.Context,
+	fromCurrency string,
+	toCurrency string,
+	amount decimal.Decimal,
+) (*Quote, error) {
+	quote := &Quote{
+		From:         fromCurrency,
+		To:           toCurrency,
+		Amount:       amount,
+		BaseCurrency: c.baseCurrency,
+	}
+
+	if fromCurrency == toCurrency {
+		quote.Converted = amount
+		quote.FromRate = decimal.NewFromInt(1)
+		quote.ToRate = decimal.NewFromInt(1)
+		return quote, nil
+	}
+
+	rates, err := c.fetchRates(ctx, []string{fromCurrency, toCurrency, c.baseCurrency})
+	if err != nil {
+		return nil, err
+	}
+
+	fromRate, ok := rates[fromCurrency]
+	if !ok {
+		return nil, errors.Newf("rate for %s not found", fromCurrency)
+	}
+
+	toRate, ok := rates[toCurrency]
+	if !ok {
+		return nil, errors.Newf("rate for %s not found", toCurrency)
+	}
+
+	quote.FromRate = fromRate
+	quote.ToRate = toRate
+	quote.Converted = amount.Div(fromRate).Mul(toRate)
+	return quote, nil
+}
+
 func (c *Converter) fetchRates(
 	ctx context.Context,
 	currencies []string,
