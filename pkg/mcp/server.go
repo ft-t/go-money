@@ -356,7 +356,7 @@ func (s *Server) registerTools() {
 
 	updateExpenseTool := mcp.NewTool(
 		"update_expense",
-		mcp.WithDescription("Create an expense transaction. Required: transaction_date (RFC3339), title, source_account_id, source_amount (negative decimal string), source_currency, destination_account_id, destination_amount (positive decimal string), destination_currency. Optional: fx_source_amount (negative), fx_source_currency, notes, extra (map), tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
+		mcp.WithDescription("Update an existing expense transaction by replacing all fields. Required: transaction_date (RFC3339), title, source_account_id, source_amount (negative decimal string), source_currency, destination_account_id, destination_amount (positive decimal string), destination_currency. Optional: fx_source_amount (negative), fx_source_currency, notes, extra (map), tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
 		mcp.WithNumber("id", mcp.Description("Transaction id to replace"), mcp.Required()),
 		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
 		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
@@ -381,7 +381,7 @@ func (s *Server) registerTools() {
 
 	updateIncomeTool := mcp.NewTool(
 		"update_income",
-		mcp.WithDescription("Create an income transaction. Required: transaction_date (RFC3339), title, source_account_id, source_amount (decimal string), source_currency, destination_account_id, destination_amount (decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
+		mcp.WithDescription("Update an existing income transaction by replacing all fields. Required: transaction_date (RFC3339), title, source_account_id, source_amount (decimal string), source_currency, destination_account_id, destination_amount (decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
 		mcp.WithNumber("id", mcp.Description("Transaction id to replace"), mcp.Required()),
 		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
 		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
@@ -404,7 +404,7 @@ func (s *Server) registerTools() {
 
 	updateTransferTool := mcp.NewTool(
 		"update_transfer",
-		mcp.WithDescription("Create a transfer between accounts. Required: transaction_date (RFC3339), title, source_account_id, source_amount (negative decimal string), source_currency, destination_account_id, destination_amount (positive decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
+		mcp.WithDescription("Update an existing transfer between accounts by replacing all fields. Required: transaction_date (RFC3339), title, source_account_id, source_amount (negative decimal string), source_currency, destination_account_id, destination_amount (positive decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
 		mcp.WithNumber("id", mcp.Description("Transaction id to replace"), mcp.Required()),
 		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
 		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
@@ -427,7 +427,7 @@ func (s *Server) registerTools() {
 
 	updateAdjustmentTool := mcp.NewTool(
 		"update_adjustment",
-		mcp.WithDescription("Create a balance adjustment. The source account is resolved automatically (default adjustment account) and the source amount is derived via the currency converter. Required: transaction_date (RFC3339), title, destination_account_id, destination_amount (decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
+		mcp.WithDescription("Update an existing balance adjustment by replacing all fields. The source account is resolved automatically (default adjustment account) and the source amount is derived via the currency converter. Required: transaction_date (RFC3339), title, destination_account_id, destination_amount (decimal string), destination_currency. Optional: notes, extra, tag_ids, reference_number, internal_reference_numbers, group_key, skip_rules, category_id. Also requires `id` (int, the transaction id to replace)."),
 		mcp.WithNumber("id", mcp.Description("Transaction id to replace"), mcp.Required()),
 		mcp.WithString("transaction_date", mcp.Description("RFC3339 date-time"), mcp.Required()),
 		mcp.WithString("title", mcp.Description("Short description"), mcp.Required()),
