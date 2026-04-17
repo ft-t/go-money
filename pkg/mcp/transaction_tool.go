@@ -204,8 +204,72 @@ func (s *Server) handleCreateExpense(ctx context.Context, request mcp.CallToolRe
 	return mcp.NewToolResultText(fmt.Sprintf("Transaction created with id %d", resp.Transaction.Id)), nil
 }
 
-func (s *Server) handleCreateIncome(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultError("not implemented"), nil
+func parseIncomeFields(args map[string]any) (*transactionsv1.Income, error) {
+	srcAcc, ok := args["source_account_id"].(float64)
+	if !ok {
+		return nil, errors.New("source_account_id is required")
+	}
+	srcAmtStr, ok := args["source_amount"].(string)
+	if !ok || srcAmtStr == "" {
+		return nil, errors.New("source_amount is required")
+	}
+	if _, err := decimal.NewFromString(srcAmtStr); err != nil {
+		return nil, errors.Wrap(err, "invalid source_amount")
+	}
+	srcCur, ok := args["source_currency"].(string)
+	if !ok || srcCur == "" {
+		return nil, errors.New("source_currency is required")
+	}
+	dstAcc, ok := args["destination_account_id"].(float64)
+	if !ok {
+		return nil, errors.New("destination_account_id is required")
+	}
+	dstAmtStr, ok := args["destination_amount"].(string)
+	if !ok || dstAmtStr == "" {
+		return nil, errors.New("destination_amount is required")
+	}
+	if _, err := decimal.NewFromString(dstAmtStr); err != nil {
+		return nil, errors.Wrap(err, "invalid destination_amount")
+	}
+	dstCur, ok := args["destination_currency"].(string)
+	if !ok || dstCur == "" {
+		return nil, errors.New("destination_currency is required")
+	}
+
+	return &transactionsv1.Income{
+		SourceAmount:         srcAmtStr,
+		SourceCurrency:       srcCur,
+		SourceAccountId:      int32(srcAcc),
+		DestinationAccountId: int32(dstAcc),
+		DestinationAmount:    dstAmtStr,
+		DestinationCurrency:  dstCur,
+	}, nil
+}
+
+func (s *Server) handleCreateIncome(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := request.GetArguments()
+
+	req, err := parseCommonTxFields(args)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	income, err := parseIncomeFields(args)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	req.Transaction = &transactionsv1.CreateTransactionRequest_Income{Income: income}
+
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+	queryCtx = database.WithContext(queryCtx, s.db)
+
+	resp, err := s.cfg.TransactionSvc.Create(queryCtx, req)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to create income: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Transaction created with id %d", resp.Transaction.Id)), nil
 }
 
 func (s *Server) handleCreateTransfer(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {

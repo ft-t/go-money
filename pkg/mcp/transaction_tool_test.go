@@ -273,6 +273,230 @@ func TestServer_HandleCreateExpense_Failure(t *testing.T) {
 	}
 }
 
+func TestServer_HandleCreateIncome_Success(t *testing.T) {
+	type tc struct {
+		name   string
+		args   map[string]any
+		respID int64
+		verify func(t *testing.T, req *transactionsv1.CreateTransactionRequest)
+	}
+
+	cases := []tc{
+		{
+			name: "minimal valid income",
+			args: map[string]any{
+				"transaction_date":       "2024-01-15T10:00:00Z",
+				"title":                  "Salary",
+				"source_account_id":      float64(1),
+				"source_amount":          "-1000.00",
+				"source_currency":        "USD",
+				"destination_account_id": float64(2),
+				"destination_amount":     "1000.00",
+				"destination_currency":   "USD",
+			},
+			respID: 11,
+			verify: func(t *testing.T, req *transactionsv1.CreateTransactionRequest) {
+				assert.Equal(t, "Salary", req.Title)
+				assert.Equal(t, int64(1705312800), req.TransactionDate.Seconds)
+				income := req.GetIncome()
+				require.NotNil(t, income)
+				assert.Equal(t, "-1000.00", income.SourceAmount)
+				assert.Equal(t, "USD", income.SourceCurrency)
+				assert.Equal(t, int32(1), income.SourceAccountId)
+				assert.Equal(t, int32(2), income.DestinationAccountId)
+				assert.Equal(t, "1000.00", income.DestinationAmount)
+				assert.Equal(t, "USD", income.DestinationCurrency)
+				assert.Nil(t, req.CategoryId)
+				assert.Empty(t, req.TagIds)
+				assert.Empty(t, req.Notes)
+				assert.Empty(t, req.Extra)
+				assert.Nil(t, req.ReferenceNumber)
+				assert.Empty(t, req.InternalReferenceNumbers)
+				assert.Nil(t, req.GroupKey)
+				assert.False(t, req.SkipRules)
+			},
+		},
+		{
+			name: "full optional fields",
+			args: map[string]any{
+				"transaction_date":           "2024-03-10T12:30:00Z",
+				"title":                      "Bonus",
+				"source_account_id":          float64(10),
+				"source_amount":              "-500.25",
+				"source_currency":            "USD",
+				"destination_account_id":     float64(20),
+				"destination_amount":         "500.25",
+				"destination_currency":       "USD",
+				"notes":                      "q1 bonus",
+				"extra":                      map[string]any{"source": "payroll"},
+				"tag_ids":                    []any{float64(7), float64(8)},
+				"reference_number":           "REF-INC",
+				"internal_reference_numbers": []any{"INT-I1"},
+				"group_key":                  "grp-inc",
+				"skip_rules":                 true,
+				"category_id":                float64(42),
+			},
+			respID: 12,
+			verify: func(t *testing.T, req *transactionsv1.CreateTransactionRequest) {
+				income := req.GetIncome()
+				require.NotNil(t, income)
+				assert.Equal(t, int32(10), income.SourceAccountId)
+				assert.Equal(t, int32(20), income.DestinationAccountId)
+				assert.Equal(t, "-500.25", income.SourceAmount)
+				assert.Equal(t, "500.25", income.DestinationAmount)
+				assert.Equal(t, "q1 bonus", req.Notes)
+				assert.Equal(t, map[string]string{"source": "payroll"}, req.Extra)
+				assert.Equal(t, []int32{7, 8}, req.TagIds)
+				require.NotNil(t, req.ReferenceNumber)
+				assert.Equal(t, "REF-INC", *req.ReferenceNumber)
+				assert.Equal(t, []string{"INT-I1"}, req.InternalReferenceNumbers)
+				require.NotNil(t, req.GroupKey)
+				assert.Equal(t, "grp-inc", *req.GroupKey)
+				assert.True(t, req.SkipRules)
+				require.NotNil(t, req.CategoryId)
+				assert.Equal(t, int32(42), *req.CategoryId)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			txSvc := NewMockTransactionService(ctrl)
+			txSvc.EXPECT().Create(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, req *transactionsv1.CreateTransactionRequest) (*transactionsv1.CreateTransactionResponse, error) {
+					c.verify(t, req)
+					return &transactionsv1.CreateTransactionResponse{
+						Transaction: &gomoneypbv1.Transaction{Id: c.respID},
+					}, nil
+				})
+
+			server := newTxServer(t, ctrl, txSvc)
+			tool := server.MCPServer().GetTool("create_income")
+			require.NotNil(t, tool)
+
+			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name:      "create_income",
+					Arguments: c.args,
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.False(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Transaction created with id")
+		})
+	}
+}
+
+func TestServer_HandleCreateIncome_Failure(t *testing.T) {
+	baseArgs := func() map[string]any {
+		return map[string]any{
+			"transaction_date":       "2024-01-15T10:00:00Z",
+			"title":                  "Salary",
+			"source_account_id":      float64(1),
+			"source_amount":          "-1000.00",
+			"source_currency":        "USD",
+			"destination_account_id": float64(2),
+			"destination_amount":     "1000.00",
+			"destination_currency":   "USD",
+		}
+	}
+
+	argsWith := func(overrides map[string]any, remove ...string) map[string]any {
+		args := baseArgs()
+		for k, v := range overrides {
+			args[k] = v
+		}
+		for _, k := range remove {
+			delete(args, k)
+		}
+		return args
+	}
+
+	type tc struct {
+		name          string
+		args          map[string]any
+		setupMock     func(*MockTransactionService)
+		expectedError string
+	}
+
+	cases := []tc{
+		{
+			name:          "missing transaction_date",
+			args:          argsWith(nil, "transaction_date"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "transaction_date is required",
+		},
+		{
+			name:          "missing title",
+			args:          argsWith(nil, "title"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "title is required",
+		},
+		{
+			name:          "missing source_account_id",
+			args:          argsWith(nil, "source_account_id"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "source_account_id is required",
+		},
+		{
+			name:          "missing destination_amount",
+			args:          argsWith(nil, "destination_amount"),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "destination_amount is required",
+		},
+		{
+			name:          "invalid source_amount",
+			args:          argsWith(map[string]any{"source_amount": "not-a-decimal"}),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "invalid source_amount",
+		},
+		{
+			name:          "invalid destination_amount",
+			args:          argsWith(map[string]any{"destination_amount": "not-a-decimal"}),
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "invalid destination_amount",
+		},
+		{
+			name: "service returns error",
+			args: baseArgs(),
+			setupMock: func(m *MockTransactionService) {
+				m.EXPECT().Create(gomock.Any(), gomock.Any()).
+					Return(nil, errors.New("db down"))
+			},
+			expectedError: "failed to create income",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			txSvc := NewMockTransactionService(ctrl)
+			c.setupMock(txSvc)
+
+			server := newTxServer(t, ctrl, txSvc)
+			tool := server.MCPServer().GetTool("create_income")
+			require.NotNil(t, tool)
+
+			result, err := tool.Handler(context.Background(), mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name:      "create_income",
+					Arguments: c.args,
+				},
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.True(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, c.expectedError)
+		})
+	}
+}
+
 func TestServer_HandleUpdateExpense_Success(t *testing.T) {
 	type tc struct {
 		name   string
