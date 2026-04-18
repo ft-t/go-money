@@ -723,13 +723,19 @@ func (s *Service) BulkSetCategory(
 		return nil
 	}
 
-	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+
 	for _, a := range assignments {
-		if err := db.Model(&database.Transaction{}).
+		if err := tx.Model(&database.Transaction{}).
 			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
 			Update("category_id", a.CategoryID).Error; err != nil {
 			return errors.Wrapf(err, "failed to set category on transaction %d", a.TransactionID)
 		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return errors.Wrap(err, "failed to commit bulk category update")
 	}
 
 	return nil
@@ -743,14 +749,20 @@ func (s *Service) BulkSetTags(
 		return nil
 	}
 
-	db := database.GetDbWithContext(ctx, database.DbTypeMaster)
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+
 	for _, a := range assignments {
 		tagIDs := pq.Int32Array(a.TagIDs)
-		if err := db.Model(&database.Transaction{}).
+		if err := tx.Model(&database.Transaction{}).
 			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
 			Update("tag_ids", tagIDs).Error; err != nil {
 			return errors.Wrapf(err, "failed to set tags on transaction %d", a.TransactionID)
 		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return errors.Wrap(err, "failed to commit bulk tags update")
 	}
 
 	return nil
