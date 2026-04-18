@@ -7,7 +7,7 @@ import (
 
 	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
 	"github.com/ft-t/go-money/pkg/database"
-	"github.com/lib/pq"
+	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -127,9 +127,7 @@ func (s *Server) handleBulkSetTransactionTags(ctx context.Context, request mcp.C
 		return mcp.NewToolResultError("assignments parameter is required and must be a non-empty array"), nil
 	}
 
-	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
-	defer cancel()
-
+	assignments := make([]transactions.TagsAssignment, 0, len(assignmentsRaw))
 	for i, item := range assignmentsRaw {
 		itemMap, ok := item.(map[string]any)
 		if !ok {
@@ -146,7 +144,7 @@ func (s *Server) handleBulkSetTransactionTags(ctx context.Context, request mcp.C
 			return mcp.NewToolResultError(fmt.Sprintf("assignment[%d].tag_ids is required and must be an array", i)), nil
 		}
 
-		tagIDs := make(pq.Int32Array, 0, len(tagIDsRaw))
+		tagIDs := make([]int32, 0, len(tagIDsRaw))
 		for j, raw := range tagIDsRaw {
 			id, ok := raw.(float64)
 			if !ok {
@@ -155,13 +153,19 @@ func (s *Server) handleBulkSetTransactionTags(ctx context.Context, request mcp.C
 			tagIDs = append(tagIDs, int32(id))
 		}
 
-		if err := s.db.WithContext(queryCtx).
-			Table("transactions").
-			Where("id = ?", int64(txID)).
-			Update("tag_ids", tagIDs).Error; err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("failed to update transaction %d: %v", int64(txID), err)), nil
-		}
+		assignments = append(assignments, transactions.TagsAssignment{
+			TransactionID: int64(txID),
+			TagIDs:        tagIDs,
+		})
 	}
 
-	return mcp.NewToolResultText(fmt.Sprintf("Updated %d transactions", len(assignmentsRaw))), nil
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+	queryCtx = database.WithContext(queryCtx, s.db)
+
+	if err := s.cfg.TransactionSvc.BulkSetTags(queryCtx, assignments); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to update transactions: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Updated %d transactions", len(assignments))), nil
 }

@@ -30,28 +30,52 @@ func (c *Converter) Convert(
 	toCurrency string,
 	amount decimal.Decimal,
 ) (decimal.Decimal, error) {
+	quote, err := c.Quote(ctx, fromCurrency, toCurrency, amount)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return quote.Converted, nil
+}
+
+func (c *Converter) Quote(
+	ctx context.Context,
+	fromCurrency string,
+	toCurrency string,
+	amount decimal.Decimal,
+) (*Quote, error) {
+	quote := &Quote{
+		From:         fromCurrency,
+		To:           toCurrency,
+		Amount:       amount,
+		BaseCurrency: c.baseCurrency,
+	}
+
 	if fromCurrency == toCurrency {
-		return amount, nil
+		quote.Converted = amount
+		quote.FromRate = decimal.NewFromInt(1)
+		quote.ToRate = decimal.NewFromInt(1)
+		return quote, nil
 	}
 
 	rates, err := c.fetchRates(ctx, []string{fromCurrency, toCurrency, c.baseCurrency})
 	if err != nil {
-		return decimal.Zero, err
+		return nil, err
 	}
 
-	toBaseRate, toBaseRateOk := rates[fromCurrency]
-	if !toBaseRateOk {
-		return decimal.Zero, errors.Newf("rate for %s not found", fromCurrency)
+	fromRate, ok := rates[fromCurrency]
+	if !ok {
+		return nil, errors.Newf("rate for %s not found", fromCurrency)
 	}
 
-	amountInBase := amount.Div(toBaseRate)
-
-	toRate, toRateOk := rates[toCurrency]
-	if !toRateOk {
-		return decimal.Zero, errors.Newf("rate for %s not found", toCurrency)
+	toRate, ok := rates[toCurrency]
+	if !ok {
+		return nil, errors.Newf("rate for %s not found", toCurrency)
 	}
 
-	return amountInBase.Mul(toRate), nil
+	quote.FromRate = fromRate
+	quote.ToRate = toRate
+	quote.Converted = amount.Div(fromRate).Mul(toRate)
+	return quote, nil
 }
 
 func (c *Converter) fetchRates(

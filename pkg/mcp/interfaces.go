@@ -6,6 +6,10 @@ import (
 	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
 	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
 	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
+	"github.com/ft-t/go-money/pkg/currency"
+	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/shopspring/decimal"
 )
 
 //go:generate mockgen -destination interfaces_mocks_test.go -package mcp_test -source=interfaces.go
@@ -30,4 +34,15 @@ type TagsService interface {
 	CreateTag(ctx context.Context, req *tagsv1.CreateTagRequest) (*tagsv1.CreateTagResponse, error)
 	UpdateTag(ctx context.Context, req *tagsv1.UpdateTagRequest) (*tagsv1.UpdateTagResponse, error)
 	DeleteTag(ctx context.Context, req *tagsv1.DeleteTagRequest) error
+}
+
+type TransactionService interface {
+	Create(ctx context.Context, req *transactionsv1.CreateTransactionRequest) (*transactionsv1.CreateTransactionResponse, error)
+	Update(ctx context.Context, req *transactionsv1.UpdateTransactionRequest) (*transactionsv1.UpdateTransactionResponse, error)
+	BulkSetCategory(ctx context.Context, assignments []transactions.CategoryAssignment) error
+	BulkSetTags(ctx context.Context, assignments []transactions.TagsAssignment) error
+}
+
+type CurrencyConverterService interface {
+	Quote(ctx context.Context, from, to string, amount decimal.Decimal) (*currency.Quote, error)
 }
