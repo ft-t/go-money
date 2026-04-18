@@ -14,6 +14,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -712,6 +713,59 @@ func (s *Service) fillTransferBetweenAccounts(
 	newTx.DestinationCurrency = req.DestinationCurrency
 
 	return &FillResponse{}, nil
+}
+
+func (s *Service) BulkSetCategory(
+	ctx context.Context,
+	assignments []CategoryAssignment,
+) error {
+	if len(assignments) == 0 {
+		return nil
+	}
+
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+
+	for _, a := range assignments {
+		if err := tx.Model(&database.Transaction{}).
+			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
+			Update("category_id", a.CategoryID).Error; err != nil {
+			return errors.Wrapf(err, "failed to set category on transaction %d", a.TransactionID)
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return errors.Wrap(err, "failed to commit bulk category update")
+	}
+
+	return nil
+}
+
+func (s *Service) BulkSetTags(
+	ctx context.Context,
+	assignments []TagsAssignment,
+) error {
+	if len(assignments) == 0 {
+		return nil
+	}
+
+	tx := database.GetDbWithContext(ctx, database.DbTypeMaster).Begin()
+	defer tx.Rollback()
+
+	for _, a := range assignments {
+		tagIDs := pq.Int32Array(a.TagIDs)
+		if err := tx.Model(&database.Transaction{}).
+			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
+			Update("tag_ids", tagIDs).Error; err != nil {
+			return errors.Wrapf(err, "failed to set tags on transaction %d", a.TransactionID)
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return errors.Wrap(err, "failed to commit bulk tags update")
+	}
+
+	return nil
 }
 
 func (s *Service) DeleteTransaction(

@@ -2,11 +2,11 @@ package mcp_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/cockroachdb/errors"
 	"github.com/golang/mock/gomock"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -15,6 +15,7 @@ import (
 
 	gomcp "github.com/ft-t/go-money/pkg/mcp"
 	"github.com/ft-t/go-money/pkg/testingutils"
+	"github.com/ft-t/go-money/pkg/transactions"
 )
 
 func TestServer_HandleListTags_Success(t *testing.T) {
@@ -564,25 +565,37 @@ func TestServer_HandleBulkSetTransactionTags_Success(t *testing.T) {
 	type tc struct {
 		name        string
 		assignments []map[string]any
+		expected    []transactions.TagsAssignment
 	}
 
 	cases := []tc{
 		{
-			name: "set single tag",
+			name: "set single tag list",
 			assignments: []map[string]any{
 				{"transaction_id": float64(1), "tag_ids": []any{float64(5)}},
 			},
+			expected: []transactions.TagsAssignment{
+				{TransactionID: 1, TagIDs: []int32{5}},
+			},
 		},
 		{
-			name: "set multiple tags",
+			name: "set multiple assignments",
 			assignments: []map[string]any{
 				{"transaction_id": float64(1), "tag_ids": []any{float64(5), float64(10)}},
+				{"transaction_id": float64(2), "tag_ids": []any{float64(7)}},
+			},
+			expected: []transactions.TagsAssignment{
+				{TransactionID: 1, TagIDs: []int32{5, 10}},
+				{TransactionID: 2, TagIDs: []int32{7}},
 			},
 		},
 		{
 			name: "clear tags with empty array",
 			assignments: []map[string]any{
 				{"transaction_id": float64(1), "tag_ids": []any{}},
+			},
+			expected: []transactions.TagsAssignment{
+				{TransactionID: 1, TagIDs: []int32{}},
 			},
 		},
 		{
@@ -591,30 +604,26 @@ func TestServer_HandleBulkSetTransactionTags_Success(t *testing.T) {
 				{"transaction_id": float64(1), "tag_ids": []any{float64(5), float64(10)}},
 				{"transaction_id": float64(2), "tag_ids": []any{}},
 			},
+			expected: []transactions.TagsAssignment{
+				{TransactionID: 1, TagIDs: []int32{5, 10}},
+				{TransactionID: 2, TagIDs: []int32{}},
+			},
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			gormDB, mockDB, mock := testingutils.GormMock()
-			defer func() { _ = mockDB.Close() }()
 
-			for range c.assignments {
-				mock.ExpectBegin()
-				mock.ExpectExec("UPDATE \"transactions\"").WillReturnResult(sqlmock.NewResult(0, 1))
-				mock.ExpectCommit()
-			}
+			txSvc := NewMockTransactionService(ctrl)
+			expected := c.expected
+			txSvc.EXPECT().BulkSetTags(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, got []transactions.TagsAssignment) error {
+					assert.Equal(t, expected, got)
+					return nil
+				})
 
-			server := gomcp.NewServer(&gomcp.ServerConfig{
-				DB:          gormDB,
-				Docs:        "test docs",
-				CategorySvc: NewMockCategoryService(ctrl),
-				RulesSvc:    NewMockRulesService(ctrl),
-				DryRunSvc:   NewMockDryRunService(ctrl),
-				TagsSvc:     NewMockTagsService(ctrl),
-			})
-
+			server := newTxServer(t, ctrl, txSvc)
 			tool := server.MCPServer().GetTool("bulk_set_transaction_tags")
 			require.NotNil(t, tool)
 
@@ -633,7 +642,7 @@ func TestServer_HandleBulkSetTransactionTags_Success(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			assert.False(t, result.IsError)
-			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Updated")
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, fmt.Sprintf("Updated %d transactions", len(c.expected)))
 		})
 	}
 }
@@ -642,6 +651,7 @@ func TestServer_HandleBulkSetTransactionTags_Failure(t *testing.T) {
 	type tc struct {
 		name          string
 		args          map[string]any
+		setupMock     func(*MockTransactionService)
 		expectedError string
 	}
 
@@ -649,16 +659,19 @@ func TestServer_HandleBulkSetTransactionTags_Failure(t *testing.T) {
 		{
 			name:          "missing assignments",
 			args:          map[string]any{},
+			setupMock:     func(m *MockTransactionService) {},
 			expectedError: "assignments parameter is required",
 		},
 		{
 			name:          "empty assignments",
 			args:          map[string]any{"assignments": []any{}},
+			setupMock:     func(m *MockTransactionService) {},
 			expectedError: "assignments parameter is required and must be a non-empty array",
 		},
 		{
 			name:          "invalid assignment type",
 			args:          map[string]any{"assignments": []any{"not an object"}},
+			setupMock:     func(m *MockTransactionService) {},
 			expectedError: "assignment[0] must be an object",
 		},
 		{
@@ -666,6 +679,7 @@ func TestServer_HandleBulkSetTransactionTags_Failure(t *testing.T) {
 			args: map[string]any{"assignments": []any{
 				map[string]any{"tag_ids": []any{float64(5)}},
 			}},
+			setupMock:     func(m *MockTransactionService) {},
 			expectedError: "assignment[0].transaction_id is required",
 		},
 		{
@@ -673,32 +687,46 @@ func TestServer_HandleBulkSetTransactionTags_Failure(t *testing.T) {
 			args: map[string]any{"assignments": []any{
 				map[string]any{"transaction_id": float64(1)},
 			}},
+			setupMock:     func(m *MockTransactionService) {},
 			expectedError: "assignment[0].tag_ids is required",
 		},
 		{
-			name: "invalid tag_ids element type",
+			name: "tag_ids not an array",
+			args: map[string]any{"assignments": []any{
+				map[string]any{"transaction_id": float64(1), "tag_ids": "not-an-array"},
+			}},
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "assignment[0].tag_ids is required and must be an array",
+		},
+		{
+			name: "tag_ids element not a number",
 			args: map[string]any{"assignments": []any{
 				map[string]any{"transaction_id": float64(1), "tag_ids": []any{"invalid"}},
 			}},
+			setupMock:     func(m *MockTransactionService) {},
 			expectedError: "assignment[0].tag_ids[0] must be a number",
+		},
+		{
+			name: "service returns error",
+			args: map[string]any{"assignments": []any{
+				map[string]any{"transaction_id": float64(1), "tag_ids": []any{float64(5)}},
+			}},
+			setupMock: func(m *MockTransactionService) {
+				m.EXPECT().BulkSetTags(gomock.Any(), gomock.Any()).
+					Return(errors.New("boom"))
+			},
+			expectedError: "failed to update transactions",
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			gormDB, mockDB, _ := testingutils.GormMock()
-			defer func() { _ = mockDB.Close() }()
 
-			server := gomcp.NewServer(&gomcp.ServerConfig{
-				DB:          gormDB,
-				Docs:        "test docs",
-				CategorySvc: NewMockCategoryService(ctrl),
-				RulesSvc:    NewMockRulesService(ctrl),
-				DryRunSvc:   NewMockDryRunService(ctrl),
-				TagsSvc:     NewMockTagsService(ctrl),
-			})
+			txSvc := NewMockTransactionService(ctrl)
+			c.setupMock(txSvc)
 
+			server := newTxServer(t, ctrl, txSvc)
 			tool := server.MCPServer().GetTool("bulk_set_transaction_tags")
 			require.NotNil(t, tool)
 
