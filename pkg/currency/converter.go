@@ -30,28 +30,11 @@ func (c *Converter) Convert(
 	toCurrency string,
 	amount decimal.Decimal,
 ) (decimal.Decimal, error) {
-	if fromCurrency == toCurrency {
-		return amount, nil
-	}
-
-	rates, err := c.fetchRates(ctx, []string{fromCurrency, toCurrency, c.baseCurrency})
+	quote, err := c.Quote(ctx, fromCurrency, toCurrency, amount)
 	if err != nil {
 		return decimal.Zero, err
 	}
-
-	toBaseRate, toBaseRateOk := rates[fromCurrency]
-	if !toBaseRateOk {
-		return decimal.Zero, errors.Newf("rate for %s not found", fromCurrency)
-	}
-
-	amountInBase := amount.Div(toBaseRate)
-
-	toRate, toRateOk := rates[toCurrency]
-	if !toRateOk {
-		return decimal.Zero, errors.Newf("rate for %s not found", toCurrency)
-	}
-
-	return amountInBase.Mul(toRate), nil
+	return quote.Converted, nil
 }
 
 func (c *Converter) Quote(
