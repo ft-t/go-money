@@ -43,3 +43,5 @@ server
 bin/
 
 mcp-client
+
+/_*.xlsx
