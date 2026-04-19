@@ -19,6 +19,7 @@ import { AccountsService, CreateAccountRequestSchema, UpdateAccountRequestSchema
 import { ActivatedRoute, Router } from '@angular/router';
 import { Message } from 'primeng/message';
 import { Checkbox } from 'primeng/checkbox';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
@@ -137,6 +138,10 @@ export class AccountsUpsertComponent implements OnInit {
         this.isFormReady = true;
     }
 
+    async cancel(): Promise<void> {
+        await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot, ['/', 'accounts']);
+    }
+
     get name() {
         return this.form.get('name')!;
     }
@@ -188,7 +193,7 @@ export class AccountsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Account updated' });
-            await this.router.navigate(['/', 'accounts', response.account!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'accounts', response.account!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -213,7 +218,7 @@ export class AccountsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'New account created' });
-            await this.router.navigate(['/', 'accounts', response.account!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'accounts', response.account!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;

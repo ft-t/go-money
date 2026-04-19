@@ -8,6 +8,8 @@
              [showGridlines]="true"
              [paginator]="false"
              [globalFilterFields]="['id', 'name']"
+             (onFilter)="syncStateToUrl()"
+             (onSort)="syncStateToUrl()"
              responsiveLayout="scroll">
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row gap-2">

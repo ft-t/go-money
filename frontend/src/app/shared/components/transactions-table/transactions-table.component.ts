@@ -1,4 +1,5 @@
-import { AfterViewInit, Component, Inject, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, Inject, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OverlayModule } from 'primeng/overlay';
 import { FormsModule } from '@angular/forms';
 import { ToastModule } from 'primeng/toast';
@@ -31,6 +32,10 @@ import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneyp
 import { Tooltip } from 'primeng/tooltip';
 import { TransactionSummaryComponent } from '../transaction-summary/transaction-summary.component';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ReturnUrlHelper } from '../../helpers/return-url.helper';
+import { TableQueryStateHelper } from '../../helpers/table-query-state.helper';
+import { TableStatePersistence } from '../../helpers/table-state-persistence.helper';
+import { TabSessionService } from '../../services/tab-session.service';
 
 export class FilterWrapper {
     public filters: { [s: string]: FilterMetadata } | undefined;
@@ -77,6 +82,8 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
     public ignoreDateFilter: boolean = false;
     private lastEvent: TableLazyLoadEvent | undefined;
     public totalRecords: number = 0;
+    public initialFirst: number = 0;
+    public initialRows: number = 50;
     public multiSortMeta: SortMeta[] = [
         {
             field: 'transactionItem.transactionDate.nanos',
@@ -86,28 +93,53 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
 
     @ViewChild('dt1', { static: false }) table!: Table;
 
+    private readonly stateKey = 'transactions';
+
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         public router: Router,
         private selectedDateService: SelectedDateService,
-        routeSnapshot: ActivatedRoute
+        private routeSnapshot: ActivatedRoute,
+        private tabSession: TabSessionService
     ) {
         for (let type of this.transactionTypes) {
             this.transactionTypesMap[type.value] = type;
         }
 
-        routeSnapshot.data.subscribe((data) => {
+        routeSnapshot.data.pipe(takeUntilDestroyed()).subscribe((data) => {
             if (data['preselectedFilter']) {
                 this.filters = data['preselectedFilter'];
             }
         });
 
-        routeSnapshot.queryParams.subscribe((params) => {
+        if (this.routeSnapshot.snapshot.queryParamMap.get('restore') === '1') {
+            const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+            if (stored) {
+                if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
+                if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
+                if (stored.first != null) this.initialFirst = stored.first;
+                if (stored.rows != null) this.initialRows = stored.rows;
+            }
+            TableStatePersistence.clear(this.stateKey, this.tabSession.id);
+            this.router.navigate([], { relativeTo: this.routeSnapshot, queryParams: { restore: null }, queryParamsHandling: 'merge', replaceUrl: true });
+        }
+
+        routeSnapshot.queryParams.pipe(takeUntilDestroyed()).subscribe((params) => {
             if (params['ignoreDateFilter'] === 'true') {
                 this.ignoreDateFilter = true;
             }
+
+            const decoded = TableQueryStateHelper.decode(params);
+            if (decoded.filters) {
+                this.filters = { ...this.filters, ...(decoded.filters as { [s: string]: FilterMetadata }) };
+            }
+            if (decoded.sort && decoded.sort.length > 0) {
+                this.multiSortMeta = decoded.sort;
+            }
+            if (decoded.first != null) this.initialFirst = decoded.first;
+            if (decoded.rows != null) this.initialRows = decoded.rows;
 
             if (params['title']) {
                 this.filters['title'] = {
@@ -131,10 +163,15 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
         }
     }
 
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
+    }
+
     async createNewTransaction() {
         await this.router.navigate(['/transactions', 'new'], {
             queryParams: {
-                type: this.transactionTypeForCreate ?? TransactionType.EXPENSE
+                type: this.transactionTypeForCreate ?? TransactionType.EXPENSE,
+                returnUrl: ReturnUrlHelper.build(this.router)
             }
         });
     }
@@ -247,8 +284,19 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
         console.log('constructFilters', filters);
     }
 
+    private syncStateToUrl(event: TableLazyLoadEvent): void {
+        TableStatePersistence.write(this.stateKey, this.tabSession.id, {
+            filters: event.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
+            sort: event.multiSortMeta ?? [],
+            first: event.first ?? undefined,
+            rows: event.rows ?? undefined,
+        });
+    }
+
     async fetchTransactions(event: TableLazyLoadEvent) {
         console.log(event);
+
+        this.syncStateToUrl(event);
 
         this.lastEvent = event;
         this.loading = true;

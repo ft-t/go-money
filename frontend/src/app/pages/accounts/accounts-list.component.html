@@ -36,6 +36,8 @@
              [resizableColumns]="true" columnResizeMode="expand"
              [paginator]="false"
              [globalFilterFields]="['account.name', 'account.number', 'account.currency']"
+             (onFilter)="syncStateToUrl()"
+             (onSort)="syncStateToUrl()"
              responsiveLayout="scroll">
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
@@ -54,7 +56,7 @@
                               pTooltip="Refresh table" tooltipPosition="top"
                               (click)="refreshTable()" />
                     <p-button label="Create new account" class="p-button-link"
-                              (click)="this.router.navigate(['/accounts', 'new'])" />
+                              (click)="this.router.navigate(['/accounts', 'new'], { queryParams: { returnUrl: currentReturnUrl } })" />
                 </div>
             </div>
         </ng-template>
@@ -215,8 +217,8 @@
                 </td>
                 <td>
                     <div class="flex gap-2">
-                        <a [href]="'/accounts/edit/' + accountItem.account.id"
-                           [routerLink]="['/', 'accounts', 'edit', accountItem.account.id]">
+                        <a [routerLink]="['/', 'accounts', 'edit', accountItem.account.id]"
+                           [queryParams]="{ returnUrl: currentReturnUrl }">
                             <p-button icon="pi pi-pencil"
                                       pTooltip="Edit account" tooltipPosition="top" placeholder="Top"
                                       severity="secondary" [rounded]="true" />
