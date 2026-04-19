@@ -1,0 +1,54 @@
+2026-04-19T13:04:34+02:00	INFO	[vuln] Vulnerability scanning is enabled
+2026-04-19T13:04:35+02:00	INFO	Number of language-specific files	num=1
+2026-04-19T13:04:35+02:00	INFO	[npm] Detecting vulnerabilities...
+
+Report Summary
+
+┌───────────────────┬──────┬─────────────────┐
+│      Target       │ Type │ Vulnerabilities │
+├───────────────────┼──────┼─────────────────┤
+│ package-lock.json │ npm  │        7        │
+└───────────────────┴──────┴─────────────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+
+package-lock.json (npm)
+=======================
+Total: 7 (LOW: 1, MEDIUM: 6, HIGH: 0, CRITICAL: 0)
+
+┌──────────────────┬─────────────────────┬──────────┬──────────┬───────────────────┬───────────────┬─────────────────────────────────────────────────────────────┐
+│     Library      │    Vulnerability    │ Severity │  Status  │ Installed Version │ Fixed Version │                            Title                            │
+├──────────────────┼─────────────────────┼──────────┼──────────┼───────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ dompurify        │ CVE-2026-0540       │ MEDIUM   │ fixed    │ 3.2.7             │ 3.3.2, 2.5.9  │ DOMPurify: DOMPurify: Cross-site scripting vulnerability    │
+│                  │                     │          │          │                   │               │ https://avd.aquasec.com/nvd/cve-2026-0540                   │
+│                  ├─────────────────────┤          │          │                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│                  │ GHSA-39q2-94rc-95cp │          │          │                   │ 3.4.0         │ DOMPurify's ADD_TAGS function form bypasses FORBID_TAGS due │
+│                  │                     │          │          │                   │               │ to short-circuit evaluation                                 │
+│                  │                     │          │          │                   │               │ https://github.com/advisories/GHSA-39q2-94rc-95cp           │
+│                  ├─────────────────────┤          │          │                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│                  │ GHSA-cj63-jhhr-wcxv │          │          │                   │ 3.3.2         │ DOMPurify USE_PROFILES prototype pollution allows event     │
+│                  │                     │          │          │                   │               │ handlers                                                    │
+│                  │                     │          │          │                   │               │ https://github.com/advisories/GHSA-cj63-jhhr-wcxv           │
+│                  ├─────────────────────┤          │          │                   │               ├─────────────────────────────────────────────────────────────┤
+│                  │ GHSA-cjmm-f4jc-qw8r │          │          │                   │               │ DOMPurify ADD_ATTR predicate skips URI validation           │
+│                  │                     │          │          │                   │               │ https://github.com/advisories/GHSA-cjmm-f4jc-qw8r           │
+│                  ├─────────────────────┤          │          │                   │               ├─────────────────────────────────────────────────────────────┤
+│                  │ GHSA-h8r8-wccr-v5f2 │          │          │                   │               │ DOMPurify is vulnerable to mutation-XSS via                 │
+│                  │                     │          │          │                   │               │ Re-Contextualization                                        │
+│                  │                     │          │          │                   │               │ https://github.com/advisories/GHSA-h8r8-wccr-v5f2           │
+├──────────────────┼─────────────────────┤          │          ├───────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ follow-redirects │ GHSA-r4q5-vmmm-2653 │          │          │ 1.15.9            │ 1.16.0        │ follow-redirects leaks Custom Authentication Headers to     │
+│                  │                     │          │          │                   │               │ Cross-Domain Redirect Targets                               │
+│                  │                     │          │          │                   │               │ https://github.com/advisories/GHSA-r4q5-vmmm-2653           │
+├──────────────────┼─────────────────────┼──────────┼──────────┼───────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ quill            │ CVE-2025-15056      │ LOW      │ affected │ 2.0.3             │               │ Quill is vulnerable to XSS via HTML export feature          │
+│                  │                     │          │          │                   │               │ https://avd.aquasec.com/nvd/cve-2025-15056                  │
+└──────────────────┴─────────────────────┴──────────┴──────────┴───────────────────┴───────────────┴─────────────────────────────────────────────────────────────┘
+
+📣 [34mNotices:[0m
+  - Version 0.70.0 of Trivy is now available, current version is 0.69.3
+
+To suppress version checks, run Trivy scans with the --skip-version-check flag
+
