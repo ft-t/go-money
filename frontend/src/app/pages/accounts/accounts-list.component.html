@@ -96,6 +96,11 @@
                         Account number
                     </p>
                 </th>
+                <th>
+                    <p class="text-left">
+                        Tags
+                    </p>
+                </th>
                 <th style="width: 1%; white-space: nowrap;"></th>
             </tr>
             <tr>
@@ -151,6 +156,7 @@
                                     placeholder="Filter"></p-columnFilter>
                 </th>
                 <th></th>
+                <th></th>
             </tr>
         </ng-template>
         <ng-template #body let-accountItem>
@@ -196,6 +202,13 @@
                     </p>
                 </td>
                 <td>
+                    <div class="flex gap-1 flex-wrap">
+                        @for (tagID of accountItem.account.tagIds; track tagID) {
+                            <fancy-tag [tag]="getTag(tagID)"></fancy-tag>
+                        }
+                    </div>
+                </td>
+                <td>
                     <div class="flex gap-2">
                         <a [href]="'/accounts/edit/' + accountItem.account.id"
                            [routerLink]="['/', 'accounts', 'edit', accountItem.account.id]">
@@ -213,12 +226,12 @@
         </ng-template>
         <ng-template #emptymessage>
             <tr>
-                <td colspan="8">No accounts found.</td>
+                <td colspan="9">No accounts found.</td>
             </tr>
         </ng-template>
         <ng-template #loadingbody>
             <tr>
-                <td colspan="8">Loading accounts data. Please wait.</td>
+                <td colspan="9">Loading accounts data. Please wait.</td>
             </tr>
         </ng-template>
     </p-table>

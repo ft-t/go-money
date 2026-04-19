@@ -33,6 +33,7 @@ import { ConfigurationService, GetConfigurationResponse, GetConfigurationRespons
 import { combineLatest, skip } from 'rxjs';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
+import { FancyTagComponent } from '../../shared/components/fancy-tag/fancy-tag.component';
 
 @Component({
     selector: 'app-account-list',
@@ -53,6 +54,7 @@ import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags
         DialogModule,
         ReconciliationModalComponent,
         TooltipModule,
+        FancyTagComponent,
     ],
     styles: `
         :host ::ng-deep .accountListTable .p-datatable-header {
@@ -72,6 +74,7 @@ export class AccountsListComponent implements OnInit {
 
     public accounts: ListAccountsResponse_AccountItem[] = [];
     public tags: Tag[] = [];
+    public tagsMap: { [id: number]: Tag } = {};
     public selectedTagIds: number[] = [];
     private accountService;
     private analyticsService;
@@ -136,9 +139,17 @@ export class AccountsListComponent implements OnInit {
         try {
             const resp = await this.tagsService.listTags({});
             this.tags = (resp.tags || []).map(t => t.tag!).filter(Boolean);
+            this.tagsMap = {};
+            for (const tag of this.tags) {
+                this.tagsMap[tag.id] = tag;
+            }
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
+    }
+
+    getTag(tagID: number): Tag | undefined {
+        return this.tagsMap[tagID];
     }
 
     async onTagFilterChange() {
