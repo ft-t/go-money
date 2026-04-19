@@ -1,6 +1,6 @@
-2026-04-19T13:08:10+02:00	INFO	[vuln] Vulnerability scanning is enabled
-2026-04-19T13:08:10+02:00	INFO	Number of language-specific files	num=1
-2026-04-19T13:08:10+02:00	INFO	[npm] Detecting vulnerabilities...
+2026-04-19T13:33:48+02:00	INFO	[vuln] Vulnerability scanning is enabled
+2026-04-19T13:33:48+02:00	INFO	Number of language-specific files	num=1
+2026-04-19T13:33:48+02:00	INFO	[npm] Detecting vulnerabilities...
 
 Report Summary
 
