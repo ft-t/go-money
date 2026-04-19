@@ -31,6 +31,8 @@ import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { SelectedDateService } from '../../core/services/selected-date.service';
 import { ConfigurationService, GetConfigurationResponse, GetConfigurationResponseSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
 import { combineLatest, skip } from 'rxjs';
+import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
+import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 
 @Component({
     selector: 'app-account-list',
@@ -69,9 +71,12 @@ export class AccountsListComponent implements OnInit {
     public accountTypesMap: { [id: string]: AccountTypeEnum } = {};
 
     public accounts: ListAccountsResponse_AccountItem[] = [];
+    public tags: Tag[] = [];
+    public selectedTagIds: number[] = [];
     private accountService;
     private analyticsService;
     private configService;
+    private tagsService;
     public accountTypes = EnumService.getAccountTypes();
     public filters: { [s: string]: FilterMetadata } = {};
     public accountCurrencies: Currency[] = [];
@@ -96,6 +101,7 @@ export class AccountsListComponent implements OnInit {
         this.accountService = createClient(AccountsService, this.transport);
         this.analyticsService = createClient(AnalyticsService, this.transport);
         this.configService = createClient(ConfigurationService, this.transport);
+        this.tagsService = createClient(TagsService, this.transport);
 
         if (route.snapshot.data['filters']) {
             for (let ob of route.snapshot.data['filters']) {
@@ -111,6 +117,7 @@ export class AccountsListComponent implements OnInit {
     }
 
     async ngOnInit() {
+        await this.loadTags();
         await this.loadConfig();
         await this.loadAccounts();
         await this.loadAnalytics();
@@ -125,6 +132,20 @@ export class AccountsListComponent implements OnInit {
         });
     }
 
+    async loadTags() {
+        try {
+            const resp = await this.tagsService.listTags({});
+            this.tags = (resp.tags || []).map(t => t.tag!).filter(Boolean);
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async onTagFilterChange() {
+        await this.loadAccounts();
+        await this.loadAnalytics();
+    }
+
     async loadAccounts() {
         this.loading = true;
 
@@ -136,7 +157,7 @@ export class AccountsListComponent implements OnInit {
         this.accountCurrencies = [];
 
         try {
-            let resp = await this.accountService.listAccounts({});
+            let resp = await this.accountService.listAccounts({ tagIds: this.selectedTagIds });
             this.accounts = resp.accounts || [];
 
             for (let account of this.accounts) {
