@@ -19,6 +19,7 @@ import { Checkbox } from 'primeng/checkbox';
 import { TextareaModule } from 'primeng/textarea';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ScriptEditorComponent } from '../../shared/components/script-editor/script-editor.component';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-rules-upsert',
@@ -88,7 +89,7 @@ export class RulesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Rule updated' });
-            await this.router.navigate(['/', 'rules']);
+            await this.navigateAfterSave(['/', 'rules']);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -106,11 +107,24 @@ export class RulesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Rule created' });
-            await this.router.navigate(['/', 'rules']);
+            await this.navigateAfterSave(['/', 'rules']);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
         }
+    }
+
+    async cancel(): Promise<void> {
+        await this.navigateAfterSave(['/', 'rules']);
+    }
+
+    private async navigateAfterSave(fallback: any[]): Promise<void> {
+        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
+        if (returnUrl) {
+            await this.router.navigateByUrl(returnUrl);
+            return;
+        }
+        await this.router.navigate(fallback);
     }
 
     protected readonly color = color;

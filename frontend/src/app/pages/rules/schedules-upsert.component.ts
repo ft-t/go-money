@@ -20,6 +20,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ScriptEditorComponent } from '../../shared/components/script-editor/script-editor.component';
 import { Message } from 'primeng/message';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-schedules-upsert',
@@ -35,7 +36,7 @@ export class SchedulesUpsertComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        routeSnapshot: ActivatedRoute,
+        private routeSnapshot: ActivatedRoute,
         private router: Router
     ) {
         this.rulesService = createClient(RulesService, this.transport);
@@ -74,7 +75,7 @@ export class SchedulesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Rule updated' });
-            await this.router.navigate(['/', 'schedules']);
+            await this.navigateAfterSave(['/', 'schedules']);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -92,11 +93,24 @@ export class SchedulesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Rule created' });
-            await this.router.navigate(['/', 'schedules']);
+            await this.navigateAfterSave(['/', 'schedules']);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
         }
+    }
+
+    async cancel(): Promise<void> {
+        await this.navigateAfterSave(['/', 'schedules']);
+    }
+
+    private async navigateAfterSave(fallback: any[]): Promise<void> {
+        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
+        if (returnUrl) {
+            await this.router.navigateByUrl(returnUrl);
+            return;
+        }
+        await this.router.navigate(fallback);
     }
 
     protected readonly color = color;
