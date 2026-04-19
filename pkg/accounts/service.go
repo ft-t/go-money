@@ -10,6 +10,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -78,6 +79,10 @@ func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest)
 
 	if len(req.Ids) > 0 {
 		query = query.Where("id in ?", req.Ids)
+	}
+
+	if len(req.TagIds) > 0 {
+		query = query.Where("tag_ids && ?", pq.Int32Array(req.TagIds))
 	}
 
 	if req.IncludeDeleted {
@@ -238,6 +243,7 @@ func (s *Service) Create(
 		Iban:          req.Iban,
 		AccountNumber: req.AccountNumber,
 		DisplayOrder:  req.DisplayOrder,
+		TagIDs:        req.TagIds,
 	}
 
 	if account.Extra == nil {
@@ -307,6 +313,7 @@ func (s *Service) Update(
 	account.Iban = req.Iban
 	account.DisplayOrder = req.DisplayOrder
 	account.Flags = req.Flags
+	account.TagIDs = req.TagIds
 
 	liabilityPercent, err := s.parseLiabilityPercent(req.LiabilityPercent)
 	if err != nil {

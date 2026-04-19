@@ -19,17 +19,22 @@ import { AccountsService, CreateAccountRequestSchema, UpdateAccountRequestSchema
 import { ActivatedRoute, Router } from '@angular/router';
 import { Message } from 'primeng/message';
 import { Checkbox } from 'primeng/checkbox';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
+import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 
 @Component({
     selector: 'app-account-upsert',
     templateUrl: 'accounts-upsert.component.html',
-    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea, Message, ReactiveFormsModule, Checkbox]
+    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea, Message, ReactiveFormsModule, Checkbox, MultiSelectModule]
 })
 export class AccountsUpsertComponent implements OnInit {
     private currencyService;
     private accountsService;
+    private tagsService;
 
     public currencies: Currency[] = [];
+    public tags: Tag[] = [];
 
     public account: Account = create(AccountSchema, {});
     public accountTypes = EnumService.getAccountTypes();
@@ -47,6 +52,7 @@ export class AccountsUpsertComponent implements OnInit {
 
         this.currencyService = createClient(CurrencyService, this.transport);
         this.accountsService = createClient(AccountsService, this.transport);
+        this.tagsService = createClient(TagsService, this.transport);
     }
 
     async loadCurrencies() {
@@ -54,6 +60,15 @@ export class AccountsUpsertComponent implements OnInit {
             let response = await this.currencyService.getCurrencies({});
 
             this.currencies = response.currencies || [];
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async loadTags() {
+        try {
+            const resp = await this.tagsService.listTags({});
+            this.tags = (resp.tags || []).filter(t => !!t?.tag).map(t => t.tag!);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -73,6 +88,7 @@ export class AccountsUpsertComponent implements OnInit {
         this.account = create(AccountSchema, {});
 
         await this.loadCurrencies();
+        await this.loadTags();
 
         if (this.isEdit) {
             const accountId = +this.routeSnapshot.snapshot.params['id'];
@@ -106,7 +122,8 @@ export class AccountsUpsertComponent implements OnInit {
             liabilityPercent: new FormControl(this.account.liabilityPercent),
             displayOrder: new FormControl(this.account.displayOrder),
             extra: new FormControl(this.account.extra ?? {}),
-            isDefault: new FormControl((this.account.flags & BigInt(1)) === BigInt(1))
+            isDefault: new FormControl((this.account.flags & BigInt(1)) === BigInt(1)),
+            tagIds: new FormControl(this.account.tagIds ?? [])
         });
 
         if (this.account.id > 0) {
@@ -165,7 +182,8 @@ export class AccountsUpsertComponent implements OnInit {
                     liabilityPercent: this.account.liabilityPercent,
                     displayOrder: this.account.displayOrder,
                     extra: this.account.extra ?? {},
-                    flags: flags
+                    flags: flags,
+                    tagIds: this.form.get('tagIds')?.value ?? []
                 })
             );
 
@@ -189,7 +207,8 @@ export class AccountsUpsertComponent implements OnInit {
                     note: this.account.note,
                     liabilityPercent: this.account.liabilityPercent,
                     displayOrder: this.account.displayOrder,
-                    extra: this.account.extra ?? {}
+                    extra: this.account.extra ?? {},
+                    tagIds: this.form.get('tagIds')?.value ?? []
                 })
             );
 

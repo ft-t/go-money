@@ -77,7 +77,7 @@ export class TransactionsImportComponent {
     }
 
     public isRawTextImport() {
-        return this.selectedSource == ImportSource.PRIVATE_24;
+        return false;
     }
 
     public getImportNotes(): string | null {

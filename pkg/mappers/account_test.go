@@ -9,6 +9,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/mappers"
 	"github.com/golang/mock/gomock"
+	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -68,4 +69,20 @@ func TestMapper(t *testing.T) {
 	assert.EqualValues(t, "number", mapped.AccountNumber)
 	assert.EqualValues(t, "iban", mapped.Iban)
 	assert.EqualValues(t, "0.123", *mapped.LiabilityPercent)
+}
+
+func TestMapAccount_TagIDs(t *testing.T) {
+	decimalSvc := NewMockDecimalSvc(gomock.NewController(t))
+	decimalSvc.EXPECT().ToString(gomock.Any(), gomock.Any(), gomock.Any()).Return("0")
+
+	mapper := mappers.NewMapper(&mappers.MapperConfig{
+		DecimalSvc: decimalSvc,
+	})
+
+	got := mapper.MapAccount(context.TODO(), &database.Account{
+		ID:     1,
+		TagIDs: pq.Int32Array{10, 20},
+	})
+
+	assert.EqualValues(t, []int32{10, 20}, got.TagIds)
 }
