@@ -483,8 +483,7 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
                         actor_extra     TEXT,
                         snapshot        JSONB       NOT NULL,
                         diff            JSONB,
-                        occurred_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-                        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+                        occurred_at     TIMESTAMP   NOT NULL DEFAULT now()
                     );`,
 					`CREATE INDEX IF NOT EXISTS idx_tx_history_tx_id_occurred
                         ON transaction_history (transaction_id, occurred_at);`,
