@@ -34,6 +34,13 @@ import { combineLatest, skip } from 'rxjs';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { FancyTagComponent } from '../../shared/components/fancy-tag/fancy-tag.component';
+import { PageConfigService } from '../../services/page-config.service';
+import {
+    AccountsListConfig,
+    ACCOUNTS_LIST_DEFAULTS,
+    ACCOUNTS_LIST_PAGE_ID,
+    QuickTag,
+} from './accounts-list.config';
 
 @Component({
     selector: 'app-account-list',
@@ -93,13 +100,18 @@ export class AccountsListComponent implements OnInit {
     @ViewChild('filter') filter!: ElementRef;
     public analyticsMap: { [accountId: number]: GetDebitsAndCreditsSummaryResponse_SummaryItem } = {};
     public serverConfig: GetConfigurationResponse = create(GetConfigurationResponseSchema, {});
+    public pageConfig: AccountsListConfig = { ...ACCOUNTS_LIST_DEFAULTS };
+    public editingQuickTags = false;
+    public newQuickTagLabel = '';
+    public newQuickTagSearch = '';
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         public router: Router,
         route: ActivatedRoute,
-        private selectedDateService: SelectedDateService
+        private selectedDateService: SelectedDateService,
+        private pageConfigService: PageConfigService
     ) {
         this.accountService = createClient(AccountsService, this.transport);
         this.analyticsService = createClient(AnalyticsService, this.transport);
@@ -122,6 +134,7 @@ export class AccountsListComponent implements OnInit {
     async ngOnInit() {
         await this.loadTags();
         await this.loadConfig();
+        await this.loadPageConfig();
         await this.loadAccounts();
         await this.loadAnalytics();
 
@@ -219,6 +232,54 @@ export class AccountsListComponent implements OnInit {
             this.serverConfig = await this.configService.getConfiguration({});
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        }
+    }
+
+    async loadPageConfig(): Promise<void> {
+        this.pageConfig = await this.pageConfigService.get<AccountsListConfig>(
+            ACCOUNTS_LIST_PAGE_ID,
+            ACCOUNTS_LIST_DEFAULTS,
+        );
+    }
+
+    applyQuickTag(tag: QuickTag): void {
+        this.filter.nativeElement.value = tag.search;
+        this.table.filterGlobal(tag.search, 'contains');
+    }
+
+    async addQuickTag(): Promise<void> {
+        const label = this.newQuickTagLabel.trim();
+        const search = this.newQuickTagSearch.trim();
+        if (!label || !search) {
+            return;
+        }
+        this.pageConfig = {
+            ...this.pageConfig,
+            quickTags: [...this.pageConfig.quickTags, { label, search }],
+        };
+        this.newQuickTagLabel = '';
+        this.newQuickTagSearch = '';
+        await this.savePageConfig();
+    }
+
+    async removeQuickTag(index: number): Promise<void> {
+        this.pageConfig = {
+            ...this.pageConfig,
+            quickTags: this.pageConfig.quickTags.filter((_, i) => i !== index),
+        };
+        await this.savePageConfig();
+    }
+
+    private async savePageConfig(): Promise<void> {
+        try {
+            await this.pageConfigService.set(ACCOUNTS_LIST_PAGE_ID, this.pageConfig);
+        } catch (e) {
+            console.error('Failed to save accounts-list page config:', e);
+            this.messageService.add({
+                severity: 'error',
+                summary: 'Save failed',
+                detail: ErrorHelper.getMessage(e),
+            });
         }
     }
 
