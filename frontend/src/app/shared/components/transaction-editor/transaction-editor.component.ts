@@ -54,6 +54,7 @@ import { NumberHelper } from '../../../helpers/number.helper';
 import { AccountHelper } from '../../../helpers/account.helper';
 import { Tooltip } from 'primeng/tooltip';
 import { ChipsModule } from 'primeng/chips';
+import { ReturnUrlHelper } from '../../helpers/return-url.helper';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -578,7 +579,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
             // todo transaction details page
-            await this.router.navigate(['/transactions']);
+            await this.navigateAfterSave(['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -596,12 +597,21 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
             // todo transaction details page
-            await this.router.navigate(['/transactions']);
+            await this.navigateAfterSave(['/transactions']);
 
             // todo transaction details page
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
+    }
+
+    private async navigateAfterSave(fallback: any[]): Promise<void> {
+        const returnUrl = ReturnUrlHelper.safe(this.route.snapshot.queryParamMap.get('returnUrl'));
+        if (returnUrl) {
+            await this.router.navigateByUrl(returnUrl);
+            return;
+        }
+        await this.router.navigate(fallback);
     }
 
     getAccountTypeName(type: number): string {

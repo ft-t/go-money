@@ -49,6 +49,7 @@ import { Message } from 'primeng/message';
 import { Subject, takeUntil } from 'rxjs';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { SnippetSpotlightComponent } from '../../shared/components/snippet-spotlight/snippet-spotlight.component';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -389,7 +390,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
                 detail: `Successfully saved ${successCount} transaction(s)`
             });
 
-            await this.router.navigate(['/transactions']);
+            await this.navigateAfterSave(['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -452,13 +453,22 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
             );
 
             this.messageService.add({ severity: 'success', detail: 'Transaction deleted successfully.' });
-            await this.router.navigate(['/transactions']);
+            await this.navigateAfterSave(['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
     }
 
     protected readonly BigInt = BigInt;
+
+    private async navigateAfterSave(fallback: any[]): Promise<void> {
+        const returnUrl = ReturnUrlHelper.safe(this.route.snapshot.queryParamMap.get('returnUrl'));
+        if (returnUrl) {
+            await this.router.navigateByUrl(returnUrl);
+            return;
+        }
+        await this.router.navigate(fallback);
+    }
 
     async fetchAccounts() {
         try {
