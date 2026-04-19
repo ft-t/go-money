@@ -460,5 +460,14 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 				)
 			},
 		},
+		{
+			ID: "2026-04-19-AddAccountTagIds",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`alter table accounts add column if not exists tag_ids integer[];`,
+					`create index if not exists ix_accounts_tag_ids on accounts using gin (tag_ids) where deleted_at is null;`,
+				)
+			},
+		},
 	}
 }
