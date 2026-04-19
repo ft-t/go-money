@@ -4,7 +4,7 @@ import { Toast } from 'primeng/toast';
 import { FileUpload } from 'primeng/fileupload';
 import { ImportService, ImportSource, ImportTransactionsRequestSchema, ParseTransactionsRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/import/v1/import_pb';
 import { EnumService } from '../../services/enum.service';
-import { DropdownModule } from 'primeng/dropdown';
+import { SelectModule } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
@@ -32,7 +32,7 @@ interface TransactionItem {
 
 @Component({
     selector: 'app-transactions-import',
-    imports: [Fluid, Toast, FileUpload, DropdownModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgIf, NgClass, TransactionEditorComponent, Message],
+    imports: [Fluid, Toast, FileUpload, SelectModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgIf, NgClass, TransactionEditorComponent, Message],
     templateUrl: './transactions-import.component.html',
     styles: [`
         :host ::ng-deep .validation-error .p-accordiontab-header {

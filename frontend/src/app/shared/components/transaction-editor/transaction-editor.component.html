@@ -227,9 +227,10 @@
             <div class="flex gap-2 justify-between items-center">
                 <div class="flex flex-col gap-2 w-1/2">
                     <label class="text-sm">Internal Reference Numbers</label>
-                    <p-chips formControlName="internalReferenceNumbers"
-                             placeholder="Add reference numbers"
-                             [allowDuplicate]="false"></p-chips>
+                    <p-autocomplete formControlName="internalReferenceNumbers"
+                                    placeholder="Add reference numbers"
+                                    [multiple]="true"
+                                    [typeahead]="false"></p-autocomplete>
                 </div>
                 <div class="surface-card border-round shadow-2 p-2 border-1 surface-border">
                     <div class="flex items-center gap-2">

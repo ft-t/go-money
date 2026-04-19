@@ -7,7 +7,7 @@
                 @if (getImportNotes()) {
                     <p-message severity="info" variant="simple">{{ getImportNotes() }}</p-message>
                 }
-                <p-dropdown
+                <p-select
                     [options]="sources"
                     [(ngModel)]="selectedSource"
                     optionLabel="name"

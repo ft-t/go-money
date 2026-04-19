@@ -1,6 +1,5 @@
 import { Component, Inject } from '@angular/core';
 import { Button } from 'primeng/button';
-import { DropdownModule } from 'primeng/dropdown';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { NgIf } from '@angular/common';
@@ -27,7 +26,7 @@ import {
 
 @Component({
     selector: 'app-tags-import',
-    imports: [Button, DropdownModule, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel],
+    imports: [Button, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel],
     templateUrl: './tags-import.component.html'
 })
 export class TagsImportComponent {

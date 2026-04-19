@@ -14,7 +14,7 @@
 
                     <div class="flex flex-col gap-2">
                         <label for="type">Type</label>
-                        <p-dropdown
+                        <p-select
                             [options]="accountTypes"
                             formControlName="type"
                             [filter]="true"
@@ -30,7 +30,7 @@
 
                     <div class="flex flex-col gap-2">
                         <label for="currency">Currency</label>
-                        <p-dropdown
+                        <p-select
                             [options]="currencies"
                             formControlName="currency"
                             [filter]="true"

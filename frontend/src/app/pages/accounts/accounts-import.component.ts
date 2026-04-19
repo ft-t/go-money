@@ -1,6 +1,5 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { Button } from 'primeng/button';
-import { DropdownModule } from 'primeng/dropdown';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { NgIf } from '@angular/common';
@@ -23,7 +22,7 @@ import { ConfigurationService, GetConfigurationResponse, GetConfigurationRespons
 
 @Component({
     selector: 'app-accounts-import',
-    imports: [Button, DropdownModule, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel],
+    imports: [Button, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel],
     templateUrl: './accounts-import.component.html'
 })
 export class AccountsImportComponent implements OnInit {

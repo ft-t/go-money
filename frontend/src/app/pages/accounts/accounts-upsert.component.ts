@@ -2,7 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { Button } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Fluid } from 'primeng/fluid';
-import { DropdownModule } from 'primeng/dropdown';
+import { SelectModule } from 'primeng/select';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
@@ -26,7 +26,7 @@ import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags
 @Component({
     selector: 'app-account-upsert',
     templateUrl: 'accounts-upsert.component.html',
-    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea, Message, ReactiveFormsModule, Checkbox, MultiSelectModule]
+    imports: [Button, InputText, Fluid, SelectModule, FormsModule, NgIf, Textarea, Message, ReactiveFormsModule, Checkbox, MultiSelectModule]
 })
 export class AccountsUpsertComponent implements OnInit {
     private currencyService;

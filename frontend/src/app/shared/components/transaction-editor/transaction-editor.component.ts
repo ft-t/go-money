@@ -53,7 +53,6 @@ import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { NumberHelper } from '../../../helpers/number.helper';
 import { AccountHelper } from '../../../helpers/account.helper';
 import { Tooltip } from 'primeng/tooltip';
-import { ChipsModule } from 'primeng/chips';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -82,8 +81,7 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         AutoComplete,
         ConfirmDialogModule,
         Tooltip,
-        Checkbox,
-        ChipsModule
+        Checkbox
     ]
 })
 export class TransactionEditorComponent implements OnInit, OnChanges {
