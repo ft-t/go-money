@@ -8,6 +8,7 @@ import (
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
+	"gorm.io/gorm/clause"
 )
 
 type Service struct {
@@ -76,26 +77,26 @@ func (s *Service) SetConfigByKey(
 	ctx context.Context,
 	req *configurationv1.SetConfigByKeyRequest,
 ) (*configurationv1.SetConfigByKeyResponse, error) {
-	tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()
-	defer tx.Rollback()
-
-	if err := tx.Where("id = ?", req.Key).Delete(&database.AppConfig{}).Error; err != nil {
-		return nil, err
-	}
+	db := database.FromContext(ctx, database.GetDb(database.DbTypeMaster))
 
 	now := time.Now().UTC()
-	newConfig := database.AppConfig{
+	cfg := database.AppConfig{
 		ID:        req.Key,
 		Value:     req.Value,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 
-	if err := tx.Create(&newConfig).Error; err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit().Error; err != nil {
+	if err := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "id"}},
+		TargetWhere: clause.Where{
+			Exprs: []clause.Expression{clause.Expr{SQL: "deleted_at IS NULL"}},
+		},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"value":      req.Value,
+			"updated_at": now,
+		}),
+	}).Create(&cfg).Error; err != nil {
 		return nil, err
 	}
 

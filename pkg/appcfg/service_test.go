@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	configurationv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/configuration/v1"
 	"github.com/cockroachdb/errors"
 	"github.com/golang/mock/gomock"
@@ -232,7 +231,7 @@ func TestGetConfigsByKeys_DbError(t *testing.T) {
 	assert.Nil(t, resp)
 }
 
-func TestSetConfigByKey_DeleteError(t *testing.T) {
+func TestSetConfigByKey_UpsertError(t *testing.T) {
 	mockGorm, _, sql := testingutils.GormMock()
 
 	srv := appcfg.NewService(&appcfg.ServiceConfig{
@@ -242,7 +241,7 @@ func TestSetConfigByKey_DeleteError(t *testing.T) {
 	ctx := database.WithContext(context.TODO(), mockGorm)
 
 	sql.ExpectBegin()
-	sql.ExpectExec("UPDATE .*").WillReturnError(errors.New("delete error"))
+	sql.ExpectExec("INSERT .*").WillReturnError(errors.New("upsert error"))
 	sql.ExpectRollback()
 
 	resp, err := srv.SetConfigByKey(ctx, &configurationv1.SetConfigByKeyRequest{
@@ -250,53 +249,6 @@ func TestSetConfigByKey_DeleteError(t *testing.T) {
 		Value: `{"test":"value"}`,
 	})
 
-	assert.ErrorContains(t, err, "delete error")
-	assert.Nil(t, resp)
-}
-
-func TestSetConfigByKey_CreateError(t *testing.T) {
-	mockGorm, _, sql := testingutils.GormMock()
-
-	srv := appcfg.NewService(&appcfg.ServiceConfig{
-		AppCfg: cfg,
-	})
-
-	ctx := database.WithContext(context.TODO(), mockGorm)
-
-	sql.ExpectBegin()
-	sql.ExpectExec("UPDATE .*").WillReturnResult(sqlmock.NewResult(0, 0))
-	sql.ExpectExec("INSERT .*").WillReturnError(errors.New("create error"))
-	sql.ExpectRollback()
-
-	resp, err := srv.SetConfigByKey(ctx, &configurationv1.SetConfigByKeyRequest{
-		Key:   "test_key",
-		Value: `{"test":"value"}`,
-	})
-
-	assert.ErrorContains(t, err, "create error")
-	assert.Nil(t, resp)
-}
-
-func TestSetConfigByKey_CommitError(t *testing.T) {
-	mockGorm, _, sql := testingutils.GormMock()
-
-	srv := appcfg.NewService(&appcfg.ServiceConfig{
-		AppCfg: cfg,
-	})
-
-	ctx := database.WithContext(context.TODO(), mockGorm)
-
-	sql.ExpectBegin()
-	sql.ExpectExec("UPDATE .*").WillReturnResult(sqlmock.NewResult(0, 0))
-	sql.ExpectExec("INSERT .*").WillReturnResult(sqlmock.NewResult(1, 1))
-	sql.ExpectCommit().WillReturnError(errors.New("commit error"))
-	sql.ExpectRollback()
-
-	resp, err := srv.SetConfigByKey(ctx, &configurationv1.SetConfigByKeyRequest{
-		Key:   "test_key",
-		Value: `{"test":"value"}`,
-	})
-
-	assert.ErrorContains(t, err, "commit error")
+	assert.ErrorContains(t, err, "upsert error")
 	assert.Nil(t, resp)
 }

@@ -85,7 +85,7 @@ Notes:
 - **MCP server** (embedded, Go side): `pkg/mcp/` exposes read-only SQL `query` tool + tag/category/rule/currency/transaction tools, mounted at `/mcp` when `MCP.Disable=false`. Docs loaded from `MCP.DocsDir` at startup.
 - **Importers**: Firefly, Privat24 (xlsx), Mono, Paribas, Revolut — all share `importers.BaseParser`.
 - **Mocks**: `//go:generate mockgen` produces `*_mocks_test.go` (package-local) using `github.com/golang/mock/gomock`. Never hand-edit. Regenerate after interface changes.
-- **Frontend**: Angular 19 standalone-style, PrimeNG 19 components, Tailwind + `tailwindcss-primeui`, ConnectRPC client, Monaco for Lua editing. App shell in `frontend/src/app/layout/`, pages in `frontend/src/app/pages/`.
+- **Frontend**: Angular 19 standalone-style, PrimeNG 19 components, Tailwind + `tailwindcss-primeui`, ConnectRPC client, Monaco for Lua editing. App shell in `frontend/src/app/layout/`, pages in `frontend/src/app/pages/`. **Read `docs/frontend-architecture.md` before touching `frontend/`** — documents shared patterns (per-page config, transport wiring, MCP server usage).
 
 ## Docs System
 

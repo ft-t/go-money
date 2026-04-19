@@ -7,12 +7,39 @@
                 @if (getImportNotes()) {
                     <p-message severity="info" variant="simple">{{ getImportNotes() }}</p-message>
                 }
-                <p-dropdown
-                    [options]="sources"
-                    [(ngModel)]="selectedSource"
-                    optionLabel="name"
-                    optionValue="value"
-                    placeholder="Select a Import Type" />
+                <div class="flex items-center gap-2">
+                    <p-dropdown
+                        class="flex-1"
+                        [options]="sources"
+                        [(ngModel)]="selectedSource"
+                        optionLabel="name"
+                        optionValue="value"
+                        placeholder="Select a Import Type" />
+                    <p-button
+                        icon="pi pi-pencil"
+                        severity="secondary"
+                        size="small"
+                        [text]="true"
+                        pTooltip="Manage visible importers"
+                        tooltipPosition="top"
+                        (click)="editingExclusions = !editingExclusions">
+                    </p-button>
+                </div>
+
+                <div *ngIf="editingExclusions" class="mt-3 border border-gray-200 dark:border-gray-700 rounded p-3">
+                    <div class="text-sm font-semibold mb-2">Visible importers</div>
+                    <div class="flex flex-col gap-2">
+                        <div *ngFor="let src of allSources" class="flex items-center gap-2">
+                            <p-checkbox
+                                [ngModel]="!isExcluded(src.value)"
+                                [binary]="true"
+                                [inputId]="'importer_' + src.value"
+                                (onChange)="toggleExclusion(src.value)">
+                            </p-checkbox>
+                            <label [for]="'importer_' + src.value" class="cursor-pointer">{{ src.name }}</label>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="flex flex-row gap-4">
                     <p-checkbox id="chkbox1" [(ngModel)]="stagingMode" [binary]="true" />
