@@ -78,8 +78,9 @@ cd frontend && npm audit --json > ../docs/plans/artifacts/2026-04-19-audit-basel
 
 Run (from repo root):
 ```bash
-trivy fs --scanners vuln --format json --output docs/plans/artifacts/2026-04-19-audit-baseline-trivy.json frontend/
+trivy fs --scanners vuln --include-dev-deps --format json --output docs/plans/artifacts/2026-04-19-audit-baseline-trivy.json frontend/
 ```
+`--include-dev-deps` is required: default behavior suppresses dev-dep CVEs, which would make pre/post comparison misleading and would let the user's "zero vulnerabilities" requirement be satisfied while karma/webpack transitives still carry known issues.
 
 **Step 4: Summarize both reports**
 
@@ -365,9 +366,10 @@ Second call is human-readable for the report shown to user.
 
 ```bash
 cd ..
-trivy fs --scanners vuln --format json --output docs/plans/artifacts/2026-04-19-audit-post-trivy.json frontend/
-trivy fs --scanners vuln --severity LOW,MEDIUM,HIGH,CRITICAL frontend/
+trivy fs --scanners vuln --include-dev-deps --format json --output docs/plans/artifacts/2026-04-19-audit-post-trivy.json frontend/
+trivy fs --scanners vuln --include-dev-deps --severity LOW,MEDIUM,HIGH,CRITICAL frontend/
 ```
+`--include-dev-deps` MUST match the baseline flag (Task 2 Step 3) for the comparison to be valid.
 Second call prints human-readable table.
 
 **Step 4: Summarize**
