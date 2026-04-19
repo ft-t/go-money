@@ -469,5 +469,29 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 				)
 			},
 		},
+		{
+			ID: "2026-04-19-AddTransactionHistory",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`CREATE TABLE IF NOT EXISTS transaction_history (
+                        id              BIGSERIAL PRIMARY KEY,
+                        transaction_id  BIGINT      NOT NULL,
+                        event_type      SMALLINT    NOT NULL,
+                        actor_type      SMALLINT    NOT NULL,
+                        actor_user_id   INT,
+                        actor_rule_id   INT,
+                        actor_extra     TEXT,
+                        snapshot        JSONB       NOT NULL,
+                        diff            JSONB,
+                        occurred_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+                    );`,
+					`CREATE INDEX IF NOT EXISTS idx_tx_history_tx_id_occurred
+                        ON transaction_history (transaction_id, occurred_at);`,
+					`CREATE INDEX IF NOT EXISTS idx_tx_history_actor_rule
+                        ON transaction_history (actor_rule_id) WHERE actor_rule_id IS NOT NULL;`,
+				)
+			},
+		},
 	}
 }
