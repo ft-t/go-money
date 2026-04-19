@@ -4,7 +4,8 @@
     <p-table #dt1
              dataKey="id"
              [value]="transactions"
-             [rows]="50"
+             [rows]="initialRows"
+             [first]="initialFirst"
              [loading]="loading"
              [rowHover]="true"
              [showGridlines]="true"

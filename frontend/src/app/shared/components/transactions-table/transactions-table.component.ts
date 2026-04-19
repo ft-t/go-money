@@ -32,6 +32,7 @@ import { Tooltip } from 'primeng/tooltip';
 import { TransactionSummaryComponent } from '../transaction-summary/transaction-summary.component';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ReturnUrlHelper } from '../../helpers/return-url.helper';
+import { TableQueryStateHelper } from '../../helpers/table-query-state.helper';
 
 export class FilterWrapper {
     public filters: { [s: string]: FilterMetadata } | undefined;
@@ -78,6 +79,8 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
     public ignoreDateFilter: boolean = false;
     private lastEvent: TableLazyLoadEvent | undefined;
     public totalRecords: number = 0;
+    public initialFirst: number = 0;
+    public initialRows: number = 50;
     public multiSortMeta: SortMeta[] = [
         {
             field: 'transactionItem.transactionDate.nanos',
@@ -93,7 +96,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
         private confirmationService: ConfirmationService,
         public router: Router,
         private selectedDateService: SelectedDateService,
-        routeSnapshot: ActivatedRoute
+        private routeSnapshot: ActivatedRoute
     ) {
         for (let type of this.transactionTypes) {
             this.transactionTypesMap[type.value] = type;
@@ -109,6 +112,16 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
             if (params['ignoreDateFilter'] === 'true') {
                 this.ignoreDateFilter = true;
             }
+
+            const decoded = TableQueryStateHelper.decode(params);
+            if (decoded.filters) {
+                this.filters = { ...(decoded.filters as { [s: string]: FilterMetadata }), ...this.filters };
+            }
+            if (decoded.sort && decoded.sort.length > 0) {
+                this.multiSortMeta = decoded.sort;
+            }
+            if (decoded.first != null) this.initialFirst = decoded.first;
+            if (decoded.rows != null) this.initialRows = decoded.rows;
 
             if (params['title']) {
                 this.filters['title'] = {
@@ -253,8 +266,26 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
         console.log('constructFilters', filters);
     }
 
+    private syncStateToUrl(event: TableLazyLoadEvent): void {
+        const params = TableQueryStateHelper.encode({
+            filters: event.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
+            sort: event.multiSortMeta ?? [],
+            first: event.first ?? undefined,
+            rows: event.rows ?? undefined,
+        });
+        (params as any)['ignoreDateFilter'] = this.ignoreDateFilter ? 'true' : null;
+        this.router.navigate([], {
+            relativeTo: this.routeSnapshot,
+            queryParams: params,
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+        });
+    }
+
     async fetchTransactions(event: TableLazyLoadEvent) {
         console.log(event);
+
+        this.syncStateToUrl(event);
 
         this.lastEvent = event;
         this.loading = true;
