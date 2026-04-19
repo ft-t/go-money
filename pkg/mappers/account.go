@@ -41,6 +41,7 @@ func (m *Mapper) MapAccount(ctx context.Context, acc *database.Account) *v1.Acco
 		AccountNumber:    acc.AccountNumber,
 		DisplayOrder:     acc.DisplayOrder,
 		Flags:            acc.Flags,
+		TagIds:           acc.TagIDs,
 	}
 
 	if acc.LiabilityPercent.Valid {
