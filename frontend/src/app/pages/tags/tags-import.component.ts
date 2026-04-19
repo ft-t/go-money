@@ -5,7 +5,6 @@ import { InputText } from 'primeng/inputtext';
 import { NgIf } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Textarea } from 'primeng/textarea';
-import { EditorModule } from 'primeng/editor';
 import { Highlight, HighlightAuto } from 'ngx-highlightjs';
 import { Card, CardModule } from 'primeng/card';
 import { MessageService, PrimeTemplate } from 'primeng/api';
@@ -26,7 +25,7 @@ import {
 
 @Component({
     selector: 'app-tags-import',
-    imports: [Button, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel, PrimeTemplate],
+    imports: [Button, Fluid, ReactiveFormsModule, Textarea, FormsModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel, PrimeTemplate],
     templateUrl: './tags-import.component.html'
 })
 export class TagsImportComponent {
