@@ -34,6 +34,7 @@ import { combineLatest, skip } from 'rxjs';
 import { Tag } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { FancyTagComponent } from '../../shared/components/fancy-tag/fancy-tag.component';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-account-list',
@@ -117,6 +118,10 @@ export class AccountsListComponent implements OnInit {
 
     getAccountUrl(account: ListAccountsResponse_AccountItem): string {
         return this.router.createUrlTree(['/', 'accounts', account.account!.id.toString()]).toString();
+    }
+
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
     }
 
     async ngOnInit() {
