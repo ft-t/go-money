@@ -13,6 +13,8 @@ import { CommonModule } from '@angular/common';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TableQueryStateHelper } from '../../shared/helpers/table-query-state.helper';
+import { TableStatePersistence } from '../../shared/helpers/table-state-persistence.helper';
+import { TabSessionService } from '../../shared/services/tab-session.service';
 import { Button } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
@@ -61,17 +63,23 @@ export class ServiceTokensListComponent implements OnInit, AfterViewInit {
 
     @ViewChild('filter') filter!: ElementRef;
     public initialGlobalFilter: string = '';
-    private activatedRoute: ActivatedRoute;
+
+    private readonly stateKey = 'service-tokens';
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         public router: Router,
-        route: ActivatedRoute
+        route: ActivatedRoute,
+        private tabSession: TabSessionService
     ) {
-        this.activatedRoute = route;
         this.configService = createClient(ConfigurationService, this.transport);
+
+        const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+        if (stored) {
+            if (stored.global) this.initialGlobalFilter = stored.global;
+        }
 
         const queryState = TableQueryStateHelper.decode(route.snapshot.queryParams);
         if (queryState.global) {
@@ -91,16 +99,10 @@ export class ServiceTokensListComponent implements OnInit, AfterViewInit {
     syncStateToUrl(): void {
         if (!this.table) return;
         const globalVal = (this.table.filters as any)?.['global']?.value;
-        const params = TableQueryStateHelper.encode({
+        TableStatePersistence.write(this.stateKey, this.tabSession.id, {
             filters: this.table.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
             sort: this.table.multiSortMeta ?? [],
             global: typeof globalVal === 'string' ? globalVal : undefined,
-        });
-        this.router.navigate([], {
-            relativeTo: this.activatedRoute,
-            queryParams: params,
-            queryParamsHandling: 'merge',
-            replaceUrl: true,
         });
     }
 

@@ -36,6 +36,8 @@ import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags
 import { FancyTagComponent } from '../../shared/components/fancy-tag/fancy-tag.component';
 import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 import { TableQueryStateHelper } from '../../shared/helpers/table-query-state.helper';
+import { TableStatePersistence } from '../../shared/helpers/table-state-persistence.helper';
+import { TabSessionService } from '../../shared/services/tab-session.service';
 
 @Component({
     selector: 'app-account-list',
@@ -96,16 +98,15 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
     public analyticsMap: { [accountId: number]: GetDebitsAndCreditsSummaryResponse_SummaryItem } = {};
     public serverConfig: GetConfigurationResponse = create(GetConfigurationResponseSchema, {});
     public initialGlobalFilter: string = '';
-    private activatedRoute: ActivatedRoute;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         public router: Router,
         route: ActivatedRoute,
-        private selectedDateService: SelectedDateService
+        private selectedDateService: SelectedDateService,
+        private tabSession: TabSessionService
     ) {
-        this.activatedRoute = route;
         this.accountService = createClient(AccountsService, this.transport);
         this.analyticsService = createClient(AnalyticsService, this.transport);
         this.configService = createClient(ConfigurationService, this.transport);
@@ -117,6 +118,13 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
                     this.filters[key] = value as FilterMetadata;
                 }
             }
+        }
+
+        const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+        if (stored) {
+            if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
+            if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
+            if (stored.global) this.initialGlobalFilter = stored.global;
         }
 
         const queryState = TableQueryStateHelper.decode(route.snapshot.queryParams);
@@ -131,6 +139,8 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
         }
     }
 
+    private readonly stateKey = 'accounts';
+
     ngAfterViewInit() {
         if (this.initialGlobalFilter && this.table) {
             if (this.filter?.nativeElement) {
@@ -143,16 +153,10 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
     syncStateToUrl(): void {
         if (!this.table) return;
         const globalVal = (this.table.filters as any)?.['global']?.value;
-        const params = TableQueryStateHelper.encode({
+        TableStatePersistence.write(this.stateKey, this.tabSession.id, {
             filters: this.table.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
             sort: this.table.multiSortMeta ?? [],
             global: typeof globalVal === 'string' ? globalVal : undefined,
-        });
-        this.router.navigate([], {
-            relativeTo: this.activatedRoute,
-            queryParams: params,
-            queryParamsHandling: 'merge',
-            replaceUrl: true,
         });
     }
 

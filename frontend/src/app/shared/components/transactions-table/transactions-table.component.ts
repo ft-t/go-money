@@ -33,6 +33,8 @@ import { TransactionSummaryComponent } from '../transaction-summary/transaction-
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ReturnUrlHelper } from '../../helpers/return-url.helper';
 import { TableQueryStateHelper } from '../../helpers/table-query-state.helper';
+import { TableStatePersistence } from '../../helpers/table-state-persistence.helper';
+import { TabSessionService } from '../../services/tab-session.service';
 
 export class FilterWrapper {
     public filters: { [s: string]: FilterMetadata } | undefined;
@@ -90,13 +92,16 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
 
     @ViewChild('dt1', { static: false }) table!: Table;
 
+    private readonly stateKey = 'transactions';
+
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         public router: Router,
         private selectedDateService: SelectedDateService,
-        private routeSnapshot: ActivatedRoute
+        private routeSnapshot: ActivatedRoute,
+        private tabSession: TabSessionService
     ) {
         for (let type of this.transactionTypes) {
             this.transactionTypesMap[type.value] = type;
@@ -107,6 +112,14 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
                 this.filters = data['preselectedFilter'];
             }
         });
+
+        const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+        if (stored) {
+            if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
+            if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
+            if (stored.first != null) this.initialFirst = stored.first;
+            if (stored.rows != null) this.initialRows = stored.rows;
+        }
 
         routeSnapshot.queryParams.subscribe((params) => {
             if (params['ignoreDateFilter'] === 'true') {
@@ -267,18 +280,11 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
     }
 
     private syncStateToUrl(event: TableLazyLoadEvent): void {
-        const params = TableQueryStateHelper.encode({
+        TableStatePersistence.write(this.stateKey, this.tabSession.id, {
             filters: event.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
             sort: event.multiSortMeta ?? [],
             first: event.first ?? undefined,
             rows: event.rows ?? undefined,
-        });
-        (params as any)['ignoreDateFilter'] = this.ignoreDateFilter ? 'true' : null;
-        this.router.navigate([], {
-            relativeTo: this.routeSnapshot,
-            queryParams: params,
-            queryParamsHandling: 'merge',
-            replaceUrl: true,
         });
     }
 

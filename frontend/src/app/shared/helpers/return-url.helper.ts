@@ -1,9 +1,9 @@
 import { Router } from '@angular/router';
 
 export class ReturnUrlHelper {
-    /** Full current url including query + fragment, suitable for `returnUrl` query param. */
+    /** Bare path (no query, no fragment) — consumers restore filter state from localStorage. */
     static build(router: Router): string {
-        return router.url;
+        return router.url.split('?')[0].split('#')[0];
     }
 
     /**

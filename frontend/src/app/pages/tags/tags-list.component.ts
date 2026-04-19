@@ -23,6 +23,8 @@ import { create } from '@bufbuild/protobuf';
 import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 import { TableQueryStateHelper } from '../../shared/helpers/table-query-state.helper';
+import { TableStatePersistence } from '../../shared/helpers/table-state-persistence.helper';
+import { TabSessionService } from '../../shared/services/tab-session.service';
 
 @Component({
     selector: 'app-tags-list',
@@ -54,15 +56,16 @@ export class TagsListComponent implements OnInit, AfterViewInit {
 
     @ViewChild('filter') filter!: ElementRef;
     public initialGlobalFilter: string = '';
-    private activatedRoute: ActivatedRoute;
+
+    private readonly stateKey = 'tags';
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
         public router: Router,
-        route: ActivatedRoute
+        route: ActivatedRoute,
+        private tabSession: TabSessionService
     ) {
-        this.activatedRoute = route;
         this.tagsService = createClient(TagsService, this.transport);
 
         if (route.snapshot.data['filters']) {
@@ -71,6 +74,13 @@ export class TagsListComponent implements OnInit, AfterViewInit {
                     this.filters[key] = value as FilterMetadata;
                 }
             }
+        }
+
+        const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+        if (stored) {
+            if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
+            if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
+            if (stored.global) this.initialGlobalFilter = stored.global;
         }
 
         const queryState = TableQueryStateHelper.decode(route.snapshot.queryParams);
@@ -97,16 +107,10 @@ export class TagsListComponent implements OnInit, AfterViewInit {
     syncStateToUrl(): void {
         if (!this.table) return;
         const globalVal = (this.table.filters as any)?.['global']?.value;
-        const params = TableQueryStateHelper.encode({
+        TableStatePersistence.write(this.stateKey, this.tabSession.id, {
             filters: this.table.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
             sort: this.table.multiSortMeta ?? [],
             global: typeof globalVal === 'string' ? globalVal : undefined,
-        });
-        this.router.navigate([], {
-            relativeTo: this.activatedRoute,
-            queryParams: params,
-            queryParamsHandling: 'merge',
-            replaceUrl: true,
         });
     }
 
