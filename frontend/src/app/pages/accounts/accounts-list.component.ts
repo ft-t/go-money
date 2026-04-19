@@ -236,10 +236,15 @@ export class AccountsListComponent implements OnInit {
     }
 
     async loadPageConfig(): Promise<void> {
-        this.pageConfig = await this.pageConfigService.get<AccountsListConfig>(
-            ACCOUNTS_LIST_PAGE_ID,
-            ACCOUNTS_LIST_DEFAULTS,
-        );
+        try {
+            this.pageConfig = await this.pageConfigService.get<AccountsListConfig>(
+                ACCOUNTS_LIST_PAGE_ID,
+                ACCOUNTS_LIST_DEFAULTS,
+            );
+        } catch (e) {
+            console.error('Failed to load accounts-list page config:', e);
+            this.pageConfig = { ...ACCOUNTS_LIST_DEFAULTS };
+        }
     }
 
     applyQuickTag(tag: QuickTag): void {
