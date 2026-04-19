@@ -31,6 +31,7 @@ import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneyp
 import { Tooltip } from 'primeng/tooltip';
 import { TransactionSummaryComponent } from '../transaction-summary/transaction-summary.component';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ReturnUrlHelper } from '../../helpers/return-url.helper';
 
 export class FilterWrapper {
     public filters: { [s: string]: FilterMetadata } | undefined;
@@ -131,10 +132,15 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
         }
     }
 
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
+    }
+
     async createNewTransaction() {
         await this.router.navigate(['/transactions', 'new'], {
             queryParams: {
-                type: this.transactionTypeForCreate ?? TransactionType.EXPENSE
+                type: this.transactionTypeForCreate ?? TransactionType.EXPENSE,
+                returnUrl: ReturnUrlHelper.build(this.router)
             }
         });
     }
