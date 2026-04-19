@@ -76,9 +76,13 @@ export class ServiceTokensListComponent implements OnInit, AfterViewInit {
     ) {
         this.configService = createClient(ConfigurationService, this.transport);
 
-        const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
-        if (stored) {
-            if (stored.global) this.initialGlobalFilter = stored.global;
+        if (route.snapshot.queryParamMap.get('restore') === '1') {
+            const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+            if (stored) {
+                if (stored.global) this.initialGlobalFilter = stored.global;
+            }
+            TableStatePersistence.clear(this.stateKey, this.tabSession.id);
+            this.router.navigate([], { relativeTo: route, queryParams: { restore: null }, queryParamsHandling: 'merge', replaceUrl: true });
         }
 
         const queryState = TableQueryStateHelper.decode(route.snapshot.queryParams);

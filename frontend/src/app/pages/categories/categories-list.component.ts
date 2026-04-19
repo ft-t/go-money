@@ -78,11 +78,15 @@ export class CategoriesListComponent implements OnInit, AfterViewInit {
             }
         }
 
-        const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
-        if (stored) {
-            if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
-            if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
-            if (stored.global) this.initialGlobalFilter = stored.global;
+        if (route.snapshot.queryParamMap.get('restore') === '1') {
+            const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+            if (stored) {
+                if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
+                if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
+                if (stored.global) this.initialGlobalFilter = stored.global;
+            }
+            TableStatePersistence.clear(this.stateKey, this.tabSession.id);
+            this.router.navigate([], { relativeTo: route, queryParams: { restore: null }, queryParamsHandling: 'merge', replaceUrl: true });
         }
 
         const queryState = TableQueryStateHelper.decode(route.snapshot.queryParams);

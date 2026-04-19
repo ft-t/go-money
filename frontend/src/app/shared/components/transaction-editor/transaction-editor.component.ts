@@ -608,7 +608,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
     private async navigateAfterSave(fallback: any[]): Promise<void> {
         const returnUrl = ReturnUrlHelper.safe(this.route.snapshot.queryParamMap.get('returnUrl'));
         if (returnUrl) {
-            await this.router.navigateByUrl(returnUrl);
+            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
             return;
         }
         await this.router.navigate(fallback);

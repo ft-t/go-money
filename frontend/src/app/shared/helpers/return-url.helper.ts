@@ -16,4 +16,10 @@ export class ReturnUrlHelper {
         if (url.startsWith('//')) return null;
         return url;
     }
+
+    /** Append `?restore=1` marker so the destination list restores persisted table state once. */
+    static withRestoreFlag(url: string): string {
+        const sep = url.includes('?') ? '&' : '?';
+        return url + sep + 'restore=1';
+    }
 }

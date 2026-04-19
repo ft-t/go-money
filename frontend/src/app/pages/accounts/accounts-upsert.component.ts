@@ -141,7 +141,7 @@ export class AccountsUpsertComponent implements OnInit {
     private async navigateAfterSave(fallback: any[]): Promise<void> {
         const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
         if (returnUrl) {
-            await this.router.navigateByUrl(returnUrl);
+            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
             return;
         }
         await this.router.navigate(fallback);

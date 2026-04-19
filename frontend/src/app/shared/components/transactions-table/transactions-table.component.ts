@@ -113,12 +113,16 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
             }
         });
 
-        const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
-        if (stored) {
-            if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
-            if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
-            if (stored.first != null) this.initialFirst = stored.first;
-            if (stored.rows != null) this.initialRows = stored.rows;
+        if (this.routeSnapshot.snapshot.queryParamMap.get('restore') === '1') {
+            const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+            if (stored) {
+                if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
+                if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
+                if (stored.first != null) this.initialFirst = stored.first;
+                if (stored.rows != null) this.initialRows = stored.rows;
+            }
+            TableStatePersistence.clear(this.stateKey, this.tabSession.id);
+            this.router.navigate([], { relativeTo: this.routeSnapshot, queryParams: { restore: null }, queryParamsHandling: 'merge', replaceUrl: true });
         }
 
         routeSnapshot.queryParams.subscribe((params) => {

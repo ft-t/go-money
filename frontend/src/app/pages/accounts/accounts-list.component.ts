@@ -120,11 +120,17 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
             }
         }
 
-        const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
-        if (stored) {
-            if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
-            if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
-            if (stored.global) this.initialGlobalFilter = stored.global;
+        if (route.snapshot.queryParamMap.get('restore') === '1') {
+            const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+            if (stored) {
+                if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
+                if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
+                if (stored.global) this.initialGlobalFilter = stored.global;
+                const tagIds = stored.extra?.['tagIds'];
+                if (Array.isArray(tagIds)) this.selectedTagIds = tagIds as number[];
+            }
+            TableStatePersistence.clear(this.stateKey, this.tabSession.id);
+            this.router.navigate([], { relativeTo: route, queryParams: { restore: null }, queryParamsHandling: 'merge', replaceUrl: true });
         }
 
         const queryState = TableQueryStateHelper.decode(route.snapshot.queryParams);
@@ -157,6 +163,7 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
             filters: this.table.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
             sort: this.table.multiSortMeta ?? [],
             global: typeof globalVal === 'string' ? globalVal : undefined,
+            extra: { tagIds: this.selectedTagIds },
         });
     }
 
@@ -202,6 +209,7 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
     }
 
     async onTagFilterChange() {
+        this.syncStateToUrl();
         await this.loadAccounts();
         await this.loadAnalytics();
     }

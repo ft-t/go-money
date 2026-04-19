@@ -7,6 +7,7 @@ export interface TableState {
     first?: number;
     rows?: number;
     global?: string;
+    extra?: { [key: string]: unknown };
 }
 
 export class TableQueryStateHelper {
