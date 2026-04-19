@@ -17,6 +17,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/golang/mock/gomock"
+	"github.com/lib/pq"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -487,6 +488,32 @@ func TestCreateAccount(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to commit transaction")
 		assert.Nil(t, resp)
 	})
+}
+
+func TestService_Create_TagIDs(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, acc *database.Account) *v1.Account {
+			assert.EqualValues(t, pq.Int32Array{7, 8}, acc.TagIDs)
+			return &v1.Account{Id: acc.ID}
+		})
+
+	srv := accounts.NewService(&accounts.ServiceConfig{MapperSvc: mapper})
+
+	_, err := srv.Create(context.TODO(), &accountsv1.CreateAccountRequest{
+		Name:     "acc",
+		Currency: "USD",
+		Type:     v1.AccountType_ACCOUNT_TYPE_ASSET,
+		Flags:    database.AccountFlagIsDefault,
+		TagIds:   []int32{7, 8},
+	})
+	assert.NoError(t, err)
+
+	var stored database.Account
+	assert.NoError(t, gormDB.Order("id desc").First(&stored).Error)
+	assert.EqualValues(t, pq.Int32Array{7, 8}, stored.TagIDs)
 }
 
 func TestCreateBulk(t *testing.T) {

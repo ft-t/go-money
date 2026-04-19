@@ -238,6 +238,7 @@ func (s *Service) Create(
 		Iban:          req.Iban,
 		AccountNumber: req.AccountNumber,
 		DisplayOrder:  req.DisplayOrder,
+		TagIDs:        req.TagIds,
 	}
 
 	if account.Extra == nil {
