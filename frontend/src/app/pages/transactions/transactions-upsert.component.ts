@@ -10,7 +10,7 @@ import { ErrorHelper } from '../../helpers/error.helper';
 import { FilterMetadata, MessageService, ConfirmationService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { DatePickerModule } from 'primeng/datepicker';
-import { NgClass, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { TextareaModule } from 'primeng/textarea';
 import { ButtonModule } from 'primeng/button';
 import { MultiSelectModule } from 'primeng/multiselect';
@@ -65,7 +65,6 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         FormsModule,
         ToastModule,
         DatePickerModule,
-        NgIf,
         TextareaModule,
         ButtonModule,
         MultiSelectModule,
@@ -166,8 +165,9 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
 
         this.expenseSplitForm.get('sourceAccountName')!.disable();
 
-        this.expenseSplitForm.get('destinationAccountId')!.valueChanges
-            .pipe(takeUntil(this.destroy$))
+        this.expenseSplitForm
+            .get('destinationAccountId')!
+            .valueChanges.pipe(takeUntil(this.destroy$))
             .subscribe(async (newVal) => {
                 let curr = this.expenseSplitForm!.get('destinationCurrency');
                 curr?.setValue('', { emitEvent: false });
@@ -237,14 +237,12 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
             destinationCurrency: destinationCurrency,
             destinationAmount: destinationAmount,
             title: this.expenseSplitForm.get('title')!.value,
-            transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(originalForm!.get('transactionDate')!.value)),
+            transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(originalForm!.get('transactionDate')!.value))
         });
 
         console.log(newTransaction);
 
-
         this.targetTransaction.push(newTransaction);
-
 
         if (editor) {
             editor.adjustSourceAmount(parseFloat(NumberHelper.toNegativeNumber(delta)!));
@@ -504,29 +502,31 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
 
             const form = editor.getForm();
 
-            result.push(create(TransactionSchema, {
-                type: form.get('type')?.value ?? 0,
-                title: form.get('title')?.value ?? '',
-                notes: form.get('notes')?.value ?? '',
-                sourceAccountId: form.get('sourceAccountId')?.value ?? 0,
-                sourceCurrency: form.get('sourceCurrency')?.value ?? '',
-                sourceAmount: form.get('sourceAmount')?.value?.toString() ?? '',
-                destinationAccountId: form.get('destinationAccountId')?.value ?? 0,
-                destinationCurrency: form.get('destinationCurrency')?.value ?? '',
-                destinationAmount: form.get('destinationAmount')?.value?.toString() ?? '',
-                categoryId: form.get('categoryId')?.value ?? 0,
-                tagIds: form.get('tagIds')?.value ?? [],
-                fxSourceAmount: form.get('fxSourceAmount')?.value?.toString() ?? '',
-                fxSourceCurrency: form.get('fxSourceCurrency')?.value ?? '',
-                internalReferenceNumbers: form.get('internalReferenceNumbers')?.value ?? []
-            }));
+            result.push(
+                create(TransactionSchema, {
+                    type: form.get('type')?.value ?? 0,
+                    title: form.get('title')?.value ?? '',
+                    notes: form.get('notes')?.value ?? '',
+                    sourceAccountId: form.get('sourceAccountId')?.value ?? 0,
+                    sourceCurrency: form.get('sourceCurrency')?.value ?? '',
+                    sourceAmount: form.get('sourceAmount')?.value?.toString() ?? '',
+                    destinationAccountId: form.get('destinationAccountId')?.value ?? 0,
+                    destinationCurrency: form.get('destinationCurrency')?.value ?? '',
+                    destinationAmount: form.get('destinationAmount')?.value?.toString() ?? '',
+                    categoryId: form.get('categoryId')?.value ?? 0,
+                    tagIds: form.get('tagIds')?.value ?? [],
+                    fxSourceAmount: form.get('fxSourceAmount')?.value?.toString() ?? '',
+                    fxSourceCurrency: form.get('fxSourceCurrency')?.value ?? '',
+                    internalReferenceNumbers: form.get('internalReferenceNumbers')?.value ?? []
+                })
+            );
         }
 
         return result;
     }
 
     applySnippetTransactions(transactions: Transaction[]): void {
-        this.targetTransaction = transactions.map(tx =>
+        this.targetTransaction = transactions.map((tx) =>
             create(TransactionSchema, {
                 type: tx.type,
                 title: tx.title,

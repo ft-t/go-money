@@ -1,27 +1,33 @@
 <div class="card accountListTable">
     <div class="font-semibold text-xl mb-4">Accounts List</div>
-    <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6" *ngIf="accounts.length > 0 && !loading">
-        <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Summary by Currency</div>
-        <div class="flex flex-wrap gap-4">
-            <div *ngFor="let currency of getUniqueCurrencies()" class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">{{ currency }}</div>
-                <div class="flex flex-col gap-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Balance:</span>
-                        <span class="font-bold text-base text-gray-900 dark:text-gray-100">{{ formatAmount(getTotalBalanceByCurrency(currency).toString()) }}</span>
+    @if (accounts.length > 0 && !loading) {
+        <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6">
+            <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Summary by Currency</div>
+            <div class="flex flex-wrap gap-4">
+                @for (currency of getUniqueCurrencies(); track currency) {
+                    <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">{{ currency }}</div>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Total Balance:</span>
+                                <span class="font-bold text-base text-gray-900 dark:text-gray-100">{{ formatAmount(getTotalBalanceByCurrency(currency).toString()) }}</span>
+                            </div>
+                            @if (serverConfig.baseCurrency) {
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600 dark:text-gray-400">Debits (Period):</span>
+                                    <span class="font-bold text-green-600 dark:text-green-400">{{ formatAmount(getTotalDebitsByCurrency(currency).toString()) }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600 dark:text-gray-400">Credits (Period):</span>
+                                    <span class="font-bold text-red-600 dark:text-red-400">{{ formatAmount(getTotalCreditsByCurrency(currency).toString()) }}</span>
+                                </div>
+                            }
+                        </div>
                     </div>
-                    <div class="flex justify-between items-center" *ngIf="serverConfig.baseCurrency">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Debits (Period):</span>
-                        <span class="font-bold text-green-600 dark:text-green-400">{{ formatAmount(getTotalDebitsByCurrency(currency).toString()) }}</span>
-                    </div>
-                    <div class="flex justify-between items-center" *ngIf="serverConfig.baseCurrency">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Credits (Period):</span>
-                        <span class="font-bold text-red-600 dark:text-red-400">{{ formatAmount(getTotalCreditsByCurrency(currency).toString()) }}</span>
-                    </div>
-                </div>
+                }
             </div>
         </div>
-    </div>
+    }
     <p-table #dt1
              dataKey="id"
              [value]="accounts"
@@ -42,14 +48,15 @@
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <p-button
-                        *ngFor="let tag of pageConfig.quickTags"
-                        [label]="tag.label"
-                        severity="info"
-                        size="small"
-                        [rounded]="true"
-                        (click)="applyQuickTag(tag)">
-                    </p-button>
+                    @for (tag of pageConfig.quickTags; track tag.label) {
+                        <p-button
+                            [label]="tag.label"
+                            severity="info"
+                            size="small"
+                            [rounded]="true"
+                            (click)="applyQuickTag(tag)">
+                        </p-button>
+                    }
                     <p-button
                         icon="pi pi-pencil"
                         severity="secondary"
@@ -66,7 +73,7 @@
                         <p-inputicon>
                             <i class="pi pi-search"></i>
                         </p-inputicon>
-                        <input #filter pInputText type="text" (input)="onGlobalFilter(dt1, $event)"
+                        <input #filterInput pInputText type="text" (input)="onGlobalFilter(dt1, $event)"
                                placeholder="Search keyword" />
                         <p-button class="p-button-outlined mb-2 " icon="pi pi-filter-slash"
                                   (click)="clear(dt1)"></p-button>
@@ -82,59 +89,61 @@
                 </div>
             </div>
 
-            <div *ngIf="editingQuickTags" class="mt-3 border border-gray-200 dark:border-gray-700 rounded p-3">
-                <div class="text-sm font-semibold mb-2">Quick tags</div>
-                <div class="flex flex-col gap-2">
-                    <div *ngFor="let tag of pageConfig.quickTags; let i = index"
-                         class="flex items-center gap-2">
-                        <ng-container *ngIf="editingIndex === i && editDraft; else readMode">
-                            <input pInputText type="text" class="w-32"
-                                   [(ngModel)]="editDraft.label" />
+            @if (editingQuickTags) {
+                <div class="mt-3 border border-gray-200 dark:border-gray-700 rounded p-3">
+                    <div class="text-sm font-semibold mb-2">Quick tags</div>
+                    <div class="flex flex-col gap-2">
+                        @for (tag of pageConfig.quickTags; track tag.label; let i = $index) {
+                            <div class="flex items-center gap-2">
+                                @if (editingIndex === i && editDraft) {
+                                    <input pInputText type="text" class="w-32"
+                                           [(ngModel)]="editDraft.label" />
+                                    <p-multiselect class="flex-1"
+                                                   appendTo="body"
+                                                   [filter]="true"
+                                                   [(ngModel)]="editDraft.tagIds"
+                                                   [options]="tags"
+                                                   optionLabel="name"
+                                                   optionValue="id"
+                                                   placeholder="Select tags"
+                                                   styleClass="w-full" />
+                                    <p-button icon="pi pi-check" severity="success" size="small" [text]="true"
+                                              pTooltip="Save" tooltipPosition="top"
+                                              (click)="saveEditQuickTag()"></p-button>
+                                    <p-button icon="pi pi-times" severity="secondary" size="small" [text]="true"
+                                              pTooltip="Cancel" tooltipPosition="top"
+                                              (click)="cancelEditQuickTag()"></p-button>
+                                } @else {
+                                    <span class="min-w-[120px] font-medium">{{ tag.label }}</span>
+                                    <span class="text-gray-500 text-sm flex-1">{{ getQuickTagNames(tag) }}</span>
+                                    <p-button icon="pi pi-pencil" severity="secondary" size="small" [text]="true"
+                                              pTooltip="Edit" tooltipPosition="top"
+                                              (click)="beginEditQuickTag(i)"></p-button>
+                                    <p-button icon="pi pi-trash" severity="danger" size="small" [text]="true"
+                                              pTooltip="Delete" tooltipPosition="top"
+                                              (click)="removeQuickTag(i)"></p-button>
+                                }
+                            </div>
+                        }
+                        <div class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <input pInputText type="text" placeholder="Label"
+                                   class="w-32"
+                                   [(ngModel)]="newQuickTagLabel" />
                             <p-multiselect class="flex-1"
                                            appendTo="body"
                                            [filter]="true"
-                                           [(ngModel)]="editDraft.tagIds"
+                                           [(ngModel)]="newQuickTagTagIds"
                                            [options]="tags"
                                            optionLabel="name"
                                            optionValue="id"
                                            placeholder="Select tags"
                                            styleClass="w-full" />
-                            <p-button icon="pi pi-check" severity="success" size="small" [text]="true"
-                                      pTooltip="Save" tooltipPosition="top"
-                                      (click)="saveEditQuickTag()"></p-button>
-                            <p-button icon="pi pi-times" severity="secondary" size="small" [text]="true"
-                                      pTooltip="Cancel" tooltipPosition="top"
-                                      (click)="cancelEditQuickTag()"></p-button>
-                        </ng-container>
-                        <ng-template #readMode>
-                            <span class="min-w-[120px] font-medium">{{ tag.label }}</span>
-                            <span class="text-gray-500 text-sm flex-1">{{ getQuickTagNames(tag) }}</span>
-                            <p-button icon="pi pi-pencil" severity="secondary" size="small" [text]="true"
-                                      pTooltip="Edit" tooltipPosition="top"
-                                      (click)="beginEditQuickTag(i)"></p-button>
-                            <p-button icon="pi pi-trash" severity="danger" size="small" [text]="true"
-                                      pTooltip="Delete" tooltipPosition="top"
-                                      (click)="removeQuickTag(i)"></p-button>
-                        </ng-template>
-                    </div>
-                    <div class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <input pInputText type="text" placeholder="Label"
-                               class="w-32"
-                               [(ngModel)]="newQuickTagLabel" />
-                        <p-multiselect class="flex-1"
-                                       appendTo="body"
-                                       [filter]="true"
-                                       [(ngModel)]="newQuickTagTagIds"
-                                       [options]="tags"
-                                       optionLabel="name"
-                                       optionValue="id"
-                                       placeholder="Select tags"
-                                       styleClass="w-full" />
-                        <p-button icon="pi pi-plus" severity="success" size="small"
-                                  (click)="addQuickTag()"></p-button>
+                            <p-button icon="pi pi-plus" severity="success" size="small"
+                                      (click)="addQuickTag()"></p-button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            }
         </ng-template>
         <ng-template #header>
             <tr>
@@ -186,7 +195,7 @@
                 </th>
                 <th>
                     <p-columnFilter field="account.type" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="accountTypes"
                                            field="account.type"
@@ -200,7 +209,7 @@
                 </th>
                 <th>
                     <p-columnFilter field="account.currency" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="accountCurrencies"
                                            field="account.currency"
@@ -268,16 +277,18 @@
                     </div>
                 </td>
                 <td class="text-center">
-                    <div *ngIf="getAnalytics(accountItem.account.id)" class="flex flex-col gap-1 items-center">
-                        <div class="flex items-center gap-1 text-base">
-                            <span class="text-green-600 dark:text-green-500 font-semibold">↑ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalDebitsAmount) }}</span>
-                            <span class="text-gray-400">/</span>
-                            <span class="text-red-600 dark:text-red-500 font-semibold">↓ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalCreditsAmount) }}</span>
+                    @if (getAnalytics(accountItem.account.id)) {
+                        <div class="flex flex-col gap-1 items-center">
+                            <div class="flex items-center gap-1 text-base">
+                                <span class="text-green-600 dark:text-green-500 font-semibold">↑ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalDebitsAmount) }}</span>
+                                <span class="text-gray-400">/</span>
+                                <span class="text-red-600 dark:text-red-500 font-semibold">↓ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalCreditsAmount) }}</span>
+                            </div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ serverConfig.baseCurrency }}
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ serverConfig.baseCurrency }}
-                        </div>
-                    </div>
+                    }
                 </td>
                 <td style="max-width: 10rem">
                     <p class="text-wrap break-all">

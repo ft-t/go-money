@@ -4,7 +4,7 @@ import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { DialogModule } from 'primeng/dialog';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
-import { NgIf } from '@angular/common';
+
 import { InputNumber } from 'primeng/inputnumber';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ErrorHelper } from '../../../../helpers/error.helper';
@@ -20,7 +20,7 @@ import { TimestampHelper } from '../../../../helpers/timestamp.helper';
 
 @Component({
     selector: 'app-reconciliation-modal',
-    imports: [ButtonModule, InputGroupModule, InputGroupAddonModule, DialogModule, NgIf, InputNumber, FormsModule, ReactiveFormsModule, InputText],
+    imports: [ButtonModule, InputGroupModule, InputGroupAddonModule, DialogModule, InputNumber, FormsModule, ReactiveFormsModule, InputText],
     templateUrl: './reconciliation-modal.component.html'
 })
 export class ReconciliationModalComponent implements OnChanges {

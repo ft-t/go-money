@@ -80,7 +80,6 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: HIGH,CRITICAL
-          skip-dirs: frontend
   govulncheck:
     runs-on: ubuntu-latest
     container: golang:alpine

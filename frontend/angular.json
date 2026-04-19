@@ -40,15 +40,12 @@
                             }
                         ],
                         "styles": [
+                            "src/tailwind.css",
                             "src/styles.scss",
-                            "./node_modules/quill/dist/quill.core.css",
-                            "./node_modules/quill/dist/quill.snow.css",
                             "./node_modules/highlight.js/styles/github.css",
                             "./node_modules/highlight.js/styles/github-dark.css"
                         ],
-                        "scripts": [
-                            "./node_modules/quill/dist/quill.js"
-                        ]
+                        "scripts": []
                     },
                     "configurations": {
                         "production": {
@@ -105,6 +102,7 @@
                             }
                         ],
                         "styles": [
+                            "src/tailwind.css",
                             "src/styles.scss"
                         ],
                         "scripts": []
@@ -115,5 +113,31 @@
     },
     "cli": {
         "analytics": false
+    },
+    "schematics": {
+      "@schematics/angular:component": {
+        "type": "component"
+      },
+      "@schematics/angular:directive": {
+        "type": "directive"
+      },
+      "@schematics/angular:service": {
+        "type": "service"
+      },
+      "@schematics/angular:guard": {
+        "typeSeparator": "."
+      },
+      "@schematics/angular:interceptor": {
+        "typeSeparator": "."
+      },
+      "@schematics/angular:module": {
+        "typeSeparator": "."
+      },
+      "@schematics/angular:pipe": {
+        "typeSeparator": "."
+      },
+      "@schematics/angular:resolver": {
+        "typeSeparator": "."
+      }
     }
 }

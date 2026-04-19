@@ -6,7 +6,7 @@ import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { MessageService } from 'primeng/api';
 import { ErrorHelper } from '../../helpers/error.helper';
-import { NgIf } from '@angular/common';
+
 import { Button } from 'primeng/button';
 import { ConfigurationService, CreateServiceTokenRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
 import { create } from '@bufbuild/protobuf';
@@ -14,7 +14,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 @Component({
     selector: 'app-service-tokens-create',
-    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, DatePickerModule],
+    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, Button, DatePickerModule],
     templateUrl: './service-tokens-create.component.html'
 })
 export class ServiceTokensCreateComponent implements OnInit {

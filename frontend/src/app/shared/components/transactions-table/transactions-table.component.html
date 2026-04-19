@@ -101,7 +101,7 @@
                 </th>
                 <th>
                     <p-columnFilter field="transactionTypes" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="transactionTypes"
                                            selectedItemsLabel="{{value?.length}} items"
@@ -116,7 +116,7 @@
                 <th></th>
                 <th>
                     <p-columnFilter field="sourceAccountIds" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
                                            optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
                                            [maxSelectedLabels]="maxSelectedLabels"
@@ -127,7 +127,7 @@
                 </th>
                 <th>
                     <p-columnFilter field="destinationAccountIds" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value" [options]="accounts"
                                            optionValue="id" optionLabel="name" (onChange)="filter($event.value)"
                                            [maxSelectedLabels]="maxSelectedLabels"
@@ -138,7 +138,7 @@
                 </th>
                 <th>
                     <p-columnFilter field="categories" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="categories"
                                            [maxSelectedLabels]="maxSelectedLabels"
@@ -150,7 +150,7 @@
                 </th>
                 <th>
                     <p-columnFilter field="tags" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="tags"
                                            [maxSelectedLabels]="maxSelectedLabels"
@@ -187,18 +187,34 @@
                 <td style="min-width: 15rem;">
                     <div class="flex flex-col gap-1 items-center">
                         <div class="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
-                            <span *ngIf="this.formatAmountV2(transactionItem)[0] != ''" class="text-blue-600 dark:text-blue-400">{{ formatAmount(transactionItem.sourceAmount) }}</span>
-                            <span *ngIf="transactionItem.fxSourceAmount && this.formatAmountV2(transactionItem)[0] != ''" class="text-gray-400">/</span>
-                            <span *ngIf="transactionItem.fxSourceAmount" class="text-orange-600 dark:text-orange-400">{{ formatAmount(transactionItem.fxSourceAmount) }}</span>
-                            <span *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''" class="text-gray-400">/</span>
-                            <span *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''" class="text-teal-600 dark:text-teal-400">{{ formatAmount(transactionItem.destinationAmount) }}</span>
+                            @if (this.formatAmountV2(transactionItem)[0] != '') {
+                                <span class="text-blue-600 dark:text-blue-400">{{ formatAmount(transactionItem.sourceAmount) }}</span>
+                            }
+                            @if (transactionItem.fxSourceAmount && this.formatAmountV2(transactionItem)[0] != '') {
+                                <span class="text-gray-400">/</span>
+                            }
+                            @if (transactionItem.fxSourceAmount) {
+                                <span class="text-orange-600 dark:text-orange-400">{{ formatAmount(transactionItem.fxSourceAmount) }}</span>
+                            }
+                            @if (!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != '') {
+                                <span class="text-gray-400">/</span>
+                                <span class="text-teal-600 dark:text-teal-400">{{ formatAmount(transactionItem.destinationAmount) }}</span>
+                            }
                         </div>
                         <div class="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
-                            <span *ngIf="this.formatAmountV2(transactionItem)[0] != ''" class="text-blue-600 dark:text-blue-400">{{ transactionItem.sourceCurrency }}</span>
-                            <span *ngIf="transactionItem.fxSourceAmount && this.formatAmountV2(transactionItem)[0] != ''" class="text-gray-400">/</span>
-                            <span *ngIf="transactionItem.fxSourceAmount" class="text-orange-600 dark:text-orange-400">{{ transactionItem.fxSourceCurrency }}</span>
-                            <span *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''" class="text-gray-400">/</span>
-                            <span *ngIf="!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != ''" class="text-teal-600 dark:text-teal-400">{{ transactionItem.destinationCurrency }}</span>
+                            @if (this.formatAmountV2(transactionItem)[0] != '') {
+                                <span class="text-blue-600 dark:text-blue-400">{{ transactionItem.sourceCurrency }}</span>
+                            }
+                            @if (transactionItem.fxSourceAmount && this.formatAmountV2(transactionItem)[0] != '') {
+                                <span class="text-gray-400">/</span>
+                            }
+                            @if (transactionItem.fxSourceAmount) {
+                                <span class="text-orange-600 dark:text-orange-400">{{ transactionItem.fxSourceCurrency }}</span>
+                            }
+                            @if (!isSameAmount(transactionItem) && this.formatAmountV2(transactionItem)[1] != '') {
+                                <span class="text-gray-400">/</span>
+                                <span class="text-teal-600 dark:text-teal-400">{{ transactionItem.destinationCurrency }}</span>
+                            }
                         </div>
                     </div>
                 </td>
@@ -222,9 +238,11 @@
                     </p>
                 </td>
                 <td>
-                    <label *ngIf="getCategory(transactionItem.categoryId)">
-                        {{ getCategory(transactionItem.categoryId).name }}
-                    </label>
+                    @if (getCategory(transactionItem.categoryId)) {
+                        <label>
+                            {{ getCategory(transactionItem.categoryId).name }}
+                        </label>
+                    }
                 </td>
                 <td>
                     <div class="flex gap-2">

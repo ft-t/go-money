@@ -1,0 +1,21 @@
+2026-04-19T13:33:48+02:00	INFO	[vuln] Vulnerability scanning is enabled
+2026-04-19T13:33:48+02:00	INFO	Number of language-specific files	num=1
+2026-04-19T13:33:48+02:00	INFO	[npm] Detecting vulnerabilities...
+
+Report Summary
+
+┌───────────────────┬──────┬─────────────────┐
+│      Target       │ Type │ Vulnerabilities │
+├───────────────────┼──────┼─────────────────┤
+│ package-lock.json │ npm  │        0        │
+└───────────────────┴──────┴─────────────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+
+📣 [34mNotices:[0m
+  - Version 0.70.0 of Trivy is now available, current version is 0.69.3
+
+To suppress version checks, run Trivy scans with the --skip-version-check flag
+

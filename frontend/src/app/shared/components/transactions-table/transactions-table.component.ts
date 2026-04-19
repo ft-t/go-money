@@ -10,7 +10,7 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
-import { ConfirmationService, FilterMetadata, MessageService, SortMeta } from 'primeng/api';
+import { ConfirmationService, FilterMetadata, MessageService, PrimeTemplate, SortMeta } from 'primeng/api';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DeleteTransactionsRequestSchema, ListTransactionsRequest_SortSchema, ListTransactionsRequestSchema, SortField, TransactionsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
@@ -44,7 +44,7 @@ export class FilterWrapper {
 @Component({
     selector: 'app-transaction-table',
     templateUrl: 'transactions-table.component.html',
-    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent, Tooltip, TransactionSummaryComponent, ConfirmDialogModule],
+    imports: [OverlayModule, FormsModule, ToastModule, TableModule, DatePipe, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink, FancyTagComponent, Tooltip, TransactionSummaryComponent, ConfirmDialogModule, PrimeTemplate],
     styles: `
         :host ::ng-deep .transactionListingTable .p-datatable-header {
             border-width: 0 !important;

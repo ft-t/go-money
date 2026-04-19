@@ -2,12 +2,12 @@ import { Component, Input } from '@angular/core';
 import { Tag as Tag2, TagSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/tag_pb';
 import { create } from '@bufbuild/protobuf';
 import { Tag } from 'primeng/tag';
-import { NgIf } from '@angular/common';
+
 import { FilterMetadata } from 'primeng/api';
 
 @Component({
     selector: 'fancy-tag',
-    imports: [Tag, NgIf],
+    imports: [Tag],
     templateUrl: './fancy-tag.component.html'
 })
 export class FancyTagComponent {

@@ -4,17 +4,14 @@ import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { create } from '@bufbuild/protobuf';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { createClient, Transport } from '@connectrpc/connect';
-import {
-    ConfigurationService,
-    GetConfigurationResponse, GetConfigurationResponseSchema
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
+import { ConfigurationService, GetConfigurationResponse, GetConfigurationResponseSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
 import { MessageService } from 'primeng/api';
-import { NgIf } from '@angular/common';
+
 import { Button } from 'primeng/button';
 
 @Component({
     selector: 'app-dashboard',
-    imports: [Message, NgIf, Button],
+    imports: [Message, Button],
     templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit {
@@ -30,7 +27,7 @@ export class DashboardComponent implements OnInit {
     }
 
     navigate() {
-        window.open(this.config.grafanaUrl, "_blank");
+        window.open(this.config.grafanaUrl, '_blank');
     }
 
     async ngOnInit() {

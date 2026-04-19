@@ -3,7 +3,6 @@ import { SelectedDateService } from '../../../core/services/selected-date.servic
 import { Button } from 'primeng/button';
 import { DatePipe } from '@angular/common';
 import { Popover } from 'primeng/popover';
-import { Calendar } from 'primeng/calendar';
 import { FormsModule } from '@angular/forms';
 import { InputText } from 'primeng/inputtext';
 import { InputMask } from 'primeng/inputmask';
@@ -12,7 +11,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 @Component({
     selector: 'selected-date',
     templateUrl: 'selected-date.component.html',
-    imports: [Button, Popover, Calendar, FormsModule, DatePickerModule],
+    imports: [Button, Popover, FormsModule, DatePickerModule],
     styles: `
         customCalendar .p-datepicker-panel {
             position: relative !important;

@@ -1,5 +1,4 @@
 <p-fluid>
-
     <div class="flex flex-row gap-4">
         <div class="flex flex-col gap-4 w-1/2">
             <p-card header="Transaction Info" class="mb-4">
@@ -20,12 +19,14 @@
                 <div>
                     <span class="font-semibold">Tags - </span>
                     <span>
-                            <ng-container *ngIf="transaction.tagIds?.length; else noTags">
-                                <p-tag *ngFor="let tag of transaction.tagIds" [value]="tagById(tag)?.name"
-                                       class="mr-1" />
-                            </ng-container>
-                            <ng-template #noTags><span class="text-gray-400">No tags</span></ng-template>
-                        </span>
+                        @if (transaction.tagIds?.length) {
+                            @for (tag of transaction.tagIds; track tag) {
+                                <p-tag [value]="tagById(tag)?.name" class="mr-1" />
+                            }
+                        } @else {
+                            <span class="text-gray-400">No tags</span>
+                        }
+                    </span>
                 </div>
                 <div>
                     <span class="font-semibold">Notes - </span>
@@ -44,8 +45,9 @@
                     </div>
                     <div>
                         <span class="font-semibold">Source Amount - </span>
-                        <span>{{ transaction.sourceAmount || '-' }} <span
-                            class="text-xs text-gray-400">{{ transaction.sourceCurrency }}</span></span>
+                        <span
+                            >{{ transaction.sourceAmount || '-' }} <span class="text-xs text-gray-400">{{ transaction.sourceCurrency }}</span></span
+                        >
                     </div>
                     <div>
                         <span class="font-semibold">Destination Account - </span>
@@ -53,8 +55,9 @@
                     </div>
                     <div>
                         <span class="font-semibold">Destination Amount - </span>
-                        <span>{{ transaction.destinationAmount || '-' }} <span
-                            class="text-xs text-gray-400">{{ transaction.destinationCurrency }}</span></span>
+                        <span
+                            >{{ transaction.destinationAmount || '-' }} <span class="text-xs text-gray-400">{{ transaction.destinationCurrency }}</span></span
+                        >
                     </div>
                 </div>
             </p-card>

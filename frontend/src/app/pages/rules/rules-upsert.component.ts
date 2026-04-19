@@ -8,7 +8,7 @@ import { MessageService } from 'primeng/api';
 import { create } from '@bufbuild/protobuf';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NgIf } from '@angular/common';
+
 import { Button } from 'primeng/button';
 import { Toast } from 'primeng/toast';
 import { color } from 'chart.js/helpers';
@@ -23,7 +23,7 @@ import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-rules-upsert',
-    imports: [InputNumberModule, TextareaModule, Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Checkbox, ScriptEditorComponent],
+    imports: [InputNumberModule, TextareaModule, Fluid, InputText, ReactiveFormsModule, FormsModule, Button, Toast, ColorPickerModule, Checkbox, ScriptEditorComponent],
     templateUrl: './rules-upsert.component.html'
 })
 export class RulesUpsertComponent implements OnInit {

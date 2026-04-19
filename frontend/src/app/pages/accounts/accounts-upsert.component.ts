@@ -2,7 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { Button } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Fluid } from 'primeng/fluid';
-import { DropdownModule } from 'primeng/dropdown';
+import { SelectModule } from 'primeng/select';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
 import { CurrencyService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
@@ -13,7 +13,7 @@ import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { create } from '@bufbuild/protobuf';
 import { EnumService } from '../../services/enum.service';
-import { NgIf } from '@angular/common';
+
 import { Textarea } from 'primeng/textarea';
 import { AccountsService, CreateAccountRequestSchema, UpdateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -27,7 +27,7 @@ import { TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags
 @Component({
     selector: 'app-account-upsert',
     templateUrl: 'accounts-upsert.component.html',
-    imports: [Button, InputText, Fluid, DropdownModule, FormsModule, NgIf, Textarea, Message, ReactiveFormsModule, Checkbox, MultiSelectModule]
+    imports: [Button, InputText, Fluid, SelectModule, FormsModule, Textarea, Message, ReactiveFormsModule, Checkbox, MultiSelectModule]
 })
 export class AccountsUpsertComponent implements OnInit {
     private currencyService;
@@ -69,7 +69,7 @@ export class AccountsUpsertComponent implements OnInit {
     async loadTags() {
         try {
             const resp = await this.tagsService.listTags({});
-            this.tags = (resp.tags || []).filter(t => !!t?.tag).map(t => t.tag!);
+            this.tags = (resp.tags || []).filter((t) => !!t?.tag).map((t) => t.tag!);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }

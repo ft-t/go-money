@@ -1,3 +1,4 @@
+import { provideZoneChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app.config';
 import { AppComponent } from './app.component';
@@ -8,6 +9,8 @@ declare global {
     }
 }
 
-BigInt.prototype.toJSON = function () { return Number(this) }
+BigInt.prototype.toJSON = function () {
+    return Number(this);
+};
 
-bootstrapApplication(AppComponent, appConfig).catch((err) => console.error(err));
+bootstrapApplication(AppComponent, { ...appConfig, providers: [provideZoneChangeDetection(), ...appConfig.providers] }).catch((err) => console.error(err));

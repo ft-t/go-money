@@ -1,15 +1,13 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { Button } from 'primeng/button';
-import { DropdownModule } from 'primeng/dropdown';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { NgIf } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Textarea } from 'primeng/textarea';
-import { EditorModule } from 'primeng/editor';
 import { Highlight, HighlightAuto } from 'ngx-highlightjs';
 import { Card, CardModule } from 'primeng/card';
-import { MessageService } from 'primeng/api';
+import { MessageService, PrimeTemplate } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
@@ -23,7 +21,7 @@ import { ConfigurationService, GetConfigurationResponse, GetConfigurationRespons
 
 @Component({
     selector: 'app-accounts-import',
-    imports: [Button, DropdownModule, Fluid, ReactiveFormsModule, Textarea, FormsModule, EditorModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel],
+    imports: [Button, Fluid, ReactiveFormsModule, Textarea, FormsModule, Highlight, Card, CardModule, Toast, Stepper, Step, StepList, StepPanels, StepPanel, PrimeTemplate],
     templateUrl: './accounts-import.component.html'
 })
 export class AccountsImportComponent implements OnInit {

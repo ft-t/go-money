@@ -4,7 +4,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { NgIf } from '@angular/common';
+
 import { Button } from 'primeng/button';
 import { Toast } from 'primeng/toast';
 import { ColorPickerModule } from 'primeng/colorpicker';
@@ -23,7 +23,7 @@ import { RuleSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/ru
 
 @Component({
     selector: 'app-script-editor',
-    imports: [InputNumberModule, TextareaModule, InputText, ReactiveFormsModule, FormsModule, Button, ColorPickerModule, EditorComponent, DiffEditorComponent, NgIf],
+    imports: [InputNumberModule, TextareaModule, InputText, ReactiveFormsModule, FormsModule, Button, ColorPickerModule, EditorComponent, DiffEditorComponent],
     templateUrl: './script-editor.component.html'
 })
 export class ScriptEditorComponent {

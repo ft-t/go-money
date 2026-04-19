@@ -9,7 +9,7 @@ import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { FilterMetadata, MessageService, SortMeta } from 'primeng/api';
-import { CommonModule, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
@@ -28,7 +28,7 @@ import { TabSessionService } from '../../shared/services/tab-session.service';
 @Component({
     selector: 'app-currencies-list',
     templateUrl: 'currencies-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, RouterLink],
     styles: `
         :host ::ng-deep .tagListingTable .p-datatable-header {
             border-width: 0 !important;
