@@ -1,4 +1,5 @@
-import { AfterViewInit, Component, Inject, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, Inject, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OverlayModule } from 'primeng/overlay';
 import { FormsModule } from '@angular/forms';
 import { ToastModule } from 'primeng/toast';
@@ -107,7 +108,7 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
             this.transactionTypesMap[type.value] = type;
         }
 
-        routeSnapshot.data.subscribe((data) => {
+        routeSnapshot.data.pipe(takeUntilDestroyed()).subscribe((data) => {
             if (data['preselectedFilter']) {
                 this.filters = data['preselectedFilter'];
             }
@@ -125,14 +126,14 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
             this.router.navigate([], { relativeTo: this.routeSnapshot, queryParams: { restore: null }, queryParamsHandling: 'merge', replaceUrl: true });
         }
 
-        routeSnapshot.queryParams.subscribe((params) => {
+        routeSnapshot.queryParams.pipe(takeUntilDestroyed()).subscribe((params) => {
             if (params['ignoreDateFilter'] === 'true') {
                 this.ignoreDateFilter = true;
             }
 
             const decoded = TableQueryStateHelper.decode(params);
             if (decoded.filters) {
-                this.filters = { ...(decoded.filters as { [s: string]: FilterMetadata }), ...this.filters };
+                this.filters = { ...this.filters, ...(decoded.filters as { [s: string]: FilterMetadata }) };
             }
             if (decoded.sort && decoded.sort.length > 0) {
                 this.multiSortMeta = decoded.sort;
