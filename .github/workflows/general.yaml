@@ -22,7 +22,7 @@ jobs:
       - name: Semantic release
         id: semrel
         if: github.ref == 'refs/heads/master'
-        uses: go-semantic-release/action@7ae13e11e9bbf82b4b715f75bdb95f3ad84c3fd3 # v1.23.0
+        uses: go-semantic-release/action@2e9dc4247a6004f8377781bef4cb9dad273a741f # v1.24.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allow-initial-development-versions: false
