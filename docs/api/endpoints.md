@@ -145,6 +145,15 @@ POST /gomoneypb.configuration.v1.ConfigurationService/SetConfigByKey
 }
 ```
 
+### Per-Page Configuration Convention
+
+The frontend uses `GetConfigsByKeys` / `SetConfigByKey` to persist **per-page UI configuration** under keys of the form `page.<page-id>`. The value is a JSON blob whose shape is owned by the page component (TypeScript interface colocated with the page). Configuration is **global** (shared across all users) and any authenticated user may write.
+
+Frontend helper: `PageConfigService` (`frontend/src/app/services/page-config.service.ts`) — exposes `get<T>(pageId, defaults)` and `set<T>(pageId, value)`. See `docs/frontend-architecture.md` for the full pattern.
+
+Existing keys:
+- `page.accounts-list` — quick-tag chips on the Accounts List page.
+
 ### GetServiceTokens
 
 List service tokens.
