@@ -10,6 +10,8 @@
              [filters]="filters"
              [paginator]="false"
              [globalFilterFields]="['tag.id', 'tag.name']"
+             (onFilter)="syncStateToUrl()"
+             (onSort)="syncStateToUrl()"
              responsiveLayout="scroll"
              [multiSortMeta]="multiSortMeta">
         <ng-template #caption>
@@ -27,7 +29,7 @@
                 </p-iconfield>
 
                 <p-button label="Create new tag" class="p-button-link"
-                          (click)="this.router.navigate(['/tags', 'new'])" />
+                          (click)="this.router.navigate(['/tags', 'new'], { queryParams: { returnUrl: currentReturnUrl } })" />
             </div>
         </ng-template>
         <ng-template #header>
@@ -81,7 +83,7 @@
                 </td>
                 <td style="max-width: 1rem">
                     <p-button icon="pi pi-pencil"
-                              (onClick)="this.router.navigate(['/', 'tags', 'edit', accountItem.tag.id])"
+                              (onClick)="this.router.navigate(['/', 'tags', 'edit', accountItem.tag.id], { queryParams: { returnUrl: currentReturnUrl } })"
                               severity="secondary" [rounded]="true" />
                 </td>
             </tr>

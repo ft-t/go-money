@@ -1,4 +1,4 @@
-import { Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
 import { Table, TableModule } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
 import { InputText, InputTextModule } from 'primeng/inputtext';
@@ -41,6 +41,10 @@ import {
     ACCOUNTS_LIST_PAGE_ID,
     QuickTag,
 } from './accounts-list.config';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
+import { TableQueryStateHelper } from '../../shared/helpers/table-query-state.helper';
+import { TableStatePersistence } from '../../shared/helpers/table-state-persistence.helper';
+import { TabSessionService } from '../../shared/services/tab-session.service';
 
 @Component({
     selector: 'app-account-list',
@@ -69,7 +73,7 @@ import {
         }
     `
 })
-export class AccountsListComponent implements OnInit {
+export class AccountsListComponent implements OnInit, AfterViewInit {
     @ViewChild('dt1', { static: false }) table!: Table;
 
     statuses: any[] = [];
@@ -104,6 +108,7 @@ export class AccountsListComponent implements OnInit {
     public editingQuickTags = false;
     public newQuickTagLabel = '';
     public newQuickTagSearch = '';
+    public initialGlobalFilter: string = '';
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -111,7 +116,8 @@ export class AccountsListComponent implements OnInit {
         public router: Router,
         route: ActivatedRoute,
         private selectedDateService: SelectedDateService,
-        private pageConfigService: PageConfigService
+        private pageConfigService: PageConfigService,
+        private tabSession: TabSessionService
     ) {
         this.accountService = createClient(AccountsService, this.transport);
         this.analyticsService = createClient(AnalyticsService, this.transport);
@@ -125,10 +131,60 @@ export class AccountsListComponent implements OnInit {
                 }
             }
         }
+
+        if (route.snapshot.queryParamMap.get('restore') === '1') {
+            const stored = TableStatePersistence.read(this.stateKey, this.tabSession.id);
+            if (stored) {
+                if (stored.filters) this.filters = { ...this.filters, ...(stored.filters as { [s: string]: FilterMetadata }) };
+                if (stored.sort && stored.sort.length > 0) this.multiSortMeta = stored.sort;
+                if (stored.global) this.initialGlobalFilter = stored.global;
+                const tagIds = stored.extra?.['tagIds'];
+                if (Array.isArray(tagIds)) this.selectedTagIds = tagIds as number[];
+            }
+            TableStatePersistence.clear(this.stateKey, this.tabSession.id);
+            this.router.navigate([], { relativeTo: route, queryParams: { restore: null }, queryParamsHandling: 'merge', replaceUrl: true });
+        }
+
+        const queryState = TableQueryStateHelper.decode(route.snapshot.queryParams);
+        if (queryState.filters) {
+            this.filters = { ...this.filters, ...(queryState.filters as { [s: string]: FilterMetadata }) };
+        }
+        if (queryState.sort && queryState.sort.length > 0) {
+            this.multiSortMeta = queryState.sort;
+        }
+        if (queryState.global) {
+            this.initialGlobalFilter = queryState.global;
+        }
+    }
+
+    private readonly stateKey = 'accounts';
+
+    ngAfterViewInit() {
+        if (this.initialGlobalFilter && this.table) {
+            if (this.filter?.nativeElement) {
+                this.filter.nativeElement.value = this.initialGlobalFilter;
+            }
+            this.table.filterGlobal(this.initialGlobalFilter, 'contains');
+        }
+    }
+
+    syncStateToUrl(): void {
+        if (!this.table) return;
+        const globalVal = (this.table.filters as any)?.['global']?.value;
+        TableStatePersistence.write(this.stateKey, this.tabSession.id, {
+            filters: this.table.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
+            sort: this.table.multiSortMeta ?? [],
+            global: typeof globalVal === 'string' ? globalVal : undefined,
+            extra: { tagIds: this.selectedTagIds },
+        });
     }
 
     getAccountUrl(account: ListAccountsResponse_AccountItem): string {
         return this.router.createUrlTree(['/', 'accounts', account.account!.id.toString()]).toString();
+    }
+
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
     }
 
     async ngOnInit() {
@@ -166,6 +222,7 @@ export class AccountsListComponent implements OnInit {
     }
 
     async onTagFilterChange() {
+        this.syncStateToUrl();
         await this.loadAccounts();
         await this.loadAnalytics();
     }

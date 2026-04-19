@@ -40,6 +40,7 @@
 
     <div class="flex mt-8">
         <div class="card flex flex-wrap gap-6 w-full justify-end">
+            <p-button label="Cancel" severity="secondary" type="button" [fluid]="false" (click)="cancel()"></p-button>
             <p-button *ngIf="!rule.id" label="Create" [fluid]="false" (click)="create()"></p-button>
             <p-button *ngIf="rule.id" label="Update" [fluid]="false" (click)="update()"></p-button>
         </div>
