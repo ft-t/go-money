@@ -17,6 +17,7 @@ import (
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/golang/mock/gomock"
+	"github.com/lib/pq"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -335,6 +336,31 @@ func TestList(t *testing.T) {
 	})
 }
 
+func TestService_List_TagFilter(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	a := &database.Account{Name: "a", Type: v1.AccountType_ACCOUNT_TYPE_ASSET, Extra: map[string]string{}, TagIDs: pq.Int32Array{1, 2}}
+	b := &database.Account{Name: "b", Type: v1.AccountType_ACCOUNT_TYPE_ASSET, Extra: map[string]string{}, TagIDs: pq.Int32Array{3}}
+	c := &database.Account{Name: "c", Type: v1.AccountType_ACCOUNT_TYPE_ASSET, Extra: map[string]string{}}
+	assert.NoError(t, gormDB.Create(a).Error)
+	assert.NoError(t, gormDB.Create(b).Error)
+	assert.NoError(t, gormDB.Create(c).Error)
+
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, acc *database.Account) *v1.Account {
+			return &v1.Account{Id: acc.ID}
+		}).AnyTimes()
+
+	srv := accounts.NewService(&accounts.ServiceConfig{MapperSvc: mapper})
+
+	resp, err := srv.List(context.TODO(), &accountsv1.ListAccountsRequest{TagIds: []int32{2, 3}})
+	assert.NoError(t, err)
+	assert.Len(t, resp.Accounts, 2)
+	ids := []int32{resp.Accounts[0].Account.Id, resp.Accounts[1].Account.Id}
+	assert.ElementsMatch(t, []int32{a.ID, b.ID}, ids)
+}
+
 func TestCreateAccount(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
@@ -487,6 +513,32 @@ func TestCreateAccount(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to commit transaction")
 		assert.Nil(t, resp)
 	})
+}
+
+func TestService_Create_TagIDs(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, acc *database.Account) *v1.Account {
+			assert.EqualValues(t, pq.Int32Array{7, 8}, acc.TagIDs)
+			return &v1.Account{Id: acc.ID}
+		})
+
+	srv := accounts.NewService(&accounts.ServiceConfig{MapperSvc: mapper})
+
+	_, err := srv.Create(context.TODO(), &accountsv1.CreateAccountRequest{
+		Name:     "acc",
+		Currency: "USD",
+		Type:     v1.AccountType_ACCOUNT_TYPE_ASSET,
+		Flags:    database.AccountFlagIsDefault,
+		TagIds:   []int32{7, 8},
+	})
+	assert.NoError(t, err)
+
+	var stored database.Account
+	assert.NoError(t, gormDB.Order("id desc").First(&stored).Error)
+	assert.EqualValues(t, pq.Int32Array{7, 8}, stored.TagIDs)
 }
 
 func TestCreateBulk(t *testing.T) {
@@ -1006,6 +1058,37 @@ func TestUpdate(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to commit transaction")
 		assert.Nil(t, resp)
 	})
+}
+
+func TestService_Update_TagIDs(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	acc := &database.Account{
+		Name:  "acc",
+		Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		Flags: database.AccountFlagIsDefault,
+		Extra: map[string]string{},
+	}
+	assert.NoError(t, gormDB.Create(acc).Error)
+
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+		Return(&v1.Account{Id: acc.ID})
+
+	srv := accounts.NewService(&accounts.ServiceConfig{MapperSvc: mapper})
+
+	_, err := srv.Update(context.TODO(), &accountsv1.UpdateAccountRequest{
+		Id:     acc.ID,
+		Name:   "acc",
+		Type:   v1.AccountType_ACCOUNT_TYPE_ASSET,
+		Flags:  int64(database.AccountFlagIsDefault),
+		TagIds: []int32{1, 2, 3},
+	})
+	assert.NoError(t, err)
+
+	var stored database.Account
+	assert.NoError(t, gormDB.First(&stored, acc.ID).Error)
+	assert.EqualValues(t, pq.Int32Array{1, 2, 3}, stored.TagIDs)
 }
 
 func TestEnsureDefaultExists(t *testing.T) {

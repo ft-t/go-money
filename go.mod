@@ -3,8 +3,8 @@ module github.com/ft-t/go-money
 go 1.25.0
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260221145631-b1f442f55195.2
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260221154942-deaf287f58ff.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260419091741-3d39ff52455e.2
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260419091741-3d39ff52455e.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -12,7 +12,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.31.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.1
 	github.com/cockroachdb/errors v1.12.0
-	github.com/davecgh/go-spew v1.1.1
 	github.com/go-co-op/gocron/v2 v2.16.3
 	github.com/go-gormigrate/gormigrate/v2 v2.1.4
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -75,6 +74,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.7 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20241215232642-bb51bb14a506 // indirect
 	github.com/cockroachdb/redact v1.1.6 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/getsentry/sentry-go v0.35.1 // indirect
