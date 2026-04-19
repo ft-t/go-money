@@ -10,7 +10,7 @@ import { Transport, createClient } from '@connectrpc/connect';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { FilterMetadata, MessageService } from 'primeng/api';
-import { CommonModule, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
@@ -27,7 +27,7 @@ import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/cate
 @Component({
     selector: 'app-categories-list',
     templateUrl: 'categories-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, RouterLink],
     styles: `
         :host ::ng-deep .tagListingTable .p-datatable-header {
             border-width: 0 !important;

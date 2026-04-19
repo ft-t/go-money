@@ -1,6 +1,5 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
-import { CommonModule } from '@angular/common';
 
 export interface TransactionSummary {
     totalExpenses: number;
@@ -14,7 +13,7 @@ export interface TransactionSummary {
 @Component({
     selector: 'app-transaction-summary',
     templateUrl: './transaction-summary.component.html',
-    imports: [CommonModule],
+    imports: [],
     standalone: true
 })
 export class TransactionSummaryComponent implements OnChanges {

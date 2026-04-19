@@ -10,7 +10,7 @@ import { Button } from 'primeng/button';
 import { AppFloatingConfigurator } from '../../../layout/component/app.floatingconfigurator';
 import { InputText } from 'primeng/inputtext';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
-import { NgIf } from '@angular/common';
+
 import { UsersService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/users/v1/users_pb';
 import { CookieInstances } from '../../../objects/cookie-instances';
 import { ToastModule } from 'primeng/toast';
@@ -21,7 +21,7 @@ import { DefaultCache, ShortLivedCache } from '../../../core/services/cache.serv
 @Component({
     selector: 'app-login',
     templateUrl: 'login.component.html',
-    imports: [FormsModule, Password, Button, AppFloatingConfigurator, InputText, NgIf, ToastModule]
+    imports: [FormsModule, Password, Button, AppFloatingConfigurator, InputText, ToastModule]
 })
 export class LoginComponent implements OnInit {
     email: string = '';

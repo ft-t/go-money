@@ -11,7 +11,7 @@ import { Account, AccountSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gom
 import { ErrorHelper } from '../../helpers/error.helper';
 import { CreateTagRequestSchema, TagsService, UpdateTagRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NgIf } from '@angular/common';
+
 import { Button } from 'primeng/button';
 import { Toast } from 'primeng/toast';
 import { UpdateAccountRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
@@ -22,7 +22,7 @@ import { DefaultCache, ShortLivedCache } from '../../core/services/cache.service
 
 @Component({
     selector: 'app-tags-upsert',
-    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Message],
+    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, Button, Toast, ColorPickerModule, Message],
     templateUrl: './tags-upsert.component.html'
 })
 export class TagsUpsertComponent implements OnInit {

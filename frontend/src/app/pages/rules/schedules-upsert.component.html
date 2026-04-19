@@ -5,10 +5,12 @@
                 <div class="md:w-1/2">
                     <div class="card flex flex-col gap-4">
                         <div class="font-semibold text-xl">Base fields</div>
-                        <div class="flex flex-col gap-2" *ngIf="rule.id">
-                            <label for="accountName">ID</label>
-                            <input pInputText id="accountName" type="number" [(ngModel)]="rule.id" disabled />
-                        </div>
+                        @if (rule.id) {
+                            <div class="flex flex-col gap-2">
+                                <label for="accountName">ID</label>
+                                <input pInputText id="accountName" type="number" [(ngModel)]="rule.id" disabled />
+                            </div>
+                        }
                         <div class="flex flex-col gap-2">
                             <label for="accountName">Name</label>
                             <input pInputText id="accountName" type="text" [(ngModel)]="rule.title" />
@@ -20,7 +22,7 @@
                     </div>
                 </div>
                 <div class="md:w-1/2">
-                    <div class="card flex flex-col gap-4 ">
+                    <div class="card flex flex-col gap-4">
                         <div class="font-semibold text-xl">Configuration</div>
                         <div class="flex flex-col gap-2">
                             <label for="accountName">Is Enabled</label>
@@ -28,13 +30,13 @@
                         </div>
                         <div class="flex flex-col gap-2">
                             <label for="accountName">Crontab expression</label>
-                            <p-message severity="warn"><a target="_blank" href="https://crontab.guru/">https://crontab.guru/
-                                can help you to write your crontab expression.</a></p-message>
-                            <p-message severity="info">Examples: <br>*/5 * * * * - execute every 5 minutes<br>
-                                * */1 * * * - execute every hour<br>
-                                0 0 * * * - execute every day at midnight<br>
-                                0 0 1 * * - execute every month on the first day<br>
-                                0 0 * * 2,3 - execute every Tuesday and Wednesday at midnight<br>
+                            <p-message severity="warn"><a target="_blank" href="https://crontab.guru/">https://crontab.guru/ can help you to write your crontab expression.</a></p-message>
+                            <p-message severity="info"
+                                >Examples: <br />*/5 * * * * - execute every 5 minutes<br />
+                                * */1 * * * - execute every hour<br />
+                                0 0 * * * - execute every day at midnight<br />
+                                0 0 1 * * - execute every month on the first day<br />
+                                0 0 * * 2,3 - execute every Tuesday and Wednesday at midnight<br />
                             </p-message>
                             <input pInputText id="accountName" type="text" [(ngModel)]="rule.cronExpression" />
                         </div>
@@ -45,11 +47,14 @@
         <app-script-editor #scriptEditorComponent [script]="this.rule.script" [useEmptyTx]="true"></app-script-editor>
     </div>
 
-
     <div class="flex mt-8">
         <div class="card flex flex-wrap gap-6 w-full justify-end">
-            <p-button *ngIf="!rule.id" label="Create" [fluid]="false" (click)="create()"></p-button>
-            <p-button *ngIf="rule.id" label="Update" [fluid]="false" (click)="update()"></p-button>
+            @if (!rule.id) {
+                <p-button label="Create" [fluid]="false" (click)="create()"></p-button>
+            }
+            @if (rule.id) {
+                <p-button label="Update" [fluid]="false" (click)="update()"></p-button>
+            }
         </div>
     </div>
 

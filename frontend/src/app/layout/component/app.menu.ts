@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Router, RouterModule } from '@angular/router';
 import { MenuItem, MenuItemCommandEvent, MessageService } from 'primeng/api';
 import { AppMenuitem } from './app.menuitem';
@@ -12,13 +12,17 @@ import { create } from '@bufbuild/protobuf';
 @Component({
     selector: 'app-menu',
     standalone: true,
-    imports: [CommonModule, AppMenuitem, RouterModule],
+    imports: [AppMenuitem, RouterModule],
     template: `
         <ul class="layout-menu">
-            <ng-container *ngFor="let item of model; let i = index">
-                <li app-menuitem *ngIf="!item.separator" [item]="item" [index]="i" [root]="true"></li>
-                <li *ngIf="item.separator" class="menu-separator"></li>
-            </ng-container>
+            @for (item of model; track item; let i = $index) {
+                @if (!item.separator) {
+                    <li app-menuitem [item]="item" [index]="i" [root]="true"></li>
+                }
+                @if (item.separator) {
+                    <li class="menu-separator"></li>
+                }
+            }
         </ul>
     `
 })

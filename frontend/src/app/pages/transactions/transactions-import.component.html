@@ -7,12 +7,7 @@
                 @if (getImportNotes()) {
                     <p-message severity="info" variant="simple">{{ getImportNotes() }}</p-message>
                 }
-                <p-select
-                    [options]="sources"
-                    [(ngModel)]="selectedSource"
-                    optionLabel="name"
-                    optionValue="value"
-                    placeholder="Select a Import Type" />
+                <p-select [options]="sources" [(ngModel)]="selectedSource" optionLabel="name" optionValue="value" placeholder="Select a Import Type" />
 
                 <div class="flex flex-row gap-4">
                     <p-checkbox id="chkbox1" [(ngModel)]="stagingMode" [binary]="true" />
@@ -37,16 +32,18 @@
                         <textarea pTextarea id="description" rows="5" cols="30" [(ngModel)]="rawText" fluid></textarea>
                         <label for="description">Transactions</label>
                     </p-iftalabel>
-
                 } @else {
-                    <p-fileupload mode="basic" name="demo[]"
-                                  chooseIcon="pi pi-upload"
-                                  maxFileSize="100000000"
-                                  accept="text/csv,.xlsx,.xls"
-                                  [multiple]="true"
-                                  (onSelect)="onFileSelect($event)"
-                                  [disabled]="isLoading"
-                                  chooseLabel="Select file(s) to import" />
+                    <p-fileupload
+                        mode="basic"
+                        name="demo[]"
+                        chooseIcon="pi pi-upload"
+                        maxFileSize="100000000"
+                        accept="text/csv,.xlsx,.xls"
+                        [multiple]="true"
+                        (onSelect)="onFileSelect($event)"
+                        [disabled]="isLoading"
+                        chooseLabel="Select file(s) to import"
+                    />
 
                     @if (selectedFiles.length > 0) {
                         <div class="flex flex-col gap-2">
@@ -56,22 +53,16 @@
                                     <div class="ml-2">• {{ file.name }}</div>
                                 }
                             </div>
-                            <p-button
-                                label="Clear Selection"
-                                severity="secondary"
-                                size="small"
-                                (onClick)="clearSelectedFiles()"
-                                [disabled]="isLoading" />
+                            <p-button label="Clear Selection" severity="secondary" size="small" (onClick)="clearSelectedFiles()" [disabled]="isLoading" />
                         </div>
                     }
                 }
 
-                <p-button
-                    [label]="stagingMode ? 'Parse' : 'Import'"
-                    (onClick)="isRawTextImport() ? submit() : processFiles()"
-                    [disabled]="isLoading || (!isRawTextImport() && selectedFiles.length === 0)" />
+                <p-button [label]="stagingMode ? 'Parse' : 'Import'" (onClick)="isRawTextImport() ? submit() : processFiles()" [disabled]="isLoading || (!isRawTextImport() && selectedFiles.length === 0)" />
 
-                <textarea *ngIf="!showReview" readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
+                @if (!showReview) {
+                    <textarea readonly="readonly" rows="5" cols="30" pTextarea [(ngModel)]="textContent"></textarea>
+                }
             </div>
         </div>
 
@@ -87,29 +78,17 @@
                     <div class="flex flex-row gap-2">
                         <p-button label="Select All" severity="secondary" (onClick)="selectAll()" />
                         <p-button label="Deselect All" severity="secondary" (onClick)="deselectAll()" />
-                        <p-button
-                            [label]="(hideDuplicates ? 'Show' : 'Hide') + ' Duplicates (' + getDuplicatesCount() + ')'"
-                            severity="secondary"
-                            (onClick)="toggleHideDuplicates()"
-                            [disabled]="getDuplicatesCount() === 0" />
-                        <p-button
-                            [label]="(showErrorsOnly ? 'Show All' : 'Errors Only') + ' (' + getErrorCount() + ')'"
-                            severity="secondary"
-                            (onClick)="toggleShowErrorsOnly()"
-                            [disabled]="getErrorCount() === 0" />
+                        <p-button [label]="(hideDuplicates ? 'Show' : 'Hide') + ' Duplicates (' + getDuplicatesCount() + ')'" severity="secondary" (onClick)="toggleHideDuplicates()" [disabled]="getDuplicatesCount() === 0" />
+                        <p-button [label]="(showErrorsOnly ? 'Show All' : 'Errors Only') + ' (' + getErrorCount() + ')'" severity="secondary" (onClick)="toggleShowErrorsOnly()" [disabled]="getErrorCount() === 0" />
                     </div>
                 </div>
 
                 <p-accordion [multiple]="true" [(activeIndex)]="activeIndices">
                     @for (item of getFilteredTransactionItems(); track item.transaction; let idx = $index) {
-                        <p-accordionTab [ngClass]="{'validation-error': item.hasValidationError}">
+                        <p-accordionTab [ngClass]="{ 'validation-error': item.hasValidationError }">
                             <ng-template pTemplate="header">
                                 <div class="flex flex-row gap-3 items-center w-full">
-                                    <p-checkbox
-                                        [(ngModel)]="item.selected"
-                                        [binary]="true"
-                                        [disabled]="item.duplicateTxID !== undefined || item.hasError"
-                                        (click)="$event.stopPropagation()" />
+                                    <p-checkbox [(ngModel)]="item.selected" [binary]="true" [disabled]="item.duplicateTxID !== undefined || item.hasError" (click)="$event.stopPropagation()" />
                                     <div class="flex flex-col gap-1 flex-1">
                                         <div class="flex flex-row gap-2 items-center">
                                             <span class="font-semibold text-gray-800 dark:text-gray-200">{{ getTransactionTitle(item.transaction) }}</span>
@@ -118,13 +97,7 @@
                                             }
                                             @if (item.duplicateTxID !== undefined) {
                                                 <span class="text-orange-500 text-sm">DUPLICATE</span>
-                                                <a
-                                                    [href]="'/transactions/edit/' + item.duplicateTxID"
-                                                    target="_blank"
-                                                    class="text-blue-500 hover:underline text-sm"
-                                                    (click)="$event.stopPropagation()">
-                                                    View #{{ item.duplicateTxID }}
-                                                </a>
+                                                <a [href]="'/transactions/edit/' + item.duplicateTxID" target="_blank" class="text-blue-500 hover:underline text-sm" (click)="$event.stopPropagation()"> View #{{ item.duplicateTxID }} </a>
                                             }
                                         </div>
                                         @if (!item.hasError) {

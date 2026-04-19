@@ -9,7 +9,7 @@ import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { FilterMetadata, MessageService } from 'primeng/api';
-import { CommonModule } from '@angular/common';
+
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
@@ -27,7 +27,7 @@ class RuleGroup {
 @Component({
     selector: 'app-schedules-list',
     templateUrl: 'schedules-list.component.html',
-    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, CommonModule, RouterLink],
+    imports: [OverlayModule, FormsModule, InputText, ToastModule, TableModule, InputIcon, IconField, Button, MultiSelectModule, SelectModule, RouterLink],
     styles: `
         :host ::ng-deep .tagListingTable .p-datatable-header {
             border-width: 0 !important;

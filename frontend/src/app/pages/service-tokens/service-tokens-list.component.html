@@ -1,14 +1,5 @@
 <div class="card serviceTokensTable">
-    <p-table #dt1
-             dataKey="id"
-             [value]="tokens"
-             [rows]="1000"
-             [loading]="loading"
-             [rowHover]="true"
-             [showGridlines]="true"
-             [paginator]="false"
-             [globalFilterFields]="['id', 'name']"
-             responsiveLayout="scroll">
+    <p-table #dt1 dataKey="id" [value]="tokens" [rows]="1000" [loading]="loading" [rowHover]="true" [showGridlines]="true" [paginator]="false" [globalFilterFields]="['id', 'name']" responsiveLayout="scroll">
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
                 <div class="flex flex-col justify-items-start">
@@ -19,43 +10,30 @@
                         <i class="pi pi-search"></i>
                     </p-inputicon>
                     <input #filter pInputText type="text" (input)="onGlobalFilter(dt1, $event)" placeholder="Search keyword" />
-                    <p-button class="p-button-outlined mb-2 " icon="pi pi-filter-slash"
-                              (click)="clear(dt1)"></p-button>
+                    <p-button class="p-button-outlined mb-2" icon="pi pi-filter-slash" (click)="clear(dt1)"></p-button>
                 </p-iconfield>
 
-                <p-button label="Create new token" class="p-button-link"
-                          (click)="openCreateDialog()" />
+                <p-button label="Create new token" class="p-button-link" (click)="openCreateDialog()" />
             </div>
         </ng-template>
         <ng-template #header>
             <tr>
                 <th style="max-width: 15rem">
-                    <div class="flex justify-between items-center">
-                        ID
-                    </div>
+                    <div class="flex justify-between items-center">ID</div>
                 </th>
                 <th>
-                    <div class="flex justify-between items-center">
-                        Name
-                    </div>
+                    <div class="flex justify-between items-center">Name</div>
                 </th>
                 <th style="max-width: 12rem">
-                    <div class="flex justify-between items-center">
-                        Created At
-                    </div>
+                    <div class="flex justify-between items-center">Created At</div>
                 </th>
                 <th style="max-width: 12rem">
-                    <div class="flex justify-between items-center">
-                        Expires At
-                    </div>
+                    <div class="flex justify-between items-center">Expires At</div>
                 </th>
                 <th style="max-width: 8rem">
-                    <div class="flex justify-between items-center">
-                        Status
-                    </div>
+                    <div class="flex justify-between items-center">Status</div>
                 </th>
-                <th style="max-width: 6rem">
-                </th>
+                <th style="max-width: 6rem"></th>
             </tr>
         </ng-template>
         <ng-template #body let-token>
@@ -67,21 +45,18 @@
                     {{ token.name }}
                 </td>
                 <td>
-                    {{ token.createdAt ? (TimestampHelper.timestampToDate(token.createdAt) | date:'yyyy-MM-dd HH:mm') : '-' }}
+                    {{ token.createdAt ? (TimestampHelper.timestampToDate(token.createdAt) | date: 'yyyy-MM-dd HH:mm') : '-' }}
                 </td>
                 <td>
-                    {{ token.expiresAt ? (TimestampHelper.timestampToDate(token.expiresAt) | date:'yyyy-MM-dd HH:mm') : '-' }}
+                    {{ token.expiresAt ? (TimestampHelper.timestampToDate(token.expiresAt) | date: 'yyyy-MM-dd HH:mm') : '-' }}
                 </td>
                 <td>
                     <p-tag [value]="getStatus(token)" [severity]="getStatusSeverity(token)" />
                 </td>
                 <td style="max-width: 6rem">
-                    <p-button icon="pi pi-ban"
-                              *ngIf="!isRevoked(token)"
-                              (onClick)="confirmRevoke(token)"
-                              severity="danger"
-                              [rounded]="true"
-                              pTooltip="Revoke token" />
+                    @if (!isRevoked(token)) {
+                        <p-button icon="pi pi-ban" (onClick)="confirmRevoke(token)" severity="danger" [rounded]="true" pTooltip="Revoke token" />
+                    }
                 </td>
             </tr>
         </ng-template>
@@ -106,9 +81,7 @@
 
 <p-dialog header="Token Created" [(visible)]="showTokenDialog" [modal]="true" [style]="{ width: '600px' }" [closable]="true" (onHide)="closeTokenDialog()">
     <div class="flex flex-col gap-4">
-        <p-message severity="warn">
-            Copy this token now. You won't be able to see it again!
-        </p-message>
+        <p-message severity="warn"> Copy this token now. You won't be able to see it again! </p-message>
         <div class="flex gap-2 items-center">
             <code class="flex-1 p-2 bg-surface-100 dark:bg-surface-800 rounded break-all" style="font-size: 0.75rem">{{ createdToken }}</code>
             <p-button icon="pi pi-copy" (onClick)="copyToken()" severity="secondary" pTooltip="Copy to clipboard" />

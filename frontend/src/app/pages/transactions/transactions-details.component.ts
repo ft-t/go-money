@@ -10,17 +10,14 @@ import { create } from '@bufbuild/protobuf';
 import { Fluid } from 'primeng/fluid';
 import { Card } from 'primeng/card';
 import { Tag } from 'primeng/tag';
-import { NgForOf, NgIf } from '@angular/common';
+
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
-import {
-    AccountsService,
-    ListAccountsResponse_AccountItem
-} from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
+import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 
 @Component({
     selector: 'app-transaction-details',
-    imports: [Fluid, Card, Tag, NgForOf, NgIf],
+    imports: [Fluid, Card, Tag],
     templateUrl: './transactions-details.component.html'
 })
 export class TransactionsDetailsComponent implements OnInit {

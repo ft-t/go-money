@@ -16,7 +16,7 @@ import { Checkbox } from 'primeng/checkbox';
 import { IftaLabel } from 'primeng/iftalabel';
 import { Button } from 'primeng/button';
 import { AccordionModule } from 'primeng/accordion';
-import { NgClass, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { TransactionEditorComponent } from '../../shared/components/transaction-editor/transaction-editor.component';
 import { Message } from 'primeng/message';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
@@ -32,18 +32,20 @@ interface TransactionItem {
 
 @Component({
     selector: 'app-transactions-import',
-    imports: [Fluid, Toast, FileUpload, SelectModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgIf, NgClass, TransactionEditorComponent, Message],
+    imports: [Fluid, Toast, FileUpload, SelectModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgClass, TransactionEditorComponent, Message],
     templateUrl: './transactions-import.component.html',
-    styles: [`
-        :host ::ng-deep .validation-error .p-accordiontab-header {
-            border-left: 4px solid #ef4444 !important;
-            background-color: #fef2f2 !important;
-        }
+    styles: [
+        `
+            :host ::ng-deep .validation-error .p-accordiontab-header {
+                border-left: 4px solid #ef4444 !important;
+                background-color: #fef2f2 !important;
+            }
 
-        :host ::ng-deep .validation-error .p-accordiontab-header:hover {
-            background-color: #fee2e2 !important;
-        }
-    `]
+            :host ::ng-deep .validation-error .p-accordiontab-header:hover {
+                background-color: #fee2e2 !important;
+            }
+        `
+    ]
 })
 export class TransactionsImportComponent {
     public selectedSource: ImportSource = ImportSource.FIREFLY;
@@ -187,10 +189,7 @@ export class TransactionsImportComponent {
                 })
             );
 
-            const parts = [
-                `Imported ${result.importedCount} transaction(s).`,
-                `Duplicate transactions: ${result.duplicateCount}.`,
-            ];
+            const parts = [`Imported ${result.importedCount} transaction(s).`, `Duplicate transactions: ${result.duplicateCount}.`];
             if (result.skippedCount > 0) {
                 parts.push(`Skipped (validation errors): ${result.skippedCount}.`);
             }
@@ -212,17 +211,17 @@ export class TransactionsImportComponent {
     }
 
     getTransactionTypeLabel(type: number): string {
-        const transactionType = EnumService.getAllTransactionTypes().find(t => t.value === type);
+        const transactionType = EnumService.getAllTransactionTypes().find((t) => t.value === type);
         return transactionType?.name || 'Unknown';
     }
 
     getTransactionTypeIcon(type: number): string {
-        const transactionType = EnumService.getAllTransactionTypes().find(t => t.value === type);
+        const transactionType = EnumService.getAllTransactionTypes().find((t) => t.value === type);
         return transactionType?.icon || '';
     }
 
     getTransactionTypeColor(type: number): string {
-        const transactionType = EnumService.getAllTransactionTypes().find(t => t.value === type);
+        const transactionType = EnumService.getAllTransactionTypes().find((t) => t.value === type);
         const icon = transactionType?.icon || '';
         if (icon.includes('text-green-500')) return 'text-green-500';
         if (icon.includes('text-red-500')) return 'text-red-500';
@@ -298,7 +297,7 @@ export class TransactionsImportComponent {
     }
 
     async importSelected() {
-        if (this.transactionItems.filter(item => item.selected && !item.hasError && item.duplicateTxID === undefined).length === 0) {
+        if (this.transactionItems.filter((item) => item.selected && !item.hasError && item.duplicateTxID === undefined).length === 0) {
             this.messageService.add({
                 severity: 'warn',
                 detail: 'No transactions selected'
@@ -306,7 +305,7 @@ export class TransactionsImportComponent {
             return;
         }
 
-        this.transactionItems.forEach(item => item.hasValidationError = false);
+        this.transactionItems.forEach((item) => (item.hasValidationError = false));
 
         let hasValidationErrors = false;
         const editorArray = this.editors.toArray();
@@ -365,7 +364,7 @@ export class TransactionsImportComponent {
                     }
                     return false;
                 })
-                .map(editor => editor.buildTransactionRequest());
+                .map((editor) => editor.buildTransactionRequest());
 
             const response = await this.transactionService.createTransactionsBulk(
                 create(CreateTransactionsBulkRequestSchema, {
@@ -436,6 +435,4 @@ export class TransactionsImportComponent {
             reader.readAsDataURL(file);
         });
     }
-
-
 }

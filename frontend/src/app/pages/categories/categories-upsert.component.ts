@@ -8,7 +8,7 @@ import { MessageService } from 'primeng/api';
 import { create } from '@bufbuild/protobuf';
 import { ErrorHelper } from '../../helpers/error.helper';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NgIf } from '@angular/common';
+
 import { Button } from 'primeng/button';
 import { Toast } from 'primeng/toast';
 import { color } from 'chart.js/helpers';
@@ -20,7 +20,7 @@ import { DefaultCache, ShortLivedCache } from '../../core/services/cache.service
 
 @Component({
     selector: 'app-categories-upsert',
-    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, NgIf, Button, Toast, ColorPickerModule, Message],
+    imports: [Fluid, InputText, ReactiveFormsModule, FormsModule, Button, Toast, ColorPickerModule, Message],
     templateUrl: './categories-upsert.component.html'
 })
 export class CategoriesUpsertComponent implements OnInit {

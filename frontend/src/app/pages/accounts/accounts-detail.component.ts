@@ -14,7 +14,7 @@ import { SelectedDateService } from '../../core/services/selected-date.service';
 import { AnalyticsService, GetDebitsAndCreditsSummaryRequestSchema, GetDebitsAndCreditsSummaryResponse_SummaryItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/analytics/v1/analytics_pb';
 import { TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { EnumService } from '../../services/enum.service';
-import { CommonModule } from '@angular/common';
+
 import { ConfigurationService, GetConfigurationResponse, GetConfigurationResponseSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/configuration/v1/configuration_pb';
 import { combineLatest } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -22,7 +22,7 @@ import { TimestampHelper } from '../../helpers/timestamp.helper';
 
 @Component({
     selector: 'app-accounts-detail',
-    imports: [TransactionsTableComponent, CommonModule],
+    imports: [TransactionsTableComponent],
     templateUrl: './accounts-detail.component.html'
 })
 export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements OnDestroy {
@@ -48,13 +48,11 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
         this.analyticsService = createClient(AnalyticsService, this.transport);
         this.configService = createClient(ConfigurationService, this.transport);
 
-        activeRoute.params
-            .pipe(takeUntil(this.cancellableSubject$))
-            .subscribe(async (params) => {
-                let parsed = parseInt(params['id']) ?? undefined;
-                busService.currentAccountId.next(parsed);
-                await this.setAccount(parsed);
-            });
+        activeRoute.params.pipe(takeUntil(this.cancellableSubject$)).subscribe(async (params) => {
+            let parsed = parseInt(params['id']) ?? undefined;
+            busService.currentAccountId.next(parsed);
+            await this.setAccount(parsed);
+        });
 
         combineLatest([this.selectedDateService.fromDate, this.selectedDateService.toDate])
             .pipe(takeUntil(this.cancellableSubject$))
@@ -133,7 +131,7 @@ export class AccountsDetailComponent extends BaseAutoUnsubscribeClass implements
 
     updateAccountTypeName() {
         const accountTypes = EnumService.getAccountTypes();
-        const accountType = accountTypes.find(t => t.value === this.currentAccount.type);
+        const accountType = accountTypes.find((t) => t.value === this.currentAccount.type);
         this.accountTypeName = accountType?.name || 'Unknown';
     }
 
