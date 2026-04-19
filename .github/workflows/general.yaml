@@ -8,12 +8,15 @@ permissions:
   contents: write
   packages: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   version:
     runs-on: ubuntu-latest
     outputs:
       versionOut: ${{ steps.out.outputs.version }}
-      published: ${{ steps.semrel.outputs.new-release-published }}
+      published: ${{ steps.out.outputs.published }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -25,19 +28,22 @@ jobs:
         uses: go-semantic-release/action@2e9dc4247a6004f8377781bef4cb9dad273a741f # v1.24.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-initial-development-versions: false
           changelog-generator-opt: "emojis=true"
-      - name: Fallback develop version
-        id: dev
-        if: github.ref != 'refs/heads/master'
-        run: echo "version=0.0.0-develop-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
       - name: Emit version
         id: out
         run: |
-          if [ "${{ steps.semrel.outputs.new-release-published }}" = "true" ]; then
-            echo "version=${{ steps.semrel.outputs.new-release-version }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            VER="${{ steps.semrel.outputs.version }}"
+            if [ -n "$VER" ]; then
+              echo "version=$VER" >> "$GITHUB_OUTPUT"
+              echo "published=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "version=" >> "$GITHUB_OUTPUT"
+              echo "published=false" >> "$GITHUB_OUTPUT"
+            fi
           else
-            echo "version=${{ steps.dev.outputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "version=0.0.0-develop-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+            echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
   goreleaser:
