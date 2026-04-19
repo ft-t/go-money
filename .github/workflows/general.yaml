@@ -4,34 +4,64 @@ on:
       - master
       - develop
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   version:
     runs-on: ubuntu-latest
     outputs:
-      versionOut: ${{ steps.generateVersion.outputs.version }}
+      versionOut: ${{ steps.out.outputs.version }}
+      published: ${{ steps.semrel.outputs.new-release-published }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - uses: paulhatch/semantic-version@9f72830310d5ed81233b641ee59253644cd8a8fc # v6.0.2
-        id: generateVersion
+      - name: Semantic release
+        id: semrel
+        if: github.ref == 'refs/heads/master'
+        uses: go-semantic-release/action@7ae13e11e9bbf82b4b715f75bdb95f3ad84c3fd3 # v1.23.0
         with:
-          tag_prefix: "v"
-          major_pattern: "(MAJOR)"
-          minor_pattern: "(MINOR)"
-          bump_each_commit: false
-          enable_prerelease_mode: true
-          version_format: "${major}.${minor}.${patch}"
-      - name: Create & push tag
-        if: github.ref == 'refs/heads/master' && steps.generateVersion.outputs.is_tagged == 'false'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: false
+          changelog-generator-opt: "emojis=true"
+      - name: Fallback develop version
+        id: dev
+        if: github.ref != 'refs/heads/master'
+        run: echo "version=0.0.0-develop-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: Emit version
+        id: out
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          TAG="${{ steps.generateVersion.outputs.version_tag }}"
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
-  
+          if [ "${{ steps.semrel.outputs.new-release-published }}" = "true" ]; then
+            echo "version=${{ steps.semrel.outputs.new-release-version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ steps.dev.outputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  goreleaser:
+    runs-on: ubuntu-latest
+    needs: version
+    if: github.ref == 'refs/heads/master' && needs.version.outputs.published == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: v${{ needs.version.outputs.versionOut }}
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: goreleaser/goreleaser-action@9c156ee8a17a598857849441385a2041ef570552 # v6.3.0
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   backend:
     strategy:
       matrix:
@@ -43,6 +73,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     needs:
       - version
+    if: needs.version.outputs.versionOut != '' && (github.ref != 'refs/heads/master' || needs.version.outputs.published == 'true')
     env:
       DOCKER_SERVER_IMAGE_NAME: "ghcr.io/${{ github.repository }}/temp-backend:${{needs.version.outputs.versionOut}}-${{ matrix.arch }}"
     steps:
@@ -52,10 +83,9 @@ jobs:
       - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
       - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - run: VERSION=${{needs.version.outputs.versionOut}} COMMIT_SHA=${GITHUB_SHA::7} make build-docker
       - run: docker push ${DOCKER_SERVER_IMAGE_NAME}
-  
+
   backend-multi-arch:
     runs-on: ubuntu-latest
     needs:
@@ -84,6 +114,7 @@ jobs:
     container: node:24-alpine
     needs:
       - version
+    if: needs.version.outputs.versionOut != '' && (github.ref != 'refs/heads/master' || needs.version.outputs.published == 'true')
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -137,7 +168,7 @@ jobs:
     env:
       DOCKER_FULL_IMAGE_NAME: "ghcr.io/${{ github.repository }}/go-money-full"
       DOCKER_FULL_IMAGE_NAME_LATEST: "ghcr.io/${{ github.repository }}/go-money-full:latest"
-      
+
       DOCKER_TEMP_FULL_IMAGE_NAME: "ghcr.io/${{ github.repository }}/temp-full:${{needs.version.outputs.versionOut}}"
     steps:
       - name: Checkout code
@@ -158,14 +189,14 @@ jobs:
           else
             TAGS=("develop")
           fi
-                    
+
           for TAG in "${TAGS[@]}"; do
             FULL_TAG="${DOCKER_FULL_IMAGE_NAME}:${TAG}"
-          
+
             docker manifest create "${FULL_TAG}" \
               "${DOCKER_TEMP_FULL_IMAGE_NAME}-linux-amd64" \
               "${DOCKER_TEMP_FULL_IMAGE_NAME}-linux-arm64"
-          
+
             docker manifest push "${FULL_TAG}"
           done
   helm:
@@ -180,20 +211,20 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      
+
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-      
+
       - name: Configure Git
         run: |
           git config --global user.name "$GITHUB_ACTOR"
           git config --global user.email "$GITHUB_ACTOR@users.noreply.github.com"
-      
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: 'gh-pages'
           fetch-depth: '0'
           path: 'gh-pages-dir'
-      
+
       - name: replace versions
         env:
           DOCKER_IMAGE_VERSION: ${{needs.version.outputs.versionOut}}
@@ -210,16 +241,16 @@ jobs:
           cat $CHART_FOLDER/Chart.yaml
           echo "New values.yaml"
           cat $CHART_FOLDER/values.yaml
-      
+
       - name: release
         env:
           CHART_FOLDER: "helm"
           HELM_CHART_VERSION: ${{ needs.version.outputs.versionOut }}
-        
+
         run: |
           helm package $CHART_FOLDER -d gh-pages-dir
           cd gh-pages-dir
-          helm repo index . 
+          helm repo index .
           git add .
           git commit -m "Release chart version $HELM_CHART_VERSION"
           git push origin gh-pages

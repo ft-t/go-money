@@ -67,8 +67,10 @@
 | Document | Keywords |
 |----------|----------|
 | [MCP Overview](mcp/overview.md) | read-only queries, AI integration |
+| [Client Setup](mcp/client-setup.md) | `go-money-mcp-client` stdio bridge, Claude config, flags, token |
 | [Tool Reference](mcp/tool-reference.md) | query tool spec, parameters, output format |
 | [Query Safety](mcp/query-safety.md) | blocked statements, limits, allowed tables |
+| [Golden Rules](mcp/GOLDEN-RULES.md) | must-read for agents before generating queries |
 | [Examples](mcp/examples.md) | natural language → SQL mappings |
 
 ---
