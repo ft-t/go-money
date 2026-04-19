@@ -40,6 +40,7 @@
                             }
                         ],
                         "styles": [
+                            "src/tailwind.css",
                             "src/styles.scss",
                             "./node_modules/highlight.js/styles/github.css",
                             "./node_modules/highlight.js/styles/github-dark.css"
@@ -101,6 +102,7 @@
                             }
                         ],
                         "styles": [
+                            "src/tailwind.css",
                             "src/styles.scss"
                         ],
                         "scripts": []
