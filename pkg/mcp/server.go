@@ -109,7 +109,7 @@ func (s *Server) registerTools() {
 
 	dryRunRuleTool := mcp.NewTool(
 		"dry_run_rule",
-		mcp.WithDescription("Test a rule against a transaction without persisting changes. Returns the transaction state before and after rule execution."),
+		mcp.WithDescription("Test a Lua rule script against an existing transaction without persisting changes. Returns JSON {rule_applied, before, after}. Use this to validate a script before create_rule/update_rule.\n"+RulesLuaAPIDoc),
 		mcp.WithNumber(
 			"transaction_id",
 			mcp.Description("The ID of the transaction to test the rule against (use 0 for scheduled rules that create transactions)"),
@@ -117,7 +117,7 @@ func (s *Server) registerTools() {
 		),
 		mcp.WithString(
 			"script",
-			mcp.Description("The Lua script to test"),
+			mcp.Description("The Lua script to test. See tool description for full Lua API."),
 			mcp.Required(),
 		),
 		mcp.WithString(
@@ -129,7 +129,7 @@ func (s *Server) registerTools() {
 
 	createRuleTool := mcp.NewTool(
 		"create_rule",
-		mcp.WithDescription("Create a new transaction rule. Rules are Lua scripts that automatically modify transactions based on conditions."),
+		mcp.WithDescription("Create a new transaction rule. Rules are Lua scripts executed on every new/edited transaction to mutate fields (category, tags, type, account, dates, amounts, notes). Author the script, validate with dry_run_rule, then persist here.\n"+RulesLuaAPIDoc),
 		mcp.WithString(
 			"title",
 			mcp.Description("The title/name of the rule"),
@@ -161,7 +161,7 @@ func (s *Server) registerTools() {
 
 	updateRuleTool := mcp.NewTool(
 		"update_rule",
-		mcp.WithDescription("Update an existing transaction rule"),
+		mcp.WithDescription("Update an existing transaction rule (replaces title, script, and optional flags). Validate the new script with dry_run_rule first.\n"+RulesLuaAPIDoc),
 		mcp.WithNumber(
 			"id",
 			mcp.Description("The ID of the rule to update"),

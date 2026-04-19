@@ -11,6 +11,108 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
+// RulesLuaAPIDoc describes the Lua runtime surface available to transaction
+// rule scripts. Injected into create_rule, update_rule, and dry_run_rule tool
+// descriptions so agents have enough context to author working scripts without
+// reading external docs.
+const RulesLuaAPIDoc = `
+Lua runtime: gopher-lua with gopher-lua-libs preloaded (string, table, math, etc.).
+Each rule runs against a cloned transaction; a rule is considered "applied" when
+it mutates any tx field. Scripts must not raise errors — use early ` + "`return`" + ` to exit.
+Rule groups run in sort_order; within a group ` + "`is_final_rule=true`" + ` stops the group
+when the rule mutates the transaction.
+
+Globals:
+  tx       — current transaction (methods below)
+  helpers  — utility namespace
+
+Transaction API (` + "`tx:field()`" + ` = get, ` + "`tx:field(value)`" + ` = set):
+
+  String fields:
+    tx:title()               / tx:title("value")
+    tx:notes()               / tx:notes("value")
+    tx:sourceCurrency()      / tx:sourceCurrency("USD")
+    tx:destinationCurrency() / tx:destinationCurrency("USD")
+    tx:referenceNumber()     / tx:referenceNumber("REF123")
+
+  Int fields:
+    tx:sourceAccountID()      / tx:sourceAccountID(42)
+    tx:destinationAccountID() / tx:destinationAccountID(42)
+
+  Nullable int fields (pass nil to clear / reset):
+    tx:categoryID()      / tx:categoryID(10) / tx:categoryID(nil)
+    tx:transactionType() / tx:transactionType(3)
+      0=UNSPECIFIED 1=TRANSFER_BETWEEN_ACCOUNTS 2=INCOME
+      3=EXPENSE     4=REVERSAL                  5=ADJUSTMENT
+
+  Decimal amounts (number or nil):
+    tx:sourceAmount()      / tx:sourceAmount(12.34)      / tx:sourceAmount(nil)
+    tx:destinationAmount() / tx:destinationAmount(12.34) / tx:destinationAmount(nil)
+    tx:getSourceAmountWithDecimalPlaces(2)       -- rounded to N decimals
+    tx:getDestinationAmountWithDecimalPlaces(2)
+
+  Tags (tag IDs are ints):
+    tx:addTag(tagID)
+    tx:removeTag(tagID)
+    tx:getTags()        -- Lua array of tag IDs
+    tx:removeAllTags()
+
+  Internal reference numbers (string array):
+    tx:getInternalReferenceNumbers()
+    tx:addInternalReferenceNumber("value")
+    tx:setInternalReferenceNumbers({"a","b"})
+    tx:removeInternalReferenceNumber("value")
+
+  Date/time:
+    tx:transactionDateTimeSetTime(hour, minute)
+    tx:transactionDateTimeAddDate(years, months, days)
+
+Helpers API:
+  helpers:getAccountByID(id)
+    Returns account object with fields: ID, Name, Currency, CurrentBalance,
+    Type, AccountNumber, Iban (and a few more).
+  helpers:convertCurrency("FROM", "TO", amount)
+    Returns converted number, rounded to target currency decimals.
+
+Nil-safety: ` + "`tx:title()`" + ` / ` + "`tx:notes()`" + ` can be nil on sparse imports — use
+` + "`tx:title() or \"\"`" + ` before string.find.
+
+Literal substring match (disable Lua patterns with 4th arg ` + "`true`" + `):
+  if string.find(tx:title(), "Trading 212", 1, true) then ... end
+
+Example — categorize by title keyword list:
+  local keywords = { "GOOGLE -ADS", "MERCHANT X" }
+  for _, keyword in ipairs(keywords) do
+      if string.find(tx:title(), keyword, 1, true) then
+          tx:categoryID(10)
+          break
+      end
+  end
+
+Example — match title OR notes, two sources:
+  local title_keywords = { "Alice S", "Alice" }
+  for _, keyword in ipairs(title_keywords) do
+      if string.find(tx:title(), keyword, 1, true) then
+          tx:categoryID(36)
+          return
+      end
+  end
+  local notes = tx:notes() or ""
+  if string.find(notes, "ALICE SURNAME", 1, true) or
+     string.find(notes, "021600146217XXXXXXXXXXXXX", 1, true) then
+      tx:categoryID(36)
+  end
+
+Example — reclassify as transfer to specific account:
+  local title = tx:title() or ""
+  local notes = tx:notes() or ""
+  if string.find(title, "Trading 212", 1, true) or
+     string.find(notes, "Trading 212", 1, true) then
+      tx:transactionType(1)            -- TRANSFER_BETWEEN_ACCOUNTS
+      tx:destinationAccountID(47)      -- target account id
+  end
+`
+
 func (s *Server) handleListRules(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()

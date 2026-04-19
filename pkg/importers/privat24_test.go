@@ -2,1636 +2,199 @@ package importers_test
 
 import (
 	"context"
+	_ "embed"
 	"testing"
-	"time"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
-	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
-	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
-	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
-	"github.com/golang/mock/gomock"
-	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestParseHeaderDate_Success(t *testing.T) {
+//go:embed testdata/privat24/expense_same_currency.xlsx
+var privat24ExpenseSameCurrency []byte
+
+//go:embed testdata/privat24/expense_fx.xlsx
+var privat24ExpenseFx []byte
+
+//go:embed testdata/privat24/income.xlsx
+var privat24Income []byte
+
+//go:embed testdata/privat24/mixed.xlsx
+var privat24Mixed []byte
+
+//go:embed testdata/privat24/unknown_card.xlsx
+var privat24UnknownCard []byte
+
+//go:embed testdata/privat24/bad_date.xlsx
+var privat24BadDate []byte
+
+//go:embed testdata/privat24/bad_amount.xlsx
+var privat24BadAmount []byte
+
+func TestPrivat24_Type(t *testing.T) {
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_PRIVATE_24, srv.Type())
+}
+
+func TestPrivat24_ExpenseSuccess(t *testing.T) {
 	type tc struct {
-		name     string
-		header   string
-		wantTime time.Time
+		name          string
+		data          []byte
+		wantSrcAmt    string
+		wantSrcCur    string
+		wantDestAmt   string
+		wantDestCur   string
+		wantSrcAcc    string
+		wantDate      string
+		wantDateShort string
+		wantDesc      string
+		wantCategory  string
 	}
 
 	cases := []tc{
 		{
-			name:     "valid header with AM",
-			header:   "PrivatBank, [10/1/2025 9:50 AM]",
-			wantTime: time.Date(2025, 10, 1, 9, 50, 0, 0, time.UTC),
+			name:          "same currency",
+			data:          privat24ExpenseSameCurrency,
+			wantSrcAmt:    "123.45",
+			wantSrcCur:    "UAH",
+			wantDestAmt:   "123.45",
+			wantDestCur:   "UAH",
+			wantSrcAcc:    "1111********2222",
+			wantDate:      "2026-01-15 12:30:00 +0000",
+			wantDateShort: "12:30",
+			wantDesc:      "FAKE MARKET, KYIV",
+			wantCategory:  "Супермаркети та продукти",
 		},
 		{
-			name:     "valid header with PM",
-			header:   "PrivatBank, [10/1/2025 9:50 PM]",
-			wantTime: time.Date(2025, 10, 1, 21, 50, 0, 0, time.UTC),
-		},
-		{
-			name:     "valid header with single digit day",
-			header:   "PrivatBank, [1/5/2025 3:15 PM]",
-			wantTime: time.Date(2025, 1, 5, 15, 15, 0, 0, time.UTC),
-		},
-		{
-			name:     "valid header with double digit day and month",
-			header:   "PrivatBank, [12/31/2025 11:59 PM]",
-			wantTime: time.Date(2025, 12, 31, 23, 59, 0, 0, time.UTC),
-		},
-		{
-			name:     "new format header - date only bracket",
-			header:   "[2/16/2026 4:16 AM]",
-			wantTime: time.Date(2026, 2, 16, 4, 16, 0, 0, time.UTC),
+			name:          "fx expense",
+			data:          privat24ExpenseFx,
+			wantSrcAmt:    "410.20",
+			wantSrcCur:    "UAH",
+			wantDestAmt:   "40.00",
+			wantDestCur:   "PLN",
+			wantSrcAcc:    "1111********2222",
+			wantDate:      "2026-01-16 09:15:00 +0000",
+			wantDateShort: "09:15",
+			wantDesc:      "FAKE FUEL, WROCLAW",
+			wantCategory:  "Авто",
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			p24 := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-			gotTime, err := p24.ParseHeaderDate(c.header)
+			srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
-			assert.NoError(t, err)
-			assert.Equal(t, c.wantTime, gotTime)
+			resp, err := srv.ParseMessages(context.Background(), []*importers.Record{{Data: c.data}})
+			require.NoError(t, err)
+			require.Len(t, resp, 1)
+
+			tx := resp[0]
+			require.NoError(t, tx.ParsingError)
+			assert.Equal(t, importers.TransactionTypeExpense, tx.Type)
+			assert.Equal(t, c.wantSrcAmt, tx.SourceAmount.StringFixed(2))
+			assert.Equal(t, c.wantSrcCur, tx.SourceCurrency)
+			assert.Equal(t, c.wantDestAmt, tx.DestinationAmount.StringFixed(2))
+			assert.Equal(t, c.wantDestCur, tx.DestinationCurrency)
+			assert.Equal(t, c.wantSrcAcc, tx.SourceAccount)
+			assert.Equal(t, "", tx.DestinationAccount)
+			assert.Equal(t, c.wantDate, tx.Date.Format("2006-01-02 15:04:05 -0700"))
+			assert.Equal(t, c.wantDateShort, tx.DateFromMessage)
+			assert.Equal(t, c.wantDesc, tx.Description)
+			assert.Equal(t, c.wantCategory, tx.OriginalTxType)
+			require.Len(t, tx.DeduplicationKeys, 1)
+			assert.NotEmpty(t, tx.DeduplicationKeys[0])
 		})
 	}
 }
 
-func TestParseHeaderDate_Failure(t *testing.T) {
+func TestPrivat24_IncomeSuccess(t *testing.T) {
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+
+	resp, err := srv.ParseMessages(context.Background(), []*importers.Record{{Data: privat24Income}})
+	require.NoError(t, err)
+	require.Len(t, resp, 1)
+
+	tx := resp[0]
+	require.NoError(t, tx.ParsingError)
+	assert.Equal(t, importers.TransactionTypeIncome, tx.Type)
+	assert.Equal(t, "5000.00", tx.DestinationAmount.StringFixed(2))
+	assert.Equal(t, "UAH", tx.DestinationCurrency)
+	assert.Equal(t, "5000.00", tx.SourceAmount.StringFixed(2))
+	assert.Equal(t, "UAH", tx.SourceCurrency)
+	assert.Equal(t, "1111********2222", tx.DestinationAccount)
+	assert.Equal(t, "", tx.SourceAccount)
+	assert.Equal(t, "FAKE SALARY", tx.Description)
+	assert.Equal(t, "Зарахування", tx.OriginalTxType)
+}
+
+func TestPrivat24_MixedSuccess(t *testing.T) {
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+
+	resp, err := srv.ParseMessages(context.Background(), []*importers.Record{{Data: privat24Mixed}})
+	require.NoError(t, err)
+	require.Len(t, resp, 3)
+
+	assert.Equal(t, importers.TransactionTypeExpense, resp[0].Type)
+	assert.Equal(t, "1111********2222", resp[0].SourceAccount)
+	assert.Equal(t, "Переказ на свою картку", resp[0].OriginalTxType)
+
+	assert.Equal(t, importers.TransactionTypeIncome, resp[1].Type)
+	assert.Equal(t, "3333********4444", resp[1].DestinationAccount)
+	assert.Equal(t, "Зарахування зі своєї картки", resp[1].OriginalTxType)
+
+	assert.Equal(t, importers.TransactionTypeExpense, resp[2].Type)
+	assert.Equal(t, "3333********4444", resp[2].SourceAccount)
+	assert.Equal(t, "Таксі", resp[2].OriginalTxType)
+}
+
+func TestPrivat24_UnknownCardStillParses(t *testing.T) {
+	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
+
+	resp, err := srv.ParseMessages(context.Background(), []*importers.Record{{Data: privat24UnknownCard}})
+	require.NoError(t, err)
+	require.Len(t, resp, 1)
+
+	tx := resp[0]
+	require.NoError(t, tx.ParsingError)
+	assert.Equal(t, "9999********8888", tx.SourceAccount)
+}
+
+func TestPrivat24_Failure(t *testing.T) {
 	type tc struct {
-		name        string
-		header      string
-		errContains string
+		name    string
+		data    []byte
+		wantErr string
 	}
 
 	cases := []tc{
-		{
-			name:        "missing opening bracket",
-			header:      "PrivatBank, 10/1/2025 9:50 AM]",
-			errContains: "invalid header format",
-		},
-		{
-			name:        "missing closing bracket",
-			header:      "PrivatBank, [10/1/2025 9:50 AM",
-			errContains: "invalid header format",
-		},
-		{
-			name:        "invalid date format",
-			header:      "PrivatBank, [2025-10-01 09:50]",
-			errContains: "failed to parse date",
-		},
-		{
-			name:        "empty brackets",
-			header:      "PrivatBank, []",
-			errContains: "failed to parse date",
-		},
+		{name: "empty data", data: []byte{}, wantErr: "failed to open excel"},
+		{name: "bad date", data: privat24BadDate, wantErr: "failed to parse date"},
+		{name: "bad amount", data: privat24BadAmount, wantErr: "failed to parse card amount"},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			p24 := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-			_, err := p24.ParseHeaderDate(c.header)
+			srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
-			assert.Error(t, err)
-			assert.ErrorContains(t, err, c.errContains)
+			resp, err := srv.ParseMessages(context.Background(), []*importers.Record{{Data: c.data}})
+			require.NoError(t, err)
+			require.Len(t, resp, 1)
+
+			require.Error(t, resp[0].ParsingError)
+			assert.Contains(t, resp[0].ParsingError.Error(), c.wantErr)
 		})
 	}
 }
 
-func TestExpensesShouldNotMerged(t *testing.T) {
+func TestPrivat24_ParseDecodeError(t *testing.T) {
 	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
 
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(`89.80PLN Ресторани, кафе, бари. Pyszne.pl, Wroclaw
-4*67 16:17
-Бал. 1.86USD
-Курс 0.2547 USD/PLN`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-		{
-			Data: []byte(`8.98PLN Ресторани, кафе, бари. Pyszne.pl, Wroclaw
-4*67 16:18
-Бал. 236.57USD
-Курс 0.2550 USD/PLN`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 2)
-
-	assert.Equal(t, "22.87", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "USD", resp[0].SourceCurrency)
-	assert.Equal(t, "4*67", resp[0].SourceAccount)
-
-	assert.Equal(t, "89.80", resp[0].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "", resp[0].DestinationAccount)
-	assert.Equal(t, "PLN", resp[0].DestinationCurrency)
-
-	assert.Equal(t, "Ресторани, кафе, бари. Pyszne.pl, Wroclaw", resp[0].Description)
-	assert.Equal(t, importers.TransactionTypeExpense, resp[0].Type)
-
-	assert.Equal(t, "2.29", resp[1].SourceAmount.StringFixed(2))
-	assert.Equal(t, "USD", resp[1].SourceCurrency)
-	assert.Equal(t, "4*67", resp[1].SourceAccount)
-
-	assert.Equal(t, "8.98", resp[1].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "", resp[1].DestinationAccount)
-	assert.Equal(t, "PLN", resp[1].DestinationCurrency)
-
-	assert.Equal(t, "Ресторани, кафе, бари. Pyszne.pl, Wroclaw", resp[1].Description)
-	assert.Equal(t, importers.TransactionTypeExpense, resp[1].Type)
-}
-
-func TestTransferBetweenOwnCards(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	t.Run("order 1", func(t *testing.T) {
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(`1100.00USD Переказ зі своєї карти
-4*59 22:40
-Бал. 1.21USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(`1100.00USD Зарахування переказу на картку
-4*71 22:40
-Бал. 1.60USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "1100.00", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].SourceCurrency)
-		assert.Equal(t, "4*59", resp[0].SourceAccount)
-
-		assert.Equal(t, "1100.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "4*71", resp[0].DestinationAccount)
-		assert.Equal(t, "USD", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "Переказ зі своєї карти", resp[0].Description)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-	t.Run("order 2", func(t *testing.T) {
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(`1100.00USD Зарахування переказу на картку
-4*71 22:40
-Бал. 1.60USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(`1100.00USD Переказ зі своєї карти
-4*59 22:40
-Бал. 1.21USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "1100.00", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].SourceCurrency)
-		assert.Equal(t, "4*59", resp[0].SourceAccount)
-
-		assert.Equal(t, "1100.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "4*71", resp[0].DestinationAccount)
-		assert.Equal(t, "USD", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "Зарахування переказу на картку", resp[0].Description)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-}
-
-func TestTransferBetweenOwnCards3(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	t.Run("order 1", func(t *testing.T) {
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(`40.00USD Зарахування переказу. *1959
-4*71 11:11
-Бал. 1.37USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(`40.00USD Переказ на свою картку. *6471
-4*59 11:11
-Бал. 1446.74USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "40.00", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].SourceCurrency)
-		assert.Equal(t, "4*59", resp[0].SourceAccount)
-
-		assert.Equal(t, "40.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "4*71", resp[0].DestinationAccount)
-		assert.Equal(t, "USD", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "Зарахування переказу. *1959", resp[0].Description)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-	t.Run("order 2", func(t *testing.T) {
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(`40.00USD Переказ на свою картку. *6471
-4*59 11:11
-Бал. 1446.74USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(`40.00USD Зарахування переказу. *1959
-4*71 11:11
-Бал. 1.37USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "40.00", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].SourceCurrency)
-		assert.Equal(t, "4*59", resp[0].SourceAccount)
-
-		assert.Equal(t, "40.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "4*71", resp[0].DestinationAccount)
-		assert.Equal(t, "USD", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "Переказ на свою картку. *6471", resp[0].Description)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-}
-
-func TestTransferBetweenOwnCards2(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	t.Run("order 1", func(t *testing.T) {
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(`356.45USD Переказ на свою картку. *0320
-4*59 05:06
-Бал. 123.96USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(`14418.00UAH Переказ зі своєї картки *1959
-5*20 05:06
-Бал. 123.00UAH`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "356.45", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].SourceCurrency)
-		assert.Equal(t, "4*59", resp[0].SourceAccount)
-
-		assert.Equal(t, "14418.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "5*20", resp[0].DestinationAccount)
-		assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "Переказ на свою картку. *0320", resp[0].Description)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-	t.Run("order 2", func(t *testing.T) {
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(`14418.00UAH Переказ зі своєї картки *1959
-5*20 05:06
-Бал. 123.00UAH`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(`356.45USD Переказ на свою картку. *0320
-4*59 05:06
-Бал. 123.96USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "356.45", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].SourceCurrency)
-		assert.Equal(t, "4*59", resp[0].SourceAccount)
-
-		assert.Equal(t, "14418.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "5*20", resp[0].DestinationAccount)
-		assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "Переказ зі своєї картки *1959", resp[0].Description)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-}
-
-func TestConvertCurrency3(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	t.Run("opt1", func(t *testing.T) {
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(`5200.00UAH Переказ зі своєї карти 46**59 через додаток Приват24
-5*20 18:51
-Бал. 1.84UAH`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(`133.78USD Переказ на свою картку через додаток Приват24
-4*59 18:51
-Бал. 1.95USD`),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "133.78", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].SourceCurrency)
-		assert.Equal(t, "4*59", resp[0].SourceAccount)
-
-		assert.Equal(t, "5200.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "5*20", resp[0].DestinationAccount)
-		assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "Переказ зі своєї карти 46**59 через додаток Приват24", resp[0].Description)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-}
-
-func TestParseCurrencyExchange4(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(`1723.64USD Переказ на свою карту через Приват24
-4*67 15:16
-Бал. 123.59USD`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-		{
-			Data: []byte(`65550.00UAH Переказ зі своєї картки 46**67 через Приват24
-5*20 15:16
-Бал. 123.59UAH
-Кред. лiмiт 300000.0UAH`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "1723.64", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "USD", resp[0].SourceCurrency)
-	assert.Equal(t, "4*67", resp[0].SourceAccount)
-
-	assert.Equal(t, "65550.00", resp[0].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "5*20", resp[0].DestinationAccount)
-	assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-
-	assert.Equal(t, "Переказ на свою карту через Приват24", resp[0].Description)
-	assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-}
-
-func TestParseCurrencyExchange3(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(`65550.00UAH Переказ зі своєї картки 46**67 через Приват24
-5*20 15:16
-Бал. 123.59UAH
-Кред. лiмiт 300000.0UAH`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-		{
-			Data: []byte(`1723.64USD Переказ на свою карту через Приват24
-4*67 15:16
-Бал. 123.59USD`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "1723.64", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "USD", resp[0].SourceCurrency)
-	assert.Equal(t, "4*67", resp[0].SourceAccount)
-
-	assert.Equal(t, "65550.00", resp[0].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "5*20", resp[0].DestinationAccount)
-	assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-
-	assert.Equal(t, "Переказ зі своєї картки 46**67 через Приват24", resp[0].Description)
-	assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-}
-
-func TestParseSimpleExpense(t *testing.T) {
-	input := `1.33USD Розваги. Steam
-4*71 16:27
-Бал. 1.55USD`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "1.33", resp[0].SourceAmount.String())
-	assert.Equal(t, "USD", resp[0].SourceCurrency)
-	assert.Equal(t, "Розваги. Steam", resp[0].Description)
-	assert.Equal(t, "4*71", resp[0].SourceAccount)
-	assert.Equal(t, importers.TransactionTypeExpense, resp[0].Type)
-}
-
-func TestParseSimpleRefund(t *testing.T) {
-	input := `120.52UAH Повернення. Транспорт. xx.yy
-4*68 15:09
-Бал. 329.89UAH`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "120.52", resp[0].DestinationAmount.String())
-	assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-	assert.Equal(t, "Повернення. Транспорт. xx.yy", resp[0].Description)
-	assert.Equal(t, "4*68", resp[0].DestinationAccount)
-	assert.Equal(t, importers.TransactionTypeIncome, resp[0].Type)
-}
-
-func TestNewTransfer(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(`40.00USD Переказ на свою карту через Приват24
-4*59 22:28
-Бал. 1486.74USD`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-		{
-			Data: []byte(`40.00USD Зарахування переказу через Приват24 зі своєї картки
-4*71 22:28
-Бал. 61.20USD`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "40", resp[0].DestinationAmount.String())
-	assert.Equal(t, "USD", resp[0].DestinationCurrency)
-	assert.Equal(t, "Переказ на свою карту через Приват24", resp[0].Description)
-	assert.Equal(t, "4*71", resp[0].DestinationAccount)
-
-	assert.Equal(t, "4*59", resp[0].SourceAccount)
-	assert.Equal(t, "40", resp[0].SourceAmount.String())
-	assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-}
-
-func TestNewTransfer2(t *testing.T) {
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-
-		{
-			Data: []byte(`40.00USD Зарахування переказу через Приват24 зі своєї картки
-4*71 22:28
-Бал. 61.20USD`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-		{
-			Data: []byte(`40.00USD Переказ на свою карту через Приват24
-4*59 22:28
-Бал. 1486.74USD`),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "40", resp[0].DestinationAmount.String())
-	assert.Equal(t, "USD", resp[0].DestinationCurrency)
-	assert.Equal(t, "Зарахування переказу через Приват24 зі своєї картки", resp[0].Description)
-	assert.Equal(t, "4*71", resp[0].DestinationAccount)
-
-	assert.Equal(t, "4*59", resp[0].SourceAccount)
-	assert.Equal(t, "40", resp[0].SourceAmount.String())
-	assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-}
-
-func TestIncomeTransferP2P(t *testing.T) {
-	input := `1466.60USD Зарахування переказу з картки через Приват24
-4*51 22:00
-Бал. 1.89USD`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "1466.60", resp[0].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "USD", resp[0].DestinationCurrency)
-	assert.Equal(t, "Зарахування переказу з картки через Приват24", resp[0].Description)
-	assert.Equal(t, "4*51", resp[0].DestinationAccount)
-	assert.Equal(t, importers.TransactionTypeIncome, resp[0].Type)
-
-	_, err = srv.Merge(context.TODO(), resp)
-	assert.NoError(t, err)
-}
-
-func TestCreditExpense(t *testing.T) {
-	input := `1466.60UAH Списання
-4*40 20.05.24`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "1466.60", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "UAH", resp[0].SourceCurrency)
-	assert.Equal(t, "Списання", resp[0].Description)
-	assert.Equal(t, "4*40", resp[0].SourceAccount)
-	assert.Equal(t, importers.TransactionTypeExpense, resp[0].Type)
-
-	_, err = srv.Merge(context.TODO(), resp)
-	assert.NoError(t, err)
-}
-
-func TestPartialRefund(t *testing.T) {
-	input := `1.01USD Зарахування
-4*71 09.03.24`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "1.01", resp[0].DestinationAmount.String())
-	assert.Equal(t, "USD", resp[0].DestinationCurrency)
-	assert.Equal(t, "Зарахування", resp[0].Description)
-	assert.Equal(t, "4*71", resp[0].DestinationAccount)
-	assert.Equal(t, importers.TransactionTypeIncome, resp[0].Type)
-}
-
-func TestParseSimpleExpense2(t *testing.T) {
-	input := `83.69PLN Інтернет-магазини. AliExpress
-4*67 12:19
-Бал. 12.82USD
-Курс 0.2558 USD/PLN`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "83.69", resp[0].DestinationAmount.String())
-	assert.Equal(t, "PLN", resp[0].DestinationCurrency)
-
-	assert.Equal(t, "21.41", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "USD", resp[0].SourceCurrency)
-	assert.Equal(t, "Інтернет-магазини. AliExpress", resp[0].Description)
-	assert.Equal(t, "4*67", resp[0].SourceAccount)
-	assert.Equal(t, importers.TransactionTypeExpense, resp[0].Type)
-}
-
-func TestMultiCurrencyExpense(t *testing.T) {
-	input := `249.00UAH Комуналка та Інтернет. Sweet TV
-4*71 22:19
-Бал. 45.45USD
-Курс 37.3873 UAH/USD`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-
-	assert.Equal(t, "249.00", resp[0].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-
-	assert.Equal(t, "6.66", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "USD", resp[0].SourceCurrency)
-	assert.Equal(t, "Комуналка та Інтернет. Sweet TV", resp[0].Description)
-	assert.Equal(t, "4*71", resp[0].SourceAccount)
-	assert.Equal(t, importers.TransactionTypeExpense, resp[0].Type)
-}
-
-func TestParseRemoteTransfer(t *testing.T) {
-	input := `1.00UAH Переказ через Приват24 Одержувач: Імя Фамілія ПоБатькові
-4*68 16:41
-Бал. 17.81UAH`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-
-	assert.Equal(t, "1.00", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "UAH", resp[0].SourceCurrency)
-	assert.Equal(t, "Переказ через Приват24 Одержувач: Імя Фамілія ПоБатькові", resp[0].Description)
-	assert.Equal(t, "4*68", resp[0].SourceAccount)
-	assert.Equal(t, importers.TransactionTypeRemoteTransfer, resp[0].Type)
-}
-
-func TestParseRemoteTransfer3(t *testing.T) {
-	input := `715.06UAH Переказ зі своєї карти
-5*20 19:29
-Бал. 111.29UAH
-Кред. лiмiт 111.0UAH`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "715.06", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "UAH", resp[0].SourceCurrency)
-	assert.Equal(t, "Переказ зі своєї карти", resp[0].Description)
-	assert.Equal(t, "5*20", resp[0].SourceAccount)
-	assert.Equal(t, importers.TransactionTypeRemoteTransfer, resp[0].Type)
-}
-
-func TestParseRemoteTransfer2(t *testing.T) {
-	input := `4000.00UAH Переказ через додаток Приват24. Одержувач: ХХ УУ ММ
-5*20 12:58
-Бал. 123.32UAH
-Кред. лiмiт 3000000.0UAH`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-
-	assert.Equal(t, "4000.00", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "UAH", resp[0].SourceCurrency)
-	assert.Equal(t, "Переказ через додаток Приват24. Одержувач: ХХ УУ ММ", resp[0].Description)
-	assert.Equal(t, "5*20", resp[0].SourceAccount)
-	assert.Equal(t, importers.TransactionTypeRemoteTransfer, resp[0].Type)
-}
-
-func TestParseInternalTransferTo(t *testing.T) {
-	input := `1.00UAH Переказ на свою карту 51**20 через додаток Приват24
-4*68 16:13
-Бал. 18.81UAH`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-
-	assert.Equal(t, "1.00", resp[0].SourceAmount.StringFixed(2))
-	assert.Equal(t, "UAH", resp[0].SourceCurrency)
-	assert.Equal(t, "Переказ на свою карту 51**20 через додаток Приват24", resp[0].Description)
-	assert.Equal(t, "4*68", resp[0].SourceAccount)
-	assert.Equal(t, "5*20", resp[0].DestinationAccount)
-	assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	assert.True(t, resp[0].InternalTransferDirectionTo)
-}
-
-func TestParseInternalTransferFrom(t *testing.T) {
-	input := `1.00UAH Переказ зі своєї карти 47**68 через додаток Приват24
-5*20 16:13
-Бал. 123.32UAH`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 1)
-
-	assert.Equal(t, "0.00", resp[0].SourceAmount.StringFixed(2)) // expected because of merge
-	assert.Equal(t, "", resp[0].SourceCurrency)
-
-	assert.Equal(t, "1.00", resp[0].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-
-	assert.Equal(t, "Переказ зі своєї карти 47**68 через додаток Приват24", resp[0].Description)
-	assert.Equal(t, "4*68", resp[0].SourceAccount)
-	assert.Equal(t, "5*20", resp[0].DestinationAccount)
-	assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	assert.False(t, resp[0].InternalTransferDirectionTo)
-}
-
-func TestParseInternalTransferFromUSD(t *testing.T) {
-	input := `1.00USD Переказ зі своєї карти 52**20 через додаток Приват24
-4*71 23:50
-Бал. 89.19USD`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-
-	assert.Equal(t, "1.00", resp[0].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "USD", resp[0].DestinationCurrency)
-	assert.Equal(t, "Переказ зі своєї карти 52**20 через додаток Приват24", resp[0].Description)
-	assert.Equal(t, "5*20", resp[0].SourceAccount)
-	assert.Equal(t, "4*71", resp[0].DestinationAccount)
-	assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	assert.False(t, resp[0].InternalTransferDirectionTo)
-}
-
-func TestParseIncomeTransfer(t *testing.T) {
-	input := `123.11UAH Переказ через Приват24 Відправник: Імя Фамілія ПоБатькові
-5*20 20:11
-Бал. 11111.22UAH`
-
-	srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-		{
-			Data: []byte(input),
-			Message: &importers.Message{
-				CreatedAt: time.Now(),
-			},
-		},
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-
-	assert.Equal(t, "123.11", resp[0].DestinationAmount.StringFixed(2))
-	assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-	assert.Equal(t, "Переказ через Приват24 Відправник: Імя Фамілія ПоБатькові", resp[0].Description)
-	assert.Equal(t, "5*20", resp[0].DestinationAccount)
-	assert.Equal(t, importers.TransactionTypeIncome, resp[0].Type)
-}
-
-func TestMerger(t *testing.T) {
-	t.Run("firstIsTo", func(t *testing.T) {
-		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-		txList := []*importers.Transaction{
-			{
-				ID:                          uuid.NewString(),
-				Type:                        importers.TransactionTypeInternalTransfer,
-				SourceCurrency:              "UAH",
-				SourceAccount:               "4*68",
-				SourceAmount:                decimal.RequireFromString("1.00"),
-				DestinationAccount:          "5*20",
-				DateFromMessage:             "16:13",
-				InternalTransferDirectionTo: true,
-			},
-			{
-				ID:             uuid.NewString(),
-				Type:           importers.TransactionTypeExpense,
-				SourceCurrency: "USD",
-				SourceAccount:  "4*71",
-				SourceAmount:   decimal.RequireFromString("1.33"),
-			},
-			{
-				ID:                          uuid.NewString(),
-				Type:                        importers.TransactionTypeInternalTransfer,
-				SourceCurrency:              "UAH",
-				SourceAccount:               "4*68",
-				SourceAmount:                decimal.RequireFromString("1.00"),
-				DestinationAccount:          "5*20",
-				DateFromMessage:             "16:13",
-				InternalTransferDirectionTo: false,
-			},
-		}
-		resp, err := pr.Merge(context.TODO(), txList)
-
-		assert.NoError(t, err)
-		assert.Len(t, resp, 2)
-
-		assert.Equal(t, txList[0].ID, resp[0].ID)
-		assert.Len(t, resp[0].DuplicateTransactions, 1)
-		assert.Equal(t, txList[2].ID, resp[0].DuplicateTransactions[0].ID)
-
-		assert.Equal(t, txList[1].ID, resp[1].ID)
-	})
-
-	t.Run("firstIsFrom", func(t *testing.T) {
-		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-		txList := []*importers.Transaction{
-			{
-				ID:                          uuid.NewString(),
-				Type:                        importers.TransactionTypeInternalTransfer,
-				SourceCurrency:              "UAH",
-				SourceAccount:               "4*68",
-				SourceAmount:                decimal.RequireFromString("1.00"),
-				DestinationAccount:          "5*20",
-				DateFromMessage:             "16:13",
-				InternalTransferDirectionTo: false,
-			},
-			{
-				ID:             uuid.NewString(),
-				Type:           importers.TransactionTypeExpense,
-				SourceCurrency: "USD",
-				SourceAccount:  "4*71",
-				SourceAmount:   decimal.RequireFromString("1.33"),
-			},
-			{
-				ID:                          uuid.NewString(),
-				Type:                        importers.TransactionTypeInternalTransfer,
-				SourceCurrency:              "UAH",
-				SourceAccount:               "4*68",
-				SourceAmount:                decimal.RequireFromString("1.00"),
-				DestinationAccount:          "5*20",
-				DateFromMessage:             "16:13",
-				InternalTransferDirectionTo: true,
-			},
-		}
-		resp, err := pr.Merge(context.TODO(), txList)
-
-		assert.NoError(t, err)
-		assert.Len(t, resp, 2)
-
-		assert.Equal(t, txList[0].ID, resp[0].ID)
-		assert.Len(t, resp[0].DuplicateTransactions, 1)
-		assert.Equal(t, txList[2].ID, resp[0].DuplicateTransactions[0].ID)
-
-		assert.Equal(t, txList[1].ID, resp[1].ID)
-	})
-
-	t.Run("multi currency", func(t *testing.T) {
-		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-		txList := []*importers.Transaction{
-			{
-				ID:                          uuid.NewString(),
-				Type:                        importers.TransactionTypeInternalTransfer,
-				DestinationCurrency:         "USD",
-				SourceAccount:               "4*68",
-				DestinationAmount:           decimal.RequireFromString("1.00"),
-				DestinationAccount:          "5*20",
-				DateFromMessage:             "16:13",
-				InternalTransferDirectionTo: false,
-			},
-			{
-				ID:             uuid.NewString(),
-				Type:           importers.TransactionTypeExpense,
-				SourceCurrency: "USD",
-				SourceAccount:  "4*71",
-				SourceAmount:   decimal.RequireFromString("1.33"),
-			},
-			{
-				ID:                          uuid.NewString(),
-				Type:                        importers.TransactionTypeInternalTransfer,
-				SourceCurrency:              "UAH",
-				SourceAccount:               "4*68",
-				SourceAmount:                decimal.RequireFromString("38.00"),
-				DestinationAccount:          "5*20",
-				DateFromMessage:             "16:13",
-				InternalTransferDirectionTo: true,
-			},
-		}
-		resp, err := pr.Merge(context.TODO(), txList)
-
-		assert.NoError(t, err)
-		assert.Len(t, resp, 2)
-
-		assert.Equal(t, txList[0].ID, resp[0].ID)
-		assert.Len(t, resp[0].DuplicateTransactions, 1)
-		assert.Equal(t, txList[2].ID, resp[0].DuplicateTransactions[0].ID)
-
-		assert.Equal(t, txList[1].ID, resp[1].ID)
-
-		assert.Equal(t, "USD", resp[0].DestinationCurrency)
-		assert.Equal(t, "UAH", resp[0].SourceCurrency)
-
-		assert.Equal(t, "1.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "38.00", resp[0].SourceAmount.StringFixed(2))
-	})
-
-	t.Run("multi currency 2", func(t *testing.T) {
-		pr := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-		txList := []*importers.Transaction{
-			{
-				ID:                          uuid.NewString(),
-				Type:                        importers.TransactionTypeInternalTransfer,
-				SourceCurrency:              "UAH",
-				SourceAccount:               "4*68",
-				SourceAmount:                decimal.RequireFromString("38.00"),
-				DestinationAccount:          "5*20",
-				DateFromMessage:             "16:13",
-				InternalTransferDirectionTo: true,
-			},
-			{
-				ID:                          uuid.NewString(),
-				Type:                        importers.TransactionTypeInternalTransfer,
-				DestinationCurrency:         "USD",
-				SourceAccount:               "4*68",
-				DestinationAmount:           decimal.RequireFromString("1.00"),
-				DestinationAccount:          "5*20",
-				DateFromMessage:             "16:13",
-				InternalTransferDirectionTo: false,
-			},
-			{
-				ID:             uuid.NewString(),
-				Type:           importers.TransactionTypeExpense,
-				SourceCurrency: "USD",
-				SourceAccount:  "4*71",
-				SourceAmount:   decimal.RequireFromString("1.33"),
-			},
-		}
-		resp, err := pr.Merge(context.TODO(), txList)
-
-		assert.NoError(t, err)
-		assert.Len(t, resp, 2)
-
-		assert.Equal(t, txList[0].ID, resp[0].ID)
-		assert.Len(t, resp[0].DuplicateTransactions, 1)
-		assert.Equal(t, txList[1].ID, resp[0].DuplicateTransactions[0].ID)
-
-		assert.Equal(t, txList[2].ID, resp[1].ID)
-
-		assert.Equal(t, "USD", resp[0].DestinationCurrency)
-		assert.Equal(t, "UAH", resp[0].SourceCurrency)
-
-		assert.Equal(t, "1.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "38.00", resp[0].SourceAmount.StringFixed(2))
-	})
-
-	t.Run("test currency exchange", func(t *testing.T) {
-		input1 := `123.54EUR Переказ на свою карту 52**20 через Приват24
-5*60 22:02
-Бал. 0.00EUR`
-
-		input2 := `5555.99UAH Переказ зі своєї картки 52**60 через Приват24
-5*20 22:02
-Бал. 123.28UAH
-Кред. лiмiт 300000.0UAH`
-
-		srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(input1),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(input2),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "5555.99", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "UAH", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "123.54", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "EUR", resp[0].SourceCurrency)
-
-		assert.Equal(t, "Переказ на свою карту 52**20 через Приват24", resp[0].Description)
-		assert.Equal(t, "5*60", resp[0].SourceAccount)
-		assert.Equal(t, "5*20", resp[0].DestinationAccount)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-
-	t.Run("test transfer between account same currency", func(t *testing.T) {
-		input1 := `100.00USD Переказ на свою карту 47**71 через Приват24
-4*67 11:19
-Бал. 123.00USD`
-
-		input2 := `100.00USD Переказ зі своєї картки 46**67 через Приват24
-4*71 11:20
-Бал. 178.65USD`
-
-		srv := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-		resp, err := srv.ParseMessages(context.TODO(), []*importers.Record{
-			{
-				Data: []byte(input1),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-			{
-				Data: []byte(input2),
-				Message: &importers.Message{
-					CreatedAt: time.Now(),
-				},
-			},
-		})
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp, 1)
-
-		assert.Equal(t, "100.00", resp[0].DestinationAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].DestinationCurrency)
-
-		assert.Equal(t, "100.00", resp[0].SourceAmount.StringFixed(2))
-		assert.Equal(t, "USD", resp[0].SourceCurrency)
-
-		assert.Equal(t, "Переказ на свою карту 47**71 через Приват24", resp[0].Description)
-		assert.Equal(t, "4*67", resp[0].SourceAccount)
-		assert.Equal(t, "4*71", resp[0].DestinationAccount)
-		assert.Equal(t, importers.TransactionTypeInternalTransfer, resp[0].Type)
-	})
-}
-
-func TestImportExpense(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	usdAccount := &database.Account{
-		ID:            1,
-		Currency:      "USD",
-		AccountNumber: "4*67",
-		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
-	}
-	plnAccount := &database.Account{
-		ID:            2,
-		Currency:      "PLN",
-		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Name:          "_default_expense",
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_pln",
-	}
-
-	data := []byte(`PrivatBank, [10/1/2025 9:50 AM]
-89.80PLN Ресторани, кафе, бари. Pyszne.pl, Wroclaw
-4*67 16:17
-Бал. 1.86USD
-Курс 0.2547 USD/PLN`)
-
-	_, err := p.Parse(context.TODO(), &importers.ParseRequest{
+	_, err := srv.Parse(context.Background(), &importers.ParseRequest{
 		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{usdAccount, plnAccount},
+			Data: []string{"!!!not-base64!!!"},
 		},
 	})
-
-	assert.NoError(t, err)
-}
-
-func TestImportInternalTransfer(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	account1 := &database.Account{
-		ID:            1,
-		Currency:      "USD",
-		AccountNumber: "4*59",
-	}
-	account2 := &database.Account{
-		ID:            2,
-		Currency:      "USD",
-		AccountNumber: "4*71",
-	}
-
-	data := []byte(`PrivatBank, [10/1/2025 9:50 AM]
-1100.00USD Переказ зі своєї карти
-4*59 22:40
-Бал. 1.21USD
-
-PrivatBank, [10/1/2025 9:50 AM]
-1100.00USD Зарахування переказу на картку
-4*71 22:40
-Бал. 1.60USD`)
-
-	_, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{account1, account2},
-		},
-	})
-
-	assert.NoError(t, err)
-}
-
-func TestImportRemoteTransfer(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	usdAccount := &database.Account{
-		ID:            1,
-		Currency:      "USD",
-		AccountNumber: "4*67",
-	}
-	uahAccount := &database.Account{
-		ID:            2,
-		Currency:      "UAH",
-		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_uah",
-	}
-
-	data := []byte(`PrivatBank, [10/1/2025 9:50 AM]
-1000.00UAH Переказ через Приват24 зі своєї карти
-Отримувач: Іван Іваненко
-4*67 12:30
-Бал. 100.50USD
-Курс 0.0263 USD/UAH`)
-
-	_, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{usdAccount, uahAccount},
-		},
-	})
-
-	assert.NoError(t, err)
-}
-
-func TestImportIncomeTransfer(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	usdAccount := &database.Account{
-		ID:            1,
-		Currency:      "USD",
-		AccountNumber: "4*67",
-	}
-	uahAccount := &database.Account{
-		ID:            2,
-		Currency:      "UAH",
-		Type:          v1.AccountType_ACCOUNT_TYPE_INCOME,
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_income_uah",
-	}
-
-	data := []byte(`PrivatBank, [10/1/2025 9:50 AM]
-5000.00UAH Зарахування переказу
-Відправник: ТОВ "Компанія"
-4*67 14:22
-Бал. 1050.00USD`)
-
-	_, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{usdAccount, uahAccount},
-		},
-	})
-
-	assert.NoError(t, err)
-}
-
-func TestToDbTransactionsIncome(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-
-	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
-
-	uahAccount := &database.Account{
-		ID:            1,
-		Currency:      "UAH",
-		AccountNumber: "5*20",
-		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
-	}
-	incomeAccount := &database.Account{
-		ID:            2,
-		Currency:      "UAH",
-		Type:          v1.AccountType_ACCOUNT_TYPE_INCOME,
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_income_uah",
-	}
-
-	data := []byte(`PrivatBank, [10/1/2025 9:50 AM]
-123.11UAH Переказ через Приват24 Відправник: Імя Фамілія ПоБатькові
-5*20 20:11
-Бал. 11111.22UAH`)
-
-	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{uahAccount, incomeAccount},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result.CreateRequests, 1)
-
-	req := result.CreateRequests[0]
-	assert.Equal(t, "Переказ через Приват24 Відправник: Імя Фамілія ПоБатькові", req.Title)
-	income := req.Transaction.(*transactionsv1.CreateTransactionRequest_Income)
-	assert.EqualValues(t, "123.11", income.Income.DestinationAmount)
-	assert.EqualValues(t, "UAH", income.Income.DestinationCurrency)
-	assert.EqualValues(t, uahAccount.ID, income.Income.DestinationAccountId)
-	assert.EqualValues(t, incomeAccount.ID, income.Income.SourceAccountId)
-}
-
-func TestToDbTransactionsRemoteTransfer(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-	mockConverter.EXPECT().Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, from, to string, amount decimal.Decimal) (decimal.Decimal, error) {
-			assert.Equal(t, "", from)
-			assert.Equal(t, "UAH", to)
-			assert.Equal(t, "0.00", amount.StringFixed(2))
-			return amount, nil
-		})
-
-	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
-
-	assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_PRIVATE_24, p.Type())
-
-	uahAccount := &database.Account{
-		ID:            1,
-		Currency:      "UAH",
-		AccountNumber: "4*68",
-		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
-	}
-	expenseAccount := &database.Account{
-		ID:            2,
-		Currency:      "UAH",
-		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_uah",
-	}
-
-	data := []byte(`PrivatBank, [10/1/2025 9:50 AM]
-1.00UAH Переказ через Приват24 Одержувач: Імя Фамілія ПоБатькові
-4*68 16:41
-Бал. 17.81UAH`)
-
-	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{uahAccount, expenseAccount},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result.CreateRequests, 1)
-
-	req := result.CreateRequests[0]
-	assert.Equal(t, "Переказ через Приват24 Одержувач: Імя Фамілія ПоБатькові", req.Title)
-	expense := req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
-	assert.EqualValues(t, "-1", expense.Expense.SourceAmount)
-	assert.EqualValues(t, "UAH", expense.Expense.SourceCurrency)
-	assert.EqualValues(t, uahAccount.ID, expense.Expense.SourceAccountId)
-	assert.EqualValues(t, expenseAccount.ID, expense.Expense.DestinationAccountId)
-}
-
-func TestImportExpenseWithDoubleConversion(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockConverter := NewMockCurrencyConverterSvc(ctrl)
-
-	p := importers.NewPrivat24(importers.NewBaseParser(mockConverter, nil, nil))
-
-	uahAccount := &database.Account{
-		ID:            1,
-		Currency:      "UAH",
-		AccountNumber: "4*03",
-		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
-	}
-	expenseAccount := &database.Account{
-		ID:            2,
-		Currency:      "UAH",
-		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_uah",
-	}
-
-	data := []byte(`PrivatBank, [10/1/2025 12:53 AM]
-1504.15UAH Побутова техніка. PAYPAL *MERCHANT, 1234567890 З подвійною конвертацією pb.ua/conv
-4*03 01:53
-Бал. 123.45UAH
-Кред. ліміт 10000.0UAH`)
-
-	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{uahAccount, expenseAccount},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result.CreateRequests, 1)
-
-	req := result.CreateRequests[0]
-	assert.Equal(t, "Побутова техніка. PAYPAL *MERCHANT, 1234567890 З подвійною конвертацією pb.ua/conv", req.Title)
-	expense := req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
-	assert.EqualValues(t, "-1504.15", expense.Expense.SourceAmount)
-	assert.EqualValues(t, "UAH", expense.Expense.SourceCurrency)
-	assert.EqualValues(t, uahAccount.ID, expense.Expense.SourceAccountId)
-	assert.EqualValues(t, expenseAccount.ID, expense.Expense.DestinationAccountId)
-}
-
-func TestImportNewFormatExpense(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	uahAccount := &database.Account{
-		ID:            1,
-		Currency:      "UAH",
-		AccountNumber: "4*03",
-		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
-	}
-	expenseAccount := &database.Account{
-		ID:            2,
-		Currency:      "EUR",
-		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Name:          "_default_expense",
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_eur",
-	}
-
-	data := []byte(`[3/10/2026 8:30 AM] PrivatBank: 50.00EUR Комуналка та Інтернет. Test Merchant
-4*03 09:30
-Бал. 10000.00UAH
-Курс 40.0000 UAH/EUR
-Кред. ліміт 50000.0UAH`)
-
-	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{uahAccount, expenseAccount},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result.CreateRequests, 1)
-
-	req := result.CreateRequests[0]
-	assert.Equal(t, "Комуналка та Інтернет. Test Merchant", req.Title)
-	expense := req.Transaction.(*transactionsv1.CreateTransactionRequest_Expense)
-	assert.EqualValues(t, "EUR", expense.Expense.DestinationCurrency)
-	assert.EqualValues(t, uahAccount.ID, expense.Expense.SourceAccountId)
-	assert.EqualValues(t, expenseAccount.ID, expense.Expense.DestinationAccountId)
-}
-
-func TestImportNewFormatMultipleMessages(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	uahAccount := &database.Account{
-		ID:            1,
-		Currency:      "UAH",
-		AccountNumber: "4*03",
-		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
-	}
-	expenseAccount := &database.Account{
-		ID:            2,
-		Currency:      "UAH",
-		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Name:          "_default_expense",
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_uah",
-	}
-
-	data := []byte(`[3/10/2026 8:30 AM] PrivatBank: 50.00UAH Комуналка та Інтернет. Test Merchant
-4*03 09:30
-Бал. 10000.00UAH
-Кред. ліміт 50000.0UAH
-[3/10/2026 2:00 PM] PrivatBank: 100.00UAH Ресторани, кафе, бари. Test Cafe
-4*03 15:00
-Бал. 9000.00UAH
-Кред. ліміт 50000.0UAH
-[3/11/2026 10:00 AM] PrivatBank: 25.00UAH Авто. Test Auto Service
-4*03 11:00
-Бал. 8500.00UAH
-Кред. ліміт 50000.0UAH`)
-
-	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{uahAccount, expenseAccount},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result.CreateRequests, 3)
-}
-
-func TestImportNewFormatWithCashback(t *testing.T) {
-	p := importers.NewPrivat24(importers.NewBaseParser(nil, nil, nil))
-
-	uahAccount := &database.Account{
-		ID:            1,
-		Currency:      "UAH",
-		AccountNumber: "4*03",
-		Type:          v1.AccountType_ACCOUNT_TYPE_ASSET,
-	}
-	expenseAccount := &database.Account{
-		ID:            2,
-		Currency:      "UAH",
-		Type:          v1.AccountType_ACCOUNT_TYPE_EXPENSE,
-		Name:          "_default_expense",
-		Flags:         database.AccountFlagIsDefault,
-		AccountNumber: "_default_expense_uah",
-	}
-
-	data := []byte(`[3/10/2026 5:48 PM] PrivatBank: 200.00UAH Розваги. Test Game Store
-4*03 18:48
-Кешбек 30.00UAH
-Бал. 10000.00UAH
-Кред. ліміт 50000.0UAH`)
-
-	result, err := p.Parse(context.TODO(), &importers.ParseRequest{
-		ImportRequest: importers.ImportRequest{
-			Data:     []string{string(data)},
-			Accounts: []*database.Account{uahAccount, expenseAccount},
-		},
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result.CreateRequests, 1)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to decode")
 }
