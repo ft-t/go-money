@@ -4,6 +4,7 @@ import (
 	"time"
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -22,6 +23,7 @@ type Account struct {
 
 	CurrentBalance decimal.Decimal
 	Extra          map[string]string `gorm:"serializer:json"`
+	TagIDs         pq.Int32Array     `gorm:"type:integer[]"`
 	Flags          AccountFlag
 
 	LastUpdatedAt time.Time
