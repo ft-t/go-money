@@ -10,7 +10,7 @@ type Actor struct {
 	Type   database.TransactionHistoryActorType
 	UserID *int32
 	RuleID *int32
-	Extra  string
+	Detail string
 }
 
 type actorCtxKey struct{}
@@ -29,7 +29,7 @@ func UserActor(userID int32) Actor {
 }
 
 func ImporterActor(name string) Actor {
-	return Actor{Type: database.TransactionHistoryActorTypeImporter, Extra: name}
+	return Actor{Type: database.TransactionHistoryActorTypeImporter, Detail: name}
 }
 
 func SchedulerActor(ruleID int32) Actor {
@@ -37,7 +37,7 @@ func SchedulerActor(ruleID int32) Actor {
 }
 
 func BulkActor(userID int32, op string) Actor {
-	return Actor{Type: database.TransactionHistoryActorTypeBulk, UserID: &userID, Extra: op}
+	return Actor{Type: database.TransactionHistoryActorTypeBulk, UserID: &userID, Detail: op}
 }
 
 func RuleActor(ruleID int32) Actor {

@@ -283,10 +283,10 @@ import (
     "github.com/ft-t/go-money/pkg/database"
 )
 
-// HistoryExcludedFields lists tx columns NOT captured in snapshot/diff.
+// excludedFields lists tx columns NOT captured in snapshot/diff.
 // updated_at: noisy. created_at/id: immutable. *_in_base_currency: FX-recompute noise.
 // deleted_at: delete is its own event.
-var HistoryExcludedFields = map[string]struct{}{
+var excludedFields = map[string]struct{}{
     "id":                                   {},
     "created_at":                           {},
     "updated_at":                           {},
@@ -450,7 +450,7 @@ import (
     "github.com/wI2L/jsondiff"
 )
 
-// Snapshot serialises a Transaction to a map, dropping HistoryExcludedFields.
+// Snapshot serialises a Transaction to a map, dropping excludedFields.
 // Uses GORM/JSON column names (snake_case) by going through json.Marshal on the
 // struct first, then dropping excluded keys.
 func Snapshot(tx *database.Transaction) (map[string]any, error) {
@@ -462,7 +462,7 @@ func Snapshot(tx *database.Transaction) (map[string]any, error) {
     if err := json.Unmarshal(raw, &m); err != nil {
         return nil, errors.Wrap(err, "unmarshal tx")
     }
-    for k := range HistoryExcludedFields {
+    for k := range excludedFields {
         delete(m, k)
     }
     return m, nil
@@ -756,8 +756,8 @@ func (s *Service) Record(ctx context.Context, tx *gorm.DB, req RecordRequest) er
         Diff:          diff,
         OccurredAt:    time.Now().UTC(),
     }
-    if req.Actor.Extra != "" {
-        e := req.Actor.Extra
+    if req.Actor.Detail != "" {
+        e := req.Actor.Detail
         row.ActorExtra = &e
     }
     return errors.WithStack(tx.WithContext(ctx).Create(row).Error)

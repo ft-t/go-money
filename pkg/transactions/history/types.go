@@ -2,7 +2,7 @@ package history
 
 import "github.com/ft-t/go-money/pkg/database"
 
-var HistoryExcludedFields = map[string]struct{}{
+var excludedFields = map[string]struct{}{
 	"id":                                  {},
 	"created_at":                          {},
 	"updated_at":                          {},
