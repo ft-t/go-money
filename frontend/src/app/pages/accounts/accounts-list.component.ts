@@ -108,6 +108,8 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
     public editingQuickTags = false;
     public newQuickTagLabel = '';
     public newQuickTagTagIds: number[] = [];
+    public editingIndex: number | null = null;
+    public editDraft: { label: string; tagIds: number[] } | null = null;
     public initialGlobalFilter: string = '';
 
     constructor(
@@ -344,6 +346,44 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
             ...this.pageConfig,
             quickTags: this.pageConfig.quickTags.filter((_, i) => i !== index),
         };
+        await this.savePageConfig();
+    }
+
+    beginEditQuickTag(index: number): void {
+        const row = this.pageConfig.quickTags[index];
+        if (!row) {
+            return;
+        }
+        this.editingIndex = index;
+        this.editDraft = {
+            label: row.label,
+            tagIds: [...(row.tagIds ?? [])],
+        };
+    }
+
+    cancelEditQuickTag(): void {
+        this.editingIndex = null;
+        this.editDraft = null;
+    }
+
+    async saveEditQuickTag(): Promise<void> {
+        if (this.editingIndex === null || !this.editDraft) {
+            return;
+        }
+        const label = this.editDraft.label.trim();
+        const tagIds = this.editDraft.tagIds;
+        if (!label || tagIds.length === 0) {
+            return;
+        }
+        const index = this.editingIndex;
+        this.pageConfig = {
+            ...this.pageConfig,
+            quickTags: this.pageConfig.quickTags.map((row, i) =>
+                i === index ? { label, tagIds: [...tagIds] } : row,
+            ),
+        };
+        this.editingIndex = null;
+        this.editDraft = null;
         await this.savePageConfig();
     }
 

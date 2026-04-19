@@ -87,10 +87,35 @@
                 <div class="flex flex-col gap-2">
                     <div *ngFor="let tag of pageConfig.quickTags; let i = index"
                          class="flex items-center gap-2">
-                        <span class="min-w-[120px] font-medium">{{ tag.label }}</span>
-                        <span class="text-gray-500 text-sm flex-1">{{ getQuickTagNames(tag) }}</span>
-                        <p-button icon="pi pi-trash" severity="danger" size="small" [text]="true"
-                                  (click)="removeQuickTag(i)"></p-button>
+                        <ng-container *ngIf="editingIndex === i && editDraft; else readMode">
+                            <input pInputText type="text" class="w-32"
+                                   [(ngModel)]="editDraft.label" />
+                            <p-multiselect class="flex-1"
+                                           appendTo="body"
+                                           [filter]="true"
+                                           [(ngModel)]="editDraft.tagIds"
+                                           [options]="tags"
+                                           optionLabel="name"
+                                           optionValue="id"
+                                           placeholder="Select tags"
+                                           styleClass="w-full" />
+                            <p-button icon="pi pi-check" severity="success" size="small" [text]="true"
+                                      pTooltip="Save" tooltipPosition="top"
+                                      (click)="saveEditQuickTag()"></p-button>
+                            <p-button icon="pi pi-times" severity="secondary" size="small" [text]="true"
+                                      pTooltip="Cancel" tooltipPosition="top"
+                                      (click)="cancelEditQuickTag()"></p-button>
+                        </ng-container>
+                        <ng-template #readMode>
+                            <span class="min-w-[120px] font-medium">{{ tag.label }}</span>
+                            <span class="text-gray-500 text-sm flex-1">{{ getQuickTagNames(tag) }}</span>
+                            <p-button icon="pi pi-pencil" severity="secondary" size="small" [text]="true"
+                                      pTooltip="Edit" tooltipPosition="top"
+                                      (click)="beginEditQuickTag(i)"></p-button>
+                            <p-button icon="pi pi-trash" severity="danger" size="small" [text]="true"
+                                      pTooltip="Delete" tooltipPosition="top"
+                                      (click)="removeQuickTag(i)"></p-button>
+                        </ng-template>
                     </div>
                     <div class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                         <input pInputText type="text" placeholder="Label"
