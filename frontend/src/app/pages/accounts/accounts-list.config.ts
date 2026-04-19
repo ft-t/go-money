@@ -9,6 +9,6 @@ export interface AccountsListConfig {
 
 export const ACCOUNTS_LIST_PAGE_ID = 'accounts-list';
 
-export const ACCOUNTS_LIST_DEFAULTS: AccountsListConfig = {
-    quickTags: [],
-};
+export const ACCOUNTS_LIST_DEFAULTS: AccountsListConfig = Object.freeze({
+    quickTags: Object.freeze([] as QuickTag[]),
+}) as unknown as AccountsListConfig;

@@ -248,6 +248,9 @@ export class AccountsListComponent implements OnInit {
     }
 
     applyQuickTag(tag: QuickTag): void {
+        if (!this.table || !this.filter) {
+            return;
+        }
         this.filter.nativeElement.value = tag.search;
         this.table.filterGlobal(tag.search, 'contains');
     }
