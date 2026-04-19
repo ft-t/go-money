@@ -50,11 +50,6 @@
                 </p-iconfield>
 
                 <div class="flex gap-2">
-                    <p-multiselect [options]="tags" [(ngModel)]="selectedTagIds"
-                                   (onChange)="onTagFilterChange()"
-                                   optionLabel="name" optionValue="id"
-                                   placeholder="Filter by tags" display="chip"
-                                   styleClass="min-w-[12rem]"></p-multiselect>
                     <p-button icon="pi pi-refresh" severity="secondary"
                               pTooltip="Refresh table" tooltipPosition="top"
                               (click)="refreshTable()" />
@@ -155,7 +150,17 @@
                                     matchMode="contains"
                                     placeholder="Filter"></p-columnFilter>
                 </th>
-                <th></th>
+                <th>
+                    <p-multiselect appendTo="body" [filter]="true"
+                                   [(ngModel)]="selectedTagIds"
+                                   (onChange)="onTagFilterChange()"
+                                   [options]="tags"
+                                   maxSelectedLabels="1"
+                                   optionLabel="name" optionValue="id"
+                                   placeholder="Select" [showClear]="true"
+                                   styleClass="w-full">
+                    </p-multiselect>
+                </th>
                 <th></th>
             </tr>
         </ng-template>
