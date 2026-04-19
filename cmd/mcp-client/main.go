@@ -15,6 +15,11 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+var (
+	version   = "dev"
+	commitSHA = "none"
+)
+
 type headerFlags []string
 
 func (h *headerFlags) String() string {
@@ -30,12 +35,22 @@ func main() {
 	var headers headerFlags
 
 	serverURL := flag.String("server", "http://localhost:8080/mcp/", "Go Money MCP server URL")
-	token := flag.String("token", "", "Service token for authentication (required)")
+	token := flag.String("token", "", "Service token for authentication (falls back to $GOMONEY_TOKEN)")
 	flag.Var(&headers, "header", "Additional HTTP header in 'Key: Value' format (can be specified multiple times)")
+	showVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
 
+	if *showVersion {
+		log.Printf("go-money-mcp-client %s (%s)", version, commitSHA)
+		return
+	}
+
 	if *token == "" {
-		log.Fatal("service token is required: use -token flag")
+		*token = os.Getenv("GOMONEY_TOKEN")
+	}
+
+	if *token == "" {
+		log.Fatal("service token is required: use -token flag or set $GOMONEY_TOKEN")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -79,7 +94,7 @@ func main() {
 		Params: mcp.InitializeParams{
 			ClientInfo: mcp.Implementation{
 				Name:    "go-money-mcp-client",
-				Version: "1.0.0",
+				Version: version,
 			},
 			ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
 		},
@@ -95,7 +110,7 @@ func main() {
 
 	stdioServer := server.NewMCPServer(
 		"go-money-mcp-client",
-		"1.0.0",
+		version,
 		server.WithToolCapabilities(true),
 		server.WithResourceCapabilities(true, true),
 	)
