@@ -15,6 +15,7 @@ import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { Message } from 'primeng/message';
 import { DefaultCache, ShortLivedCache } from '../../core/services/cache.service';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { CreateCurrencyRequestSchema, CurrencyService, UpdateCurrencyRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { Checkbox } from 'primeng/checkbox';
@@ -33,7 +34,7 @@ export class CurrenciesUpsertComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        routeSnapshot: ActivatedRoute,
+        private routeSnapshot: ActivatedRoute,
         private router: Router,
         private defaultCache: DefaultCache,
         private shortLivedCache: ShortLivedCache
@@ -95,6 +96,19 @@ export class CurrenciesUpsertComponent implements OnInit {
         }
     }
 
+    private async navigateAfterSave(fallback: any[]): Promise<void> {
+        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
+        if (returnUrl) {
+            await this.router.navigateByUrl(returnUrl);
+            return;
+        }
+        await this.router.navigate(fallback);
+    }
+
+    async cancel(): Promise<void> {
+        await this.navigateAfterSave(['/', 'currencies']);
+    }
+
     get id() {
         return this.form!.get('id')!;
     }
@@ -120,7 +134,7 @@ export class CurrenciesUpsertComponent implements OnInit {
 
             this.isCreate = false;
             this.messageService.add({ severity: 'info', detail: 'Currency updated' });
-            await this.router.navigate(['/', 'currencies', response.currency!.id.toString()]);
+            await this.navigateAfterSave(['/', 'currencies', response.currency!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -137,7 +151,7 @@ export class CurrenciesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Currency created' });
-            await this.router.navigate(['/', 'currencies', response.currency!.id.toString()]);
+            await this.navigateAfterSave(['/', 'currencies', response.currency!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
