@@ -342,6 +342,10 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
     }
 
     async removeQuickTag(index: number): Promise<void> {
+        if (this.editingIndex !== null) {
+            this.editingIndex = null;
+            this.editDraft = null;
+        }
         this.pageConfig = {
             ...this.pageConfig,
             quickTags: this.pageConfig.quickTags.filter((_, i) => i !== index),

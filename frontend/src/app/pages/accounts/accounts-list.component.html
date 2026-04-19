@@ -45,9 +45,9 @@
                     <p-button
                         *ngFor="let tag of pageConfig.quickTags"
                         [label]="tag.label"
-                        severity="secondary"
+                        severity="info"
                         size="small"
-                        [outlined]="true"
+                        [rounded]="true"
                         (click)="applyQuickTag(tag)">
                     </p-button>
                     <p-button
