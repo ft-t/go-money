@@ -1,6 +1,6 @@
 export interface QuickTag {
     label: string;
-    search: string;
+    tagIds: number[];
 }
 
 export interface AccountsListConfig {
