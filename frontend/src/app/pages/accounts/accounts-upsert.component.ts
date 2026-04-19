@@ -19,6 +19,7 @@ import { AccountsService, CreateAccountRequestSchema, UpdateAccountRequestSchema
 import { ActivatedRoute, Router } from '@angular/router';
 import { Message } from 'primeng/message';
 import { Checkbox } from 'primeng/checkbox';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-account-upsert',
@@ -120,6 +121,19 @@ export class AccountsUpsertComponent implements OnInit {
         this.isFormReady = true;
     }
 
+    private async navigateAfterSave(fallback: any[]): Promise<void> {
+        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
+        if (returnUrl) {
+            await this.router.navigateByUrl(returnUrl);
+            return;
+        }
+        await this.router.navigate(fallback);
+    }
+
+    async cancel(): Promise<void> {
+        await this.navigateAfterSave(['/', 'accounts']);
+    }
+
     get name() {
         return this.form.get('name')!;
     }
@@ -170,7 +184,7 @@ export class AccountsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Account updated' });
-            await this.router.navigate(['/', 'accounts', response.account!.id.toString()]);
+            await this.navigateAfterSave(['/', 'accounts', response.account!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -194,7 +208,7 @@ export class AccountsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'New account created' });
-            await this.router.navigate(['/', 'accounts', response.account!.id.toString()]);
+            await this.navigateAfterSave(['/', 'accounts', response.account!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
