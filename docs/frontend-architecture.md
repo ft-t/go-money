@@ -52,6 +52,7 @@ async set<T>(pageId: string, value: T): Promise<void>
 - Service: `frontend/src/app/services/page-config.service.ts`
 - Types: `frontend/src/app/pages/accounts/accounts-list.config.ts`
 - Consumer: `frontend/src/app/pages/accounts/accounts-list.component.ts` (quick-tag chips)
+- Second consumer: `frontend/src/app/pages/transactions/transactions-import.config.ts` + `transactions-import.component.ts` (excluded importers filter on the Transactions Import page)
 
 ## MCP servers for frontend work
 

@@ -153,6 +153,7 @@ Frontend helper: `PageConfigService` (`frontend/src/app/services/page-config.ser
 
 Existing keys:
 - `page.accounts-list` — quick-tag chips on the Accounts List page.
+- `page.transactions-import` — hidden importers on the Transactions Import page.
 
 ### GetServiceTokens
 
