@@ -2,6 +2,7 @@ import { TableState } from './table-query-state.helper';
 
 const KEY_PREFIX = 'table-state:';
 const TTL_MS = 24 * 60 * 60 * 1000;
+const GC_MIN_INTERVAL_MS = 60 * 1000;
 
 interface StoredEntry {
     state: TableState;
@@ -9,6 +10,8 @@ interface StoredEntry {
 }
 
 export class TableStatePersistence {
+    private static lastGcAt = 0;
+
     static read(page: string, sessionId: string): TableState | null {
         const key = this.key(page, sessionId);
         const raw = this.getItem(key);
@@ -44,6 +47,8 @@ export class TableStatePersistence {
 
     private static gc(): void {
         const now = Date.now();
+        if (now - this.lastGcAt < GC_MIN_INTERVAL_MS) return;
+        this.lastGcAt = now;
         const toDrop: string[] = [];
         try {
             for (let i = 0; i < localStorage.length; i++) {

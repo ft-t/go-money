@@ -89,7 +89,7 @@ export class RulesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Rule updated' });
-            await this.navigateAfterSave(['/', 'rules']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'rules']);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -107,7 +107,7 @@ export class RulesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Rule created' });
-            await this.navigateAfterSave(['/', 'rules']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'rules']);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -115,16 +115,7 @@ export class RulesUpsertComponent implements OnInit {
     }
 
     async cancel(): Promise<void> {
-        await this.navigateAfterSave(['/', 'rules']);
-    }
-
-    private async navigateAfterSave(fallback: any[]): Promise<void> {
-        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
-        if (returnUrl) {
-            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
-            return;
-        }
-        await this.router.navigate(fallback);
+        await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot, ['/', 'rules']);
     }
 
     protected readonly color = color;

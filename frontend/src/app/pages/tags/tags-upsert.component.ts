@@ -96,17 +96,8 @@ export class TagsUpsertComponent implements OnInit {
         }
     }
 
-    private async navigateAfterSave(fallback: any[]): Promise<void> {
-        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
-        if (returnUrl) {
-            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
-            return;
-        }
-        await this.router.navigate(fallback);
-    }
-
     async cancel(): Promise<void> {
-        await this.navigateAfterSave(['/', 'tags']);
+        await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot, ['/', 'tags']);
     }
 
     get name() {
@@ -129,7 +120,7 @@ export class TagsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Tag updated' });
-            await this.navigateAfterSave(['/', 'tags', response.tag!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'tags', response.tag!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -147,7 +138,7 @@ export class TagsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Tag created' });
-            await this.navigateAfterSave(['/', 'tags', response.tag!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'tags', response.tag!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;

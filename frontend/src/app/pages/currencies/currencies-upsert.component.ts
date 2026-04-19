@@ -96,17 +96,8 @@ export class CurrenciesUpsertComponent implements OnInit {
         }
     }
 
-    private async navigateAfterSave(fallback: any[]): Promise<void> {
-        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
-        if (returnUrl) {
-            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
-            return;
-        }
-        await this.router.navigate(fallback);
-    }
-
     async cancel(): Promise<void> {
-        await this.navigateAfterSave(['/', 'currencies']);
+        await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot, ['/', 'currencies']);
     }
 
     get id() {
@@ -134,7 +125,7 @@ export class CurrenciesUpsertComponent implements OnInit {
 
             this.isCreate = false;
             this.messageService.add({ severity: 'info', detail: 'Currency updated' });
-            await this.navigateAfterSave(['/', 'currencies', response.currency!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'currencies', response.currency!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -151,7 +142,7 @@ export class CurrenciesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Currency created' });
-            await this.navigateAfterSave(['/', 'currencies', response.currency!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'currencies', response.currency!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;

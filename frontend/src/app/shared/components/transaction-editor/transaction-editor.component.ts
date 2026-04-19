@@ -579,7 +579,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
             // todo transaction details page
-            await this.navigateAfterSave(['/transactions']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -597,21 +597,12 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
             // todo transaction details page
-            await this.navigateAfterSave(['/transactions']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
 
             // todo transaction details page
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
-    }
-
-    private async navigateAfterSave(fallback: any[]): Promise<void> {
-        const returnUrl = ReturnUrlHelper.safe(this.route.snapshot.queryParamMap.get('returnUrl'));
-        if (returnUrl) {
-            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
-            return;
-        }
-        await this.router.navigate(fallback);
     }
 
     getAccountTypeName(type: number): string {

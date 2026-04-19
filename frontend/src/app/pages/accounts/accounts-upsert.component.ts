@@ -138,17 +138,8 @@ export class AccountsUpsertComponent implements OnInit {
         this.isFormReady = true;
     }
 
-    private async navigateAfterSave(fallback: any[]): Promise<void> {
-        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
-        if (returnUrl) {
-            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
-            return;
-        }
-        await this.router.navigate(fallback);
-    }
-
     async cancel(): Promise<void> {
-        await this.navigateAfterSave(['/', 'accounts']);
+        await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot, ['/', 'accounts']);
     }
 
     get name() {
@@ -202,7 +193,7 @@ export class AccountsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Account updated' });
-            await this.navigateAfterSave(['/', 'accounts', response.account!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'accounts', response.account!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -227,7 +218,7 @@ export class AccountsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'New account created' });
-            await this.navigateAfterSave(['/', 'accounts', response.account!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'accounts', response.account!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;

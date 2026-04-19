@@ -1,4 +1,4 @@
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 export class ReturnUrlHelper {
     /** Bare path (no query, no fragment) — consumers restore filter state from localStorage. */
@@ -21,5 +21,15 @@ export class ReturnUrlHelper {
     static withRestoreFlag(url: string): string {
         const sep = url.includes('?') ? '&' : '?';
         return url + sep + 'restore=1';
+    }
+
+    /** Navigate to safe `returnUrl` (with restore marker) or to `fallback` when missing. */
+    static async navigateAfterSave(router: Router, route: ActivatedRoute, fallback: unknown[]): Promise<void> {
+        const returnUrl = this.safe(route.snapshot.queryParamMap.get('returnUrl'));
+        if (returnUrl) {
+            await router.navigateByUrl(this.withRestoreFlag(returnUrl));
+            return;
+        }
+        await router.navigate(fallback);
     }
 }

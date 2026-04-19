@@ -85,17 +85,8 @@ export class CategoriesUpsertComponent implements OnInit {
         }
     }
 
-    private async navigateAfterSave(fallback: any[]): Promise<void> {
-        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
-        if (returnUrl) {
-            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
-            return;
-        }
-        await this.router.navigate(fallback);
-    }
-
     async cancel(): Promise<void> {
-        await this.navigateAfterSave(['/', 'categories']);
+        await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot, ['/', 'categories']);
     }
 
     get name() {
@@ -111,7 +102,7 @@ export class CategoriesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Category updated' });
-            await this.navigateAfterSave(['/', 'categories', response.category!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'categories', response.category!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -127,7 +118,7 @@ export class CategoriesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Category created' });
-            await this.navigateAfterSave(['/', 'categories', response.category!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'categories', response.category!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;

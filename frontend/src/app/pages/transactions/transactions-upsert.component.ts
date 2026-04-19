@@ -390,7 +390,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
                 detail: `Successfully saved ${successCount} transaction(s)`
             });
 
-            await this.navigateAfterSave(['/transactions']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -453,22 +453,13 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
             );
 
             this.messageService.add({ severity: 'success', detail: 'Transaction deleted successfully.' });
-            await this.navigateAfterSave(['/transactions']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
     }
 
     protected readonly BigInt = BigInt;
-
-    private async navigateAfterSave(fallback: any[]): Promise<void> {
-        const returnUrl = ReturnUrlHelper.safe(this.route.snapshot.queryParamMap.get('returnUrl'));
-        if (returnUrl) {
-            await this.router.navigateByUrl(ReturnUrlHelper.withRestoreFlag(returnUrl));
-            return;
-        }
-        await this.router.navigate(fallback);
-    }
 
     async fetchAccounts() {
         try {
