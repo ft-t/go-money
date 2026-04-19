@@ -2,7 +2,7 @@ import { FilterMetadata, SortMeta } from 'primeng/api';
 import { Params } from '@angular/router';
 
 export interface TableState {
-    filters?: { [field: string]: FilterMetadata };
+    filters?: { [field: string]: FilterMetadata | FilterMetadata[] };
     sort?: SortMeta[];
     first?: number;
     rows?: number;
@@ -20,7 +20,10 @@ export class TableQueryStateHelper {
         const filtersRaw = params['filters'];
         if (typeof filtersRaw === 'string' && filtersRaw.length > 0) {
             try {
-                state.filters = JSON.parse(filtersRaw);
+                const parsed = JSON.parse(filtersRaw);
+                if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    state.filters = parsed;
+                }
             } catch {
                 // swallow — bad query param, fall back to empty
             }
@@ -30,7 +33,9 @@ export class TableQueryStateHelper {
         if (typeof sortRaw === 'string' && sortRaw.length > 0) {
             try {
                 const parsed = JSON.parse(sortRaw);
-                if (Array.isArray(parsed)) state.sort = parsed;
+                if (Array.isArray(parsed) && parsed.every(e => e !== null && typeof e === 'object')) {
+                    state.sort = parsed;
+                }
             } catch {
                 // swallow
             }
@@ -60,11 +65,8 @@ export class TableQueryStateHelper {
     static encode(state: TableState): Params {
         const out: Params = {};
 
-        if (state.filters && Object.keys(this.stripEmpty(state.filters)).length > 0) {
-            out['filters'] = JSON.stringify(this.stripEmpty(state.filters));
-        } else {
-            out['filters'] = null;
-        }
+        const stripped = state.filters ? this.stripEmpty(state.filters) : {};
+        out['filters'] = Object.keys(stripped).length > 0 ? JSON.stringify(stripped) : null;
 
         if (state.sort && state.sort.length > 0) {
             out['sort'] = JSON.stringify(state.sort);
@@ -80,15 +82,26 @@ export class TableQueryStateHelper {
     }
 
     /** Drop filter entries whose value is null/undefined/'' or empty array. */
-    private static stripEmpty(filters: { [field: string]: FilterMetadata }): { [field: string]: FilterMetadata } {
-        const out: { [field: string]: FilterMetadata } = {};
+    private static stripEmpty(
+        filters: { [field: string]: FilterMetadata | FilterMetadata[] }
+    ): { [field: string]: FilterMetadata | FilterMetadata[] } {
+        const isBlank = (m: FilterMetadata): boolean => {
+            const v = m.value;
+            if (v == null) return true;
+            if (typeof v === 'string' && v.length === 0) return true;
+            if (Array.isArray(v) && v.length === 0) return true;
+            return false;
+        };
+
+        const out: { [f: string]: FilterMetadata | FilterMetadata[] } = {};
         for (const [k, v] of Object.entries(filters)) {
             if (v == null) continue;
-            const val = (v as FilterMetadata).value;
-            if (val == null) continue;
-            if (typeof val === 'string' && val.length === 0) continue;
-            if (Array.isArray(val) && val.length === 0) continue;
-            out[k] = v;
+            if (Array.isArray(v)) {
+                const kept = v.filter(m => m != null && !isBlank(m));
+                if (kept.length > 0) out[k] = kept;
+                continue;
+            }
+            if (!isBlank(v)) out[k] = v;
         }
         return out;
     }
