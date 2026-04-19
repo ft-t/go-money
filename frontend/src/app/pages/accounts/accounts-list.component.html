@@ -39,7 +39,27 @@
              responsiveLayout="scroll">
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
-                <p-iconfield iconPosition="left" class="ml-auto">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <p-button
+                        *ngFor="let tag of pageConfig.quickTags; let i = index"
+                        [label]="tag.label"
+                        severity="secondary"
+                        size="small"
+                        [outlined]="true"
+                        (click)="applyQuickTag(tag)">
+                    </p-button>
+                    <p-button
+                        icon="pi pi-pencil"
+                        severity="secondary"
+                        size="small"
+                        [text]="true"
+                        pTooltip="Edit quick tags"
+                        tooltipPosition="top"
+                        (click)="editingQuickTags = !editingQuickTags">
+                    </p-button>
+                </div>
+
+                <p-iconfield iconPosition="left">
                     <p-inputicon>
                         <i class="pi pi-search"></i>
                     </p-inputicon>
@@ -55,6 +75,29 @@
                               (click)="refreshTable()" />
                     <p-button label="Create new account" class="p-button-link"
                               (click)="this.router.navigate(['/accounts', 'new'])" />
+                </div>
+            </div>
+
+            <div *ngIf="editingQuickTags" class="mt-3 border border-gray-200 dark:border-gray-700 rounded p-3">
+                <div class="text-sm font-semibold mb-2">Quick tags</div>
+                <div class="flex flex-col gap-2">
+                    <div *ngFor="let tag of pageConfig.quickTags; let i = index"
+                         class="flex items-center gap-2">
+                        <span class="min-w-[120px] font-medium">{{ tag.label }}</span>
+                        <span class="text-gray-500 text-sm flex-1">{{ tag.search }}</span>
+                        <p-button icon="pi pi-trash" severity="danger" size="small" [text]="true"
+                                  (click)="removeQuickTag(i)"></p-button>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <input pInputText type="text" placeholder="Label"
+                               class="w-32"
+                               [(ngModel)]="newQuickTagLabel" />
+                        <input pInputText type="text" placeholder="Search text"
+                               class="flex-1"
+                               [(ngModel)]="newQuickTagSearch" />
+                        <p-button icon="pi pi-plus" severity="success" size="small"
+                                  (click)="addQuickTag()"></p-button>
+                    </div>
                 </div>
             </div>
         </ng-template>
