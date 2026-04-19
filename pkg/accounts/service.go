@@ -3,6 +3,7 @@ package accounts
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
@@ -78,6 +79,14 @@ func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest)
 
 	if len(req.Ids) > 0 {
 		query = query.Where("id in ?", req.Ids)
+	}
+
+	if len(req.TagIds) > 0 {
+		var tagIDs []string
+		for _, id := range req.TagIds {
+			tagIDs = append(tagIDs, fmt.Sprintf("%d", id))
+		}
+		query = query.Where(fmt.Sprintf("tag_ids && Array[%s]", strings.Join(tagIDs, ",")))
 	}
 
 	if req.IncludeDeleted {

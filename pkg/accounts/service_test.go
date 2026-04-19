@@ -336,6 +336,31 @@ func TestList(t *testing.T) {
 	})
 }
 
+func TestService_List_TagFilter(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	a := &database.Account{Name: "a", Type: v1.AccountType_ACCOUNT_TYPE_ASSET, Extra: map[string]string{}, TagIDs: pq.Int32Array{1, 2}}
+	b := &database.Account{Name: "b", Type: v1.AccountType_ACCOUNT_TYPE_ASSET, Extra: map[string]string{}, TagIDs: pq.Int32Array{3}}
+	c := &database.Account{Name: "c", Type: v1.AccountType_ACCOUNT_TYPE_ASSET, Extra: map[string]string{}}
+	assert.NoError(t, gormDB.Create(a).Error)
+	assert.NoError(t, gormDB.Create(b).Error)
+	assert.NoError(t, gormDB.Create(c).Error)
+
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, acc *database.Account) *v1.Account {
+			return &v1.Account{Id: acc.ID}
+		}).AnyTimes()
+
+	srv := accounts.NewService(&accounts.ServiceConfig{MapperSvc: mapper})
+
+	resp, err := srv.List(context.TODO(), &accountsv1.ListAccountsRequest{TagIds: []int32{2, 3}})
+	assert.NoError(t, err)
+	assert.Len(t, resp.Accounts, 2)
+	ids := []int32{resp.Accounts[0].Account.Id, resp.Accounts[1].Account.Id}
+	assert.ElementsMatch(t, []int32{a.ID, b.ID}, ids)
+}
+
 func TestCreateAccount(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
