@@ -22,6 +22,7 @@ import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.
 import { RulesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
 import { Rule } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
 import { Tooltip } from 'primeng/tooltip';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 class RuleGroup {
     title: string = 'Default';
@@ -68,6 +69,10 @@ export class RuleListComponent implements OnInit {
 
     getRuleUrl(rule: Rule): string {
         return this.router.createUrlTree(['/', 'rules', 'edit', rule!.id.toString()]).toString();
+    }
+
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
     }
 
     async ngOnInit() {

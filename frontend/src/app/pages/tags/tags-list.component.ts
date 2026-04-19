@@ -21,6 +21,7 @@ import { OverlayModule } from 'primeng/overlay';
 import { Currency, CurrencySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/currency_pb';
 import { create } from '@bufbuild/protobuf';
 import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-tags-list',
@@ -69,6 +70,10 @@ export class TagsListComponent implements OnInit {
 
     getAccountUrl(account: ListTagsResponse_TagItem): string {
         return this.router.createUrlTree(['/', 'tags', account.tag!.id.toString()]).toString();
+    }
+
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
     }
 
     async ngOnInit() {

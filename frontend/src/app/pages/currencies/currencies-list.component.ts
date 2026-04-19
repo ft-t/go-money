@@ -20,6 +20,7 @@ import { Currency } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/curr
 import { create } from '@bufbuild/protobuf';
 import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { CurrencyService, GetCurrenciesRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-currencies-list',
@@ -72,6 +73,10 @@ export class CurrenciesListComponent implements OnInit {
 
     getDetailsUrl(entity: Category): string {
         return this.router.createUrlTree(['/', 'currencies', entity.id.toString()]).toString();
+    }
+
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
     }
 
     async ngOnInit() {

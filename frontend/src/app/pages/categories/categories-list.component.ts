@@ -23,6 +23,7 @@ import { create } from '@bufbuild/protobuf';
 import { ListTagsResponse_TagItem, TagsService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/tags/v1/tags_pb';
 import { CategoriesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
 import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-categories-list',
@@ -71,6 +72,10 @@ export class CategoriesListComponent implements OnInit {
 
     getDetailsUrl(entity: Category): string {
         return this.router.createUrlTree(['/', 'categories', entity.id.toString()]).toString();
+    }
+
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
     }
 
     async ngOnInit() {
