@@ -5,11 +5,10 @@ import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModu
 import { Transaction, TransactionSchema, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { create } from '@bufbuild/protobuf';
 import { createClient, Transport } from '@connectrpc/connect';
-import { FilterMetadata, MessageService, ConfirmationService } from 'primeng/api';
+import { FilterMetadata, MessageService, ConfirmationService, PrimeTemplate } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { DatePickerModule } from 'primeng/datepicker';
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
-import { NgIf, NgFor } from '@angular/common';
 import { TextareaModule } from 'primeng/textarea';
 import { ButtonModule } from 'primeng/button';
 import { MultiSelectModule } from 'primeng/multiselect';
@@ -68,7 +67,6 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         FormsModule,
         ToastModule,
         DatePickerModule,
-        NgIf,
         TextareaModule,
         ButtonModule,
         MultiSelectModule,
@@ -81,7 +79,8 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         AutoComplete,
         ConfirmDialogModule,
         Tooltip,
-        Checkbox
+        Checkbox,
+        PrimeTemplate
     ]
 })
 export class TransactionEditorComponent implements OnInit, OnChanges {

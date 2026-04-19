@@ -1,27 +1,33 @@
 <div class="card accountListTable">
     <div class="font-semibold text-xl mb-4">Accounts List</div>
-    <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6" *ngIf="accounts.length > 0 && !loading">
-        <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Summary by Currency</div>
-        <div class="flex flex-wrap gap-4">
-            <div *ngFor="let currency of getUniqueCurrencies()" class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">{{ currency }}</div>
-                <div class="flex flex-col gap-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Total Balance:</span>
-                        <span class="font-bold text-base text-gray-900 dark:text-gray-100">{{ formatAmount(getTotalBalanceByCurrency(currency).toString()) }}</span>
+    @if (accounts.length > 0 && !loading) {
+        <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6">
+            <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Summary by Currency</div>
+            <div class="flex flex-wrap gap-4">
+                @for (currency of getUniqueCurrencies(); track currency) {
+                    <div class="flex-1 min-w-[250px] border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <div class="text-base font-bold text-gray-700 dark:text-gray-300 mb-3">{{ currency }}</div>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Total Balance:</span>
+                                <span class="font-bold text-base text-gray-900 dark:text-gray-100">{{ formatAmount(getTotalBalanceByCurrency(currency).toString()) }}</span>
+                            </div>
+                            @if (serverConfig.baseCurrency) {
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600 dark:text-gray-400">Debits (Period):</span>
+                                    <span class="font-bold text-green-600 dark:text-green-400">{{ formatAmount(getTotalDebitsByCurrency(currency).toString()) }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600 dark:text-gray-400">Credits (Period):</span>
+                                    <span class="font-bold text-red-600 dark:text-red-400">{{ formatAmount(getTotalCreditsByCurrency(currency).toString()) }}</span>
+                                </div>
+                            }
+                        </div>
                     </div>
-                    <div class="flex justify-between items-center" *ngIf="serverConfig.baseCurrency">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Debits (Period):</span>
-                        <span class="font-bold text-green-600 dark:text-green-400">{{ formatAmount(getTotalDebitsByCurrency(currency).toString()) }}</span>
-                    </div>
-                    <div class="flex justify-between items-center" *ngIf="serverConfig.baseCurrency">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Credits (Period):</span>
-                        <span class="font-bold text-red-600 dark:text-red-400">{{ formatAmount(getTotalCreditsByCurrency(currency).toString()) }}</span>
-                    </div>
-                </div>
+                }
             </div>
         </div>
-    </div>
+    }
     <p-table #dt1
              dataKey="id"
              [value]="accounts"
@@ -43,7 +49,7 @@
                     <p-inputicon>
                         <i class="pi pi-search"></i>
                     </p-inputicon>
-                    <input #filter pInputText type="text" (input)="onGlobalFilter(dt1, $event)"
+                    <input #filterInput pInputText type="text" (input)="onGlobalFilter(dt1, $event)"
                            placeholder="Search keyword" />
                     <p-button class="p-button-outlined mb-2 " icon="pi pi-filter-slash"
                               (click)="clear(dt1)"></p-button>
@@ -108,7 +114,7 @@
                 </th>
                 <th>
                     <p-columnFilter field="account.type" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="accountTypes"
                                            field="account.type"
@@ -122,7 +128,7 @@
                 </th>
                 <th>
                     <p-columnFilter field="account.currency" matchMode="equals" [showMenu]="false">
-                        <ng-template #filter let-value let-filter="filterCallback">
+                        <ng-template pTemplate="filter" let-value let-filter="filterCallback">
                             <p-multiselect appendTo="body" [filter]="true" [(ngModel)]="value"
                                            [options]="accountCurrencies"
                                            field="account.currency"
@@ -190,16 +196,18 @@
                     </div>
                 </td>
                 <td class="text-center">
-                    <div *ngIf="getAnalytics(accountItem.account.id)" class="flex flex-col gap-1 items-center">
-                        <div class="flex items-center gap-1 text-base">
-                            <span class="text-green-600 dark:text-green-500 font-semibold">↑ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalDebitsAmount) }}</span>
-                            <span class="text-gray-400">/</span>
-                            <span class="text-red-600 dark:text-red-500 font-semibold">↓ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalCreditsAmount) }}</span>
+                    @if (getAnalytics(accountItem.account.id)) {
+                        <div class="flex flex-col gap-1 items-center">
+                            <div class="flex items-center gap-1 text-base">
+                                <span class="text-green-600 dark:text-green-500 font-semibold">↑ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalDebitsAmount) }}</span>
+                                <span class="text-gray-400">/</span>
+                                <span class="text-red-600 dark:text-red-500 font-semibold">↓ {{ formatAmount(getAnalytics(accountItem.account.id)!.totalCreditsAmount) }}</span>
+                            </div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ serverConfig.baseCurrency }}
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ serverConfig.baseCurrency }}
-                        </div>
-                    </div>
+                    }
                 </td>
                 <td style="max-width: 10rem">
                     <p class="text-wrap break-all">

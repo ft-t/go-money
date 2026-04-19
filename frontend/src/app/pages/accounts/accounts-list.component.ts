@@ -9,7 +9,7 @@ import { TRANSPORT_TOKEN } from '../../consts/transport';
 import { Transport, createClient } from '@connectrpc/connect';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { ErrorHelper } from '../../helpers/error.helper';
-import { FilterMetadata, MessageService, SortMeta } from 'primeng/api';
+import { FilterMetadata, MessageService, PrimeTemplate, SortMeta } from 'primeng/api';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -55,6 +55,7 @@ import { FancyTagComponent } from '../../shared/components/fancy-tag/fancy-tag.c
         ReconciliationModalComponent,
         TooltipModule,
         FancyTagComponent,
+        PrimeTemplate,
     ],
     styles: `
         :host ::ng-deep .accountListTable .p-datatable-header {
@@ -90,7 +91,7 @@ export class AccountsListComponent implements OnInit {
             order: 0
         }
     ];
-    @ViewChild('filter') filter!: ElementRef;
+    @ViewChild('filterInput') filter!: ElementRef;
     public analyticsMap: { [accountId: number]: GetDebitsAndCreditsSummaryResponse_SummaryItem } = {};
     public serverConfig: GetConfigurationResponse = create(GetConfigurationResponseSchema, {});
 

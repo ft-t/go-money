@@ -12,7 +12,7 @@
                     </p-step-list>
                     <p-step-panels>
                         <p-step-panel [value]="1">
-                            <ng-template #content let-activateCallback="activateCallback">
+                            <ng-template pTemplate="content" let-activateCallback="activateCallback">
                                 <div class="flex flex-col">
 
                                     <p-card header="Execute following query on firefly db">
@@ -29,7 +29,7 @@
                         </p-step-panel>
 
                         <p-step-panel [value]="2">
-                            <ng-template #content let-activateCallback="activateCallback">
+                            <ng-template pTemplate="content" let-activateCallback="activateCallback">
                                 <div class="flex flex-col">
 
                                     <p-card header="Put JSON output">
@@ -47,7 +47,7 @@
                         </p-step-panel>
 
                         <p-step-panel [value]="3">
-                            <ng-template #content let-activateCallback="activateCallback">
+                            <ng-template pTemplate="content" let-activateCallback="activateCallback">
                                 <div class="flex flex-col">
 
                                     <p-card header="Review and Import">

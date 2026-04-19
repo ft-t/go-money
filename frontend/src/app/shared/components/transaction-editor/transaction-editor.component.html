@@ -2,19 +2,23 @@
 <form [formGroup]="form" (ngSubmit)="submit()">
     <div class="flex flex-col card gap-2">
         <div class="flex flex-row gap-2 justify-between">
-            <div class="flex flex-col align-middle" *ngIf="getTitle()">
-                <div class="font-semibold align-middle text-center">{{ getTitle() }}</div>
-            </div>
-            <div class="flex flex-col justify-end" *ngIf="shouldShowRefresh">
-                <p-button pTooltip="Refresh data" tooltipPosition="top"  icon="pi pi-refresh" severity="secondary" (onClick)="refresh()" />
-            </div>
+            @if (getTitle()) {
+                <div class="flex flex-col align-middle">
+                    <div class="font-semibold align-middle text-center">{{ getTitle() }}</div>
+                </div>
+            }
+            @if (shouldShowRefresh) {
+                <div class="flex flex-col justify-end">
+                    <p-button pTooltip="Refresh data" tooltipPosition="top"  icon="pi pi-refresh" severity="secondary" (onClick)="refresh()" />
+                </div>
+            }
         </div>
 
         <div class="flex flex-col w-full">
             <p-selectbutton size="small" styleClass="w-full" [options]="transactionTypes"
                             formControlName="type" optionLabel="name"
                             optionValue="value">
-                <ng-template #item let-item>
+                <ng-template pTemplate="item" let-item>
                     <div class="flex flex-col items-center gap-2">
                         <i [class]="item.icon"></i>
                         <label>{{ item.name }}</label>
@@ -36,7 +40,7 @@
                         optionValue="id"
                         placeholder="Select source account"
                     >
-                        <ng-template #item let-account>
+                        <ng-template pTemplate="item" let-account>
                             <div class="flex flex-col text-sm leading-tight py-1 w-full">
                                 <div class="font-semibold mb-1 text-center">{{ account.name }}</div>
                                 <div class="flex gap-3 text-xs text-gray-600 dark:text-gray-400 justify-center">
@@ -76,7 +80,8 @@
                     }
                 </div>
             </div>
-            <div class="flex flex-col w-1/2" *ngIf="isForeignCurrencyActive()">
+            @if (isForeignCurrencyActive()) {
+            <div class="flex flex-col w-1/2">
                 <div class="flex flex-col gap-2">
                     <label for="currency">Foreign Currency (optional)</label>
                     <p-select
@@ -110,6 +115,7 @@
                     </div>
                 </div>
             </div>
+            }
             <div class="flex flex-col gap-2 w-1/2">
                 <label for="currency">Destination Account *</label>
                 <p-select
@@ -121,7 +127,7 @@
                     optionValue="id"
                     placeholder="Select destination account"
                 >
-                    <ng-template #item let-account>
+                    <ng-template pTemplate="item" let-account>
                         <div class="flex flex-col text-sm leading-tight py-1 w-full">
                             <div class="font-semibold mb-1 text-center">{{ account.name }}</div>
                             <div class="flex gap-3 text-xs text-gray-600 dark:text-gray-400 justify-center">
