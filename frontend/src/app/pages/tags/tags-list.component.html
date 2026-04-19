@@ -10,6 +10,8 @@
              [filters]="filters"
              [paginator]="false"
              [globalFilterFields]="['tag.id', 'tag.name']"
+             (onFilter)="syncStateToUrl()"
+             (onSort)="syncStateToUrl()"
              responsiveLayout="scroll"
              [multiSortMeta]="multiSortMeta">
         <ng-template #caption>

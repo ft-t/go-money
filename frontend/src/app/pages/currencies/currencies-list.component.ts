@@ -1,4 +1,4 @@
-import { Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
 import { Table, TableModule } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
 import { InputText } from 'primeng/inputtext';
@@ -21,6 +21,7 @@ import { create } from '@bufbuild/protobuf';
 import { Category } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { CurrencyService, GetCurrenciesRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
 import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
+import { TableQueryStateHelper } from '../../shared/helpers/table-query-state.helper';
 
 @Component({
     selector: 'app-currencies-list',
@@ -32,7 +33,9 @@ import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
         }
     `
 })
-export class CurrenciesListComponent implements OnInit {
+export class CurrenciesListComponent implements OnInit, AfterViewInit {
+    @ViewChild('dt1', { static: false }) table!: Table;
+
     statuses: any[] = [];
 
     loading: boolean = false;
@@ -53,6 +56,8 @@ export class CurrenciesListComponent implements OnInit {
     public filters: { [s: string]: FilterMetadata } = {};
 
     @ViewChild('filter') filter!: ElementRef;
+    public initialGlobalFilter: string = '';
+    private activatedRoute: ActivatedRoute;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -60,6 +65,7 @@ export class CurrenciesListComponent implements OnInit {
         public router: Router,
         route: ActivatedRoute
     ) {
+        this.activatedRoute = route;
         this.currenciesService = createClient(CurrencyService, this.transport);
 
         if (route.snapshot.data['filters']) {
@@ -69,6 +75,42 @@ export class CurrenciesListComponent implements OnInit {
                 }
             }
         }
+
+        const queryState = TableQueryStateHelper.decode(route.snapshot.queryParams);
+        if (queryState.filters) {
+            this.filters = { ...this.filters, ...(queryState.filters as { [s: string]: FilterMetadata }) };
+        }
+        if (queryState.sort && queryState.sort.length > 0) {
+            this.multiSortMeta = queryState.sort;
+        }
+        if (queryState.global) {
+            this.initialGlobalFilter = queryState.global;
+        }
+    }
+
+    ngAfterViewInit() {
+        if (this.initialGlobalFilter && this.table) {
+            if (this.filter?.nativeElement) {
+                this.filter.nativeElement.value = this.initialGlobalFilter;
+            }
+            this.table.filterGlobal(this.initialGlobalFilter, 'contains');
+        }
+    }
+
+    syncStateToUrl(): void {
+        if (!this.table) return;
+        const globalVal = (this.table.filters as any)?.['global']?.value;
+        const params = TableQueryStateHelper.encode({
+            filters: this.table.filters as { [f: string]: FilterMetadata | FilterMetadata[] },
+            sort: this.table.multiSortMeta ?? [],
+            global: typeof globalVal === 'string' ? globalVal : undefined,
+        });
+        this.router.navigate([], {
+            relativeTo: this.activatedRoute,
+            queryParams: params,
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+        });
     }
 
     getDetailsUrl(entity: Category): string {
