@@ -539,6 +539,261 @@ Error responses:
 - Same field-required / parse errors as `create_adjustment`.
 - `"failed to update adjustment: <service error>"`.
 
+## Transaction Rules
+
+Rules are Lua scripts executed against every transaction (on create and on
+edit, unless `skip_rules=true`). Each script receives a cloned transaction as
+the global `tx` and helpers as `helpers`. A rule is considered "applied" when
+the script mutates at least one field; applied rules are persisted into the
+outgoing transaction.
+
+Rules are grouped by `group_name` and ordered by `sort_order` (ascending)
+within each group. If a rule has `is_final_rule=true` and it mutates the
+transaction, execution stops for that group.
+
+Runtime: [gopher-lua](https://github.com/yuin/gopher-lua) with
+[gopher-lua-libs](https://github.com/vadv/gopher-lua-libs) preloaded
+(`string`, `table`, `math`, etc.). Scripts must not raise errors — use early
+`return` to exit.
+
+### Lua API Reference
+
+Globals: `tx` (transaction), `helpers` (utilities).
+
+#### Transaction — `tx:field()` get, `tx:field(value)` set
+
+| Method | Type | Notes |
+|---|---|---|
+| `tx:title()` / `tx:title(s)` | string | may be nil on sparse imports |
+| `tx:notes()` / `tx:notes(s)` | string | may be nil |
+| `tx:sourceCurrency()` / `tx:sourceCurrency(s)` | string (ISO-4217) | |
+| `tx:destinationCurrency()` / `tx:destinationCurrency(s)` | string (ISO-4217) | |
+| `tx:referenceNumber()` / `tx:referenceNumber(s)` | string | |
+| `tx:sourceAccountID()` / `tx:sourceAccountID(n)` | int | |
+| `tx:destinationAccountID()` / `tx:destinationAccountID(n)` | int | |
+| `tx:categoryID()` / `tx:categoryID(n)` / `tx:categoryID(nil)` | int or nil | `nil` clears |
+| `tx:transactionType()` / `tx:transactionType(n)` | int enum | see table below |
+| `tx:sourceAmount()` / `tx:sourceAmount(x)` / `tx:sourceAmount(nil)` | number or nil | |
+| `tx:destinationAmount()` / `tx:destinationAmount(x)` / `tx:destinationAmount(nil)` | number or nil | |
+| `tx:getSourceAmountWithDecimalPlaces(n)` | number or nil | rounded |
+| `tx:getDestinationAmountWithDecimalPlaces(n)` | number or nil | rounded |
+
+Tags:
+
+| Method | Returns |
+|---|---|
+| `tx:addTag(tagID)` | — |
+| `tx:removeTag(tagID)` | — |
+| `tx:getTags()` | Lua array of tag IDs |
+| `tx:removeAllTags()` | — |
+
+Internal reference numbers:
+
+| Method | Returns |
+|---|---|
+| `tx:getInternalReferenceNumbers()` | Lua array of strings |
+| `tx:addInternalReferenceNumber(s)` | — |
+| `tx:setInternalReferenceNumbers({"a","b"})` | — |
+| `tx:removeInternalReferenceNumber(s)` | — |
+
+Date/time:
+
+| Method | Effect |
+|---|---|
+| `tx:transactionDateTimeSetTime(hour, minute)` | Replaces time-of-day |
+| `tx:transactionDateTimeAddDate(years, months, days)` | Adds delta |
+
+Transaction type enum:
+
+| Value | Name |
+|---|---|
+| 0 | UNSPECIFIED |
+| 1 | TRANSFER_BETWEEN_ACCOUNTS |
+| 2 | INCOME |
+| 3 | EXPENSE |
+| 4 | REVERSAL |
+| 5 | ADJUSTMENT |
+
+#### Helpers
+
+| Method | Returns | Notes |
+|---|---|---|
+| `helpers:getAccountByID(id)` | account object | fields: `ID`, `Name`, `Currency`, `CurrentBalance`, `Type`, `AccountNumber`, `Iban`, … |
+| `helpers:convertCurrency("FROM","TO", amount)` | number | uses stored rates, rounded to target decimals |
+
+#### Patterns & nil-safety
+
+`tx:title()` / `tx:notes()` can be nil on sparse data. Guard with `or ""`:
+
+```lua
+local title = tx:title() or ""
+local notes = tx:notes() or ""
+```
+
+For literal substring match, pass `true` as the 4th arg of `string.find` to
+disable Lua patterns:
+
+```lua
+string.find(title, "GOOGLE -ADS", 1, true)
+```
+
+### Example Scripts
+
+Categorize by title keyword list:
+
+```lua
+local keywords = { "GOOGLE -ADS", "MERCHANT X" }
+for _, keyword in ipairs(keywords) do
+    if string.find(tx:title(), keyword, 1, true) then
+        tx:categoryID(10)
+        break
+    end
+end
+```
+
+Match title OR notes (two sources):
+
+```lua
+local title_keywords = { "Alice S", "Alice" }
+for _, keyword in ipairs(title_keywords) do
+    if string.find(tx:title(), keyword, 1, true) then
+        tx:categoryID(36)
+        return
+    end
+end
+
+local notes = tx:notes() or ""
+if string.find(notes, "ALICE SURNAME", 1, true) or
+   string.find(notes, "021600146217XXXXXXXXXXXXX", 1, true) then
+    tx:categoryID(36)
+end
+```
+
+Reclassify a matched transaction as a transfer to a specific account:
+
+```lua
+local title = tx:title() or ""
+local notes = tx:notes() or ""
+if string.find(title, "Trading 212", 1, true) or
+   string.find(notes, "Trading 212", 1, true) then
+    tx:transactionType(1)            -- TRANSFER_BETWEEN_ACCOUNTS
+    tx:destinationAccountID(47)      -- target account id
+end
+```
+
+### list_rules
+
+List all transaction rules.
+
+No input parameters. Response is a JSON array of rules (`id`, `title`,
+`script`, `enabled`, `sort_order`, `is_final_rule`, `group_name`) or the text
+`"No rules found"` when the list is empty.
+
+### dry_run_rule
+
+Test a Lua script against an existing transaction without persisting
+changes. Returns the transaction before and after rule execution plus a
+boolean indicating whether the script mutated anything.
+
+Input parameters:
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `transaction_id` | number | yes | Transaction to test against (use `0` for scheduled rules that create transactions) |
+| `script` | string | yes | Lua script to execute |
+| `title` | string | no | Display name; defaults to `"Test Rule"` |
+
+Example request:
+
+```json
+{
+  "transaction_id": 12345,
+  "title": "Trading 212 transfer",
+  "script": "local title = tx:title() or ''\nif string.find(title, 'Trading 212', 1, true) then\n  tx:transactionType(1)\n  tx:destinationAccountID(47)\nend"
+}
+```
+
+Example response:
+
+```json
+{
+  "rule_applied": true,
+  "before": { "id": 12345, "title": "Trading 212", "transaction_type": 3, "destination_account_id": 10, "...": "..." },
+  "after":  { "id": 12345, "title": "Trading 212", "transaction_type": 1, "destination_account_id": 47, "...": "..." }
+}
+```
+
+Error responses:
+
+- `"transaction_id parameter is required"` when missing or not a number.
+- `"script parameter is required"` when missing or empty.
+- `"dry run failed: <wrap>"` — wraps Lua runtime errors and transaction-lookup failures.
+
+### create_rule
+
+Create a new transaction rule.
+
+Input parameters:
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | yes | Display name |
+| `script` | string | yes | Lua script (see Lua API above) |
+| `sort_order` | number | no | Execution order within a group (lower runs first, default 0) |
+| `enabled` | boolean | no | Whether the rule is active (default `true`) |
+| `is_final_rule` | boolean | no | If `true`, stops execution of the rule's group when this rule applies (default `false`) |
+| `group_name` | string | no | Group to organize rules; groups run in alphabetical order |
+
+Example request:
+
+```json
+{
+  "title": "Categorize Google Ads",
+  "script": "local keywords = { 'GOOGLE -ADS' }\nfor _, k in ipairs(keywords) do\n  if string.find(tx:title(), k, 1, true) then\n    tx:categoryID(10)\n    break\n  end\nend",
+  "sort_order": 100,
+  "group_name": "categorization"
+}
+```
+
+Example response:
+
+```
+Rule created with id 42
+```
+
+Error responses:
+
+- `"title parameter is required"` / `"script parameter is required"`.
+- `"failed to create rule: <wrap>"` — wraps validation / persistence errors.
+
+### update_rule
+
+Update an existing rule. Replaces `title`, `script`, and any optional flags
+provided. Always validate the new script with `dry_run_rule` first.
+
+Input parameters:
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `id` | number | yes | Rule id to update |
+| `title` | string | yes | Display name |
+| `script` | string | yes | Lua script (see Lua API above) |
+| `sort_order` | number | no | Execution order |
+| `enabled` | boolean | no | Active flag |
+| `is_final_rule` | boolean | no | Group-stop flag |
+| `group_name` | string | no | Group name |
+
+Example response:
+
+```
+Rule 42 updated
+```
+
+Error responses:
+
+- `"id parameter is required"` / `"title parameter is required"` / `"script parameter is required"`.
+- `"failed to update rule: <wrap>"`.
+
 ## Currency Conversion
 
 The server keeps exchange rates in the `currencies` table. Each row stores
