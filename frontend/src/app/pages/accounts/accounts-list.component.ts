@@ -138,7 +138,7 @@ export class AccountsListComponent implements OnInit {
     async loadTags() {
         try {
             const resp = await this.tagsService.listTags({});
-            this.tags = (resp.tags || []).map(t => t.tag!).filter(Boolean);
+            this.tags = (resp.tags || []).filter(t => !!t?.tag).map(t => t.tag!);
             this.tagsMap = {};
             for (const tag of this.tags) {
                 this.tagsMap[tag.id] = tag;

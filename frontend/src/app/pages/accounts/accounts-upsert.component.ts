@@ -68,7 +68,7 @@ export class AccountsUpsertComponent implements OnInit {
     async loadTags() {
         try {
             const resp = await this.tagsService.listTags({});
-            this.tags = (resp.tags || []).map(t => t.tag!).filter(Boolean);
+            this.tags = (resp.tags || []).filter(t => !!t?.tag).map(t => t.tag!);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }

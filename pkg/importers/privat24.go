@@ -115,6 +115,9 @@ func (p *Privat24) ParseMessages(
 
 		for i := headerIdx + 1; i < len(sheet.Rows); i++ {
 			row := sheet.Rows[i]
+			if row == nil {
+				continue
+			}
 
 			if len(row.Cells) < privat24MinCols {
 				continue
@@ -220,7 +223,7 @@ func (p *Privat24) parseRow(
 
 func findPrivat24HeaderRow(sheet *xlsx.Sheet) int {
 	for i, row := range sheet.Rows {
-		if len(row.Cells) == 0 {
+		if row == nil || len(row.Cells) == 0 {
 			continue
 		}
 		if strings.TrimSpace(row.Cells[0].String()) == privat24HeaderDateCol {

@@ -3,7 +3,6 @@ package accounts
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	accountsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/accounts/v1"
@@ -11,6 +10,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -82,11 +82,7 @@ func (s *Service) List(ctx context.Context, req *accountsv1.ListAccountsRequest)
 	}
 
 	if len(req.TagIds) > 0 {
-		var tagIDs []string
-		for _, id := range req.TagIds {
-			tagIDs = append(tagIDs, fmt.Sprintf("%d", id))
-		}
-		query = query.Where(fmt.Sprintf("tag_ids && Array[%s]", strings.Join(tagIDs, ",")))
+		query = query.Where("tag_ids && ?", pq.Int32Array(req.TagIds))
 	}
 
 	if req.IncludeDeleted {
