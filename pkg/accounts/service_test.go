@@ -1035,6 +1035,37 @@ func TestUpdate(t *testing.T) {
 	})
 }
 
+func TestService_Update_TagIDs(t *testing.T) {
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	acc := &database.Account{
+		Name:  "acc",
+		Type:  v1.AccountType_ACCOUNT_TYPE_ASSET,
+		Flags: database.AccountFlagIsDefault,
+		Extra: map[string]string{},
+	}
+	assert.NoError(t, gormDB.Create(acc).Error)
+
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+	mapper.EXPECT().MapAccount(gomock.Any(), gomock.Any()).
+		Return(&v1.Account{Id: acc.ID})
+
+	srv := accounts.NewService(&accounts.ServiceConfig{MapperSvc: mapper})
+
+	_, err := srv.Update(context.TODO(), &accountsv1.UpdateAccountRequest{
+		Id:     acc.ID,
+		Name:   "acc",
+		Type:   v1.AccountType_ACCOUNT_TYPE_ASSET,
+		Flags:  int64(database.AccountFlagIsDefault),
+		TagIds: []int32{1, 2, 3},
+	})
+	assert.NoError(t, err)
+
+	var stored database.Account
+	assert.NoError(t, gormDB.First(&stored, acc.ID).Error)
+	assert.EqualValues(t, pq.Int32Array{1, 2, 3}, stored.TagIDs)
+}
+
 func TestEnsureDefaultExists(t *testing.T) {
 	t.Run("current is default", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
