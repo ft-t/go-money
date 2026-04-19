@@ -9,6 +9,7 @@
 | [Schema Quick-Ref](schema/QUICK-REF.md) | All tables, columns, types, enums in one file |
 | [Business Logic Quick-Ref](business-logic/QUICK-REF.md) | Formulas, transaction rules, account rules |
 | [Analytics Quick-Ref](analytics/QUICK-REF.md) | Query templates with descriptions |
+| [Frontend Architecture](frontend-architecture.md) | Per-page config, transport, MCP servers — read before frontend work |
 
 ---
 

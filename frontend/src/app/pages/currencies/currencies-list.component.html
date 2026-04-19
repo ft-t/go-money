@@ -11,6 +11,8 @@
              [paginator]="false"
              [multiSortMeta]="multiSortMeta"
              [globalFilterFields]="['id']"
+             (onFilter)="syncStateToUrl()"
+             (onSort)="syncStateToUrl()"
              responsiveLayout="scroll">
         <ng-template #caption>
             <div class="flex justify-between items-center flex-column sm:flex-row gap-2">
@@ -28,7 +30,7 @@
                 </p-iconfield>
 
                 <p-button label="Create new currency" class="p-button-link"
-                          (click)="this.router.navigate(['/currencies', 'new'])" />
+                          (click)="this.router.navigate(['/currencies', 'new'], { queryParams: { returnUrl: currentReturnUrl } })" />
             </div>
         </ng-template>
         <ng-template #header>
@@ -97,7 +99,7 @@
                 </td>
                 <td>
                     <p-button icon="pi pi-pencil"
-                              (onClick)="this.router.navigate(['/', 'currencies', 'edit', accountItem.id])"
+                              (onClick)="this.router.navigate(['/', 'currencies', 'edit', accountItem.id], { queryParams: { returnUrl: currentReturnUrl } })"
                               severity="secondary" [rounded]="true" />
                 </td>
             </tr>

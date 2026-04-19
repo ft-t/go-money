@@ -4,7 +4,8 @@
     <p-table #dt1
              dataKey="id"
              [value]="transactions"
-             [rows]="50"
+             [rows]="initialRows"
+             [first]="initialFirst"
              [loading]="loading"
              [rowHover]="true"
              [showGridlines]="true"
@@ -252,12 +253,13 @@
                 </td>
                 <td>
                     <div class="flex gap-2">
-                        <a [routerLink]="['/', 'transactions', 'edit', transactionItem.id]">
+                        <a [routerLink]="['/', 'transactions', 'edit', transactionItem.id]"
+                           [queryParams]="{ returnUrl: currentReturnUrl }">
                             <p-button icon="pi pi-pencil"
                                       severity="secondary" [rounded]="true" pTooltip="Edit transaction" tooltipPosition="top" />
                         </a>
                         <a [routerLink]="['/', 'transactions', 'new']"
-                           [queryParams]="{ clone_from: transactionItem.id }">
+                           [queryParams]="{ clone_from: transactionItem.id, returnUrl: currentReturnUrl }">
                             <p-button icon="pi pi-clone" pTooltip="Clone & Edit transaction" tooltipPosition="top"
                                       severity="secondary" [rounded]="true" />
                         </a>

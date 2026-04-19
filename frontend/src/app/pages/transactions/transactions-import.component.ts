@@ -1,9 +1,9 @@
-import { Component, Inject, QueryList, ViewChildren } from '@angular/core';
+import { Component, Inject, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { Fluid } from 'primeng/fluid';
 import { Toast } from 'primeng/toast';
 import { FileUpload } from 'primeng/fileupload';
 import { ImportService, ImportSource, ImportTransactionsRequestSchema, ParseTransactionsRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/import/v1/import_pb';
-import { EnumService } from '../../services/enum.service';
+import { AccountTypeEnum, EnumService } from '../../services/enum.service';
 import { SelectModule } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 import { TRANSPORT_TOKEN } from '../../consts/transport';
@@ -19,8 +19,15 @@ import { AccordionModule } from 'primeng/accordion';
 import { NgClass } from '@angular/common';
 import { TransactionEditorComponent } from '../../shared/components/transaction-editor/transaction-editor.component';
 import { Message } from 'primeng/message';
+import { Tooltip } from 'primeng/tooltip';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionsService, CreateTransactionsBulkRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { PageConfigService } from '../../services/page-config.service';
+import {
+    TransactionsImportConfig,
+    TRANSACTIONS_IMPORT_DEFAULTS,
+    TRANSACTIONS_IMPORT_PAGE_ID,
+} from './transactions-import.config';
 
 interface TransactionItem {
     transaction: Transaction;
@@ -32,7 +39,7 @@ interface TransactionItem {
 
 @Component({
     selector: 'app-transactions-import',
-    imports: [Fluid, Toast, FileUpload, SelectModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgClass, TransactionEditorComponent, Message],
+    imports: [Fluid, Toast, FileUpload, SelectModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgClass, TransactionEditorComponent, Message, Tooltip],
     templateUrl: './transactions-import.component.html',
     styles: [
         `
@@ -47,9 +54,14 @@ interface TransactionItem {
         `
     ]
 })
-export class TransactionsImportComponent {
+export class TransactionsImportComponent implements OnInit {
     public selectedSource: ImportSource = ImportSource.FIREFLY;
-    public sources = EnumService.getImportTypes();
+    public allSources: AccountTypeEnum[] = EnumService.getImportTypes();
+    public pageConfig: TransactionsImportConfig = {
+        ...TRANSACTIONS_IMPORT_DEFAULTS,
+        excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters],
+    };
+    public editingExclusions = false;
     public skipRules: boolean = false;
     public treatDatesAsUtc: boolean = false;
     public skipDuplicateReferenceCheck: boolean = false;
@@ -72,10 +84,90 @@ export class TransactionsImportComponent {
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
-        private messageService: MessageService
+        private messageService: MessageService,
+        private pageConfigService: PageConfigService
     ) {
         this.importService = createClient(ImportService, this.transport);
         this.transactionService = createClient(TransactionsService, this.transport);
+    }
+
+    public get sources(): AccountTypeEnum[] {
+        return this.allSources.filter(s => !this.pageConfig.excludedImporters.includes(s.value));
+    }
+
+    async ngOnInit(): Promise<void> {
+        await this.loadPageConfig();
+    }
+
+    async loadPageConfig(): Promise<void> {
+        try {
+            this.pageConfig = await this.pageConfigService.get<TransactionsImportConfig>(
+                TRANSACTIONS_IMPORT_PAGE_ID,
+                TRANSACTIONS_IMPORT_DEFAULTS,
+            );
+        } catch (e) {
+            console.error('Failed to load transactions-import page config:', e);
+            this.pageConfig = {
+                ...TRANSACTIONS_IMPORT_DEFAULTS,
+                excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters],
+            };
+        }
+        this.ensureSelectedSourceVisible();
+    }
+
+    private ensureSelectedSourceVisible(): void {
+        if (!this.pageConfig.excludedImporters.includes(this.selectedSource)) {
+            return;
+        }
+        const fallback = this.sources[0];
+        if (fallback) {
+            this.selectedSource = fallback.value;
+        }
+    }
+
+    isExcluded(value: ImportSource): boolean {
+        return this.pageConfig.excludedImporters.includes(value);
+    }
+
+    async toggleExclusion(value: ImportSource): Promise<void> {
+        if (this.isExcluded(value)) {
+            this.pageConfig = {
+                ...this.pageConfig,
+                excludedImporters: this.pageConfig.excludedImporters.filter(v => v !== value),
+            };
+            await this.savePageConfig();
+            return;
+        }
+
+        const remainingAfter = this.allSources.length - (this.pageConfig.excludedImporters.length + 1);
+        if (remainingAfter < 1) {
+            this.messageService.add({
+                severity: 'error',
+                summary: 'Cannot hide importer',
+                detail: 'At least one importer must remain visible.',
+            });
+            return;
+        }
+
+        this.pageConfig = {
+            ...this.pageConfig,
+            excludedImporters: [...this.pageConfig.excludedImporters, value],
+        };
+        await this.savePageConfig();
+        this.ensureSelectedSourceVisible();
+    }
+
+    private async savePageConfig(): Promise<void> {
+        try {
+            await this.pageConfigService.set(TRANSACTIONS_IMPORT_PAGE_ID, this.pageConfig);
+        } catch (e) {
+            console.error('Failed to save transactions-import page config:', e);
+            this.messageService.add({
+                severity: 'error',
+                summary: 'Save failed',
+                detail: ErrorHelper.getMessage(e),
+            });
+        }
     }
 
     public isRawTextImport() {

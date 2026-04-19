@@ -10,6 +10,8 @@
              [filters]="filters"
              [paginator]="false"
              [globalFilterFields]="['id', 'name']"
+             (onFilter)="syncStateToUrl()"
+             (onSort)="syncStateToUrl()"
              responsiveLayout="scroll"
              [multiSortMeta]="multiSortMeta">
         <ng-template #caption>
@@ -27,7 +29,7 @@
                 </p-iconfield>
 
                 <p-button label="Create new category" class="p-button-link"
-                          (click)="this.router.navigate(['/categories', 'new'])" />
+                          (click)="this.router.navigate(['/categories', 'new'], { queryParams: { returnUrl: currentReturnUrl } })" />
             </div>
         </ng-template>
         <ng-template #header>
@@ -81,7 +83,7 @@
                 </td>
                 <td>
                     <p-button icon="pi pi-pencil"
-                              (onClick)="this.router.navigate(['/', 'categories', 'edit', accountItem.id])"
+                              (onClick)="this.router.navigate(['/', 'categories', 'edit', accountItem.id], { queryParams: { returnUrl: currentReturnUrl } })"
                               severity="secondary" [rounded]="true" />
                 </td>
             </tr>

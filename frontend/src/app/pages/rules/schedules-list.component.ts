@@ -18,6 +18,7 @@ import { SelectModule } from 'primeng/select';
 import { OverlayModule } from 'primeng/overlay';
 import { RulesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
 import { Rule, ScheduleRule } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 class RuleGroup {
     title: string = 'Default';
@@ -58,6 +59,10 @@ export class SchedulesListComponent implements OnInit {
 
     getRuleUrl(rule: Rule): string {
         return this.router.createUrlTree(['/', 'schedules', 'edit', rule!.id.toString()]).toString();
+    }
+
+    public get currentReturnUrl(): string {
+        return ReturnUrlHelper.build(this.router);
     }
 
     async ngOnInit() {

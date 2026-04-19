@@ -52,6 +52,7 @@ import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { NumberHelper } from '../../../helpers/number.helper';
 import { AccountHelper } from '../../../helpers/account.helper';
 import { Tooltip } from 'primeng/tooltip';
+import { ReturnUrlHelper } from '../../helpers/return-url.helper';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -575,7 +576,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
             // todo transaction details page
-            await this.router.navigate(['/transactions']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -593,7 +594,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
             // todo transaction details page
-            await this.router.navigate(['/transactions']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
 
             // todo transaction details page
         } catch (e) {

@@ -19,6 +19,7 @@ import { color } from 'chart.js/helpers';
 import { ColorPickerModule } from 'primeng/colorpicker';
 import { Message } from 'primeng/message';
 import { DefaultCache, ShortLivedCache } from '../../core/services/cache.service';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-tags-upsert',
@@ -35,7 +36,7 @@ export class TagsUpsertComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        routeSnapshot: ActivatedRoute,
+        private routeSnapshot: ActivatedRoute,
         private router: Router,
         private defaultCache: DefaultCache,
         private shortLivedCache: ShortLivedCache
@@ -95,6 +96,10 @@ export class TagsUpsertComponent implements OnInit {
         }
     }
 
+    async cancel(): Promise<void> {
+        await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot, ['/', 'tags']);
+    }
+
     get name() {
         return this.form!.get('name')!;
     }
@@ -115,7 +120,7 @@ export class TagsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Tag updated' });
-            await this.router.navigate(['/', 'tags', response.tag!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'tags', response.tag!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -133,7 +138,7 @@ export class TagsUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Tag created' });
-            await this.router.navigate(['/', 'tags', response.tag!.id.toString()]);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.routeSnapshot,['/', 'tags', response.tag!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;

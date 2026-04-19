@@ -40,11 +40,12 @@
             </div>
             <div class="flex mt-8">
                 <div class="card flex flex-wrap gap-6 w-full justify-end">
+                    <p-button label="Cancel" severity="secondary" type="button" [fluid]="false" (click)="cancel()"></p-button>
                     @if (isCreate) {
-                        <p-button label="Create" [fluid]="false" (click)="submit()"></p-button>
+                        <p-button label="Create" type="submit" [fluid]="false"></p-button>
                     }
                     @if (!isCreate) {
-                        <p-button label="Update" [fluid]="false" (click)="submit()"></p-button>
+                        <p-button label="Update" type="submit" [fluid]="false"></p-button>
                     }
                 </div>
             </div>

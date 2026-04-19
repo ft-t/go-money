@@ -2,7 +2,7 @@
     <div class="flex flex-row justify-between">
         <div class="font-semibold text-xl mb-4">Schedules List</div>
         <p-button label="Create new schedule" class="p-button-link"
-                  (click)="this.router.navigate(['/schedules', 'new'])" />
+                  (click)="this.router.navigate(['/schedules', 'new'], { queryParams: { returnUrl: currentReturnUrl } })" />
     </div>
     @for (group of this.ruleGroups; track group) {
         <div class="flex flex-col">
@@ -112,7 +112,7 @@
                         </td>
                         <td style="max-width: 1rem">
                             <p-button icon="pi pi-pencil"
-                                      (onClick)="this.router.navigate(['/', 'schedules', 'edit', accountItem.id])"
+                                      (onClick)="this.router.navigate(['/', 'schedules', 'edit', accountItem.id], { queryParams: { returnUrl: currentReturnUrl } })"
                                       severity="secondary" [rounded]="true" />
                         </td>
                     </tr>
