@@ -107,7 +107,7 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
     public pageConfig: AccountsListConfig = { ...ACCOUNTS_LIST_DEFAULTS };
     public editingQuickTags = false;
     public newQuickTagLabel = '';
-    public newQuickTagSearch = '';
+    public newQuickTagTagIds: number[] = [];
     public initialGlobalFilter: string = '';
 
     constructor(
@@ -305,26 +305,38 @@ export class AccountsListComponent implements OnInit, AfterViewInit {
     }
 
     applyQuickTag(tag: QuickTag): void {
-        if (!this.table || !this.filter) {
-            return;
+        this.selectedTagIds = [...(tag.tagIds ?? [])];
+        if (this.filter?.nativeElement) {
+            this.filter.nativeElement.value = '';
         }
-        this.filter.nativeElement.value = tag.search;
-        this.table.filterGlobal(tag.search, 'contains');
+        if (this.table) {
+            this.table.filterGlobal('', 'contains');
+        }
+        void this.onTagFilterChange();
     }
 
     async addQuickTag(): Promise<void> {
         const label = this.newQuickTagLabel.trim();
-        const search = this.newQuickTagSearch.trim();
-        if (!label || !search) {
+        const tagIds = this.newQuickTagTagIds;
+        if (!label || tagIds.length === 0) {
             return;
         }
         this.pageConfig = {
             ...this.pageConfig,
-            quickTags: [...this.pageConfig.quickTags, { label, search }],
+            quickTags: [...this.pageConfig.quickTags, { label, tagIds: [...tagIds] }],
         };
         this.newQuickTagLabel = '';
-        this.newQuickTagSearch = '';
+        this.newQuickTagTagIds = [];
         await this.savePageConfig();
+    }
+
+    getQuickTagNames(tag: QuickTag): string {
+        if (!tag.tagIds || tag.tagIds.length === 0) {
+            return '(no tags)';
+        }
+        return tag.tagIds
+            .map(id => this.getTag(id)?.name ?? `#${id}`)
+            .join(', ');
     }
 
     async removeQuickTag(index: number): Promise<void> {

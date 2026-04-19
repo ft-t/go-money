@@ -88,7 +88,7 @@
                     <div *ngFor="let tag of pageConfig.quickTags; let i = index"
                          class="flex items-center gap-2">
                         <span class="min-w-[120px] font-medium">{{ tag.label }}</span>
-                        <span class="text-gray-500 text-sm flex-1">{{ tag.search }}</span>
+                        <span class="text-gray-500 text-sm flex-1">{{ getQuickTagNames(tag) }}</span>
                         <p-button icon="pi pi-trash" severity="danger" size="small" [text]="true"
                                   (click)="removeQuickTag(i)"></p-button>
                     </div>
@@ -96,9 +96,15 @@
                         <input pInputText type="text" placeholder="Label"
                                class="w-32"
                                [(ngModel)]="newQuickTagLabel" />
-                        <input pInputText type="text" placeholder="Search text"
-                               class="flex-1"
-                               [(ngModel)]="newQuickTagSearch" />
+                        <p-multiselect class="flex-1"
+                                       appendTo="body"
+                                       [filter]="true"
+                                       [(ngModel)]="newQuickTagTagIds"
+                                       [options]="tags"
+                                       optionLabel="name"
+                                       optionValue="id"
+                                       placeholder="Select tags"
+                                       styleClass="w-full" />
                         <p-button icon="pi pi-plus" severity="success" size="small"
                                   (click)="addQuickTag()"></p-button>
                     </div>
