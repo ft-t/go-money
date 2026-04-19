@@ -21,8 +21,9 @@
 
         <div class="flex mt-8">
             <div class="card flex flex-wrap gap-6 w-full justify-end">
-                <p-button *ngIf="!category.id" label="Create" [fluid]="false" (click)="submit()"></p-button>
-                <p-button *ngIf="category.id" label="Update" [fluid]="false" (click)="submit()"></p-button>
+                <p-button label="Cancel" severity="secondary" type="button" [fluid]="false" (click)="cancel()"></p-button>
+                <p-button *ngIf="!category.id" label="Create" type="button" [fluid]="false" (click)="submit()"></p-button>
+                <p-button *ngIf="category.id" label="Update" type="button" [fluid]="false" (click)="submit()"></p-button>
             </div>
         </div>
     </form>

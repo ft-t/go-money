@@ -17,6 +17,7 @@ import { Message } from 'primeng/message';
 import { Category, CategorySchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/category_pb';
 import { CategoriesService, CreateCategoryRequestSchema, UpdateCategoryRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/categories/v1/categories_pb';
 import { DefaultCache, ShortLivedCache } from '../../core/services/cache.service';
+import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 
 @Component({
     selector: 'app-categories-upsert',
@@ -31,7 +32,7 @@ export class CategoriesUpsertComponent implements OnInit {
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
         private messageService: MessageService,
-        routeSnapshot: ActivatedRoute,
+        private routeSnapshot: ActivatedRoute,
         private router: Router,
         private defaultCache: DefaultCache,
         private shortLivedCache: ShortLivedCache
@@ -84,6 +85,19 @@ export class CategoriesUpsertComponent implements OnInit {
         }
     }
 
+    private async navigateAfterSave(fallback: any[]): Promise<void> {
+        const returnUrl = ReturnUrlHelper.safe(this.routeSnapshot.snapshot.queryParamMap.get('returnUrl'));
+        if (returnUrl) {
+            await this.router.navigateByUrl(returnUrl);
+            return;
+        }
+        await this.router.navigate(fallback);
+    }
+
+    async cancel(): Promise<void> {
+        await this.navigateAfterSave(['/', 'categories']);
+    }
+
     get name() {
         return this.form!.get('name')!;
     }
@@ -97,7 +111,7 @@ export class CategoriesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Category updated' });
-            await this.router.navigate(['/', 'categories', response.category!.id.toString()]);
+            await this.navigateAfterSave(['/', 'categories', response.category!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
@@ -113,7 +127,7 @@ export class CategoriesUpsertComponent implements OnInit {
             );
 
             this.messageService.add({ severity: 'info', detail: 'Category created' });
-            await this.router.navigate(['/', 'categories', response.category!.id.toString()]);
+            await this.navigateAfterSave(['/', 'categories', response.category!.id.toString()]);
         } catch (e: any) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             return;
