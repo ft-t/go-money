@@ -331,6 +331,8 @@ func (i *Importer) ConvertRequestsToTransactions(
 	return result, nil
 }
 
+// Values returned here are persisted to transaction_history.actor_extra.
+// Renaming is a breaking change for existing audit rows and dashboards.
 func importerSourceName(src importv1.ImportSource) string {
 	switch src {
 	case importv1.ImportSource_IMPORT_SOURCE_FIREFLY:
