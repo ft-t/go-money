@@ -5,6 +5,7 @@ import (
 
 	v1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -79,4 +80,8 @@ type DoubleEntrySvc interface {
 		dbTx *gorm.DB,
 		txIds []int64,
 	) error
+}
+
+type HistorySvc interface {
+	Record(ctx context.Context, tx *gorm.DB, req history.RecordRequest) error
 }

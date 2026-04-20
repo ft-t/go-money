@@ -12,6 +12,7 @@ import (
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
@@ -40,6 +41,7 @@ type ServiceConfig struct {
 	ValidationSvc        ValidationSvc
 	DoubleEntry          DoubleEntrySvc
 	AccountSvc           AccountSvc
+	HistorySvc           HistorySvc
 }
 
 func NewService(
@@ -382,12 +384,20 @@ func (s *Service) CreateBulkInternal(
 		if err := tx.CreateInBatches(toCreate, boilerplate.DefaultBatchSize).Error; err != nil {
 			return nil, errors.WithStack(err)
 		}
+		for _, t := range toCreate {
+			s.recordHistory(ctx, tx, t, nil, database.TransactionHistoryEventTypeCreated)
+		}
 	}
 
+	origByID := make(map[int64]*database.Transaction, len(originalTxs))
+	for _, o := range originalTxs {
+		origByID[o.ID] = o
+	}
 	for _, newTx := range toUpdate {
 		if err := tx.Updates(newTx).Error; err != nil {
 			return nil, errors.WithStack(err)
 		}
+		s.recordHistory(ctx, tx, newTx, origByID[newTx.ID], database.TransactionHistoryEventTypeUpdated)
 	}
 
 	created := append(transactionWithRules, transactionWithoutRules...)
@@ -785,6 +795,7 @@ func (s *Service) DeleteTransaction(
 		if err := tx.Delete(txToDelete).Error; err != nil {
 			return nil, errors.Wrapf(err, "failed to delete transaction id %d", txToDelete.ID)
 		}
+		s.recordHistory(ctx, tx, txToDelete, nil, database.TransactionHistoryEventTypeDeleted)
 	}
 
 	if err := s.cfg.DoubleEntry.DeleteByTransactionIDs(ctx, tx, req.Ids); err != nil {
@@ -802,4 +813,34 @@ func (s *Service) DeleteTransaction(
 	return &transactionsv1.DeleteTransactionsResponse{
 		DeletedCount: int32(len(selectedTxs)),
 	}, nil
+}
+
+func (s *Service) recordHistory(
+	ctx context.Context,
+	tx *gorm.DB,
+	curr *database.Transaction,
+	prev *database.Transaction,
+	eventType database.TransactionHistoryEventType,
+) {
+	if s.cfg.HistorySvc == nil {
+		return
+	}
+	actor, ok := history.ActorFromContext(ctx)
+	if !ok {
+		zerolog.Ctx(ctx).Warn().
+			Int64("tx_id", curr.ID).
+			Int16("event_type", int16(eventType)).
+			Msg("history actor missing from context; skipping history record")
+		return
+	}
+	if err := s.cfg.HistorySvc.Record(ctx, tx, history.RecordRequest{
+		Tx:        curr,
+		Previous:  prev,
+		EventType: eventType,
+		Actor:     actor,
+	}); err != nil {
+		zerolog.Ctx(ctx).Error().Err(err).
+			Int64("tx_id", curr.ID).
+			Msg("failed to record transaction history")
+	}
 }
