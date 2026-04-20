@@ -2,13 +2,17 @@ package rules_test
 
 import (
 	"context"
+	"testing"
+
+	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewScheduler(t *testing.T) {
@@ -72,6 +76,30 @@ func TestExecuteTask(t *testing.T) {
 		})
 		assert.Error(t, err)
 	})
+}
+
+func TestExecuteTask_SetsSchedulerActor(t *testing.T) {
+	ruleInt := NewMockInterpreter(gomock.NewController(t))
+	txSvc := NewMockTransactionSvc(gomock.NewController(t))
+
+	sh := rules.NewScheduler(&rules.SchedulerConfig{
+		RuleInterpreter: ruleInt,
+		TransactionSvc:  txSvc,
+	})
+
+	ruleInt.EXPECT().Run(gomock.Any(), "script", gomock.Any()).Return(false, nil)
+	txSvc.EXPECT().
+		CreateRawTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ *database.Transaction) (*transactionsv1.CreateTransactionResponse, error) {
+			actor, ok := history.ActorFromContext(ctx)
+			require.True(t, ok, "scheduler must set history actor")
+			assert.Equal(t, database.TransactionHistoryActorTypeScheduler, actor.Type)
+			require.NotNil(t, actor.RuleID)
+			assert.Equal(t, int32(77), *actor.RuleID)
+			return nil, nil
+		})
+
+	require.NoError(t, sh.ExecuteTask(context.Background(), database.ScheduleRule{ID: 77, Script: "script"}))
 }
 
 func TestReinit(t *testing.T) {
