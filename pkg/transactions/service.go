@@ -826,23 +826,45 @@ func (s *Service) recordHistory(
 		return
 	}
 	actor, ok := history.ActorFromContext(ctx)
-	if !ok {
+	if ok {
+		if err := s.cfg.HistorySvc.Record(ctx, tx, history.RecordRequest{
+			Tx:        curr,
+			Previous:  prev,
+			EventType: eventType,
+			Actor:     actor,
+		}); err != nil {
+			zerolog.Ctx(ctx).Error().Err(err).
+				Int64("tx_id", curr.ID).
+				Int16("event_type", int16(eventType)).
+				Int16("actor_type", int16(actor.Type)).
+				Msg("failed to record transaction history")
+		}
+	} else {
 		zerolog.Ctx(ctx).Warn().
 			Int64("tx_id", curr.ID).
 			Int16("event_type", int16(eventType)).
 			Msg("history actor missing from context; skipping history record")
-		return
 	}
-	if err := s.cfg.HistorySvc.Record(ctx, tx, history.RecordRequest{
-		Tx:        curr,
-		Previous:  prev,
-		EventType: eventType,
-		Actor:     actor,
-	}); err != nil {
-		zerolog.Ctx(ctx).Error().Err(err).
-			Int64("tx_id", curr.ID).
-			Int16("event_type", int16(eventType)).
-			Int16("actor_type", int16(actor.Type)).
-			Msg("failed to record transaction history")
+
+	for _, ev := range curr.RuleAppliedEvents {
+		ruleEvent := ev
+		if ruleEvent.Before != nil {
+			ruleEvent.Before.ID = curr.ID
+		}
+		if ruleEvent.After != nil {
+			ruleEvent.After.ID = curr.ID
+		}
+		if err := s.cfg.HistorySvc.Record(ctx, tx, history.RecordRequest{
+			Tx:        ruleEvent.After,
+			Previous:  ruleEvent.Before,
+			EventType: database.TransactionHistoryEventTypeRuleApplied,
+			Actor:     history.RuleActor(ruleEvent.RuleID),
+		}); err != nil {
+			zerolog.Ctx(ctx).Error().Err(err).
+				Int64("tx_id", curr.ID).
+				Int32("rule_id", ruleEvent.RuleID).
+				Msg("failed to record rule-applied transaction history")
+		}
 	}
+	curr.RuleAppliedEvents = nil
 }

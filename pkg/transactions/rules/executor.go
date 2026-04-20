@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 	"github.com/samber/lo"
 	"github.com/tiendc/go-deepcopy"
 	"sort"
@@ -77,6 +78,18 @@ func (s *Executor) executeInternal(
 			}
 
 			if result {
+				changed, snapshotErr := s.ruleProducedChange(tx, clonedTx)
+				if snapshotErr != nil {
+					return nil, snapshotErr
+				}
+				if changed {
+					tx.RuleAppliedEvents = append(tx.RuleAppliedEvents, database.RuleAppliedEvent{
+						RuleID: rule.ID,
+						Before: tx,
+						After:  clonedTx,
+					})
+					clonedTx.RuleAppliedEvents = tx.RuleAppliedEvents
+				}
 				tx = clonedTx
 			}
 
@@ -87,6 +100,22 @@ func (s *Executor) executeInternal(
 	}
 
 	return tx, nil
+}
+
+func (s *Executor) ruleProducedChange(prev, curr *database.Transaction) (bool, error) {
+	prevSnap, err := history.Snapshot(prev)
+	if err != nil {
+		return false, errors.Wrap(err, "snapshot prev for rule change check")
+	}
+	currSnap, err := history.Snapshot(curr)
+	if err != nil {
+		return false, errors.Wrap(err, "snapshot curr for rule change check")
+	}
+	diff, err := history.Diff(prevSnap, currSnap)
+	if err != nil {
+		return false, errors.Wrap(err, "diff for rule change check")
+	}
+	return diff != nil, nil
 }
 
 func (s *Executor) ProcessSingleRule(

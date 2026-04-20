@@ -218,6 +218,80 @@ func TestCreate_NoActor_SkipsHistory_StillSucceeds(t *testing.T) {
 	require.NotNil(t, resp)
 }
 
+func TestCreate_RuleEventsDrained(t *testing.T) {
+	acc := seedAccount(t)
+
+	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEntry := NewMockDoubleEntrySvc(gomock.NewController(t))
+	historyMock := NewMockHistorySvc(gomock.NewController(t))
+
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return([]*database.Account{acc}, nil).AnyTimes()
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mapper.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, tx *database.Transaction) *gomoneypbv1.Transaction {
+			return &gomoneypbv1.Transaction{Id: tx.ID}
+		}).Times(1)
+
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, in []*database.Transaction) ([]*database.Transaction, error) {
+			require.Len(t, in, 1)
+			before := &database.Transaction{Title: "before-rule"}
+			after := &database.Transaction{Title: "after-rule"}
+			in[0].RuleAppliedEvents = []database.RuleAppliedEvent{
+				{RuleID: 101, Before: before, After: after},
+				{RuleID: 202, Before: after, After: &database.Transaction{Title: "after-rule-2"}},
+			}
+			return in, nil
+		}).Times(1)
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
+		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEntry,
+		HistorySvc:        historyMock,
+	})
+
+	var recorded []history.RecordRequest
+	historyMock.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ *gorm.DB, req history.RecordRequest) error {
+			recorded = append(recorded, req)
+			return nil
+		}).Times(3)
+
+	ctx := history.WithActor(context.Background(), history.UserActor(7))
+	resp, err := srv.Create(ctx, incomeRequest(acc, time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)))
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	require.Len(t, recorded, 3)
+	assert.Equal(t, database.TransactionHistoryEventTypeCreated, recorded[0].EventType)
+	assert.Equal(t, database.TransactionHistoryActorTypeUser, recorded[0].Actor.Type)
+
+	assert.Equal(t, database.TransactionHistoryEventTypeRuleApplied, recorded[1].EventType)
+	assert.Equal(t, database.TransactionHistoryActorTypeRule, recorded[1].Actor.Type)
+	require.NotNil(t, recorded[1].Actor.RuleID)
+	assert.Equal(t, int32(101), *recorded[1].Actor.RuleID)
+	assert.Equal(t, recorded[0].Tx.ID, recorded[1].Tx.ID)
+
+	assert.Equal(t, database.TransactionHistoryEventTypeRuleApplied, recorded[2].EventType)
+	assert.Equal(t, database.TransactionHistoryActorTypeRule, recorded[2].Actor.Type)
+	require.NotNil(t, recorded[2].Actor.RuleID)
+	assert.Equal(t, int32(202), *recorded[2].Actor.RuleID)
+	assert.Equal(t, recorded[0].Tx.ID, recorded[2].Tx.ID)
+}
+
 func TestCreate_HistoryError_DoesNotFailCreate(t *testing.T) {
 	acc := seedAccount(t)
 
