@@ -737,11 +737,21 @@ func (s *Service) BulkSetCategory(
 	defer tx.Rollback()
 
 	for _, a := range assignments {
+		var prev database.Transaction
+		if err := tx.Where("id = ? AND deleted_at IS NULL", a.TransactionID).First(&prev).Error; err != nil {
+			return errors.Wrapf(err, "failed to set category on transaction %d: load", a.TransactionID)
+		}
+
+		next := prev
+		next.CategoryID = a.CategoryID
+
 		if err := tx.Model(&database.Transaction{}).
 			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
 			Update("category_id", a.CategoryID).Error; err != nil {
 			return errors.Wrapf(err, "failed to set category on transaction %d", a.TransactionID)
 		}
+
+		s.recordHistoryBulk(ctx, tx, &next, &prev, "set_category")
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -763,12 +773,22 @@ func (s *Service) BulkSetTags(
 	defer tx.Rollback()
 
 	for _, a := range assignments {
+		var prev database.Transaction
+		if err := tx.Where("id = ? AND deleted_at IS NULL", a.TransactionID).First(&prev).Error; err != nil {
+			return errors.Wrapf(err, "failed to set tags on transaction %d: load", a.TransactionID)
+		}
+
 		tagIDs := pq.Int32Array(a.TagIDs)
+		next := prev
+		next.TagIDs = tagIDs
+
 		if err := tx.Model(&database.Transaction{}).
 			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
 			Update("tag_ids", tagIDs).Error; err != nil {
 			return errors.Wrapf(err, "failed to set tags on transaction %d", a.TransactionID)
 		}
+
+		s.recordHistoryBulk(ctx, tx, &next, &prev, "set_tags")
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -867,4 +887,38 @@ func (s *Service) recordHistory(
 		}
 	}
 	curr.RuleAppliedEvents = nil
+}
+
+func (s *Service) recordHistoryBulk(
+	ctx context.Context,
+	tx *gorm.DB,
+	curr *database.Transaction,
+	prev *database.Transaction,
+	op string,
+) {
+	if s.cfg.HistorySvc == nil {
+		return
+	}
+
+	actor, ok := history.ActorFromContext(ctx)
+	if !ok || actor.UserID == nil {
+		zerolog.Ctx(ctx).Warn().
+			Int64("tx_id", curr.ID).
+			Str("op", op).
+			Msg("bulk op without user actor; skipping history record")
+		return
+	}
+
+	bulkActor := history.BulkActor(*actor.UserID, op)
+	if err := s.cfg.HistorySvc.Record(ctx, tx, history.RecordRequest{
+		Tx:        curr,
+		Previous:  prev,
+		EventType: database.TransactionHistoryEventTypeUpdated,
+		Actor:     bulkActor,
+	}); err != nil {
+		zerolog.Ctx(ctx).Error().Err(err).
+			Int64("tx_id", curr.ID).
+			Str("op", op).
+			Msg("failed to record bulk history")
+	}
 }
