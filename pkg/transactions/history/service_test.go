@@ -93,7 +93,7 @@ func TestService_Record_Updated_NoChange_NilDiff(t *testing.T) {
 	assert.Nil(t, rows[0].Diff)
 }
 
-func TestService_Record_RuleActor_Detail_Persisted(t *testing.T) {
+func TestService_Record_ActorDetail_Persisted(t *testing.T) {
 	require.NoError(t, testingutils.FlushAllTables(cfg.Db))
 	svc := history.NewService()
 

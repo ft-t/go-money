@@ -6,6 +6,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
 
@@ -42,8 +43,7 @@ func (s *Service) Record(ctx context.Context, tx *gorm.DB, req RecordRequest) er
 		OccurredAt:    time.Now().UTC(),
 	}
 	if req.Actor.Detail != "" {
-		d := req.Actor.Detail
-		row.ActorExtra = &d
+		row.ActorExtra = lo.ToPtr(req.Actor.Detail)
 	}
 	return errors.WithStack(tx.WithContext(ctx).Create(row).Error)
 }
