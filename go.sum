@@ -1,10 +1,10 @@
 al.essio.dev/pkg/shellescape v1.5.1/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
 al.essio.dev/pkg/shellescape v1.6.0 h1:NxFcEqzFSEVCGN2yq7Huv/9hyCEGVa/TncnOOBBeXHA=
 al.essio.dev/pkg/shellescape v1.6.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
-buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260419091741-3d39ff52455e.2 h1:UGKZNeKIb2J8MFWfQQwvyYnXxqnxfbHB6oz81+b4mss=
-buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260419091741-3d39ff52455e.2/go.mod h1:3t+sL2Htq41tDLa04beIGhCD5QBFRjiNlU7Bp1UpKwA=
-buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260419091741-3d39ff52455e.1 h1:9EFGA2/MNuUSdz0DAenDbrR7lC4/cQHusVX54DJKobg=
-buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260419091741-3d39ff52455e.1/go.mod h1:h6BlZCpceFTRzghEP6LSlTeYkE05pzKfQCnRYsP4kDA=
+buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260419172221-160a6a381084.2 h1:2WG2SSCegD8pLqRbPkAO+buij2HYQmjw3dsGuwQuCRE=
+buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260419172221-160a6a381084.2/go.mod h1:fEfveNyVP2WLkFoKla7vZFkXTNuH+Bj/0oeU6bzBZ+Q=
+buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260419172221-160a6a381084.1 h1:Og1gaiRh+kMY2SVqjfaIvblGKE+5Zq/B0uK7zN8jWFY=
+buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260419172221-160a6a381084.1/go.mod h1:h6BlZCpceFTRzghEP6LSlTeYkE05pzKfQCnRYsP4kDA=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 connectrpc.com/connect v1.19.1 h1:R5M57z05+90EfEvCY1b7hBxDVOUl45PrtXtAV2fOC14=
 connectrpc.com/connect v1.19.1/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
