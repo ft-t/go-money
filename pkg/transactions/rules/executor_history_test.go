@@ -136,6 +136,44 @@ func TestExecutor_TwoRulesEachChange_TwoEvents(t *testing.T) {
 	assert.Equal(t, "renamed", second.After.Title)
 }
 
+func TestExecutor_ChangeNoChangeChange_KeepsBothEvents(t *testing.T) {
+	require.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	dbRules := []*database.Rule{
+		{Script: "rename", SortOrder: 1},
+		{Script: "touch", SortOrder: 2},
+		{Script: "notes", SortOrder: 3},
+	}
+	require.NoError(t, gormDB.Create(dbRules).Error)
+
+	interpreter := NewMockInterpreter(gomock.NewController(t))
+	srv := rules.NewExecutor(interpreter)
+
+	tx := &database.Transaction{ID: 55, Title: "old", Notes: "no notes"}
+
+	interpreter.EXPECT().Run(gomock.Any(), "rename", gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, transaction *database.Transaction) (bool, error) {
+			transaction.Title = "renamed"
+			return true, nil
+		})
+	interpreter.EXPECT().Run(gomock.Any(), "touch", gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, _ *database.Transaction) (bool, error) {
+			return true, nil
+		})
+	interpreter.EXPECT().Run(gomock.Any(), "notes", gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, transaction *database.Transaction) (bool, error) {
+			transaction.Notes = "with notes"
+			return true, nil
+		})
+
+	out, err := srv.ProcessTransactions(context.Background(), []*database.Transaction{tx})
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	require.Len(t, out[0].RuleAppliedEvents, 2)
+	assert.Equal(t, dbRules[0].ID, out[0].RuleAppliedEvents[0].RuleID)
+	assert.Equal(t, dbRules[2].ID, out[0].RuleAppliedEvents[1].RuleID)
+}
+
 func TestExecutor_RuleReturnedTrueButNoChange_NoEvent(t *testing.T) {
 	require.NoError(t, testingutils.FlushAllTables(cfg.Db))
 

@@ -88,8 +88,8 @@ func (s *Executor) executeInternal(
 						Before: tx,
 						After:  clonedTx,
 					})
-					clonedTx.RuleAppliedEvents = tx.RuleAppliedEvents
 				}
+				clonedTx.RuleAppliedEvents = tx.RuleAppliedEvents
 				tx = clonedTx
 			}
 
