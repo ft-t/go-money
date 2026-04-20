@@ -29,6 +29,7 @@ import (
 	"github.com/ft-t/go-money/pkg/transactions"
 	"github.com/ft-t/go-money/pkg/transactions/applicable_accounts"
 	"github.com/ft-t/go-money/pkg/transactions/double_entry"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 	"github.com/ft-t/go-money/pkg/transactions/rules"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/ft-t/go-money/pkg/users"
@@ -163,6 +164,7 @@ func main() {
 	})
 
 	statsSvc := transactions.NewStatService()
+	historySvc := history.NewService()
 	transactionSvc := transactions.NewService(&transactions.ServiceConfig{
 		StatsSvc:             statsSvc,
 		MapperSvc:            mapper,
@@ -172,6 +174,7 @@ func main() {
 		ValidationSvc:        validationSvc,
 		DoubleEntry:          doubleEntry,
 		AccountSvc:           accountSvc,
+		HistorySvc:           historySvc,
 	})
 
 	ruleScheduler := rules.NewScheduler(&rules.SchedulerConfig{
@@ -232,6 +235,12 @@ func main() {
 	}
 
 	_ = handlers.NewTransactionApi(grpcServer, transactionSvc, applicableAccountSvc, mapper)
+
+	_, err = handlers.NewTransactionHistoryApi(grpcServer, historySvc, mapper)
+	if err != nil {
+		log.Logger.Fatal().Err(err).Msg("failed to create transaction history handler")
+	}
+
 	_ = handlers.NewTagsApi(grpcServer, tagSvc)
 	_ = handlers.NewRulesApi(grpcServer, &handlers.RulesApiConfig{
 		RulesScheduleSvc: rulesScheduleSvc,
