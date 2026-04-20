@@ -10,14 +10,16 @@ import { create } from '@bufbuild/protobuf';
 import { Fluid } from 'primeng/fluid';
 import { Card } from 'primeng/card';
 import { Tag } from 'primeng/tag';
+import { Tabs, TabList, Tab, TabPanels, TabPanel } from 'primeng/tabs';
 
 import { Account } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { AccountsService, ListAccountsResponse_AccountItem } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/accounts/v1/accounts_pb';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
+import { TransactionHistoryTimelineComponent } from './history/transaction-history-timeline.component';
 
 @Component({
     selector: 'app-transaction-details',
-    imports: [Fluid, Card, Tag],
+    imports: [Fluid, Card, Tag, Tabs, TabList, Tab, TabPanels, TabPanel, TransactionHistoryTimelineComponent],
     templateUrl: './transactions-details.component.html'
 })
 export class TransactionsDetailsComponent implements OnInit {
