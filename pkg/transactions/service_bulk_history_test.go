@@ -6,6 +6,7 @@ import (
 	"time"
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/ft-t/go-money/pkg/transactions"
@@ -138,6 +139,31 @@ func TestBulkSetCategory_NoActor_SkipsHistory_StillSucceeds(t *testing.T) {
 	require.NoError(t, gormDB.Where("id = ?", txs[0].ID).First(&loaded).Error)
 	require.NotNil(t, loaded.CategoryID)
 	assert.Equal(t, int32(5), *loaded.CategoryID)
+}
+
+func TestBulkSetCategory_HistoryError_DoesNotFail(t *testing.T) {
+	txs := seedBulkTxs(t, 1)
+
+	historyMock := NewMockHistorySvc(gomock.NewController(t))
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		HistorySvc: historyMock,
+	})
+
+	historyMock.EXPECT().
+		Record(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(errors.New("record failed")).
+		Times(1)
+
+	ctx := history.WithActor(context.Background(), history.UserActor(7))
+	err := srv.BulkSetCategory(ctx, []transactions.CategoryAssignment{
+		{TransactionID: txs[0].ID, CategoryID: lo.ToPtr(int32(42))},
+	})
+	require.NoError(t, err)
+
+	var loaded database.Transaction
+	require.NoError(t, gormDB.Where("id = ?", txs[0].ID).First(&loaded).Error)
+	require.NotNil(t, loaded.CategoryID)
+	assert.Equal(t, int32(42), *loaded.CategoryID)
 }
 
 func TestBulkSetCategory_Empty_NoHistory(t *testing.T) {
