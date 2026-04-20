@@ -841,6 +841,8 @@ func (s *Service) recordHistory(
 	}); err != nil {
 		zerolog.Ctx(ctx).Error().Err(err).
 			Int64("tx_id", curr.ID).
+			Int16("event_type", int16(eventType)).
+			Int16("actor_type", int16(actor.Type)).
 			Msg("failed to record transaction history")
 	}
 }
