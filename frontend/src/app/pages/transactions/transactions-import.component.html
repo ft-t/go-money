@@ -45,22 +45,32 @@
                     </div>
                 }
 
-                <div class="flex flex-row gap-4">
-                    <p-checkbox id="chkbox1" [(ngModel)]="stagingMode" [binary]="true" />
-                    <label for="chkbox1">Staging Mode (manual approval)</label>
+                <div class="flex flex-row flex-wrap gap-4">
+                    <div class="flex items-center gap-2">
+                        <p-checkbox inputId="chkbox1" [(ngModel)]="stagingMode" [binary]="true" />
+                        <label for="chkbox1">Staging Mode (manual approval)</label>
+                    </div>
 
-                    <p-checkbox id="chkbox2" [(ngModel)]="skipRules" [binary]="true" />
-                    <label for="chkbox2">Skip rules (automation)</label>
+                    <div class="flex items-center gap-2">
+                        <p-checkbox inputId="chkbox2" [(ngModel)]="skipRules" [binary]="true" />
+                        <label for="chkbox2">Skip rules (automation)</label>
+                    </div>
 
-                    <p-checkbox id="chkbox3" [(ngModel)]="treatDatesAsUtc" [binary]="true" />
-                    <label for="chkbox3">Treat Dates as UTC</label>
+                    <div class="flex items-center gap-2">
+                        <p-checkbox inputId="chkbox3" [(ngModel)]="treatDatesAsUtc" [binary]="true" />
+                        <label for="chkbox3">Treat Dates as UTC</label>
+                    </div>
 
-                    <p-checkbox id="chkbox4" [(ngModel)]="skipDuplicateReferenceCheck" [binary]="true" />
-                    <label for="chkbox4">Skip Duplicate Reference Check</label>
+                    <div class="flex items-center gap-2">
+                        <p-checkbox inputId="chkbox4" [(ngModel)]="skipDuplicateReferenceCheck" [binary]="true" />
+                        <label for="chkbox4">Skip Duplicate Reference Check</label>
+                    </div>
 
                     @if (!stagingMode) {
-                        <p-checkbox id="chkbox5" [(ngModel)]="skipValidationErrors" [binary]="true" />
-                        <label for="chkbox5">Skip Validation Errors</label>
+                        <div class="flex items-center gap-2">
+                            <p-checkbox inputId="chkbox5" [(ngModel)]="skipValidationErrors" [binary]="true" />
+                            <label for="chkbox5">Skip Validation Errors</label>
+                        </div>
                     }
                 </div>
                 @if (this.isRawTextImport()) {
@@ -119,10 +129,10 @@
                     </div>
                 </div>
 
-                <p-accordion [multiple]="true" [(activeIndex)]="activeIndices">
+                <p-accordion [multiple]="true" [(value)]="activeValues">
                     @for (item of getFilteredTransactionItems(); track item.transaction; let idx = $index) {
-                        <p-accordionTab [ngClass]="{ 'validation-error': item.hasValidationError }">
-                            <ng-template pTemplate="header">
+                        <p-accordion-panel [value]="idx.toString()" [ngClass]="{ 'validation-error': item.hasValidationError }">
+                            <p-accordion-header>
                                 <div class="flex flex-row gap-3 items-center w-full">
                                     <p-checkbox [(ngModel)]="item.selected" [binary]="true" [disabled]="item.duplicateTxID !== undefined || item.hasError" (click)="$event.stopPropagation()" />
                                     <div class="flex flex-col gap-1 flex-1">
@@ -148,15 +158,17 @@
                                         }
                                     </div>
                                 </div>
-                            </ng-template>
-                            @if (item.hasError) {
-                                <div class="p-4">
-                                    <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.transaction.notes }}</div>
-                                </div>
-                            } @else {
-                                <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
-                            }
-                        </p-accordionTab>
+                            </p-accordion-header>
+                            <p-accordion-content>
+                                @if (item.hasError) {
+                                    <div class="p-4">
+                                        <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.transaction.notes }}</div>
+                                    </div>
+                                } @else {
+                                    <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                                }
+                            </p-accordion-content>
+                        </p-accordion-panel>
                     }
                 </p-accordion>
 
