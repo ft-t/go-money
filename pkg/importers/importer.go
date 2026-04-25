@@ -13,6 +13,7 @@ import (
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/transactions"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
@@ -152,6 +153,8 @@ func (i *Importer) Import(
 			Req: item.CreateRequest,
 		})
 	}
+
+	ctx = history.WithActor(ctx, history.ImporterActor(importerSourceName(req.Source)))
 
 	tx := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).Begin()
 	defer tx.Rollback()
@@ -326,4 +329,23 @@ func (i *Importer) ConvertRequestsToTransactions(
 	}
 
 	return result, nil
+}
+
+// Values returned here are persisted to transaction_history.actor_extra.
+// Renaming is a breaking change for existing audit rows and dashboards.
+func importerSourceName(src importv1.ImportSource) string {
+	switch src {
+	case importv1.ImportSource_IMPORT_SOURCE_FIREFLY:
+		return "firefly"
+	case importv1.ImportSource_IMPORT_SOURCE_PRIVATE_24:
+		return "privat24"
+	case importv1.ImportSource_IMPORT_SOURCE_REVOLUT:
+		return "revolut"
+	case importv1.ImportSource_IMPORT_SOURCE_MONOBANK:
+		return "monobank"
+	case importv1.ImportSource_IMPORT_SOURCE_BNP_PARIBAS_POLSKA:
+		return "paribas"
+	default:
+		return "unknown"
+	}
 }

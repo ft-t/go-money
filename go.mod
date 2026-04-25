@@ -3,8 +3,8 @@ module github.com/ft-t/go-money
 go 1.25.0
 
 require (
-	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260419091741-3d39ff52455e.2
-	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260419091741-3d39ff52455e.1
+	buf.build/gen/go/xskydev/go-money-pb/connectrpc/go v1.19.1-20260419172221-160a6a381084.2
+	buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go v1.36.11-20260419172221-160a6a381084.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpcreflect v1.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -36,6 +36,7 @@ require (
 	github.com/tiendc/go-deepcopy v1.6.1
 	github.com/twmb/murmur3 v1.1.8
 	github.com/vadv/gopher-lua-libs v0.7.0
+	github.com/wI2L/jsondiff v0.7.1
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.50.0
 	golang.org/x/net v0.52.0
@@ -106,6 +107,10 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect

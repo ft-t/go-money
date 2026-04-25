@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 	"github.com/go-co-op/gocron/v2"
 	"time"
 )
@@ -85,6 +86,7 @@ func (s *Scheduler) ExecuteTask(
 		return errors.Wrapf(err, "failed to run rule script for rule_id: %d", rule.ID)
 	}
 
+	ctx = history.WithActor(ctx, history.SchedulerActor(rule.ID))
 	_, err = s.cfg.TransactionSvc.CreateRawTransaction(ctx, tx)
 
 	return err

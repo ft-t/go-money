@@ -11,6 +11,7 @@ import (
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
 	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
+	historyv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/history/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
 	usersv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/users/v1"
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
@@ -239,6 +240,14 @@ type AnalyticsSvc interface {
 		ctx context.Context,
 		req *analyticsv1.GetDebitsAndCreditsSummaryRequest,
 	) (*analyticsv1.GetDebitsAndCreditsSummaryResponse, error)
+}
+
+type TransactionHistorySvc interface {
+	List(ctx context.Context, transactionID int64) ([]*database.TransactionHistory, error)
+}
+
+type TransactionHistoryMapper interface {
+	MapTransactionHistoryEvent(row *database.TransactionHistory) *historyv1.TransactionHistoryEvent
 }
 
 type ServiceTokenSvc interface {

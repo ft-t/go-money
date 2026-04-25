@@ -13,6 +13,8 @@ import (
 
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
+	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 )
 
 func TestGrpcMiddleware_Success(t *testing.T) {
@@ -44,6 +46,38 @@ func TestGrpcMiddleware_Success(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
 	})
+}
+
+func TestGrpcMiddleware_SetsUserActor(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ctx := context.TODO()
+
+	parser := NewMockJwtValidator(ctrl)
+	req := connect.NewRequest[any](nil)
+	req.Header().Set("Authorization", "Bearer valid_token")
+
+	jwtData := auth.JwtClaims{
+		UserID:    123,
+		TokenType: "web",
+	}
+
+	parser.EXPECT().ValidateToken(gomock.Any(), "valid_token").Return(&jwtData, nil)
+
+	called := false
+
+	response, err := middlewares.GrpcMiddleware(parser)(func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+		actor, ok := history.ActorFromContext(ctx)
+		assert.True(t, ok)
+		assert.Equal(t, database.TransactionHistoryActorTypeUser, actor.Type)
+		assert.NotNil(t, actor.UserID)
+		assert.EqualValues(t, 123, *actor.UserID)
+		called = true
+		return &connect.Response[any]{}, nil
+	})(ctx, req)
+
+	assert.True(t, called)
+	assert.NoError(t, err)
+	assert.NotNil(t, response)
 }
 
 func TestGrpcMiddleware_Failure(t *testing.T) {
@@ -147,6 +181,38 @@ func TestHTTPAuthMiddleware_Success(t *testing.T) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 		})
 	}
+}
+
+func TestHTTPAuthMiddleware_SetsUserActor(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	parser := NewMockJwtValidator(ctrl)
+
+	claims := auth.JwtClaims{
+		UserID:    789,
+		TokenType: "web",
+	}
+
+	parser.EXPECT().ValidateToken(gomock.Any(), "valid_token").Return(&claims, nil)
+
+	called := false
+	handler := middlewares.HTTPAuthMiddleware(parser, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		actor, ok := history.ActorFromContext(r.Context())
+		assert.True(t, ok)
+		assert.Equal(t, database.TransactionHistoryActorTypeUser, actor.Type)
+		assert.NotNil(t, actor.UserID)
+		assert.EqualValues(t, 789, *actor.UserID)
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("Authorization", "Bearer valid_token")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.True(t, called)
+	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestHTTPAuthMiddleware_Failure(t *testing.T) {

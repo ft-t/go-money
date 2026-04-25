@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/ft-t/go-money/pkg/auth"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 )
 
 var GrpcMiddleware = func(jwtParser JwtValidator) connect.UnaryInterceptorFunc {
@@ -25,6 +26,9 @@ var GrpcMiddleware = func(jwtParser JwtValidator) connect.UnaryInterceptorFunc {
 			}
 
 			ctx = WithContext(ctx, *parsed)
+			if parsed.UserID != 0 {
+				ctx = history.WithActor(ctx, history.UserActor(parsed.UserID))
+			}
 
 			return next(ctx, request)
 		}
@@ -68,6 +72,9 @@ func HTTPAuthMiddleware(jwtParser JwtValidator, next http.Handler) http.Handler 
 		}
 
 		ctx := WithContext(r.Context(), *claims)
+		if claims.UserID != 0 {
+			ctx = history.WithActor(ctx, history.UserActor(claims.UserID))
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

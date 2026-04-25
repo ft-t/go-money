@@ -12,6 +12,7 @@ import (
 	"github.com/ft-t/go-money/pkg/boilerplate"
 	"github.com/ft-t/go-money/pkg/configuration"
 	"github.com/ft-t/go-money/pkg/database"
+	"github.com/ft-t/go-money/pkg/transactions/history"
 	"github.com/ft-t/go-money/pkg/transactions/validation"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
@@ -40,6 +41,7 @@ type ServiceConfig struct {
 	ValidationSvc        ValidationSvc
 	DoubleEntry          DoubleEntrySvc
 	AccountSvc           AccountSvc
+	HistorySvc           HistorySvc
 }
 
 func NewService(
@@ -382,12 +384,20 @@ func (s *Service) CreateBulkInternal(
 		if err := tx.CreateInBatches(toCreate, boilerplate.DefaultBatchSize).Error; err != nil {
 			return nil, errors.WithStack(err)
 		}
+		for _, t := range toCreate {
+			s.recordHistory(ctx, tx, t, nil, database.TransactionHistoryEventTypeCreated)
+		}
 	}
 
+	origByID := make(map[int64]*database.Transaction, len(originalTxs))
+	for _, o := range originalTxs {
+		origByID[o.ID] = o
+	}
 	for _, newTx := range toUpdate {
 		if err := tx.Updates(newTx).Error; err != nil {
 			return nil, errors.WithStack(err)
 		}
+		s.recordHistory(ctx, tx, newTx, origByID[newTx.ID], database.TransactionHistoryEventTypeUpdated)
 	}
 
 	created := append(transactionWithRules, transactionWithoutRules...)
@@ -727,11 +737,21 @@ func (s *Service) BulkSetCategory(
 	defer tx.Rollback()
 
 	for _, a := range assignments {
+		var prev database.Transaction
+		if err := tx.Where("id = ? AND deleted_at IS NULL", a.TransactionID).First(&prev).Error; err != nil {
+			return errors.Wrapf(err, "failed to set category on transaction %d: load", a.TransactionID)
+		}
+
+		next := prev
+		next.CategoryID = a.CategoryID
+
 		if err := tx.Model(&database.Transaction{}).
 			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
 			Update("category_id", a.CategoryID).Error; err != nil {
 			return errors.Wrapf(err, "failed to set category on transaction %d", a.TransactionID)
 		}
+
+		s.recordHistoryBulk(ctx, tx, &next, &prev, "set_category")
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -753,12 +773,22 @@ func (s *Service) BulkSetTags(
 	defer tx.Rollback()
 
 	for _, a := range assignments {
+		var prev database.Transaction
+		if err := tx.Where("id = ? AND deleted_at IS NULL", a.TransactionID).First(&prev).Error; err != nil {
+			return errors.Wrapf(err, "failed to set tags on transaction %d: load", a.TransactionID)
+		}
+
 		tagIDs := pq.Int32Array(a.TagIDs)
+		next := prev
+		next.TagIDs = tagIDs
+
 		if err := tx.Model(&database.Transaction{}).
 			Where("id = ? AND deleted_at IS NULL", a.TransactionID).
 			Update("tag_ids", tagIDs).Error; err != nil {
 			return errors.Wrapf(err, "failed to set tags on transaction %d", a.TransactionID)
 		}
+
+		s.recordHistoryBulk(ctx, tx, &next, &prev, "set_tags")
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -785,6 +815,7 @@ func (s *Service) DeleteTransaction(
 		if err := tx.Delete(txToDelete).Error; err != nil {
 			return nil, errors.Wrapf(err, "failed to delete transaction id %d", txToDelete.ID)
 		}
+		s.recordHistory(ctx, tx, txToDelete, nil, database.TransactionHistoryEventTypeDeleted)
 	}
 
 	if err := s.cfg.DoubleEntry.DeleteByTransactionIDs(ctx, tx, req.Ids); err != nil {
@@ -802,4 +833,92 @@ func (s *Service) DeleteTransaction(
 	return &transactionsv1.DeleteTransactionsResponse{
 		DeletedCount: int32(len(selectedTxs)),
 	}, nil
+}
+
+func (s *Service) recordHistory(
+	ctx context.Context,
+	tx *gorm.DB,
+	curr *database.Transaction,
+	prev *database.Transaction,
+	eventType database.TransactionHistoryEventType,
+) {
+	if s.cfg.HistorySvc == nil {
+		return
+	}
+	actor, ok := history.ActorFromContext(ctx)
+	if ok {
+		if err := s.cfg.HistorySvc.Record(ctx, tx, history.RecordRequest{
+			Tx:        curr,
+			Previous:  prev,
+			EventType: eventType,
+			Actor:     actor,
+		}); err != nil {
+			zerolog.Ctx(ctx).Error().Err(err).
+				Int64("tx_id", curr.ID).
+				Int16("event_type", int16(eventType)).
+				Int16("actor_type", int16(actor.Type)).
+				Msg("failed to record transaction history")
+		}
+	} else {
+		zerolog.Ctx(ctx).Warn().
+			Int64("tx_id", curr.ID).
+			Int16("event_type", int16(eventType)).
+			Msg("history actor missing from context; skipping history record")
+	}
+
+	for _, ev := range curr.RuleAppliedEvents {
+		ruleEvent := ev
+		if ruleEvent.Before != nil {
+			ruleEvent.Before.ID = curr.ID
+		}
+		if ruleEvent.After != nil {
+			ruleEvent.After.ID = curr.ID
+		}
+		if err := s.cfg.HistorySvc.Record(ctx, tx, history.RecordRequest{
+			Tx:        ruleEvent.After,
+			Previous:  ruleEvent.Before,
+			EventType: database.TransactionHistoryEventTypeRuleApplied,
+			Actor:     history.RuleActor(ruleEvent.RuleID),
+		}); err != nil {
+			zerolog.Ctx(ctx).Error().Err(err).
+				Int64("tx_id", curr.ID).
+				Int32("rule_id", ruleEvent.RuleID).
+				Msg("failed to record rule-applied transaction history")
+		}
+	}
+	curr.RuleAppliedEvents = nil
+}
+
+func (s *Service) recordHistoryBulk(
+	ctx context.Context,
+	tx *gorm.DB,
+	curr *database.Transaction,
+	prev *database.Transaction,
+	op string,
+) {
+	if s.cfg.HistorySvc == nil {
+		return
+	}
+
+	actor, ok := history.ActorFromContext(ctx)
+	if !ok || actor.UserID == nil {
+		zerolog.Ctx(ctx).Warn().
+			Int64("tx_id", curr.ID).
+			Str("op", op).
+			Msg("bulk op without user actor; skipping history record")
+		return
+	}
+
+	bulkActor := history.BulkActor(*actor.UserID, op)
+	if err := s.cfg.HistorySvc.Record(ctx, tx, history.RecordRequest{
+		Tx:        curr,
+		Previous:  prev,
+		EventType: database.TransactionHistoryEventTypeUpdated,
+		Actor:     bulkActor,
+	}); err != nil {
+		zerolog.Ctx(ctx).Error().Err(err).
+			Int64("tx_id", curr.ID).
+			Str("op", op).
+			Msg("failed to record bulk history")
+	}
 }

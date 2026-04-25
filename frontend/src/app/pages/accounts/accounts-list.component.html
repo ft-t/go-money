@@ -83,8 +83,10 @@
                         <p-button icon="pi pi-refresh" severity="secondary"
                                   pTooltip="Refresh table" tooltipPosition="top"
                                   (click)="refreshTable()" />
-                        <p-button label="Create new account" class="p-button-link"
+                        <p-button label="Create new account" class="p-button-link" severity="info"
                                   (click)="this.router.navigate(['/accounts', 'new'], { queryParams: { returnUrl: currentReturnUrl } })" />
+                        <p-button label="Create new transaction" class="p-button-link" severity="success"
+                                  (click)="this.router.navigate(['/transactions', 'new'], { queryParams: { returnUrl: currentReturnUrl } })" />
                     </div>
                 </div>
             </div>

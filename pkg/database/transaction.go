@@ -48,6 +48,14 @@ type Transaction struct {
 	ReferenceNumber          *string
 	InternalReferenceNumbers pq.StringArray `gorm:"type:text[]"`
 	CategoryID               *int32
+
+	RuleAppliedEvents []RuleAppliedEvent `gorm:"-" copy:"-"`
+}
+
+type RuleAppliedEvent struct {
+	RuleID int32
+	Before *Transaction
+	After  *Transaction
 }
 
 type TransactionFlags int64

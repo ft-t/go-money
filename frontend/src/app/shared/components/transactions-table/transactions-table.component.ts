@@ -419,8 +419,8 @@ export class TransactionsTableComponent implements OnInit, OnChanges, AfterViewI
         }
     }
 
-    getTransactionLink(id: number): string {
-        return this.router.createUrlTree(['/', 'transactions', 'edit', id.toString()]).toString();
+    getTransactionLink(id: number): (string | number)[] {
+        return ['/', 'transactions', 'edit', id.toString()];
     }
 
     getAmountColor(transaction: Transaction): string {
