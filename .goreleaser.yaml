@@ -1,0 +1,82 @@
+version: 2
+project_name: go-money
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: server
+    main: ./cmd/server
+    binary: go-money-server
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/ft-t/go-money/pkg/boilerplate.version={{.Version}}
+      - -X github.com/ft-t/go-money/pkg/boilerplate.commitSHA={{.ShortCommit}}
+
+  - id: mcp-client
+    main: ./cmd/mcp-client
+    binary: go-money-mcp-client
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commitSHA={{.ShortCommit}}
+
+archives:
+  - id: server
+    ids: [server]
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "go-money-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE*
+      - README.md
+  - id: mcp-client
+    ids: [mcp-client]
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "go-money-mcp-client_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE*
+      - README.md
+      - src: docs/mcp/client-setup.md
+        dst: MCP-CLIENT-SETUP.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-SNAPSHOT-{{ .ShortCommit }}"
+
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: ft-t
+    name: go-money
+  mode: append
+  prerelease: auto

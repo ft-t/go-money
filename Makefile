@@ -46,3 +46,11 @@ mcp-client:
 .PHONY: key-gen
 key-gen:
 	go build -o bin/jwt-key-generator ./cmd/key-gen
+
+.PHONY: goreleaser-snapshot
+goreleaser-snapshot:
+	goreleaser release --snapshot --clean --skip=publish
+
+.PHONY: goreleaser-check
+goreleaser-check:
+	goreleaser check

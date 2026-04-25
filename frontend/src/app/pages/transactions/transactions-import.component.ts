@@ -43,12 +43,12 @@ interface TransactionItem {
     templateUrl: './transactions-import.component.html',
     styles: [
         `
-            :host ::ng-deep .validation-error .p-accordiontab-header {
+            :host ::ng-deep .validation-error .p-accordionheader {
                 border-left: 4px solid #ef4444 !important;
                 background-color: #fef2f2 !important;
             }
 
-            :host ::ng-deep .validation-error .p-accordiontab-header:hover {
+            :host ::ng-deep .validation-error .p-accordionheader:hover {
                 background-color: #fee2e2 !important;
             }
         `
@@ -77,7 +77,7 @@ export class TransactionsImportComponent implements OnInit {
     public showReview: boolean = false;
     public hideDuplicates: boolean = false;
     public showErrorsOnly: boolean = false;
-    public activeIndices: number[] = [];
+    public activeValues: string[] = [];
     public selectedFiles: File[] = [];
 
     @ViewChildren('editor') editors: QueryList<TransactionEditorComponent> = new QueryList();
@@ -422,10 +422,10 @@ export class TransactionsImportComponent implements OnInit {
         });
 
         if (hasValidationErrors) {
-            this.activeIndices = [];
+            this.activeValues = [];
             filteredItems.forEach((item, index) => {
                 if (item.hasValidationError) {
-                    this.activeIndices.push(index);
+                    this.activeValues.push(index.toString());
                 }
             });
 
