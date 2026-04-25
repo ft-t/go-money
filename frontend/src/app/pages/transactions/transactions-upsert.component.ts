@@ -50,6 +50,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { SnippetSpotlightComponent } from '../../shared/components/snippet-spotlight/snippet-spotlight.component';
 import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
+import { TransactionHistoryTimelineComponent } from './history/transaction-history-timeline.component';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -78,7 +79,8 @@ type possibleDestination = 'source' | 'destination' | 'fx';
         Tooltip,
         Dialog,
         Message,
-        SnippetSpotlightComponent
+        SnippetSpotlightComponent,
+        TransactionHistoryTimelineComponent
     ]
 })
 export class TransactionUpsertComponent implements OnInit, OnDestroy {
@@ -324,7 +326,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     getSaveButtonLabel(): string {
-        return 'Save All';
+        return this.targetTransaction.length > 1 ? 'Save All' : 'Save';
     }
 
     getSaveButtonDescription(): string {

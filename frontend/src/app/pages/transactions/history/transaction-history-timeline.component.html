@@ -16,31 +16,39 @@
             </span>
         </ng-template>
         <ng-template #content let-event>
-            <p-card class="mb-3">
-                <div class="flex flex-col gap-2">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="font-semibold">{{ eventTypeLabel(event.eventType) }}</span>
-                        <span class="text-surface-500">by</span>
-                        <span class="font-medium">{{ actorLabel(event) }}</span>
-                    </div>
-                    @if (diffOps(event).length > 0) {
-                        <div class="flex flex-col gap-1">
-                            @for (op of diffOps(event); track $index) {
-                                <div class="flex items-start gap-2 text-sm">
-                                    <p-tag [value]="op.op" [severity]="opSeverity(op.op)" />
-                                    <span class="font-mono text-surface-700 dark:text-surface-200">{{ opPathDisplay(op.path) }}</span>
-                                    @if (op.value !== undefined && op.op !== 'remove') {
-                                        <span class="text-surface-500">=</span>
-                                        <span class="font-mono break-all">{{ opValueDisplay(op.value) }}</span>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    } @else if (event.eventType !== 1) {
-                        <div class="text-sm text-surface-500">No field changes recorded.</div>
+            <div class="flex flex-col gap-1.5 pt-1">
+                <div class="flex items-center gap-2 flex-wrap leading-8">
+                    <span class="font-semibold">{{ eventTypeLabel(event.eventType) }}</span>
+                    <span class="text-surface-500">by</span>
+                    @switch (event.actorType) {
+                        @case (ActorType.RULE) {
+                            <a class="font-medium text-primary-600 dark:text-primary-400 hover:underline" [routerLink]="ruleLink(event.actorRuleId)">{{ ruleName(event.actorRuleId) }}</a>
+                        }
+                        @case (ActorType.SCHEDULER) {
+                            <a class="font-medium text-primary-600 dark:text-primary-400 hover:underline" [routerLink]="scheduleLink(event.actorRuleId)">{{ scheduleName(event.actorRuleId) }}</a>
+                        }
+                        @default {
+                            <span class="font-medium">{{ actorLabel(event) }}</span>
+                        }
                     }
                 </div>
-            </p-card>
+                @if (diffOps(event).length > 0) {
+                    <div class="flex flex-col gap-1">
+                        @for (op of diffOps(event); track $index) {
+                            <div class="flex items-start gap-2 text-sm">
+                                <p-tag [value]="op.op" [severity]="opSeverity(op.op)" />
+                                <span class="font-mono text-surface-700 dark:text-surface-200">{{ opPathDisplay(op.path) }}</span>
+                                @if (op.value !== undefined && op.op !== 'remove') {
+                                    <span class="text-surface-500">=</span>
+                                    <span class="font-mono break-all">{{ opValueDisplay(op.value) }}</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                } @else if (event.eventType !== 1) {
+                    <div class="text-sm text-surface-500">No field changes recorded.</div>
+                }
+            </div>
         </ng-template>
     </p-timeline>
 }

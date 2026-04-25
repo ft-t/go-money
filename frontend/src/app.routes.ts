@@ -19,7 +19,6 @@ import { TagsDetailComponent } from './app/pages/tags/tags-detail.component';
 import { RuleListComponent } from './app/pages/rules/rule-list.component';
 import { RulesUpsertComponent } from './app/pages/rules/rules-upsert.component';
 import { DashboardComponent } from './app/pages/dashboard/dashboard.component';
-import { TransactionsDetailsComponent } from './app/pages/transactions/transactions-details.component';
 import { CategoriesListComponent } from './app/pages/categories/categories-list.component';
 import { CategoriesUpsertComponent } from './app/pages/categories/categories-upsert.component';
 import { CategoriesDetailComponent } from './app/pages/categories/categories-detail.component';
@@ -175,11 +174,6 @@ export const appRoutes: Routes = [
             {
                 path: 'transactions/import',
                 component: TransactionsImportComponent,
-                data: {}
-            },
-            {
-                path: 'transactions/:id',
-                component: TransactionsDetailsComponent,
                 data: {}
             },
             {

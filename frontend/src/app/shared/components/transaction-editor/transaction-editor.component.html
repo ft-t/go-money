@@ -174,7 +174,7 @@
                     <label for="accountName">Transaction title *</label>
 
                     <p-autocomplete formControlName="title" [suggestions]="titleAutoComplete"
-                                    (completeMethod)="search($event)"></p-autocomplete>
+                                    (completeMethod)="search($event)" fluid></p-autocomplete>
 
                     @if (title.invalid && (title.dirty || title.touched)) {
                         <p-message severity="error" variant="simple" size="small">Title is required</p-message>

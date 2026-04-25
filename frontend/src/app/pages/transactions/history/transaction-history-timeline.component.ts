@@ -1,16 +1,20 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { Timeline } from 'primeng/timeline';
-import { Card } from 'primeng/card';
 import { Tag } from 'primeng/tag';
+import { RouterLink } from '@angular/router';
 import {
     TransactionHistoryActorType,
     TransactionHistoryEvent,
     TransactionHistoryEventType
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/history/v1/history_pb';
+import { RulesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
+import { Rule, ScheduleRule } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/rule_pb';
 import { TransactionHistoryClient } from '../../../services/transaction-history.service';
 import { ErrorHelper } from '../../../helpers/error.helper';
 import { TimestampHelper } from '../../../helpers/timestamp.helper';
+import { TRANSPORT_TOKEN } from '../../../consts/transport';
+import { createClient, Transport } from '@connectrpc/connect';
 
 interface DiffOp {
     op: string;
@@ -23,19 +27,32 @@ type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contr
 @Component({
     selector: 'app-transaction-history-timeline',
     standalone: true,
-    imports: [Timeline, Card, Tag],
+    imports: [Timeline, Tag, RouterLink],
     templateUrl: './transaction-history-timeline.component.html'
 })
-export class TransactionHistoryTimelineComponent implements OnChanges {
+export class TransactionHistoryTimelineComponent implements OnChanges, OnInit {
     @Input() transactionId!: bigint;
 
     public events: TransactionHistoryEvent[] = [];
     public loading = false;
 
+    private rulesById = new Map<number, Rule>();
+    private scheduleRulesById = new Map<number, ScheduleRule>();
+    private rulesService;
+
+    public readonly ActorType = TransactionHistoryActorType;
+
     constructor(
+        @Inject(TRANSPORT_TOKEN) private readonly transport: Transport,
         private readonly historyClient: TransactionHistoryClient,
         private readonly messageService: MessageService
-    ) {}
+    ) {
+        this.rulesService = createClient(RulesService, this.transport);
+    }
+
+    async ngOnInit() {
+        await Promise.all([this.fetchRules(), this.fetchScheduleRules()]);
+    }
 
     ngOnChanges(changes: SimpleChanges) {
         if (changes['transactionId'] && this.transactionId !== undefined && this.transactionId !== null) {
@@ -46,7 +63,8 @@ export class TransactionHistoryTimelineComponent implements OnChanges {
     private async fetch() {
         this.loading = true;
         try {
-            this.events = await this.historyClient.listHistory(this.transactionId);
+            const events = await this.historyClient.listHistory(this.transactionId);
+            this.events = [...events].reverse();
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
             this.events = [];
@@ -55,14 +73,58 @@ export class TransactionHistoryTimelineComponent implements OnChanges {
         }
     }
 
+    private async fetchRules() {
+        try {
+            const resp = await this.rulesService.listRules({});
+            for (const r of resp.rules || []) {
+                this.rulesById.set(r.id, r);
+            }
+        } catch {
+            // silent — actor link just falls back to "Rule #N"
+        }
+    }
+
+    private async fetchScheduleRules() {
+        try {
+            const resp = await this.rulesService.listScheduleRules({});
+            for (const r of resp.rules || []) {
+                this.scheduleRulesById.set(r.id, r);
+            }
+        } catch {
+            // silent — actor link falls back to "Scheduled #N"
+        }
+    }
+
+    ruleName(id: number | undefined): string {
+        if (id === undefined) return 'Rule';
+        const r = this.rulesById.get(id);
+        return r?.title ? r.title : `Rule #${id}`;
+    }
+
+    ruleLink(id: number | undefined): (string | number)[] | null {
+        if (id === undefined) return null;
+        return ['/', 'rules', 'edit', id.toString()];
+    }
+
+    scheduleName(id: number | undefined): string {
+        if (id === undefined) return 'Scheduler';
+        const r = this.scheduleRulesById.get(id);
+        return r?.title ? r.title : `Scheduled #${id}`;
+    }
+
+    scheduleLink(id: number | undefined): (string | number)[] | null {
+        if (id === undefined) return null;
+        return ['/', 'schedules', 'edit', id.toString()];
+    }
+
     actorLabel(event: TransactionHistoryEvent): string {
         switch (event.actorType) {
             case TransactionHistoryActorType.USER:
                 return event.actorUserId !== undefined ? `User #${event.actorUserId}` : 'User';
             case TransactionHistoryActorType.RULE:
-                return event.actorRuleId !== undefined ? `Rule #${event.actorRuleId}` : 'Rule';
+                return this.ruleName(event.actorRuleId);
             case TransactionHistoryActorType.SCHEDULER:
-                return event.actorRuleId !== undefined ? `Scheduled #${event.actorRuleId}` : 'Scheduler';
+                return this.scheduleName(event.actorRuleId);
             case TransactionHistoryActorType.IMPORTER:
                 return `Importer: ${event.actorExtra || 'unknown'}`;
             case TransactionHistoryActorType.BULK:
