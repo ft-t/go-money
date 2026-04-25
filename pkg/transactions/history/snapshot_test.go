@@ -81,6 +81,30 @@ func TestDiff_Empty(t *testing.T) {
 	assert.Nil(t, diff)
 }
 
+func TestSnapshot_Success_AllNullablesFilled(t *testing.T) {
+	tx := &database.Transaction{
+		ID:                              5,
+		SourceAmount:                    decimal.NewNullDecimal(decimal.NewFromInt(10)),
+		SourceAmountInBaseCurrency:      decimal.NewNullDecimal(decimal.NewFromInt(11)),
+		FxSourceAmount:                  decimal.NewNullDecimal(decimal.NewFromInt(12)),
+		DestinationAmount:               decimal.NewNullDecimal(decimal.NewFromInt(13)),
+		DestinationAmountInBaseCurrency: decimal.NewNullDecimal(decimal.NewFromInt(14)),
+	}
+	tx.DeletedAt.Valid = true
+	tx.DeletedAt.Time = time.Date(2026, 4, 25, 0, 0, 0, 0, time.UTC)
+
+	snap, err := history.Snapshot(tx)
+	require.NoError(t, err)
+
+	assert.Equal(t, "10", snap["source_amount"])
+	assert.Equal(t, "12", snap["fx_source_amount"])
+	assert.Equal(t, "13", snap["destination_amount"])
+	_, ok := snap["source_amount_in_base_currency"]
+	assert.False(t, ok)
+	_, ok = snap["destination_amount_in_base_currency"]
+	assert.False(t, ok)
+}
+
 func TestSnapshot_Success_TransactionDateOnlyFormatStable(t *testing.T) {
 	day := time.Date(2026, 4, 25, 0, 0, 0, 0, time.UTC)
 	dayWithTime := time.Date(2026, 4, 25, 14, 26, 57, 158_000_000, time.UTC)
