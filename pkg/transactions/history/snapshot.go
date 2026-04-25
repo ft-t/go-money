@@ -92,7 +92,7 @@ func toMarshallable(tx *database.Transaction) marshallableTx {
 		Notes:                    tx.Notes,
 		Extra:                    tx.Extra,
 		TransactionDateTime:      tx.TransactionDateTime,
-		TransactionDateOnly:      tx.TransactionDateOnly,
+		TransactionDateOnly:      tx.TransactionDateOnly.Format("2006-01-02"),
 		TransactionType:          int32(tx.TransactionType),
 		Flags:                    int64(tx.Flags),
 		VoidedByTransactionID:    tx.VoidedByTransactionID,

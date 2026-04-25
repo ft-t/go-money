@@ -80,3 +80,20 @@ func TestDiff_Empty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, diff)
 }
+
+func TestSnapshot_Success_TransactionDateOnlyFormatStable(t *testing.T) {
+	day := time.Date(2026, 4, 25, 0, 0, 0, 0, time.UTC)
+	dayWithTime := time.Date(2026, 4, 25, 14, 26, 57, 158_000_000, time.UTC)
+
+	prev, err := history.Snapshot(&database.Transaction{ID: 1, TransactionDateOnly: day})
+	require.NoError(t, err)
+	curr, err := history.Snapshot(&database.Transaction{ID: 1, TransactionDateOnly: dayWithTime})
+	require.NoError(t, err)
+
+	assert.Equal(t, "2026-04-25", prev["transaction_date_only"])
+	assert.Equal(t, "2026-04-25", curr["transaction_date_only"])
+
+	diff, err := history.Diff(prev, curr)
+	require.NoError(t, err)
+	assert.Nil(t, diff)
+}
