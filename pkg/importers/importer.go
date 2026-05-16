@@ -123,6 +123,23 @@ func (i *Importer) CheckDuplicates(
 		}
 	}
 
+	for _, chunk := range lo.Chunk(allRefs, boilerplate.DefaultBatchSize) {
+		var ignoredRefs []string
+
+		if err := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+			Model(&database.ImportIgnoredTransaction{}).
+			Where("ref_key = ANY(?)", pq.Array(chunk)).
+			Pluck("ref_key", &ignoredRefs).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to check ignored transactions")
+		}
+
+		for _, ref := range ignoredRefs {
+			if item, exists := refToItem[ref]; exists {
+				item.Ignored = true
+			}
+		}
+	}
+
 	return items, nil
 }
 

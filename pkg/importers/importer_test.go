@@ -3,6 +3,7 @@ package importers_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
@@ -660,5 +661,38 @@ func TestCheckDuplicates(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "failed to check existing transactions")
+	})
+}
+
+func TestCheckDuplicatesIgnored(t *testing.T) {
+	t.Run("flags ignored reference", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		ignored := &database.ImportIgnoredTransaction{
+			ImportSource: importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			RefKey:       "test_ref_ignored",
+			CreatedAt:    time.Now(),
+		}
+		assert.NoError(t, gormDB.Create(&ignored).Error)
+
+		requests := []*transactionsv1.CreateTransactionRequest{
+			{
+				Title:                    "Transaction 1",
+				InternalReferenceNumbers: []string{"test_ref_ignored"},
+			},
+		}
+
+		result, err := imp.CheckDuplicates(context.TODO(), requests, false)
+		assert.NoError(t, err)
+		assert.Len(t, result, 1)
+		assert.True(t, result[0].Ignored)
+		assert.Nil(t, result[0].DuplicationTransactionID)
 	})
 }
