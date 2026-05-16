@@ -630,3 +630,4 @@ git commit -S -m "docs(import): document ignored-transactions skip feature"
 
 - Misclick on "Skip & remember" is irreversible from the UI (no un-ignore v1). The RPC is idempotent; reversal needs `delete from import_ignored_transactions where ref_key = '<key>'`. Accepted per design.
 - `CheckDuplicates` ignored lookup matches by `ref_key` only (no source filter) — intentional, mirrors the existing `internal_reference_numbers` overlap query. Reference keys embed the source (`{ImportSource}_{hash}`), so cross-source collision is effectively impossible.
+- Direct-import (non-staging) `ImportTransactionsResponse.DuplicateCount` conflates true ref-collision duplicates and user-ignored rows — both are skipped and counted together. No separate `ignored_count` in v1 (would require an `ImportTransactionsResponse` proto field, out of scope). Accepted: the staging/parse path surfaces `ParsedTransaction.ignored` distinctly, and the direct path has no per-row UI consumer.
