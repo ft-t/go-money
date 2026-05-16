@@ -373,6 +373,88 @@ func TestParse(t *testing.T) {
 	})
 }
 
+func TestConvertRequestsToTransactions_Ignored_Success(t *testing.T) {
+	t.Run("propagates ignored flag", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			MapperSvc: mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+			Return(&gomoneypbv1.Transaction{Id: 1})
+
+		requests := []*importers.DeduplicationItem{
+			{
+				CreateRequest: &transactionsv1.CreateTransactionRequest{
+					Title:                    "Ignored Transaction",
+					InternalReferenceNumbers: []string{"ref_ignored"},
+				},
+				Ignored: true,
+			},
+		}
+
+		result, err := imp.ConvertRequestsToTransactions(context.TODO(), requests)
+		assert.NoError(t, err)
+		assert.Len(t, result, 1)
+		assert.True(t, result[0].Ignored)
+		assert.Nil(t, result[0].DuplicateTransactionId)
+	})
+
+	t.Run("propagates ignored flag on converted transaction", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		txSvc.EXPECT().ConvertRequestToTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&database.Transaction{ID: 1}, nil)
+		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+			Return(&gomoneypbv1.Transaction{Id: 1})
+
+		requests := []*importers.DeduplicationItem{
+			{
+				CreateRequest: &transactionsv1.CreateTransactionRequest{
+					Title:                    "Ignored Transaction",
+					InternalReferenceNumbers: []string{"ref_ignored"},
+					Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+						Expense: &transactionsv1.Expense{
+							SourceAccountId:      1,
+							SourceAmount:         "-100",
+							SourceCurrency:       "USD",
+							DestinationAccountId: 2,
+							DestinationAmount:    "100",
+							DestinationCurrency:  "USD",
+						},
+					},
+				},
+				Ignored: true,
+			},
+		}
+
+		result, err := imp.ConvertRequestsToTransactions(context.TODO(), requests)
+		assert.NoError(t, err)
+		assert.Len(t, result, 1)
+		assert.True(t, result[0].Ignored)
+		assert.Nil(t, result[0].DuplicateTransactionId)
+	})
+}
+
 func TestParseInternal_Failure(t *testing.T) {
 	t.Run("convert request to transaction error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

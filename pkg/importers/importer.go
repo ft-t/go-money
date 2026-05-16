@@ -161,7 +161,7 @@ func (i *Importer) Import(
 	var duplicateCount int
 
 	for _, item := range parsed {
-		if item.DuplicationTransactionID != nil {
+		if item.DuplicationTransactionID != nil || item.Ignored {
 			duplicateCount += 1
 			continue
 		}
@@ -318,6 +318,7 @@ func (i *Importer) ConvertRequestsToTransactions(
 		if !req.CreateRequest.HasTransaction() { // it means parsing failed, but we want to show raw transaction to user, so user can decide what to do
 			result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
 				DuplicateTransactionId: req.DuplicationTransactionID,
+				Ignored:                req.Ignored,
 				Transaction: i.cfg.MapperSvc.MapTransaction(ctx, &database.Transaction{
 					Title:           req.CreateRequest.Title,
 					Notes:           req.CreateRequest.Notes,
@@ -342,6 +343,7 @@ func (i *Importer) ConvertRequestsToTransactions(
 		result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
 			Transaction:            i.cfg.MapperSvc.MapTransaction(ctx, converted),
 			DuplicateTransactionId: req.DuplicationTransactionID,
+			Ignored:                req.Ignored,
 		})
 	}
 
