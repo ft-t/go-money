@@ -76,6 +76,7 @@ type UserSvc interface {
 type ImportSvc interface {
 	Import(ctx context.Context, req *importv1.ImportTransactionsRequest) (*importv1.ImportTransactionsResponse, error)
 	Parse(ctx context.Context, req *importv1.ParseTransactionsRequest) (*importv1.ParseTransactionsResponse, error)
+	MarkTransactionsIgnored(ctx context.Context, req *importv1.MarkTransactionsIgnoredRequest) (*importv1.MarkTransactionsIgnoredResponse, error)
 }
 
 type AccountSvc interface {
