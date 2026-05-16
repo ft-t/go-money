@@ -39,6 +39,11 @@ export class EnumService {
                 name: 'BNP Paribas Polska',
                 value: ImportSource.BNP_PARIBAS_POLSKA,
                 icon: ''
+            },
+            {
+                name: 'mBank',
+                value: ImportSource.MBANK,
+                icon: ''
             }
         ];
     }

@@ -61,8 +61,10 @@ func TestActorFromContext_Failure_Empty(t *testing.T) {
 	assert.False(t, ok)
 }
 
+type wrongContextKey struct{}
+
 func TestActorFromContext_Failure_WrongType(t *testing.T) {
-	ctx := context.WithValue(context.Background(), struct{}{}, "not-an-actor")
+	ctx := context.WithValue(context.Background(), wrongContextKey{}, "not-an-actor")
 
 	_, ok := history.ActorFromContext(ctx)
 	assert.False(t, ok)

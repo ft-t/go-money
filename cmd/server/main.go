@@ -277,6 +277,7 @@ func main() {
 		importers.NewMono(baseParser),
 		importers.NewParibas(baseParser),
 		importers.NewRevolut(baseParser),
+		importers.NewMbank(baseParser),
 	)
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)

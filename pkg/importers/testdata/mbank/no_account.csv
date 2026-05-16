@@ -1,0 +1,26 @@
+﻿mBank S.A. Bankowość Detaliczna;
+		Skrytka Pocztowa 2108;
+		90-959 Łódź 2;
+		www.mBank.pl;
+		mLinia: 801 300 800;
+		+48 (42) 6 300 800;
+		;
+;
+#Klient;
+JAN KOWALSKI;
+;
+Lista operacji;
+;
+#Za okres:;
+16.05.2025;16.05.2026;
+;
+#zgodnie z wybranymi filtrami wyszukiwania;
+      #dla rachunków:;
+      ;
+      #Waluta;#Wpływy;#Wydatki;
+PLN;2 165,00;-689,91;
+      ;
+#Data operacji;#Opis operacji;#Rachunek;#Kategoria;#Kwota;
+2026-05-16;"FAKE NO ACCOUNT";"mKonto Intensive 0000 ... 0001";"Bez kategorii";-12,34 PLN;;
+
+

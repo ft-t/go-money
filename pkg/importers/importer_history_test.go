@@ -28,6 +28,7 @@ func TestImport_SetsImporterActor(t *testing.T) {
 		{"revolut", importv1.ImportSource_IMPORT_SOURCE_REVOLUT, "revolut"},
 		{"monobank", importv1.ImportSource_IMPORT_SOURCE_MONOBANK, "monobank"},
 		{"paribas", importv1.ImportSource_IMPORT_SOURCE_BNP_PARIBAS_POLSKA, "paribas"},
+		{"mbank", importv1.ImportSource_IMPORT_SOURCE_MBANK, "mbank"},
 	}
 
 	for _, tc := range cases {

@@ -345,6 +345,8 @@ func importerSourceName(src importv1.ImportSource) string {
 		return "monobank"
 	case importv1.ImportSource_IMPORT_SOURCE_BNP_PARIBAS_POLSKA:
 		return "paribas"
+	case importv1.ImportSource_IMPORT_SOURCE_MBANK:
+		return "mbank"
 	default:
 		return "unknown"
 	}
