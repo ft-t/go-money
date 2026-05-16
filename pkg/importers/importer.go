@@ -22,6 +22,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+var ErrNoReferenceNumbers = errors.New("no valid reference numbers to ignore")
+
 type Importer struct {
 	cfg             *ImporterConfig
 	implementations map[importv1.ImportSource]Implementation
@@ -171,7 +173,7 @@ func (i *Importer) MarkTransactionsIgnored(
 	}
 
 	if len(rows) == 0 {
-		return nil, errors.New("no valid reference numbers to ignore")
+		return nil, ErrNoReferenceNumbers
 	}
 
 	res := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).

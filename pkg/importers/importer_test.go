@@ -879,6 +879,7 @@ func TestMarkTransactionsIgnored_Failure(t *testing.T) {
 			ReferenceNumbers: []string{},
 		})
 		require.Error(t, err)
+		require.ErrorIs(t, err, importers.ErrNoReferenceNumbers)
 		assert.Nil(t, resp)
 
 		var count int64
@@ -901,6 +902,7 @@ func TestMarkTransactionsIgnored_Failure(t *testing.T) {
 			ReferenceNumbers: []string{"  ", ""},
 		})
 		require.Error(t, err)
+		require.ErrorIs(t, err, importers.ErrNoReferenceNumbers)
 		assert.Nil(t, resp)
 
 		var count int64
