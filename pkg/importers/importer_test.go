@@ -13,7 +13,9 @@ import (
 	"github.com/ft-t/go-money/pkg/importers"
 	"github.com/ft-t/go-money/pkg/testingutils"
 	"github.com/golang/mock/gomock"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestImport(t *testing.T) {
@@ -776,5 +778,133 @@ func TestCheckDuplicatesIgnored(t *testing.T) {
 		assert.Len(t, result, 1)
 		assert.True(t, result[0].Ignored)
 		assert.Nil(t, result[0].DuplicationTransactionID)
+	})
+}
+
+func TestMarkTransactionsIgnored_Success(t *testing.T) {
+	t.Run("records reference numbers", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		resp, err := imp.MarkTransactionsIgnored(context.TODO(), &importv1.MarkTransactionsIgnoredRequest{
+			ImportSource:     importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			ReferenceNumbers: []string{"a", "b"},
+			Reason:           lo.ToPtr("manual"),
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 2, resp.IgnoredCount)
+
+		var rows []*database.ImportIgnoredTransaction
+		assert.NoError(t, gormDB.Order("ref_key asc").Find(&rows).Error)
+		assert.Len(t, rows, 2)
+		assert.Equal(t, "a", rows[0].RefKey)
+		assert.Equal(t, "b", rows[1].RefKey)
+		assert.Equal(t, "manual", lo.FromPtr(rows[0].Reason))
+		assert.Equal(t, "manual", lo.FromPtr(rows[1].Reason))
+		assert.Equal(t, importv1.ImportSource_IMPORT_SOURCE_FIREFLY, rows[0].ImportSource)
+	})
+
+	t.Run("idempotent on repeated call", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		req := &importv1.MarkTransactionsIgnoredRequest{
+			ImportSource:     importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			ReferenceNumbers: []string{"a", "b"},
+			Reason:           lo.ToPtr("manual"),
+		}
+
+		first, err := imp.MarkTransactionsIgnored(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 2, first.IgnoredCount)
+
+		second, err := imp.MarkTransactionsIgnored(context.TODO(), req)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 0, second.IgnoredCount)
+
+		var count int64
+		assert.NoError(t, gormDB.Model(&database.ImportIgnoredTransaction{}).Count(&count).Error)
+		assert.EqualValues(t, 2, count)
+	})
+
+	t.Run("trims and deduplicates references", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		resp, err := imp.MarkTransactionsIgnored(context.TODO(), &importv1.MarkTransactionsIgnoredRequest{
+			ImportSource:     importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			ReferenceNumbers: []string{"  ", "x", "", "x"},
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, resp.IgnoredCount)
+
+		var rows []*database.ImportIgnoredTransaction
+		assert.NoError(t, gormDB.Find(&rows).Error)
+		assert.Len(t, rows, 1)
+		assert.Equal(t, "x", rows[0].RefKey)
+	})
+}
+
+func TestMarkTransactionsIgnored_Failure(t *testing.T) {
+	t.Run("empty reference numbers", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		resp, err := imp.MarkTransactionsIgnored(context.TODO(), &importv1.MarkTransactionsIgnoredRequest{
+			ImportSource:     importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			ReferenceNumbers: []string{},
+		})
+		require.Error(t, err)
+		assert.Nil(t, resp)
+
+		var count int64
+		assert.NoError(t, gormDB.Model(&database.ImportIgnoredTransaction{}).Count(&count).Error)
+		assert.EqualValues(t, 0, count)
+	})
+
+	t.Run("blank reference numbers", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		impl := NewMockImplementation(ctrl)
+		impl.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+		imp := importers.NewImporter(&importers.ImporterConfig{}, impl)
+
+		resp, err := imp.MarkTransactionsIgnored(context.TODO(), &importv1.MarkTransactionsIgnoredRequest{
+			ImportSource:     importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			ReferenceNumbers: []string{"  ", ""},
+		})
+		require.Error(t, err)
+		assert.Nil(t, resp)
+
+		var count int64
+		assert.NoError(t, gormDB.Model(&database.ImportIgnoredTransaction{}).Count(&count).Error)
+		assert.EqualValues(t, 0, count)
 	})
 }

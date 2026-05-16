@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
@@ -18,6 +19,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"gorm.io/gorm/clause"
 )
 
 type Importer struct {
@@ -141,6 +143,47 @@ func (i *Importer) CheckDuplicates(
 	}
 
 	return items, nil
+}
+
+func (i *Importer) MarkTransactionsIgnored(
+	ctx context.Context,
+	req *importv1.MarkTransactionsIgnoredRequest,
+) (*importv1.MarkTransactionsIgnoredResponse, error) {
+	var rows []*database.ImportIgnoredTransaction
+	seen := map[string]struct{}{}
+
+	for _, ref := range req.ReferenceNumbers {
+		trimmed := strings.TrimSpace(ref)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+
+		rows = append(rows, &database.ImportIgnoredTransaction{
+			ImportSource: req.ImportSource,
+			RefKey:       trimmed,
+			Reason:       req.Reason,
+			CreatedAt:    time.Now().UTC(),
+		})
+	}
+
+	if len(rows) == 0 {
+		return nil, errors.New("no valid reference numbers to ignore")
+	}
+
+	res := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+		Clauses(clause.OnConflict{DoNothing: true}).
+		Create(&rows)
+	if res.Error != nil {
+		return nil, errors.Wrap(res.Error, "failed to record ignored transactions")
+	}
+
+	return &importv1.MarkTransactionsIgnoredResponse{
+		IgnoredCount: int32(res.RowsAffected),
+	}, nil
 }
 
 func (i *Importer) Import(
