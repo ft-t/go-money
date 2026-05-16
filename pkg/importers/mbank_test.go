@@ -2,11 +2,16 @@ package importers_test
 
 import (
 	"context"
+	"encoding/base64"
 	_ "embed"
 	"testing"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
+	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
+	"github.com/ft-t/go-money/pkg/database"
 	"github.com/ft-t/go-money/pkg/importers"
+	"github.com/golang/mock/gomock"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,6 +30,12 @@ var mbankBadDate []byte
 
 //go:embed testdata/mbank/bad_amount.csv
 var mbankBadAmount []byte
+
+//go:embed testdata/mbank/bad_amount_no_cur.csv
+var mbankBadAmountNoCur []byte
+
+//go:embed testdata/mbank/no_account.csv
+var mbankNoAccount []byte
 
 const mbankAccountNumber = "00000000000000000000000001"
 
@@ -134,6 +145,7 @@ func TestMbank_Failure(t *testing.T) {
 	cases := []tc{
 		{name: "bad date", data: mbankBadDate, wantErr: "failed to parse date"},
 		{name: "bad amount", data: mbankBadAmount, wantErr: "failed to parse amount"},
+		{name: "amount missing currency", data: mbankBadAmountNoCur, wantErr: "failed to parse amount"},
 	}
 
 	for _, c := range cases {
@@ -171,4 +183,85 @@ func TestMbank_ParseDecodeError(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to decode")
+}
+
+func TestMbank_NoAccountNumberStillParses(t *testing.T) {
+	srv := importers.NewMbank(importers.NewBaseParser(nil, nil, nil))
+
+	resp, err := srv.ParseMessages(context.Background(), []*importers.Record{{Data: mbankNoAccount}})
+	require.NoError(t, err)
+	require.Len(t, resp, 1)
+
+	tx := resp[0]
+	require.NoError(t, tx.ParsingError)
+	assert.Equal(t, importers.TransactionTypeExpense, tx.Type)
+	assert.Equal(t, "", tx.SourceAccount)
+	assert.Equal(t, "12.34", tx.SourceAmount.StringFixed(2))
+}
+
+func TestMbankParse_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	currencyConverter := NewMockCurrencyConverterSvc(ctrl)
+	txSvc := NewMockTransactionSvc(ctrl)
+	mapperSvc := NewMockMapperSvc(ctrl)
+
+	base := importers.NewBaseParser(currencyConverter, txSvc, mapperSvc)
+	srv := importers.NewMbank(base)
+
+	mbankAccount := &database.Account{
+		ID:            1,
+		Name:          "MBank PLN",
+		Currency:      "PLN",
+		AccountNumber: mbankAccountNumber,
+		Type:          gomoneypbv1.AccountType_ACCOUNT_TYPE_ASSET,
+	}
+
+	expenseAccount := &database.Account{
+		ID:       2,
+		Name:     "Default Expense",
+		Currency: "USD",
+		Type:     gomoneypbv1.AccountType_ACCOUNT_TYPE_EXPENSE,
+		Flags:    database.AccountFlagIsDefault,
+	}
+
+	currencyConverter.EXPECT().
+		Convert(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, from string, to string, amount decimal.Decimal) (decimal.Decimal, error) {
+			assert.Equal(t, "PLN", from)
+			assert.Equal(t, "USD", to)
+			return amount, nil
+		}).
+		Times(1)
+
+	resp, err := srv.Parse(context.Background(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data:     []string{base64.StdEncoding.EncodeToString(mbankExpense)},
+			Accounts: []*database.Account{mbankAccount, expenseAccount},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.CreateRequests, 1)
+	assert.Equal(t, "FAKE SHOP ZAKUP PRZY UŻYCIU KARTY W KRAJU transakcja nierozliczona", resp.CreateRequests[0].Title)
+}
+
+func TestMbankParse_GetAccountMapError(t *testing.T) {
+	srv := importers.NewMbank(importers.NewBaseParser(nil, nil, nil))
+
+	resp, err := srv.Parse(context.Background(), &importers.ParseRequest{
+		ImportRequest: importers.ImportRequest{
+			Data: []string{base64.StdEncoding.EncodeToString(mbankExpense)},
+			Accounts: []*database.Account{
+				{ID: 1, AccountNumber: "duplicate"},
+				{ID: 2, AccountNumber: "duplicate"},
+			},
+		},
+	})
+
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "failed to get account map by numbers")
 }
