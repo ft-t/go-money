@@ -257,17 +257,17 @@ func (r *Revolut) parseTransaction(
 	tx *Transaction,
 	data []string,
 ) error {
-	if len(data) < 8 {
-		return errors.Newf("expected len > 8, got %d", len(data))
+	if len(data) < 9 {
+		return errors.Newf("expected at least 9 columns, got %d", len(data))
 	}
 
-	invisibleChars := strings.TrimFunc(data[2], func(r rune) bool {
+	startedDate := strings.TrimFunc(data[2], func(r rune) bool {
 		return !unicode.IsGraphic(r)
 	})
 
-	operationType := data[0]
+	operationType := strings.ToUpper(strings.TrimSpace(data[0]))
 
-	operationTime, timeErr := time.Parse("2006-01-02 15:04:05", invisibleChars)
+	operationTime, timeErr := time.Parse("2006-01-02 15:04:05", startedDate)
 	if timeErr != nil {
 		return errors.Wrapf(timeErr, "failed to parse operation time %s", data[2])
 	}
@@ -282,16 +282,13 @@ func (r *Revolut) parseTransaction(
 		"PENDING",
 	}
 
-	state := data[8]
+	state := strings.TrimSpace(data[8])
 
 	if !lo.Contains(supportedStates, state) {
 		return errors.Newf("unsupported state %s", state)
 	}
 
-	tx.Type = TransactionTypeExpense
 	tx.Date = operationTime
-
-	tx.SourceAmount = sourceAmount
 	tx.SourceCurrency = data[7]
 	tx.SourceAccount = r.AccountName(tx.SourceCurrency)
 
@@ -309,6 +306,7 @@ func (r *Revolut) parseTransaction(
 
 	if operationType == "EXCHANGE" {
 		tx.Type = TransactionTypeInternalTransfer
+		tx.SourceAmount = sourceAmount
 
 		if sourceAmount.GreaterThan(decimal.Zero) {
 			tx.DestinationCurrency = tx.SourceCurrency
@@ -323,12 +321,30 @@ func (r *Revolut) parseTransaction(
 		return nil
 	}
 
-	tx.SourceAmount = sourceAmount.Abs()
+	if sourceAmount.IsZero() {
+		fee, feeErr := decimal.NewFromString(strings.TrimSpace(data[6]))
+		if feeErr != nil {
+			return errors.Wrapf(feeErr, "failed to parse fee %s", data[6])
+		}
 
-	if sourceAmount.GreaterThan(decimal.Zero) {
-		return errors.New("income transactions not supported")
+		if fee.IsPositive() {
+			sourceAmount = fee.Neg()
+		}
 	}
 
+	if sourceAmount.GreaterThan(decimal.Zero) {
+		tx.Type = TransactionTypeIncome
+		tx.SourceAmount = sourceAmount.Abs()
+		tx.DestinationAmount = sourceAmount.Abs()
+		tx.DestinationCurrency = tx.SourceCurrency
+		tx.DestinationAccount = r.AccountName(tx.SourceCurrency)
+		tx.SourceAccount = ""
+
+		return nil
+	}
+
+	tx.Type = TransactionTypeExpense
+	tx.SourceAmount = sourceAmount.Abs()
 	tx.DestinationAmount = tx.SourceAmount
 	tx.DestinationCurrency = tx.SourceCurrency
 
