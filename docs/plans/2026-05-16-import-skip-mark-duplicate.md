@@ -412,8 +412,24 @@ git commit -S -m "chore(import): extend ImportSvc with MarkTransactionsIgnored +
 ## Task 6: ConnectRPC handler method
 
 **Files:**
-- Modify: `cmd/server/internal/handlers/import.go` — add `MarkTransactionsIgnored` handler (mirror `ImportTransactions`/`ParseTransactions`: JWT guard, delegate)
+- Modify: `pkg/importers/importer.go` — replace the bare `errors.New("no valid reference numbers to ignore")` in `MarkTransactionsIgnored` with a returned exported sentinel so the RPC boundary can classify it (repo rule: prefer `errors.Is`/`errors.As` over string matching).
+- Modify: `cmd/server/internal/handlers/import.go` — add `MarkTransactionsIgnored` handler (JWT guard, delegate; classify the sentinel as `InvalidArgument`, everything else `Internal`)
 - Test: `cmd/server/internal/handlers/import_test.go` — success table + failure table (separate), using `MockImportSvc`
+- Test: `pkg/importers/importer_test.go` — extend the existing Task 4 `TestMarkTransactionsIgnored_Failure` to additionally assert `errors.Is(err, importers.ErrNoReferenceNumbers)` (still branch-free).
+
+**Step 0: Add the sentinel (importers package)**
+
+In `pkg/importers/importer.go`, add a package-level sentinel and return it instead of the inline `errors.New`:
+
+```go
+var ErrNoReferenceNumbers = errors.New("no valid reference numbers to ignore")
+```
+```go
+	if len(rows) == 0 {
+		return nil, ErrNoReferenceNumbers
+	}
+```
+This is the one place in this package that needs an `errors.Is`-able value because the error must cross the package boundary into the RPC handler for HTTP-status classification (unlike `CheckDuplicates`' bare validation error, which never leaves the service). Update `TestMarkTransactionsIgnored_Failure` to also assert `require.ErrorIs(t, err, importers.ErrNoReferenceNumbers)`.
 
 **Step 1: Write the failing tests**
 
@@ -424,7 +440,8 @@ Success table:
 
 Failure table (separate function):
 - `jwtData.UserID == 0` → handler returns `connect.CodePermissionDenied`.
-- mock returns error → handler returns error.
+- mock returns `importers.ErrNoReferenceNumbers` → handler returns `connect.CodeInvalidArgument`.
+- mock returns a generic error → handler returns `connect.CodeInternal`.
 
 **Step 2: Run to verify they fail**
 
@@ -433,7 +450,7 @@ Expected: FAIL — handler method undefined.
 
 **Step 3: Implement the handler**
 
-Add to `cmd/server/internal/handlers/import.go` (match `ParseTransactions`’ error wrapping style):
+Add to `cmd/server/internal/handlers/import.go` (mirror `ParseTransactions`, plus classify the validation sentinel as `InvalidArgument`). This adds an import of `github.com/ft-t/go-money/pkg/importers` and `github.com/cockroachdb/errors` (or stdlib `errors` — match what the handlers package already uses for `errors.Is`); no import cycle (importers does not import handlers):
 
 ```go
 func (i *ImportApi) MarkTransactionsIgnored(
@@ -447,12 +464,17 @@ func (i *ImportApi) MarkTransactionsIgnored(
 
 	resp, err := i.importSvc.MarkTransactionsIgnored(ctx, c.Msg)
 	if err != nil {
+		if errors.Is(err, importers.ErrNoReferenceNumbers) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	return connect.NewResponse(resp), nil
 }
 ```
+
+(Confirm which `errors` package the handlers file imports for `errors.Is`; `github.com/cockroachdb/errors` is `errors.Is`-compatible and used elsewhere in the repo.)
 
 The generated `importv1connect.ImportServiceHandler` now requires this method; `*ImportApi` registered at `import.go:27` will satisfy it.
 
@@ -630,4 +652,5 @@ git commit -S -m "docs(import): document ignored-transactions skip feature"
 
 - Misclick on "Skip & remember" is irreversible from the UI (no un-ignore v1). The RPC is idempotent; reversal needs `delete from import_ignored_transactions where ref_key = '<key>'`. Accepted per design.
 - `CheckDuplicates` ignored lookup matches by `ref_key` only (no source filter) — intentional, mirrors the existing `internal_reference_numbers` overlap query. Reference keys embed the source (`{ImportSource}_{hash}`), so cross-source collision is effectively impossible.
+- `MarkTransactionsIgnoredResponse.ignored_count` = rows **newly inserted** (Postgres `ON CONFLICT DO NOTHING` excludes conflicts), not "total refs now ignored". Re-clicking "Skip & remember" on an already-ignored row returns `ignored_count == 0`. Task 8's toast is a fixed string and does not surface the number — do not later display it as "N transactions ignored" without also accounting for idempotent re-clicks.
 - Direct-import (non-staging) `ImportTransactionsResponse.DuplicateCount` conflates true ref-collision duplicates and user-ignored rows — both are skipped and counted together. No separate `ignored_count` in v1 (would require an `ImportTransactionsResponse` proto field, out of scope). Accepted: the staging/parse path surfaces `ParsedTransaction.ignored` distinctly, and the direct path has no per-row UI consumer.
