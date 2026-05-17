@@ -108,6 +108,7 @@ delete from import_ignored_transactions where ref_key = '<key>';
 - No un-ignore UI.
 - `reason` column/field exist but have no UI.
 - Per-row only — no bulk mark.
+- Skip & remember on a collision-renamed ref (`{key}_N`, produced only under `skipDuplicateReferenceCheck` when a statement has duplicate raw rows) re-matches only on byte-identical re-imports; a partial/reordered re-import can regenerate a different suffix and miss.
 - The legacy orphaned `import_deduplication` table is unrelated and left untouched.
 
 ---
