@@ -492,5 +492,23 @@ create unique index if not exists ix_uniq_record on double_entries (transaction_
 				)
 			},
 		},
+		{
+			ID: "2026-05-16-AddImportIgnoredTransactions",
+			Migrate: func(db *gorm.DB) error {
+				return boilerplate.ExecuteSql(db,
+					`create table if not exists import_ignored_transactions
+(
+    import_source integer   not null,
+    ref_key       text      not null,
+    reason        text,
+    created_at    timestamp not null,
+    constraint import_ignored_transactions_pk
+        primary key (import_source, ref_key)
+);`,
+					`create index if not exists ix_import_ignored_transactions_ref_key
+    on import_ignored_transactions (ref_key);`,
+				)
+			},
+		},
 	}
 }

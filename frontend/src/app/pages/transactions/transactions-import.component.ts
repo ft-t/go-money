@@ -2,7 +2,7 @@ import { Component, Inject, OnInit, QueryList, ViewChildren } from '@angular/cor
 import { Fluid } from 'primeng/fluid';
 import { Toast } from 'primeng/toast';
 import { FileUpload } from 'primeng/fileupload';
-import { ImportService, ImportSource, ImportTransactionsRequestSchema, ParseTransactionsRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/import/v1/import_pb';
+import { ImportService, ImportSource, ImportTransactionsRequestSchema, MarkTransactionsIgnoredRequestSchema, ParseTransactionsRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/import/v1/import_pb';
 import { AccountTypeEnum, EnumService } from '../../services/enum.service';
 import { SelectModule } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
@@ -23,16 +23,13 @@ import { Tooltip } from 'primeng/tooltip';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionsService, CreateTransactionsBulkRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { PageConfigService } from '../../services/page-config.service';
-import {
-    TransactionsImportConfig,
-    TRANSACTIONS_IMPORT_DEFAULTS,
-    TRANSACTIONS_IMPORT_PAGE_ID,
-} from './transactions-import.config';
+import { TransactionsImportConfig, TRANSACTIONS_IMPORT_DEFAULTS, TRANSACTIONS_IMPORT_PAGE_ID } from './transactions-import.config';
 
 interface TransactionItem {
     transaction: Transaction;
     selected: boolean;
     duplicateTxID?: bigint;
+    ignored: boolean;
     hasError: boolean;
     hasValidationError?: boolean;
 }
@@ -59,7 +56,7 @@ export class TransactionsImportComponent implements OnInit {
     public allSources: AccountTypeEnum[] = EnumService.getImportTypes();
     public pageConfig: TransactionsImportConfig = {
         ...TRANSACTIONS_IMPORT_DEFAULTS,
-        excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters],
+        excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters]
     };
     public editingExclusions = false;
     public skipRules: boolean = false;
@@ -92,7 +89,7 @@ export class TransactionsImportComponent implements OnInit {
     }
 
     public get sources(): AccountTypeEnum[] {
-        return this.allSources.filter(s => !this.pageConfig.excludedImporters.includes(s.value));
+        return this.allSources.filter((s) => !this.pageConfig.excludedImporters.includes(s.value));
     }
 
     async ngOnInit(): Promise<void> {
@@ -101,15 +98,12 @@ export class TransactionsImportComponent implements OnInit {
 
     async loadPageConfig(): Promise<void> {
         try {
-            this.pageConfig = await this.pageConfigService.get<TransactionsImportConfig>(
-                TRANSACTIONS_IMPORT_PAGE_ID,
-                TRANSACTIONS_IMPORT_DEFAULTS,
-            );
+            this.pageConfig = await this.pageConfigService.get<TransactionsImportConfig>(TRANSACTIONS_IMPORT_PAGE_ID, TRANSACTIONS_IMPORT_DEFAULTS);
         } catch (e) {
             console.error('Failed to load transactions-import page config:', e);
             this.pageConfig = {
                 ...TRANSACTIONS_IMPORT_DEFAULTS,
-                excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters],
+                excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters]
             };
         }
         this.ensureSelectedSourceVisible();
@@ -133,7 +127,7 @@ export class TransactionsImportComponent implements OnInit {
         if (this.isExcluded(value)) {
             this.pageConfig = {
                 ...this.pageConfig,
-                excludedImporters: this.pageConfig.excludedImporters.filter(v => v !== value),
+                excludedImporters: this.pageConfig.excludedImporters.filter((v) => v !== value)
             };
             await this.savePageConfig();
             return;
@@ -144,14 +138,14 @@ export class TransactionsImportComponent implements OnInit {
             this.messageService.add({
                 severity: 'error',
                 summary: 'Cannot hide importer',
-                detail: 'At least one importer must remain visible.',
+                detail: 'At least one importer must remain visible.'
             });
             return;
         }
 
         this.pageConfig = {
             ...this.pageConfig,
-            excludedImporters: [...this.pageConfig.excludedImporters, value],
+            excludedImporters: [...this.pageConfig.excludedImporters, value]
         };
         await this.savePageConfig();
         this.ensureSelectedSourceVisible();
@@ -165,7 +159,7 @@ export class TransactionsImportComponent implements OnInit {
             this.messageService.add({
                 severity: 'error',
                 summary: 'Save failed',
-                detail: ErrorHelper.getMessage(e),
+                detail: ErrorHelper.getMessage(e)
             });
         }
     }
@@ -217,8 +211,9 @@ export class TransactionsImportComponent implements OnInit {
 
             this.transactionItems = response.transactions.map((tx) => ({
                 transaction: tx.transaction!,
-                selected: tx.duplicateTransactionId === undefined && tx.transaction!.type !== TransactionType.UNSPECIFIED,
+                selected: tx.duplicateTransactionId === undefined && !tx.ignored && tx.transaction!.type !== TransactionType.UNSPECIFIED,
                 duplicateTxID: tx.duplicateTransactionId,
+                ignored: !!tx.ignored,
                 hasError: tx.transaction!.type === TransactionType.UNSPECIFIED
             }));
 
@@ -331,12 +326,16 @@ export class TransactionsImportComponent implements OnInit {
         return `${amount} ${currency}`;
     }
 
+    isDuplicate(item: TransactionItem): boolean {
+        return item.duplicateTxID !== undefined || item.ignored;
+    }
+
     getSelectedCount(): number {
-        return this.transactionItems.filter((item) => item.selected && item.duplicateTxID === undefined && !item.hasError).length;
+        return this.transactionItems.filter((item) => item.selected && !this.isDuplicate(item) && !item.hasError).length;
     }
 
     getNonDuplicateCount(): number {
-        return this.transactionItems.filter((item) => item.duplicateTxID === undefined && !item.hasError).length;
+        return this.transactionItems.filter((item) => !this.isDuplicate(item) && !item.hasError).length;
     }
 
     getErrorCount(): number {
@@ -345,7 +344,7 @@ export class TransactionsImportComponent implements OnInit {
 
     selectAll() {
         this.transactionItems.forEach((item) => {
-            if (item.duplicateTxID === undefined && !item.hasError) {
+            if (!this.isDuplicate(item) && !item.hasError) {
                 item.selected = true;
             }
         });
@@ -353,14 +352,14 @@ export class TransactionsImportComponent implements OnInit {
 
     deselectAll() {
         this.transactionItems.forEach((item) => {
-            if (item.duplicateTxID === undefined && !item.hasError) {
+            if (!this.isDuplicate(item) && !item.hasError) {
                 item.selected = false;
             }
         });
     }
 
     getDuplicatesCount(): number {
-        return this.transactionItems.filter((item) => item.duplicateTxID !== undefined).length;
+        return this.transactionItems.filter((item) => this.isDuplicate(item)).length;
     }
 
     toggleHideDuplicates() {
@@ -382,14 +381,14 @@ export class TransactionsImportComponent implements OnInit {
         }
 
         if (this.hideDuplicates) {
-            return filtered.filter((item) => item.duplicateTxID === undefined);
+            return filtered.filter((item) => !this.isDuplicate(item));
         }
 
         return filtered;
     }
 
     async importSelected() {
-        if (this.transactionItems.filter((item) => item.selected && !item.hasError && item.duplicateTxID === undefined).length === 0) {
+        if (this.transactionItems.filter((item) => item.selected && !item.hasError && !this.isDuplicate(item)).length === 0) {
             this.messageService.add({
                 severity: 'warn',
                 detail: 'No transactions selected'
@@ -411,7 +410,7 @@ export class TransactionsImportComponent implements OnInit {
 
             const editor = editorArray[editorIndex];
 
-            if (item.selected && item.duplicateTxID === undefined) {
+            if (item.selected && !this.isDuplicate(item)) {
                 if (editor && !editor.isValid()) {
                     hasValidationErrors = true;
                     item.hasValidationError = true;
@@ -450,7 +449,7 @@ export class TransactionsImportComponent implements OnInit {
                         const item = filteredItems[i];
                         if (item.hasError) continue;
                         if (editorIdx === index) {
-                            return item.selected && item.duplicateTxID === undefined;
+                            return item.selected && !this.isDuplicate(item);
                         }
                         editorIdx++;
                     }
@@ -472,6 +471,30 @@ export class TransactionsImportComponent implements OnInit {
             this.showReview = false;
             this.transactionItems = [];
             this.rawText = '';
+        } catch (e) {
+            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    async markIgnored(item: TransactionItem): Promise<void> {
+        const refs = item.transaction.internalReferenceNumbers ?? [];
+        if (refs.length === 0) {
+            this.messageService.add({ severity: 'warn', detail: 'No reference number to remember' });
+            return;
+        }
+        try {
+            this.isLoading = true;
+            await this.importService.markTransactionsIgnored(
+                create(MarkTransactionsIgnoredRequestSchema, {
+                    importSource: this.selectedSource,
+                    referenceNumbers: refs
+                })
+            );
+            item.ignored = true;
+            item.selected = false;
+            this.messageService.add({ severity: 'success', detail: 'Marked as duplicate for future imports' });
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         } finally {

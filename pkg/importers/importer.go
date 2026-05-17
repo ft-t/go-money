@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
@@ -18,7 +19,10 @@ import (
 	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"gorm.io/gorm/clause"
 )
+
+var ErrNoReferenceNumbers = errors.New("no valid reference numbers to ignore")
 
 type Importer struct {
 	cfg             *ImporterConfig
@@ -123,7 +127,65 @@ func (i *Importer) CheckDuplicates(
 		}
 	}
 
+	for _, chunk := range lo.Chunk(allRefs, boilerplate.DefaultBatchSize) {
+		var ignoredRefs []string
+
+		if err := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+			Model(&database.ImportIgnoredTransaction{}).
+			Where("ref_key = ANY(?)", pq.Array(chunk)).
+			Pluck("ref_key", &ignoredRefs).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to check ignored transactions")
+		}
+
+		for _, ref := range ignoredRefs {
+			if item, exists := refToItem[ref]; exists {
+				item.Ignored = true
+			}
+		}
+	}
+
 	return items, nil
+}
+
+func (i *Importer) MarkTransactionsIgnored(
+	ctx context.Context,
+	req *importv1.MarkTransactionsIgnoredRequest,
+) (*importv1.MarkTransactionsIgnoredResponse, error) {
+	var rows []*database.ImportIgnoredTransaction
+	seen := map[string]struct{}{}
+
+	for _, ref := range req.ReferenceNumbers {
+		trimmed := strings.TrimSpace(ref)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+
+		rows = append(rows, &database.ImportIgnoredTransaction{
+			ImportSource: req.ImportSource,
+			RefKey:       trimmed,
+			Reason:       req.Reason,
+			CreatedAt:    time.Now().UTC(),
+		})
+	}
+
+	if len(rows) == 0 {
+		return nil, ErrNoReferenceNumbers
+	}
+
+	res := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+		Clauses(clause.OnConflict{DoNothing: true}).
+		Create(&rows)
+	if res.Error != nil {
+		return nil, errors.Wrap(res.Error, "failed to record ignored transactions")
+	}
+
+	return &importv1.MarkTransactionsIgnoredResponse{
+		IgnoredCount: int32(res.RowsAffected),
+	}, nil
 }
 
 func (i *Importer) Import(
@@ -144,7 +206,7 @@ func (i *Importer) Import(
 	var duplicateCount int
 
 	for _, item := range parsed {
-		if item.DuplicationTransactionID != nil {
+		if item.DuplicationTransactionID != nil || item.Ignored {
 			duplicateCount += 1
 			continue
 		}
@@ -301,6 +363,7 @@ func (i *Importer) ConvertRequestsToTransactions(
 		if !req.CreateRequest.HasTransaction() { // it means parsing failed, but we want to show raw transaction to user, so user can decide what to do
 			result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
 				DuplicateTransactionId: req.DuplicationTransactionID,
+				Ignored:                req.Ignored,
 				Transaction: i.cfg.MapperSvc.MapTransaction(ctx, &database.Transaction{
 					Title:           req.CreateRequest.Title,
 					Notes:           req.CreateRequest.Notes,
@@ -325,6 +388,7 @@ func (i *Importer) ConvertRequestsToTransactions(
 		result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
 			Transaction:            i.cfg.MapperSvc.MapTransaction(ctx, converted),
 			DuplicateTransactionId: req.DuplicationTransactionID,
+			Ignored:                req.Ignored,
 		})
 	}
 

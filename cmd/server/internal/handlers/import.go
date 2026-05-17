@@ -6,9 +6,11 @@ import (
 	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/import/v1/importv1connect"
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	"connectrpc.com/connect"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
+	"github.com/ft-t/go-money/pkg/importers"
 )
 
 type ImportApi struct {
@@ -61,6 +63,26 @@ func (i *ImportApi) ParseTransactions(
 
 	resp, err := i.importSvc.Parse(ctx, c.Msg)
 	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (i *ImportApi) MarkTransactionsIgnored(
+	ctx context.Context,
+	c *connect.Request[importv1.MarkTransactionsIgnoredRequest],
+) (*connect.Response[importv1.MarkTransactionsIgnoredResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	resp, err := i.importSvc.MarkTransactionsIgnored(ctx, c.Msg)
+	if err != nil {
+		if errors.Is(err, importers.ErrNoReferenceNumbers) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

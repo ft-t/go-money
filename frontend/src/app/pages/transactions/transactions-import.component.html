@@ -8,22 +8,8 @@
                     <p-message severity="info" variant="simple">{{ getImportNotes() }}</p-message>
                 }
                 <div class="flex items-center gap-2">
-                    <p-select
-                        class="flex-1"
-                        [options]="sources"
-                        [(ngModel)]="selectedSource"
-                        optionLabel="name"
-                        optionValue="value"
-                        placeholder="Select a Import Type" />
-                    <p-button
-                        icon="pi pi-pencil"
-                        severity="secondary"
-                        size="small"
-                        [text]="true"
-                        pTooltip="Manage visible importers"
-                        tooltipPosition="top"
-                        (click)="editingExclusions = !editingExclusions">
-                    </p-button>
+                    <p-select class="flex-1" [options]="sources" [(ngModel)]="selectedSource" optionLabel="name" optionValue="value" placeholder="Select a Import Type" />
+                    <p-button icon="pi pi-pencil" severity="secondary" size="small" [text]="true" pTooltip="Manage visible importers" tooltipPosition="top" (click)="editingExclusions = !editingExclusions"> </p-button>
                 </div>
 
                 @if (editingExclusions) {
@@ -32,12 +18,7 @@
                         <div class="flex flex-col gap-2">
                             @for (src of allSources; track src.value) {
                                 <div class="flex items-center gap-2">
-                                    <p-checkbox
-                                        [ngModel]="!isExcluded(src.value)"
-                                        [binary]="true"
-                                        [inputId]="'importer_' + src.value"
-                                        (onChange)="toggleExclusion(src.value)">
-                                    </p-checkbox>
+                                    <p-checkbox [ngModel]="!isExcluded(src.value)" [binary]="true" [inputId]="'importer_' + src.value" (onChange)="toggleExclusion(src.value)"> </p-checkbox>
                                     <label [for]="'importer_' + src.value" class="cursor-pointer">{{ src.name }}</label>
                                 </div>
                             }
@@ -134,16 +115,30 @@
                         <p-accordion-panel [value]="idx.toString()" [ngClass]="{ 'validation-error': item.hasValidationError }">
                             <p-accordion-header>
                                 <div class="flex flex-row gap-3 items-center w-full">
-                                    <p-checkbox [(ngModel)]="item.selected" [binary]="true" [disabled]="item.duplicateTxID !== undefined || item.hasError" (click)="$event.stopPropagation()" />
+                                    <p-checkbox [(ngModel)]="item.selected" [binary]="true" [disabled]="isDuplicate(item) || item.hasError" (click)="$event.stopPropagation()" />
                                     <div class="flex flex-col gap-1 flex-1">
                                         <div class="flex flex-row gap-2 items-center">
                                             <span class="font-semibold text-gray-800 dark:text-gray-200">{{ getTransactionTitle(item.transaction) }}</span>
                                             @if (item.hasError) {
                                                 <span class="text-red-500 text-sm">PARSING ERROR</span>
                                             }
-                                            @if (item.duplicateTxID !== undefined) {
+                                            @if (isDuplicate(item)) {
                                                 <span class="text-orange-500 text-sm">DUPLICATE</span>
-                                                <a [href]="'/transactions/edit/' + item.duplicateTxID" target="_blank" class="text-blue-500 hover:underline text-sm" (click)="$event.stopPropagation()"> View #{{ item.duplicateTxID }} </a>
+                                                @if (item.duplicateTxID !== undefined) {
+                                                    <a [href]="'/transactions/edit/' + item.duplicateTxID" target="_blank" class="text-blue-500 hover:underline text-sm" (click)="$event.stopPropagation()"> View #{{ item.duplicateTxID }} </a>
+                                                }
+                                            }
+                                            @if (!isDuplicate(item) && !item.hasError) {
+                                                <p-button
+                                                    label="Skip & remember"
+                                                    severity="secondary"
+                                                    size="small"
+                                                    [text]="true"
+                                                    [disabled]="isLoading"
+                                                    pTooltip="Record this transaction so future imports treat it as a duplicate"
+                                                    tooltipPosition="top"
+                                                    (click)="$event.stopPropagation(); markIgnored(item)"
+                                                />
                                             }
                                         </div>
                                         @if (!item.hasError) {
