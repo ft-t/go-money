@@ -22,6 +22,24 @@
                     @if (isRegisterFlow) {
                         <p-button label="Register" styleClass="w-full" (click)="register()"></p-button>
                     }
+
+                    @if (demo) {
+                        <div class="mt-8 w-full md:w-[30rem] rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6 text-left">
+                            <div class="text-surface-900 dark:text-surface-0 text-lg font-semibold mb-2">Demo environment</div>
+                            <p class="text-muted-color text-sm mb-4">
+                                Credentials are pre-filled — just click <span class="font-medium">Sign In</span>.<br />
+                                Login <span class="font-mono font-medium">{{ demoCredentials.login }}</span> / password
+                                <span class="font-mono font-medium">{{ demoCredentials.password }}</span>
+                            </p>
+                            <ul class="text-muted-color text-sm list-disc pl-5 space-y-1">
+                                <li>This is a public demo of <span class="font-medium">Go Money</span>, an open-source, self-hosted personal finance manager.</li>
+                                <li>Source code &amp; self-hosting: <a [href]="demoProjectUrl" target="_blank" rel="noopener" class="text-primary font-medium underline">github.com/ft-t/go-money</a>.</li>
+                                <li><span class="font-medium">Do not enter real account numbers or any real financial or personal data.</span></li>
+                                <li>All data is <span class="font-medium">reset daily</span> — anything you add will be wiped.</li>
+                                <li>Provided for demonstration only; not intended for production use.</li>
+                            </ul>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
