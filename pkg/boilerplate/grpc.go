@@ -8,8 +8,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"net/http"
 	"time"
 )
@@ -98,12 +96,14 @@ func (d *DefaultGrpcServer) ServeAsync(grpcPort int) {
 	}
 
 	go func() {
+		protocols := new(http.Protocols)
+		protocols.SetHTTP1(true)
+		protocols.SetUnencryptedHTTP2(true)
+
 		d.srv = &http.Server{
-			Addr: grpcWebAddress,
-			Handler: h2c.NewHandler(
-				newCORSMiddleware().Handler(d.GetMux()),
-				&http2.Server{},
-			),
+			Addr:              grpcWebAddress,
+			Handler:           newCORSMiddleware().Handler(d.GetMux()),
+			Protocols:         protocols,
 			ReadHeaderTimeout: time.Second,
 			ReadTimeout:       d.b.readTimeout,
 			WriteTimeout:      d.b.writeTimeout,
