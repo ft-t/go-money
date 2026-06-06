@@ -26,17 +26,17 @@ It enables customizations through Lua scripting and external reporting with Graf
 - Prebuilt multi-arch Docker images and standalone binaries (linux/darwin/windows)
 
 ## Demo
-A demo instance of Go Money is available at [https://demo.go-money.top](https://demo.go-money.top) and grafana dashboards at [https://grafana.go-money.top](https://grafana.go-money.top).
+A live demo of Go Money is available at [https://gomoney.ft-t.dev](https://gomoney.ft-t.dev), with Grafana dashboards at [https://gomoney-grafana.ft-t.dev](https://gomoney-grafana.ft-t.dev).
 
-Login credentials for the demo instance:
+Login credentials (pre-filled on the demo login page):
 - **Username**: `demo`
 - **Password**: `demo4vcxsdfss231`
 
-`Note`: The demo instance is reset every 3 hours, so any data you enter will be lost after that time, also possible downtime during the reset process.
-
-`Note2`: The demo instance is not intended for production use, it is provided for demonstration purposes only.
-
-`Note3`: The demo instances is running on cheapest 1$ VPS, so it may be slow or unstable at times.
+Please keep in mind:
+- The demo is **reset daily** — any data you enter is wiped, and brief downtime is possible during the reset.
+- **Do not enter real account numbers or any real financial or personal data.** It is a public demo.
+- It is provided for demonstration only and is **not intended for production use**.
+- It runs on a cheap VPS, so it may be slow or unstable at times.
 
 ## Installation
 
@@ -49,7 +49,7 @@ Go Money is available as:
 For detailed installation instructions, please refer to the [Installation guide](https://github.com/ft-t/go-money/wiki/Installation).
 
 ## UI
-GO Money provides a simple web UI for managing transactions, accounts, and other financial data.
+Go Money provides a simple web UI for managing transactions, accounts, and other financial data.
 
 ## API
 Go Money provides multi-protocol API (gRPC, JSON-RPC) for more details and documentation, please refer to the [API documentation](https://github.com/ft-t/go-money/wiki/Api)

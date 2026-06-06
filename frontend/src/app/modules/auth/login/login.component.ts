@@ -17,6 +17,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { ErrorHelper } from '../../../helpers/error.helper';
 import { DefaultCache, ShortLivedCache } from '../../../core/services/cache.service';
+import { DEMO_CREDENTIALS, DEMO_PROJECT_URL, isDemo } from '../../../consts/demo';
 
 @Component({
     selector: 'app-login',
@@ -28,6 +29,10 @@ export class LoginComponent implements OnInit {
     password: string = '';
 
     isRegisterFlow: boolean = false;
+
+    demo: boolean = isDemo();
+    demoProjectUrl: string = DEMO_PROJECT_URL;
+    demoCredentials = DEMO_CREDENTIALS;
 
     private configService;
     private usersService;
@@ -45,6 +50,13 @@ export class LoginComponent implements OnInit {
     }
 
     async ngOnInit() {
+        if (this.demo) {
+            this.isRegisterFlow = false;
+            this.email = this.demoCredentials.login;
+            this.password = this.demoCredentials.password;
+            return;
+        }
+
         let val = await this.configService.getConfiguration({});
 
         this.isRegisterFlow = val.shouldCreateAdmin;
