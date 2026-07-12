@@ -56,6 +56,11 @@ import { ReturnUrlHelper } from '../../helpers/return-url.helper';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
+export interface TransactionDraft {
+    transaction: Transaction;
+    skipRules: boolean;
+}
+
 @Component({
     selector: 'transaction-editor',
     templateUrl: 'transaction-editor.component.html',
@@ -109,6 +114,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
 
     @Input() public shouldShowTitle = true;
     @Input() public shouldShowRefresh = true;
+    @Input() public initialSkipRules = false;
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -190,7 +196,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             transactionDate: new FormControl(tx.transactionDate != null ? TimestampHelper.timestampToDate(tx.transactionDate!) : new Date(), Validators.required),
             type: new FormControl(tx.type, Validators.required),
             tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
-            skipRules: new FormControl(false, { nonNullable: false }),
+            skipRules: new FormControl(this.initialSkipRules, { nonNullable: false }),
             fxSourceAmount: new FormControl(NumberHelper.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
             fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false }),
             internalReferenceNumbers: new FormControl(tx.internalReferenceNumbers || [], { nonNullable: false })
@@ -480,6 +486,30 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
         this.form.updateValueAndValidity();
         this.cdr.detectChanges();
         return this.form.valid;
+    }
+
+    buildTransactionDraft(): TransactionDraft {
+        return {
+            transaction: create(TransactionSchema, {
+                id: 0n,
+                sourceAmount: NumberHelper.toPositiveNumber(this.form.get('sourceAmount')!.value),
+                sourceCurrency: this.form.get('sourceCurrency')!.value,
+                sourceAccountId: this.form.get('sourceAccountId')!.value,
+                destinationAmount: NumberHelper.toPositiveNumber(this.form.get('destinationAmount')!.value),
+                destinationCurrency: this.form.get('destinationCurrency')!.value,
+                destinationAccountId: this.form.get('destinationAccountId')!.value,
+                notes: this.form.get('notes')!.value,
+                title: this.form.get('title')!.value,
+                categoryId: this.form.get('categoryId')!.value,
+                transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(this.form.get('transactionDate')!.value)),
+                type: this.form.get('type')!.value,
+                tagIds: [...(this.form.get('tagIds')!.value || [])],
+                fxSourceAmount: NumberHelper.toPositiveNumber(this.form.get('fxSourceAmount')!.value),
+                fxSourceCurrency: this.form.get('fxSourceCurrency')!.value,
+                internalReferenceNumbers: [...(this.form.get('internalReferenceNumbers')!.value || [])]
+            }),
+            skipRules: this.form.get('skipRules')!.value
+        };
     }
 
     buildTransactionRequest(): CreateTransactionRequest {
