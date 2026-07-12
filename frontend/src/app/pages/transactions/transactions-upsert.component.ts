@@ -25,8 +25,7 @@ import {
     IncomeSchema,
     ListTransactionsRequestSchema,
     TransactionsService,
-    TransferBetweenAccountsSchema,
-    UpdateTransactionRequestSchema
+    TransferBetweenAccountsSchema
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { Account, AccountType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/account_pb';
 import { CurrencyService, ExchangeRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/currency/v1/currency_pb';
@@ -51,6 +50,7 @@ import { TimestampHelper } from '../../helpers/timestamp.helper';
 import { SnippetSpotlightComponent } from '../../shared/components/snippet-spotlight/snippet-spotlight.component';
 import { ReturnUrlHelper } from '../../shared/helpers/return-url.helper';
 import { TransactionHistoryTimelineComponent } from './history/transaction-history-timeline.component';
+import { TransactionSaveItem, TransactionSaveSession } from './transaction-save-session';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
@@ -88,6 +88,8 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     private currencyService;
     private lastTxID = 0;
     public targetTransaction: Transaction[] = [];
+    public initialSkipRules: boolean[] = [false];
+    public readonly saveSession: TransactionSaveSession;
     public showExpenseSplit = false;
     public expenseSplitForm: FormGroup | undefined = undefined;
     private currentSplitIndex = 0;
@@ -107,6 +109,7 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
         private route: ActivatedRoute
     ) {
         this.transactionService = createClient(TransactionsService, this.transport);
+        this.saveSession = new TransactionSaveSession(this.transactionService);
         this.currencyService = createClient(CurrencyService, this.transport);
 
         let targetType = TransactionType.EXPENSE;
@@ -344,77 +347,78 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     async saveAll() {
-        try {
-            for (const editor of this.components) {
-                const form = editor.getForm();
-                form.markAllAsTouched();
-
-                if (!form.valid) {
-                    this.messageService.add({
-                        severity: 'error',
-                        detail: 'Please fix validation errors in all transactions'
-                    });
-                    return;
-                }
-            }
-
-            const counts = this.getTransactionCounts();
-            let successCount = 0;
-
-            for (let i = 0; i < this.targetTransaction.length; i++) {
-                const tx = this.targetTransaction[i];
-                const editor = this.components.get(i);
-
-                if (!editor) continue;
-
-                const request = editor.buildTransactionRequest();
-
-                if (tx.id === BigInt(0)) {
-                    // Create new transaction
-                    await this.transactionService.createTransaction(request);
-                    successCount++;
-                } else {
-                    // Update existing transaction
-                    await this.transactionService.updateTransaction(
-                        create(UpdateTransactionRequestSchema, {
-                            transaction: request,
-                            id: tx.id
-                        })
-                    );
-                    successCount++;
-                }
-            }
-
-            this.messageService.add({
-                severity: 'success',
-                detail: `Successfully saved ${successCount} transaction(s)`
-            });
-
-            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
-        } catch (e) {
-            this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
+        if (this.saveSession.isSaving) {
+            return;
         }
+
+        for (const editor of this.components) {
+            const form = editor.getForm();
+            form.markAllAsTouched();
+
+            if (!form.valid) {
+                this.messageService.add({
+                    severity: 'error',
+                    detail: 'Please fix validation errors in all transactions'
+                });
+                return;
+            }
+        }
+
+        const items: TransactionSaveItem[] = this.targetTransaction.map((transaction, index) => ({
+            id: transaction.id,
+            request: this.components.get(index)!.buildTransactionRequest()
+        }));
+        const result = await this.saveSession.save(items, (index, transaction) => {
+            this.targetTransaction[index] = transaction;
+            this.initialSkipRules[index] = items[index].request.skipRules;
+        });
+
+        if (result.failedIndex !== undefined) {
+            const savedLabel = result.savedCount === 1 ? 'transaction' : 'transactions';
+            const errorMessage = result.error instanceof Error ? result.error.message : ErrorHelper.getMessage(result.error);
+            this.messageService.add({
+                severity: 'error',
+                detail: `${result.savedCount} ${savedLabel} saved. Transaction ${result.failedIndex + 1} failed: ${errorMessage}`
+            });
+            return;
+        }
+
+        this.messageService.add({
+            severity: 'success',
+            detail: `Successfully saved ${this.targetTransaction.length} transaction(s)`
+        });
+
+        await ReturnUrlHelper.navigateAfterSave(this.router, this.route, ['/transactions']);
     }
 
-    async addSplit() {
-        console.log(this.components);
-        this.targetTransaction.push(
-            create(TransactionSchema, {
-                type: this.targetTransaction[0]!.type
-            })
-        );
+    addTransaction(): void {
+        this.targetTransaction.push(create(TransactionSchema, {}));
+        this.initialSkipRules.push(false);
     }
 
-    canDeleteSplit(index: number, tx: Transaction): boolean {
+    cloneTransaction(index: number): void {
+        const editor = this.components.get(index);
+        if (!editor) {
+            return;
+        }
+
+        const draft = editor.buildTransactionDraft();
+        this.targetTransaction.push(draft.transaction);
+        this.initialSkipRules.push(draft.skipRules);
+    }
+
+    canDeleteDraft(index: number, tx: Transaction): boolean {
         return index !== 0 && tx.id === BigInt(0);
     }
 
-    deleteSplit(index: number) {
-        if (!this.canDeleteSplit(index, this.targetTransaction[index])) {
+    deleteDraft(index: number) {
+        if (!this.canDeleteDraft(index, this.targetTransaction[index])) {
             return;
         }
 
         this.targetTransaction.splice(index, 1);
+        this.initialSkipRules.splice(index, 1);
+        this.saveSession.remove(index);
     }
 
     canDeleteTransaction(tx: Transaction): boolean {

@@ -6,6 +6,7 @@ import { TransactionEditorComponent } from './transaction-editor.component';
 describe('TransactionEditorComponent transaction drafts', () => {
     it('exports every editable live form value without server identity', () => {
         const editor = Object.create(TransactionEditorComponent.prototype) as TransactionEditorComponent;
+
         editor.form = new FormGroup({
             id: new FormControl(99n),
             sourceAmount: new FormControl('12.34'),
@@ -49,6 +50,7 @@ describe('TransactionEditorComponent transaction drafts', () => {
 
     it('seeds skip rules from cloned draft state', () => {
         const editor = Object.create(TransactionEditorComponent.prototype) as TransactionEditorComponent;
+
         editor.initialSkipRules = true;
         editor.accounts = {};
 

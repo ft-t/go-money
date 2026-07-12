@@ -48,14 +48,19 @@ export class TransactionSaveSession {
             for (currentIndex = 0; currentIndex < items.length; currentIndex++) {
                 const item = items[currentIndex];
                 const savedRequest = this.savedRequests[currentIndex];
+
                 if (savedRequest && equals(CreateTransactionRequestSchema, savedRequest, item.request)) {
+                    savedCount++;
                     continue;
                 }
 
                 let transaction: Transaction | undefined;
+
                 if (item.id === 0n) {
                     const response = await this.writer.createTransaction(item.request);
+
                     transaction = response.transaction;
+
                     if (!transaction || transaction.id === 0n) {
                         throw new Error('Create transaction response is missing an assigned transaction ID');
                     }
@@ -66,7 +71,9 @@ export class TransactionSaveSession {
                             transaction: item.request
                         })
                     );
+
                     transaction = response.transaction;
+
                     if (!transaction) {
                         throw new Error('Update transaction response is missing a transaction');
                     }
@@ -81,6 +88,7 @@ export class TransactionSaveSession {
             return { savedCount };
         } catch (error) {
             this.states[currentIndex] = 'failed';
+
             return { savedCount, failedIndex: currentIndex, error };
         } finally {
             this.isSaving = false;
@@ -90,6 +98,7 @@ export class TransactionSaveSession {
     getCardState(index: number, request: CreateTransactionRequest): TransactionCardState {
         const state = this.states[index] ?? 'pending';
         const savedRequest = this.savedRequests[index];
+
         if (state === 'saved' && savedRequest && !equals(CreateTransactionRequestSchema, savedRequest, request)) {
             return 'unsaved';
         }

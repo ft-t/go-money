@@ -18,6 +18,7 @@ function createRequest(title: string) {
 describe('TransactionSaveSession', () => {
     it('stores returned identity and skips unchanged create on retry', async () => {
         const writer = createWriter();
+
         writer.createTransaction.and.resolveTo(
             create(CreateTransactionResponseSchema, {
                 transaction: create(TransactionSchema, { id: 41n })
@@ -28,16 +29,18 @@ describe('TransactionSaveSession', () => {
         const applied: bigint[] = [];
 
         await session.save([{ id: 0n, request }], (_, transaction) => applied.push(transaction.id));
-        await session.save([{ id: 41n, request }], (_, transaction) => applied.push(transaction.id));
+        const retryResult = await session.save([{ id: 41n, request }], (_, transaction) => applied.push(transaction.id));
 
         expect(writer.createTransaction).toHaveBeenCalledTimes(1);
         expect(writer.updateTransaction).not.toHaveBeenCalled();
         expect(applied).toEqual([41n]);
+        expect(retryResult).toEqual({ savedCount: 1 });
         expect(session.getCardState(0, request)).toBe('saved');
     });
 
     it('updates a previously saved transaction after its request changes', async () => {
         const writer = createWriter();
+
         writer.createTransaction.and.resolveTo(
             create(CreateTransactionResponseSchema, {
                 transaction: create(TransactionSchema, { id: 41n })
@@ -62,6 +65,7 @@ describe('TransactionSaveSession', () => {
 
     it('stops at first failure and leaves later transactions pending', async () => {
         const writer = createWriter();
+
         writer.createTransaction.and.rejectWith(new Error('invalid transaction'));
         const session = new TransactionSaveSession(writer);
         const first = createRequest('first');
@@ -85,6 +89,7 @@ describe('TransactionSaveSession', () => {
 
     it('rejects create response without assigned identity', async () => {
         const writer = createWriter();
+
         writer.createTransaction.and.resolveTo(
             create(CreateTransactionResponseSchema, {
                 transaction: create(TransactionSchema, {})
@@ -100,6 +105,7 @@ describe('TransactionSaveSession', () => {
 
     it('rejects update response without transaction', async () => {
         const writer = createWriter();
+
         writer.updateTransaction.and.resolveTo(create(UpdateTransactionResponseSchema, {}));
         const session = new TransactionSaveSession(writer);
 
@@ -112,6 +118,7 @@ describe('TransactionSaveSession', () => {
     it('ignores concurrent save while one is active', async () => {
         const writer = createWriter();
         let finishCreate!: (value: ReturnType<typeof create<typeof CreateTransactionResponseSchema>>) => void;
+
         writer.createTransaction.and.returnValue(
             new Promise((resolve) => {
                 finishCreate = resolve;
@@ -122,6 +129,7 @@ describe('TransactionSaveSession', () => {
 
         const activeSave = session.save([{ id: 0n, request }], () => undefined);
         const concurrentResult = await session.save([{ id: 0n, request }], () => undefined);
+
         finishCreate(
             create(CreateTransactionResponseSchema, {
                 transaction: create(TransactionSchema, { id: 41n })
@@ -135,6 +143,7 @@ describe('TransactionSaveSession', () => {
 
     it('removes saved state at same index as deleted draft', async () => {
         const writer = createWriter();
+
         writer.createTransaction.and.resolveTo(
             create(CreateTransactionResponseSchema, {
                 transaction: create(TransactionSchema, { id: 41n })
