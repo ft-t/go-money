@@ -144,6 +144,10 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     showCommissionSplit(index: number) {
+        if (this.saveSession.isSaving) {
+            return;
+        }
+
         this.currentSplitIndex = index;
         let editor = this.components.get(index);
         let result = editor?.getForm();
@@ -195,6 +199,10 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     async saveExpenseSplit() {
+        if (this.saveSession.isSaving) {
+            return;
+        }
+
         if (!this.expenseSplitForm) return;
 
         this.expenseSplitForm.markAllAsTouched();
@@ -245,9 +253,8 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
             transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(originalForm!.get('transactionDate')!.value))
         });
 
-        console.log(newTransaction);
-
         this.targetTransaction.push(newTransaction);
+        this.initialSkipRules.push(false);
 
         if (editor) {
             editor.adjustSourceAmount(parseFloat(NumberHelper.toNegativeNumber(delta)!));
@@ -351,7 +358,9 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
             return;
         }
 
-        for (const editor of this.components) {
+        const editors = [...this.components];
+
+        for (const editor of editors) {
             const form = editor.getForm();
             form.markAllAsTouched();
 
@@ -366,12 +375,20 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
 
         const items: TransactionSaveItem[] = this.targetTransaction.map((transaction, index) => ({
             id: transaction.id,
-            request: this.components.get(index)!.buildTransactionRequest()
+            request: editors[index].buildTransactionRequest()
         }));
-        const result = await this.saveSession.save(items, (index, transaction) => {
-            this.targetTransaction[index] = transaction;
-            this.initialSkipRules[index] = items[index].request.skipRules;
-        });
+        editors.forEach((editor) => editor.getForm().disable({ emitEvent: false }));
+
+        const result = await (async () => {
+            try {
+                return await this.saveSession.save(items, (index, transaction) => {
+                    this.targetTransaction[index] = transaction;
+                    this.initialSkipRules[index] = items[index].request.skipRules;
+                });
+            } finally {
+                editors.forEach((editor) => editor.getForm().enable({ emitEvent: false }));
+            }
+        })();
 
         if (result.failedIndex !== undefined) {
             const savedLabel = result.savedCount === 1 ? 'transaction' : 'transactions';
@@ -392,11 +409,19 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     addTransaction(): void {
+        if (this.saveSession.isSaving) {
+            return;
+        }
+
         this.targetTransaction.push(create(TransactionSchema, {}));
         this.initialSkipRules.push(false);
     }
 
     cloneTransaction(index: number): void {
+        if (this.saveSession.isSaving) {
+            return;
+        }
+
         const editor = this.components.get(index);
         if (!editor) {
             return;
@@ -412,6 +437,10 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     deleteDraft(index: number) {
+        if (this.saveSession.isSaving) {
+            return;
+        }
+
         if (!this.canDeleteDraft(index, this.targetTransaction[index])) {
             return;
         }
@@ -426,6 +455,10 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     confirmDelete(index: number) {
+        if (this.saveSession.isSaving) {
+            return;
+        }
+
         const tx = this.targetTransaction[index];
         if (!this.canDeleteTransaction(tx)) {
             return;
@@ -496,6 +529,10 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     toggleSnippetSpotlight(): void {
+        if (this.saveSession.isSaving) {
+            return;
+        }
+
         this.snippetSpotlightVisible = !this.snippetSpotlightVisible;
     }
 
@@ -532,6 +569,10 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
     }
 
     applySnippetTransactions(transactions: Transaction[]): void {
+        if (this.saveSession.isSaving) {
+            return;
+        }
+
         this.targetTransaction = transactions.map((tx) =>
             create(TransactionSchema, {
                 type: tx.type,
@@ -551,6 +592,8 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
                 internalReferenceNumbers: tx.internalReferenceNumbers
             })
         );
+        this.initialSkipRules = transactions.map(() => false);
+        this.saveSession.reset();
     }
 
     ngOnDestroy(): void {

@@ -115,6 +115,22 @@ describe('TransactionSaveSession', () => {
         expect((result.error as Error).message).toBe('Update transaction response is missing a transaction');
     });
 
+    it('rejects update response with mismatched transaction identity', async () => {
+        const writer = createWriter();
+
+        writer.updateTransaction.and.resolveTo(
+            create(UpdateTransactionResponseSchema, {
+                transaction: create(TransactionSchema, { id: 99n })
+            })
+        );
+        const session = new TransactionSaveSession(writer);
+
+        const result = await session.save([{ id: 41n, request: createRequest('first') }], () => undefined);
+
+        expect(result.failedIndex).toBe(0);
+        expect((result.error as Error).message).toBe('Update transaction response ID does not match requested transaction ID');
+    });
+
     it('ignores concurrent save while one is active', async () => {
         const writer = createWriter();
         let finishCreate!: (value: ReturnType<typeof create<typeof CreateTransactionResponseSchema>>) => void;
@@ -157,5 +173,23 @@ describe('TransactionSaveSession', () => {
         session.remove(0);
 
         expect(session.getCardState(0, second)).toBe('pending');
+    });
+
+    it('resets every saved snapshot and card state', async () => {
+        const writer = createWriter();
+
+        writer.createTransaction.and.resolveTo(
+            create(CreateTransactionResponseSchema, {
+                transaction: create(TransactionSchema, { id: 41n })
+            })
+        );
+        const session = new TransactionSaveSession(writer);
+        const request = createRequest('first');
+
+        await session.save([{ id: 0n, request }], () => undefined);
+
+        session.reset();
+
+        expect(session.getCardState(0, request)).toBe('pending');
     });
 });

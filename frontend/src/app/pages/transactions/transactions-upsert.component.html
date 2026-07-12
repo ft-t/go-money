@@ -11,7 +11,7 @@
             </div>
         </div>
     } @else {
-        <form>
+        <form [class.pointer-events-none]="saveSession.isSaving" [attr.aria-busy]="saveSession.isSaving">
             @for (tx of targetTransaction; track tx; let idx = $index) {
                 <div class="flex flex-col card gap-2">
                     <div class="flex flex-row gap-2 justify-between">

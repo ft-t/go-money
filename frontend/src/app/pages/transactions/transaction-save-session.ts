@@ -77,6 +77,10 @@ export class TransactionSaveSession {
                     if (!transaction) {
                         throw new Error('Update transaction response is missing a transaction');
                     }
+
+                    if (transaction.id !== item.id) {
+                        throw new Error('Update transaction response ID does not match requested transaction ID');
+                    }
                 }
 
                 apply(currentIndex, transaction);
@@ -109,5 +113,10 @@ export class TransactionSaveSession {
     remove(index: number): void {
         this.savedRequests.splice(index, 1);
         this.states.splice(index, 1);
+    }
+
+    reset(): void {
+        this.savedRequests = [];
+        this.states = [];
     }
 }

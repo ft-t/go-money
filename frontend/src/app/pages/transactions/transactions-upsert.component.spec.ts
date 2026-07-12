@@ -1,4 +1,5 @@
 import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { Subject } from 'rxjs';
 import { create } from '@bufbuild/protobuf';
 import {
     CreateTransactionRequestSchema,
@@ -69,6 +70,17 @@ describe('TransactionUpsertComponent', () => {
 
         expect(component.targetTransaction[1]).toEqual(create(TransactionSchema, {}));
         expect(component.initialSkipRules[1]).toBeFalse();
+    });
+
+    it('blocks draft actions while save requests are active', () => {
+        const { component } = createComponent();
+
+        component.saveSession.isSaving = true;
+
+        component.addTransaction();
+
+        expect(component.targetTransaction.length).toBe(1);
+        expect(component.initialSkipRules).toEqual([false]);
     });
 
     it('clones current live editor draft', () => {
@@ -146,6 +158,79 @@ describe('TransactionUpsertComponent', () => {
         expect(component.targetTransaction[0].title).toBe('');
         expect(component.initialSkipRules).toEqual([false]);
         expect(remove).toHaveBeenCalledOnceWith(1);
+    });
+
+    it('resets aligned client state when snippets replace every draft', () => {
+        const { component } = createComponent();
+
+        component.initialSkipRules = [true, true];
+        const reset = spyOn(component.saveSession, 'reset');
+
+        component.applySnippetTransactions([
+            create(TransactionSchema, { title: 'one' }),
+            create(TransactionSchema, { title: 'two' })
+        ]);
+
+        expect(component.targetTransaction.map((transaction) => transaction.title)).toEqual(['one', 'two']);
+        expect(component.initialSkipRules).toEqual([false, false]);
+        expect(reset).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps skip rule state aligned when commission adds a draft', async () => {
+        const { component } = createComponent();
+        const originalForm = new FormGroup({
+            transactionDate: new FormControl(new Date('2026-07-12T10:30:00.000Z'))
+        });
+        const editor = {
+            getForm: jasmine.createSpy('getForm').and.returnValue(originalForm),
+            adjustSourceAmount: jasmine.createSpy('adjustSourceAmount')
+        };
+
+        component.components = createComponents([editor as never]) as never;
+        component.expenseSplitForm = new FormGroup({
+            sourceAccountId: new FormControl(11),
+            sourceCurrency: new FormControl('PLN'),
+            destinationAccountId: new FormControl(22),
+            destinationCurrency: new FormControl('PLN'),
+            amount: new FormControl('5'),
+            title: new FormControl('Commission', Validators.required)
+        });
+        Object.assign(component, {
+            currentSplitIndex: 0,
+            destroy$: new Subject<void>(),
+            showExpenseSplit: true
+        });
+
+        await component.saveExpenseSplit();
+
+        expect(component.targetTransaction.length).toBe(2);
+        expect(component.initialSkipRules).toEqual([false, false]);
+    });
+
+    it('disables editor forms while save requests are active', async () => {
+        const { component, writer } = createComponent();
+        const editor = createEditor('first');
+        let finishCreate!: (response: ReturnType<typeof create<typeof CreateTransactionResponseSchema>>) => void;
+
+        component.components = createComponents([editor]) as never;
+        writer.createTransaction.and.returnValue(
+            new Promise((resolve) => {
+                finishCreate = resolve;
+            })
+        );
+        spyOn(ReturnUrlHelper, 'navigateAfterSave').and.resolveTo();
+
+        const save = component.saveAll();
+
+        expect(editor.getForm().disabled).toBeTrue();
+        finishCreate(
+            create(CreateTransactionResponseSchema, {
+                transaction: create(TransactionSchema, { id: 41n, title: 'first' })
+            })
+        );
+        await save;
+
+        expect(editor.getForm().enabled).toBeTrue();
     });
 
     it('navigates after every transaction saves', async () => {
