@@ -294,7 +294,7 @@ func (p *Paribas) parseRow(
 		tx.SourceAccount = destinationAccount
 
 		skipExtraChecks = true
-	case "Przelew wychodzący", "Przelew na telefon", "Spłata karty":
+	case "Przelew wychodzący", "Przelew internetowy", "Przelew na telefon", "Spłata karty":
 		tx.Type = TransactionTypeRemoteTransfer
 		tx.DestinationAccount = destinationAccount
 		tx.DestinationAmount = amountParsed.Abs()

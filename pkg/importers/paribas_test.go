@@ -115,6 +115,9 @@ var inneWithdrawalV2 []byte
 //go:embed testdata/income_multicurrency.xlsx
 var incomeMultiCurrency []byte
 
+//go:embed testdata/przelew_internetowy.xlsx
+var przelewInternetowy []byte
+
 func TestInneWithdrawal_Success(t *testing.T) {
 	testCases := []struct {
 		description string
@@ -633,6 +636,34 @@ func TestParibasIncomeMultiCurrency_Success(t *testing.T) {
 	assert.Equal(t, "00:00", resp[0].DateFromMessage)
 	assert.Equal(t, "2024-07-09 00:00:00 +0000", resp[0].Date.Format("2006-01-02 15:04:05 -0700"))
 	assert.Equal(t, "ID 4444444 5555555555555555555", resp[0].Description)
+}
+
+func TestParibasPrzelewInternetowy_Success(t *testing.T) {
+	srv := importers.NewParibas(importers.NewBaseParser(nil, nil, nil))
+
+	resp, err := srv.ParseMessages(context.Background(), []*importers.Record{
+		{
+			Data: przelewInternetowy,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp, 1)
+
+	require.NoError(t, resp[0].ParsingError)
+	assert.Equal(t, importers.TransactionTypeRemoteTransfer, resp[0].Type)
+
+	assert.Equal(t, "123.45", resp[0].SourceAmount.StringFixed(2))
+	assert.Equal(t, "PLN", resp[0].SourceCurrency)
+	assert.Equal(t, "11111111111111111111111111", resp[0].SourceAccount)
+
+	assert.Equal(t, "123.45", resp[0].DestinationAmount.StringFixed(2))
+	assert.Equal(t, "PLN", resp[0].DestinationCurrency)
+	assert.Equal(t, "22222222222222222222222222", resp[0].DestinationAccount)
+
+	assert.Equal(t, "00:00", resp[0].DateFromMessage)
+	assert.Equal(t, "2026-05-14 00:00:00 +0000", resp[0].Date.Format("2006-01-02 15:04:05 -0700"))
+	assert.Equal(t, "Certificate purchase masked123", resp[0].Description)
 }
 
 func TestParibasTransferToPrivateAccount_Success(t *testing.T) {

@@ -22,10 +22,11 @@ import { Message } from 'primeng/message';
 import { Tooltip } from 'primeng/tooltip';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionsService, CreateTransactionsBulkRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { NumberHelper } from '../../helpers/number.helper';
 import { PageConfigService } from '../../services/page-config.service';
 import { TransactionsImportConfig, TRANSACTIONS_IMPORT_DEFAULTS, TRANSACTIONS_IMPORT_PAGE_ID } from './transactions-import.config';
 
-interface TransactionItem {
+export interface TransactionItem {
     transaction: Transaction;
     selected: boolean;
     duplicateTxID?: bigint;
@@ -385,6 +386,15 @@ export class TransactionsImportComponent implements OnInit {
         }
 
         return filtered;
+    }
+
+    syncTransactionFromEditor(item: TransactionItem, transaction: Transaction): void {
+        Object.assign(item.transaction, transaction, {
+            id: item.transaction.id,
+            sourceAmount: NumberHelper.toNegativeNumber(transaction.sourceAmount),
+            destinationAmount: NumberHelper.toPositiveNumber(transaction.destinationAmount),
+            fxSourceAmount: NumberHelper.toNegativeNumber(transaction.fxSourceAmount)
+        });
     }
 
     async importSelected() {

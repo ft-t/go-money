@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, Inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Inject, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { FluidModule } from 'primeng/fluid';
 import { InputTextModule } from 'primeng/inputtext';
 import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -56,6 +56,11 @@ import { ReturnUrlHelper } from '../../helpers/return-url.helper';
 
 type possibleDestination = 'source' | 'destination' | 'fx';
 
+export interface TransactionDraft {
+    transaction: Transaction;
+    skipRules: boolean;
+}
+
 @Component({
     selector: 'transaction-editor',
     templateUrl: 'transaction-editor.component.html',
@@ -109,6 +114,9 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
 
     @Input() public shouldShowTitle = true;
     @Input() public shouldShowRefresh = true;
+    @Input() public initialSkipRules = false;
+
+    @Output() public transactionChanged = new EventEmitter<Transaction>();
 
     constructor(
         @Inject(TRANSPORT_TOKEN) private transport: Transport,
@@ -190,7 +198,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             transactionDate: new FormControl(tx.transactionDate != null ? TimestampHelper.timestampToDate(tx.transactionDate!) : new Date(), Validators.required),
             type: new FormControl(tx.type, Validators.required),
             tagIds: new FormControl(tx.tagIds || [], { nonNullable: false }),
-            skipRules: new FormControl(false, { nonNullable: false }),
+            skipRules: new FormControl(this.initialSkipRules, { nonNullable: false }),
             fxSourceAmount: new FormControl(NumberHelper.toPositiveNumber(tx.fxSourceAmount), { nonNullable: false }),
             fxSourceCurrency: new FormControl(tx.fxSourceCurrency, { nonNullable: false }),
             internalReferenceNumbers: new FormControl(tx.internalReferenceNumbers || [], { nonNullable: false })
@@ -261,6 +269,10 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             if (!this.isAccountApplicable(newVal!, false, destinationAccountId!)) {
                 form.get('destinationAccountId')!.setValue(0);
             }
+        });
+
+        form.valueChanges.subscribe(() => {
+            this.transactionChanged.emit(this.buildDraftFromForm(form).transaction);
         });
 
         return form;
@@ -365,7 +377,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
         }
 
         const applicableAccounts = this.getApplicableAccounts(type, isSource);
-        return applicableAccounts.some(acc => acc.id == accountId);
+        return applicableAccounts.some((acc) => acc.id == accountId);
     }
 
     getApplicableAccounts(type: TransactionType, isSource: boolean): Account[] {
@@ -430,10 +442,10 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
     }
 
     getForm() {
-        return this.form
+        return this.form;
     }
 
-    adjustSourceAmount(delta : number) {
+    adjustSourceAmount(delta: number) {
         let current = parseFloat(this.form.get('sourceAmount')!.value || 0);
 
         this.form.get('sourceAmount')!.setValue(current + delta);
@@ -480,6 +492,34 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
         this.form.updateValueAndValidity();
         this.cdr.detectChanges();
         return this.form.valid;
+    }
+
+    buildTransactionDraft(): TransactionDraft {
+        return this.buildDraftFromForm(this.form);
+    }
+
+    private buildDraftFromForm(form: FormGroup): TransactionDraft {
+        return {
+            transaction: create(TransactionSchema, {
+                id: 0n,
+                sourceAmount: NumberHelper.toPositiveNumber(form.get('sourceAmount')!.value),
+                sourceCurrency: form.get('sourceCurrency')!.value,
+                sourceAccountId: form.get('sourceAccountId')!.value,
+                destinationAmount: NumberHelper.toPositiveNumber(form.get('destinationAmount')!.value),
+                destinationCurrency: form.get('destinationCurrency')!.value,
+                destinationAccountId: form.get('destinationAccountId')!.value,
+                notes: form.get('notes')!.value,
+                title: form.get('title')!.value,
+                categoryId: form.get('categoryId')!.value,
+                transactionDate: create(TimestampSchema, TimestampHelper.dateToTimestamp(form.get('transactionDate')!.value)),
+                type: form.get('type')!.value,
+                tagIds: [...(form.get('tagIds')!.value || [])],
+                fxSourceAmount: NumberHelper.toPositiveNumber(form.get('fxSourceAmount')!.value),
+                fxSourceCurrency: form.get('fxSourceCurrency')!.value,
+                internalReferenceNumbers: [...(form.get('internalReferenceNumbers')!.value || [])]
+            }),
+            skipRules: form.get('skipRules')!.value
+        };
     }
 
     buildTransactionRequest(): CreateTransactionRequest {
@@ -576,7 +616,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
             // todo transaction details page
-            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.route, ['/transactions']);
         } catch (e) {
             this.messageService.add({ severity: 'error', detail: ErrorHelper.getMessage(e) });
         }
@@ -594,7 +634,7 @@ export class TransactionEditorComponent implements OnInit, OnChanges {
             this.messageService.add({ severity: 'info', detail: 'Transaction created successfully.' });
 
             // todo transaction details page
-            await ReturnUrlHelper.navigateAfterSave(this.router, this.route,['/transactions']);
+            await ReturnUrlHelper.navigateAfterSave(this.router, this.route, ['/transactions']);
 
             // todo transaction details page
         } catch (e) {

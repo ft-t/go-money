@@ -160,7 +160,7 @@
                                         <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.transaction.notes }}</div>
                                     </div>
                                 } @else {
-                                    <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                                    <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false" (transactionChanged)="syncTransactionFromEditor(item, $event)"></transaction-editor>
                                 }
                             </p-accordion-content>
                         </p-accordion-panel>
