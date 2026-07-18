@@ -603,6 +603,12 @@ Date/time:
 | `tx:transactionDateTimeSetTime(hour, minute)` | Replaces time-of-day |
 | `tx:transactionDateTimeAddDate(years, months, days)` | Adds delta |
 
+Discard:
+
+| Method | Effect |
+|---|---|
+| `tx:discard()` | Drops the transaction — never persisted; halts all remaining rules and groups |
+
 Transaction type enum:
 
 | Value | Name |

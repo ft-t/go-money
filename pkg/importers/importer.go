@@ -2,6 +2,7 @@ package importers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -35,6 +36,7 @@ type ImporterConfig struct {
 	CategoriesSvc  CategoriesSvc
 	TransactionSvc TransactionSvc
 	MapperSvc      MapperSvc
+	RuleSvc        RuleSvc
 }
 
 func NewImporter(
@@ -240,10 +242,18 @@ func (i *Importer) Import(
 		return nil, errors.Wrap(err, "failed to commit transaction")
 	}
 
+	var discardedCount int
+	for _, resp := range transactionResp {
+		if resp.Discarded {
+			discardedCount++
+		}
+	}
+
 	return &importv1.ImportTransactionsResponse{
-		ImportedCount:  int32(len(transactionResp)),
+		ImportedCount:  int32(len(transactionResp) - discardedCount),
 		DuplicateCount: int32(duplicateCount),
 		SkippedCount:   int32(len(allTransactions) - len(transactionResp)),
+		DiscardedCount: int32(discardedCount),
 	}, nil
 }
 
@@ -256,7 +266,7 @@ func (i *Importer) Parse(
 		return nil, err
 	}
 
-	converted, err := i.ConvertRequestsToTransactions(ctx, parsed)
+	converted, err := i.ConvertRequestsToTransactions(ctx, parsed, req.SkipRules)
 	if err != nil {
 		return nil, err
 	}
@@ -356,12 +366,17 @@ func (i *Importer) ParseInternal(
 func (i *Importer) ConvertRequestsToTransactions(
 	ctx context.Context,
 	requests []*DeduplicationItem,
+	skipRules bool,
 ) ([]*importv1.ParseTransactionsResponse_ParsedTransaction, error) {
-	var result []*importv1.ParseTransactionsResponse_ParsedTransaction
+	parsedRows := make([]*importv1.ParseTransactionsResponse_ParsedTransaction, len(requests))
+	convertedTxs := make([]*database.Transaction, len(requests))
 
-	for _, req := range requests {
+	var ruleInput []*database.Transaction
+	var ruleInputIdx []int
+
+	for idx, req := range requests {
 		if !req.CreateRequest.HasTransaction() { // it means parsing failed, but we want to show raw transaction to user, so user can decide what to do
-			result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
+			parsedRows[idx] = &importv1.ParseTransactionsResponse_ParsedTransaction{
 				DuplicateTransactionId: req.DuplicationTransactionID,
 				Ignored:                req.Ignored,
 				Transaction: i.cfg.MapperSvc.MapTransaction(ctx, &database.Transaction{
@@ -369,7 +384,7 @@ func (i *Importer) ConvertRequestsToTransactions(
 					Notes:           req.CreateRequest.Notes,
 					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_UNSPECIFIED,
 				}),
-			})
+			}
 
 			continue
 		}
@@ -385,10 +400,80 @@ func (i *Importer) ConvertRequestsToTransactions(
 			return nil, errors.Wrap(err, "failed to convert request to transaction")
 		}
 
-		result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
+		convertedTxs[idx] = converted
+
+		if !skipRules && req.DuplicationTransactionID == nil && !req.Ignored {
+			ruleInput = append(ruleInput, converted)
+			ruleInputIdx = append(ruleInputIdx, idx)
+		}
+	}
+
+	if len(ruleInput) > 0 {
+		processed, err := i.cfg.RuleSvc.ProcessTransactions(ctx, ruleInput)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to process transactions with rules")
+		}
+
+		for pos, idx := range ruleInputIdx {
+			convertedTxs[idx] = processed[pos]
+		}
+	}
+
+	for idx, req := range requests {
+		if parsedRows[idx] != nil { // parse-failed row already mapped
+			continue
+		}
+
+		converted := convertedTxs[idx]
+
+		appliedRules, err := mapAppliedRules(converted.RuleAppliedEvents)
+		if err != nil {
+			return nil, err
+		}
+
+		parsedRows[idx] = &importv1.ParseTransactionsResponse_ParsedTransaction{
 			Transaction:            i.cfg.MapperSvc.MapTransaction(ctx, converted),
 			DuplicateTransactionId: req.DuplicationTransactionID,
 			Ignored:                req.Ignored,
+			Discarded:              converted.Discarded,
+			AppliedRules:           appliedRules,
+		}
+	}
+
+	return parsedRows, nil
+}
+
+func mapAppliedRules(events []database.RuleAppliedEvent) ([]*importv1.AppliedRule, error) {
+	var result []*importv1.AppliedRule
+
+	for _, event := range events {
+		beforeSnap, err := history.Snapshot(event.Before)
+		if err != nil {
+			return nil, errors.Wrap(err, "snapshot before for applied rule")
+		}
+
+		afterSnap, err := history.Snapshot(event.After)
+		if err != nil {
+			return nil, errors.Wrap(err, "snapshot after for applied rule")
+		}
+
+		diff, err := history.Diff(beforeSnap, afterSnap)
+		if err != nil {
+			return nil, errors.Wrap(err, "diff for applied rule")
+		}
+
+		var diffJson string
+		if diff != nil {
+			raw, marshalErr := json.Marshal(diff)
+			if marshalErr != nil {
+				return nil, errors.Wrap(marshalErr, "marshal applied rule diff")
+			}
+			diffJson = string(raw)
+		}
+
+		result = append(result, &importv1.AppliedRule{
+			RuleId:   event.RuleID,
+			DiffJson: diffJson,
 		})
 	}
 

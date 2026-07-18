@@ -101,6 +101,86 @@ func TestBasicExpenseWithMultiCurrency(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestCreateTransactionDiscardedByRule(t *testing.T) {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+	statsSvc := transactions.NewStatService()
+	mapper := NewMockMapperSvc(gomock.NewController(t))
+
+	baseCurrency := NewMockBaseAmountSvc(gomock.NewController(t))
+	baseCurrency.EXPECT().RecalculateAmountInBaseCurrency(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, i []*database.Transaction) error {
+			assert.Len(t, i, 0)
+
+			return nil
+		})
+
+	ruleEngine := NewMockRuleSvc(gomock.NewController(t))
+	ruleEngine.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, i []*database.Transaction) ([]*database.Transaction, error) {
+			assert.Len(t, i, 1)
+			i[0].Discarded = true
+			return i, nil
+		})
+
+	accountSvc := NewMockAccountSvc(gomock.NewController(t))
+	validationSvc := NewMockValidationSvc(gomock.NewController(t))
+	doubleEntry := NewMockDoubleEntrySvc(gomock.NewController(t))
+
+	srv := transactions.NewService(&transactions.ServiceConfig{
+		StatsSvc:          statsSvc,
+		MapperSvc:         mapper,
+		BaseAmountService: baseCurrency,
+		RuleSvc:           ruleEngine,
+		AccountSvc:        accountSvc,
+		ValidationSvc:     validationSvc,
+		DoubleEntry:       doubleEntry,
+	})
+
+	accounts := []*database.Account{
+		{
+			Name:     "Private [UAH]",
+			Currency: "UAH",
+			Extra:    map[string]string{},
+		},
+	}
+	assert.NoError(t, gormDB.Create(&accounts).Error)
+
+	accountSvc.EXPECT().GetAllAccounts(gomock.Any()).Return(accounts, nil)
+	validationSvc.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, db *gorm.DB, req *validation.Request) error {
+			assert.Len(t, req.Txs, 0)
+
+			return nil
+		})
+	doubleEntry.EXPECT().Record(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	expenseDate := time.Date(2025, 6, 3, 0, 0, 0, 0, time.UTC)
+	resp, err := srv.Create(context.TODO(), &transactionsv1.CreateTransactionRequest{
+		TransactionDate: timestamppb.New(expenseDate),
+		Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+			Expense: &transactionsv1.Expense{
+				SourceAmount:    "-765.76",
+				SourceCurrency:  "UAH",
+				SourceAccountId: accounts[0].ID,
+
+				DestinationCurrency:  "USD",
+				DestinationAmount:    "67.54",
+				DestinationAccountId: accounts[0].ID,
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.True(t, resp.Discarded)
+	assert.Nil(t, resp.Transaction)
+
+	var count int64
+	assert.NoError(t, gormDB.Model(&database.Transaction{}).Count(&count).Error)
+	assert.EqualValues(t, 0, count)
+}
+
 func TestUpdateTransaction(t *testing.T) {
 	assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 

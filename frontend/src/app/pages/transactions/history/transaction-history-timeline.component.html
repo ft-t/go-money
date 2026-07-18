@@ -33,18 +33,7 @@
                     }
                 </div>
                 @if (diffOps(event).length > 0) {
-                    <div class="flex flex-col gap-1">
-                        @for (op of diffOps(event); track $index) {
-                            <div class="flex items-start gap-2 text-sm">
-                                <p-tag [value]="op.op" [severity]="opSeverity(op.op)" />
-                                <span class="font-mono text-surface-700 dark:text-surface-200">{{ opPathDisplay(op.path) }}</span>
-                                @if (op.value !== undefined && op.op !== 'remove') {
-                                    <span class="text-surface-500">=</span>
-                                    <span class="font-mono break-all">{{ opValueDisplay(op.value) }}</span>
-                                }
-                            </div>
-                        }
-                    </div>
+                    <app-diff-ops [ops]="diffOps(event)" />
                 } @else if (event.eventType !== 1) {
                     <div class="text-sm text-surface-500">No field changes recorded.</div>
                 }

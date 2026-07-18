@@ -1,7 +1,6 @@
 import { Component, Inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { Timeline } from 'primeng/timeline';
-import { Tag } from 'primeng/tag';
 import { RouterLink } from '@angular/router';
 import {
     TransactionHistoryActorType,
@@ -15,19 +14,12 @@ import { ErrorHelper } from '../../../helpers/error.helper';
 import { TimestampHelper } from '../../../helpers/timestamp.helper';
 import { TRANSPORT_TOKEN } from '../../../consts/transport';
 import { createClient, Transport } from '@connectrpc/connect';
-
-interface DiffOp {
-    op: string;
-    path: string;
-    value?: unknown;
-}
-
-type TagSeverity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast';
+import { DiffOp, DiffOpsComponent } from '../../../shared/components/diff-ops/diff-ops.component';
 
 @Component({
     selector: 'app-transaction-history-timeline',
     standalone: true,
-    imports: [Timeline, Tag, RouterLink],
+    imports: [Timeline, RouterLink, DiffOpsComponent],
     templateUrl: './transaction-history-timeline.component.html'
 })
 export class TransactionHistoryTimelineComponent implements OnChanges, OnInit {
@@ -184,41 +176,7 @@ export class TransactionHistoryTimelineComponent implements OnChanges, OnInit {
     }
 
     diffOps(event: TransactionHistoryEvent): DiffOp[] {
-        const diff = event.diff;
-        if (!diff) return [];
-        const raw = (diff as Record<string, unknown>)['ops'];
-        if (!Array.isArray(raw)) return [];
-        return raw.filter((op): op is DiffOp => !!op && typeof op === 'object' && 'op' in op && 'path' in op);
-    }
-
-    opPathDisplay(path: string): string {
-        if (!path) return '';
-        return path.startsWith('/') ? path.slice(1) : path;
-    }
-
-    opValueDisplay(value: unknown): string {
-        if (value === undefined) return '';
-        if (value === null) return 'null';
-        if (typeof value === 'string') return value;
-        if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-        try {
-            return JSON.stringify(value);
-        } catch {
-            return String(value);
-        }
-    }
-
-    opSeverity(op: string): TagSeverity {
-        switch (op) {
-            case 'add':
-                return 'success';
-            case 'replace':
-                return 'warn';
-            case 'remove':
-                return 'danger';
-            default:
-                return 'secondary';
-        }
+        return DiffOpsComponent.parse(event.diff);
     }
 
     eventTimestamp(event: TransactionHistoryEvent): string {

@@ -267,6 +267,7 @@ func main() {
 			CategoriesSvc:  categoriesSvc,
 			TransactionSvc: transactionSvc,
 			MapperSvc:      mapper,
+			RuleSvc:        ruleEngine,
 		},
 		importers.NewFireflyImporter(
 			transactionSvc,

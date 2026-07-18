@@ -82,7 +82,7 @@ func (s *Executor) executeInternal(
 				if snapshotErr != nil {
 					return nil, snapshotErr
 				}
-				if changed {
+				if changed || clonedTx.Discarded {
 					tx.RuleAppliedEvents = append(tx.RuleAppliedEvents, database.RuleAppliedEvent{
 						RuleID: rule.ID,
 						Before: tx,
@@ -91,6 +91,10 @@ func (s *Executor) executeInternal(
 				}
 				clonedTx.RuleAppliedEvents = tx.RuleAppliedEvents
 				tx = clonedTx
+			}
+
+			if tx.Discarded {
+				return tx, nil // discard is final, halt all remaining rules
 			}
 
 			if result && rule.IsFinalRule {

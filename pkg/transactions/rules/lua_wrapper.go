@@ -70,6 +70,12 @@ func (w *LuaTransactionWrapper) ReferenceNumber(l *lua.LState) int {
 	})
 }
 
+func (w *LuaTransactionWrapper) Discard(_ *lua.LState) int {
+	w.modified = true
+	w.tx.Discarded = true
+	return 0
+}
+
 func (w *LuaTransactionWrapper) GetInternalReferenceNumbers(l *lua.LState) int {
 	tbl := l.NewTable()
 	for i, ref := range w.tx.InternalReferenceNumbers {

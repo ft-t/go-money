@@ -2,7 +2,8 @@ import { Component, Inject, OnInit, QueryList, ViewChildren } from '@angular/cor
 import { Fluid } from 'primeng/fluid';
 import { Toast } from 'primeng/toast';
 import { FileUpload } from 'primeng/fileupload';
-import { ImportService, ImportSource, ImportTransactionsRequestSchema, MarkTransactionsIgnoredRequestSchema, ParseTransactionsRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/import/v1/import_pb';
+import { AppliedRule, ImportService, ImportSource, ImportTransactionsRequestSchema, MarkTransactionsIgnoredRequestSchema, ParseTransactionsRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/import/v1/import_pb';
+import { RulesService } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/rules/v1/rules_pb';
 import { AccountTypeEnum, EnumService } from '../../services/enum.service';
 import { SelectModule } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
@@ -25,19 +26,22 @@ import { TransactionsService, CreateTransactionsBulkRequestSchema } from '@buf/x
 import { NumberHelper } from '../../helpers/number.helper';
 import { PageConfigService } from '../../services/page-config.service';
 import { TransactionsImportConfig, TRANSACTIONS_IMPORT_DEFAULTS, TRANSACTIONS_IMPORT_PAGE_ID } from './transactions-import.config';
+import { DiffOp, DiffOpsComponent } from '../../shared/components/diff-ops/diff-ops.component';
 
 export interface TransactionItem {
     transaction: Transaction;
     selected: boolean;
     duplicateTxID?: bigint;
     ignored: boolean;
+    discarded: boolean;
+    appliedRules: AppliedRule[];
     hasError: boolean;
     hasValidationError?: boolean;
 }
 
 @Component({
     selector: 'app-transactions-import',
-    imports: [Fluid, Toast, FileUpload, SelectModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgClass, TransactionEditorComponent, Message, Tooltip],
+    imports: [Fluid, Toast, FileUpload, SelectModule, FormsModule, Textarea, Checkbox, IftaLabel, Button, AccordionModule, NgClass, TransactionEditorComponent, Message, Tooltip, DiffOpsComponent],
     templateUrl: './transactions-import.component.html',
     styles: [
         `
@@ -69,7 +73,9 @@ export class TransactionsImportComponent implements OnInit {
 
     public importService;
     public transactionService;
+    public rulesService;
     public rawText: string = '';
+    private ruleTitlesById = new Map<number, string>();
 
     public transactionItems: TransactionItem[] = [];
     public showReview: boolean = false;
@@ -87,6 +93,7 @@ export class TransactionsImportComponent implements OnInit {
     ) {
         this.importService = createClient(ImportService, this.transport);
         this.transactionService = createClient(TransactionsService, this.transport);
+        this.rulesService = createClient(RulesService, this.transport);
     }
 
     public get sources(): AccountTypeEnum[] {
@@ -205,6 +212,7 @@ export class TransactionsImportComponent implements OnInit {
                 create(ParseTransactionsRequestSchema, {
                     content: contents,
                     source: this.selectedSource,
+                    skipRules: this.skipRules,
                     treatDatesAsUtc: this.treatDatesAsUtc,
                     skipDuplicateReferenceCheck: this.skipDuplicateReferenceCheck
                 })
@@ -212,11 +220,17 @@ export class TransactionsImportComponent implements OnInit {
 
             this.transactionItems = response.transactions.map((tx) => ({
                 transaction: tx.transaction!,
-                selected: tx.duplicateTransactionId === undefined && !tx.ignored && tx.transaction!.type !== TransactionType.UNSPECIFIED,
+                selected: tx.duplicateTransactionId === undefined && !tx.ignored && !tx.discarded && tx.transaction!.type !== TransactionType.UNSPECIFIED,
                 duplicateTxID: tx.duplicateTransactionId,
                 ignored: !!tx.ignored,
+                discarded: !!tx.discarded,
+                appliedRules: tx.appliedRules ?? [],
                 hasError: tx.transaction!.type === TransactionType.UNSPECIFIED
             }));
+
+            if (this.transactionItems.some((item) => item.appliedRules.length > 0)) {
+                await this.loadRuleTitles();
+            }
 
             this.transactionItems = this.transactionItems.sort((a, b) => {
                 if (a.hasError && !b.hasError) return -1;
@@ -281,6 +295,9 @@ export class TransactionsImportComponent implements OnInit {
             if (result.skippedCount > 0) {
                 parts.push(`Skipped (validation errors): ${result.skippedCount}.`);
             }
+            if (result.discardedCount > 0) {
+                parts.push(`Discarded by rules: ${result.discardedCount}.`);
+            }
             const logText = parts.join('\n');
             this.textContent = logText;
             this.messageService.add({ severity: 'success', detail: logText });
@@ -331,12 +348,47 @@ export class TransactionsImportComponent implements OnInit {
         return item.duplicateTxID !== undefined || item.ignored;
     }
 
+    isExcludedFromImport(item: TransactionItem): boolean {
+        return this.isDuplicate(item) || item.discarded;
+    }
+
     getSelectedCount(): number {
-        return this.transactionItems.filter((item) => item.selected && !this.isDuplicate(item) && !item.hasError).length;
+        return this.transactionItems.filter((item) => item.selected && !this.isExcludedFromImport(item) && !item.hasError).length;
     }
 
     getNonDuplicateCount(): number {
-        return this.transactionItems.filter((item) => !this.isDuplicate(item) && !item.hasError).length;
+        return this.transactionItems.filter((item) => !this.isExcludedFromImport(item) && !item.hasError).length;
+    }
+
+    getDiscardedCount(): number {
+        return this.transactionItems.filter((item) => item.discarded).length;
+    }
+
+    getRulesAppliedCount(): number {
+        return this.transactionItems.reduce((sum, item) => sum + item.appliedRules.length, 0);
+    }
+
+    getRuleChangedRowsCount(): number {
+        return this.transactionItems.filter((item) => item.appliedRules.length > 0).length;
+    }
+
+    ruleTitle(ruleId: number): string {
+        return this.ruleTitlesById.get(ruleId) ?? `Rule #${ruleId}`;
+    }
+
+    diffOpsFor(rule: AppliedRule): DiffOp[] {
+        return DiffOpsComponent.parseJson(rule.diffJson);
+    }
+
+    private async loadRuleTitles(): Promise<void> {
+        try {
+            const resp = await this.rulesService.listRules({});
+            for (const r of resp.rules || []) {
+                this.ruleTitlesById.set(r.id, r.title);
+            }
+        } catch (e) {
+            console.error('Failed to load rule titles:', e);
+        }
     }
 
     getErrorCount(): number {
@@ -345,7 +397,7 @@ export class TransactionsImportComponent implements OnInit {
 
     selectAll() {
         this.transactionItems.forEach((item) => {
-            if (!this.isDuplicate(item) && !item.hasError) {
+            if (!this.isExcludedFromImport(item) && !item.hasError) {
                 item.selected = true;
             }
         });
@@ -353,14 +405,14 @@ export class TransactionsImportComponent implements OnInit {
 
     deselectAll() {
         this.transactionItems.forEach((item) => {
-            if (!this.isDuplicate(item) && !item.hasError) {
+            if (!this.isExcludedFromImport(item) && !item.hasError) {
                 item.selected = false;
             }
         });
     }
 
     getDuplicatesCount(): number {
-        return this.transactionItems.filter((item) => this.isDuplicate(item)).length;
+        return this.transactionItems.filter((item) => this.isExcludedFromImport(item)).length;
     }
 
     toggleHideDuplicates() {
@@ -382,7 +434,7 @@ export class TransactionsImportComponent implements OnInit {
         }
 
         if (this.hideDuplicates) {
-            return filtered.filter((item) => !this.isDuplicate(item));
+            return filtered.filter((item) => !this.isExcludedFromImport(item));
         }
 
         return filtered;
@@ -398,7 +450,7 @@ export class TransactionsImportComponent implements OnInit {
     }
 
     async importSelected() {
-        if (this.transactionItems.filter((item) => item.selected && !item.hasError && !this.isDuplicate(item)).length === 0) {
+        if (this.transactionItems.filter((item) => item.selected && !item.hasError && !this.isExcludedFromImport(item)).length === 0) {
             this.messageService.add({
                 severity: 'warn',
                 detail: 'No transactions selected'
@@ -420,7 +472,7 @@ export class TransactionsImportComponent implements OnInit {
 
             const editor = editorArray[editorIndex];
 
-            if (item.selected && !this.isDuplicate(item)) {
+            if (item.selected && !this.isExcludedFromImport(item)) {
                 if (editor && !editor.isValid()) {
                     hasValidationErrors = true;
                     item.hasValidationError = true;
@@ -459,7 +511,7 @@ export class TransactionsImportComponent implements OnInit {
                         const item = filteredItems[i];
                         if (item.hasError) continue;
                         if (editorIdx === index) {
-                            return item.selected && !this.isDuplicate(item);
+                            return item.selected && !this.isExcludedFromImport(item);
                         }
                         editorIdx++;
                     }

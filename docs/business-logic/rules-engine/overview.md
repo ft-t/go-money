@@ -134,6 +134,20 @@ Scripts access and modify transactions via the `tx` global object:
 | `tx:transactionDateTimeAddDate(days)` | Add days to transaction date |
 | `tx:transactionDateTimeSetTime(hour, min, sec)` | Set time component |
 
+### Discard
+
+| Method | Description |
+|--------|-------------|
+| `tx:discard()` | Discard the transaction — it is never persisted |
+
+`tx:discard()` halts all remaining rules and groups for that transaction (discard is final; `is_final_rule` is irrelevant after it). The transaction is dropped from every create path that runs rules: import (`ImportTransactionsResponse.discarded_count`), manual create, API (`CreateTransactionResponse.discarded = true`), scheduled rules. Discard is stateless — re-importing the same statement runs the rules again. Import preview (`ParseTransactions`) runs the full rule engine by default (`skip_rules = false`) and marks discarded rows with `ParsedTransaction.discarded` plus per-row `applied_rules` diffs.
+
+```lua
+if tx:title() == "bcd" then
+    tx:discard()
+end
+```
+
 **Code Reference:** `pkg/transactions/rules/lua_wrapper.go`, `lua_wrapper_amounts.go`, `lua_tags.go`, `lua_wrapper_date.go`
 
 ## Helper Functions

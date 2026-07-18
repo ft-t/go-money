@@ -366,8 +366,17 @@ func (s *Service) CreateBulkInternal(
 
 	var toCreate []*database.Transaction
 	var toUpdate []*database.Transaction
+	var persisted []*database.Transaction
+	var discardedCount int
 
 	for _, newTx := range append(transactionWithRules, transactionWithoutRules...) {
+		if newTx.Discarded {
+			discardedCount++
+			continue
+		}
+
+		persisted = append(persisted, newTx)
+
 		if newTx.ID == 0 {
 			toCreate = append(toCreate, newTx)
 		} else {
@@ -400,9 +409,18 @@ func (s *Service) CreateBulkInternal(
 		s.recordHistory(ctx, tx, newTx, origByID[newTx.ID], database.TransactionHistoryEventTypeUpdated)
 	}
 
-	created := append(transactionWithRules, transactionWithoutRules...)
+	finalRes, err := s.FinalizeTransactions(ctx, tx, persisted, originalTxs, opts)
+	if err != nil {
+		return nil, err
+	}
 
-	return s.FinalizeTransactions(ctx, tx, created, originalTxs, opts)
+	for i := 0; i < discardedCount; i++ {
+		finalRes = append(finalRes, &transactionsv1.CreateTransactionResponse{
+			Discarded: true,
+		})
+	}
+
+	return finalRes, nil
 }
 
 func (s *Service) CreateRawTransaction(

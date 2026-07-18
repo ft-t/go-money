@@ -221,6 +221,7 @@ func TestParse(t *testing.T) {
 		categoriesSvc := NewMockCategoriesSvc(ctrl)
 		txSvc := NewMockTransactionSvc(ctrl)
 		mapperSvc := NewMockMapperSvc(ctrl)
+		ruleSvc := NewMockRuleSvc(ctrl)
 
 		impl1 := NewMockImplementation(ctrl)
 		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
@@ -231,6 +232,7 @@ func TestParse(t *testing.T) {
 			CategoriesSvc:  categoriesSvc,
 			TransactionSvc: txSvc,
 			MapperSvc:      mapperSvc,
+			RuleSvc:        ruleSvc,
 		}
 
 		imp := importers.NewImporter(cfg, impl1)
@@ -265,6 +267,11 @@ func TestParse(t *testing.T) {
 		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
 		txSvc.EXPECT().ConvertRequestToTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(&database.Transaction{ID: 1}, nil)
+		ruleSvc.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, txs []*database.Transaction) ([]*database.Transaction, error) {
+				assert.Len(t, txs, 1)
+				return txs, nil
+			})
 		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).Return(&gomoneypbv1.Transaction{Id: 1})
 
 		resp, err := imp.Parse(context.TODO(), &importv1.ParseTransactionsRequest{
@@ -375,6 +382,215 @@ func TestParse(t *testing.T) {
 	})
 }
 
+func TestParseRulesPreview_Success(t *testing.T) {
+	t.Run("rules applied and discarded propagated", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+		ruleSvc := NewMockRuleSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+			RuleSvc:        ruleSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return([]*database.Account{{ID: 1}, {ID: 2}}, nil)
+
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{
+					Title:                    "bcd",
+					InternalReferenceNumbers: []string{"ref123"},
+					Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+						Expense: &transactionsv1.Expense{
+							SourceAccountId:      1,
+							SourceAmount:         "-100",
+							SourceCurrency:       "USD",
+							DestinationAccountId: 2,
+							DestinationAmount:    "100",
+							DestinationCurrency:  "USD",
+						},
+					},
+				},
+			},
+		}
+
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+		txSvc.EXPECT().ConvertRequestToTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&database.Transaction{Title: "bcd"}, nil)
+
+		ruleSvc.EXPECT().ProcessTransactions(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, txs []*database.Transaction) ([]*database.Transaction, error) {
+				assert.Len(t, txs, 1)
+
+				processed := &database.Transaction{
+					Title:     "renamed",
+					Discarded: true,
+				}
+				processed.RuleAppliedEvents = []database.RuleAppliedEvent{
+					{
+						RuleID: 7,
+						Before: txs[0],
+						After:  processed,
+					},
+				}
+
+				return []*database.Transaction{processed}, nil
+			})
+		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, tx *database.Transaction) *gomoneypbv1.Transaction {
+				assert.EqualValues(t, "renamed", tx.Title)
+				return &gomoneypbv1.Transaction{Title: tx.Title}
+			})
+
+		resp, err := imp.Parse(context.TODO(), &importv1.ParseTransactionsRequest{
+			Content: []string{"test content"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, resp.Transactions, 1)
+		assert.True(t, resp.Transactions[0].Discarded)
+		assert.Len(t, resp.Transactions[0].AppliedRules, 1)
+		assert.EqualValues(t, 7, resp.Transactions[0].AppliedRules[0].RuleId)
+		assert.Contains(t, resp.Transactions[0].AppliedRules[0].DiffJson, "title")
+	})
+
+	t.Run("skip rules disables engine", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+		ruleSvc := NewMockRuleSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+			RuleSvc:        ruleSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return([]*database.Account{{ID: 1}, {ID: 2}}, nil)
+
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{
+					Title:                    "bcd",
+					InternalReferenceNumbers: []string{"ref123"},
+					Transaction: &transactionsv1.CreateTransactionRequest_Expense{
+						Expense: &transactionsv1.Expense{
+							SourceAccountId:      1,
+							SourceAmount:         "-100",
+							SourceCurrency:       "USD",
+							DestinationAccountId: 2,
+							DestinationAmount:    "100",
+							DestinationCurrency:  "USD",
+						},
+					},
+				},
+			},
+		}
+
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+		txSvc.EXPECT().ConvertRequestToTransaction(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&database.Transaction{Title: "bcd"}, nil)
+		mapperSvc.EXPECT().MapTransaction(gomock.Any(), gomock.Any()).
+			Return(&gomoneypbv1.Transaction{Title: "bcd"})
+
+		resp, err := imp.Parse(context.TODO(), &importv1.ParseTransactionsRequest{
+			Content:   []string{"test content"},
+			Source:    importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+			SkipRules: true,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, resp.Transactions, 1)
+		assert.False(t, resp.Transactions[0].Discarded)
+		assert.Len(t, resp.Transactions[0].AppliedRules, 0)
+	})
+}
+
+func TestImportDiscardedCount_Success(t *testing.T) {
+	t.Run("discarded responses counted separately", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		accSvc := NewMockAccountSvc(ctrl)
+		tagSvc := NewMockTagSvc(ctrl)
+		categoriesSvc := NewMockCategoriesSvc(ctrl)
+		txSvc := NewMockTransactionSvc(ctrl)
+		mapperSvc := NewMockMapperSvc(ctrl)
+
+		impl1 := NewMockImplementation(ctrl)
+		impl1.EXPECT().Type().Return(importv1.ImportSource_IMPORT_SOURCE_FIREFLY)
+
+		cfg := &importers.ImporterConfig{
+			AccountSvc:     accSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: txSvc,
+			MapperSvc:      mapperSvc,
+		}
+
+		imp := importers.NewImporter(cfg, impl1)
+
+		tagSvc.EXPECT().GetAllTags(gomock.Any()).Return([]*database.Tag{}, nil)
+		categoriesSvc.EXPECT().GetAllCategories(gomock.Any()).Return([]*database.Category{}, nil)
+		accSvc.EXPECT().GetAllAccounts(gomock.Any()).Return([]*database.Account{{ID: 1}}, nil)
+
+		parseResp := &importers.ParseResponse{
+			CreateRequests: []*transactionsv1.CreateTransactionRequest{
+				{
+					Title:                    "keep",
+					InternalReferenceNumbers: []string{"ref_keep"},
+				},
+				{
+					Title:                    "bcd",
+					InternalReferenceNumbers: []string{"ref_discard"},
+				},
+			},
+		}
+
+		impl1.EXPECT().Parse(gomock.Any(), gomock.Any()).Return(parseResp, nil)
+		txSvc.EXPECT().CreateBulkInternal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return([]*transactionsv1.CreateTransactionResponse{
+				{Transaction: &gomoneypbv1.Transaction{Id: 123}},
+				{Discarded: true},
+			}, nil)
+
+		resp, err := imp.Import(context.TODO(), &importv1.ImportTransactionsRequest{
+			Content: []string{"test content"},
+			Source:  importv1.ImportSource_IMPORT_SOURCE_FIREFLY,
+		})
+		assert.NoError(t, err)
+		assert.EqualValues(t, 1, resp.ImportedCount)
+		assert.EqualValues(t, 1, resp.DiscardedCount)
+		assert.EqualValues(t, 0, resp.SkippedCount)
+		assert.EqualValues(t, 0, resp.DuplicateCount)
+	})
+}
+
 func TestConvertRequestsToTransactions_Ignored_Success(t *testing.T) {
 	t.Run("propagates ignored flag", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -402,7 +618,7 @@ func TestConvertRequestsToTransactions_Ignored_Success(t *testing.T) {
 			},
 		}
 
-		result, err := imp.ConvertRequestsToTransactions(context.TODO(), requests)
+		result, err := imp.ConvertRequestsToTransactions(context.TODO(), requests, false)
 		assert.NoError(t, err)
 		assert.Len(t, result, 1)
 		assert.True(t, result[0].Ignored)
@@ -449,7 +665,7 @@ func TestConvertRequestsToTransactions_Ignored_Success(t *testing.T) {
 			},
 		}
 
-		result, err := imp.ConvertRequestsToTransactions(context.TODO(), requests)
+		result, err := imp.ConvertRequestsToTransactions(context.TODO(), requests, false)
 		assert.NoError(t, err)
 		assert.Len(t, result, 1)
 		assert.True(t, result[0].Ignored)
