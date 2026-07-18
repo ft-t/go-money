@@ -1,6 +1,7 @@
+import { EventEmitter } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { create } from '@bufbuild/protobuf';
-import { TransactionSchema, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
+import { Transaction, TransactionSchema, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionEditorComponent } from './transaction-editor.component';
 
 describe('TransactionEditorComponent transaction drafts', () => {
@@ -57,5 +58,22 @@ describe('TransactionEditorComponent transaction drafts', () => {
         const form = editor.buildForm(create(TransactionSchema, {}));
 
         expect(form.get('skipRules')!.value).toBeTrue();
+    });
+
+    it('emits the live transaction whenever the form changes', () => {
+        const editor = Object.create(TransactionEditorComponent.prototype) as TransactionEditorComponent;
+
+        editor.initialSkipRules = false;
+        editor.accounts = {};
+        editor.transactionChanged = new EventEmitter<Transaction>();
+
+        const emitted: Transaction[] = [];
+        editor.transactionChanged.subscribe((transaction) => emitted.push(transaction));
+
+        const form = editor.buildForm(create(TransactionSchema, { title: 'Parsed title' }));
+        form.get('title')!.setValue('Edited title');
+
+        expect(emitted.length).toBeGreaterThan(0);
+        expect(emitted[emitted.length - 1].title).toBe('Edited title');
     });
 });

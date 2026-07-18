@@ -8,22 +8,8 @@
                     <p-message severity="info" variant="simple">{{ getImportNotes() }}</p-message>
                 }
                 <div class="flex items-center gap-2">
-                    <p-select
-                        class="flex-1"
-                        [options]="sources"
-                        [(ngModel)]="selectedSource"
-                        optionLabel="name"
-                        optionValue="value"
-                        placeholder="Select a Import Type" />
-                    <p-button
-                        icon="pi pi-pencil"
-                        severity="secondary"
-                        size="small"
-                        [text]="true"
-                        pTooltip="Manage visible importers"
-                        tooltipPosition="top"
-                        (click)="editingExclusions = !editingExclusions">
-                    </p-button>
+                    <p-select class="flex-1" [options]="sources" [(ngModel)]="selectedSource" optionLabel="name" optionValue="value" placeholder="Select a Import Type" />
+                    <p-button icon="pi pi-pencil" severity="secondary" size="small" [text]="true" pTooltip="Manage visible importers" tooltipPosition="top" (click)="editingExclusions = !editingExclusions"> </p-button>
                 </div>
 
                 @if (editingExclusions) {
@@ -32,12 +18,7 @@
                         <div class="flex flex-col gap-2">
                             @for (src of allSources; track src.value) {
                                 <div class="flex items-center gap-2">
-                                    <p-checkbox
-                                        [ngModel]="!isExcluded(src.value)"
-                                        [binary]="true"
-                                        [inputId]="'importer_' + src.value"
-                                        (onChange)="toggleExclusion(src.value)">
-                                    </p-checkbox>
+                                    <p-checkbox [ngModel]="!isExcluded(src.value)" [binary]="true" [inputId]="'importer_' + src.value" (onChange)="toggleExclusion(src.value)"> </p-checkbox>
                                     <label [for]="'importer_' + src.value" class="cursor-pointer">{{ src.name }}</label>
                                 </div>
                             }
@@ -165,7 +146,7 @@
                                         <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.transaction.notes }}</div>
                                     </div>
                                 } @else {
-                                    <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                                    <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false" (transactionChanged)="syncTransactionFromEditor(item, $event)"></transaction-editor>
                                 }
                             </p-accordion-content>
                         </p-accordion-panel>
