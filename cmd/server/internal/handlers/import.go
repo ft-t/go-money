@@ -6,6 +6,7 @@ import (
 	"buf.build/gen/go/xskydev/go-money-pb/connectrpc/go/gomoneypb/import/v1/importv1connect"
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	"connectrpc.com/connect"
+	"github.com/cockroachdb/errors"
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
@@ -48,6 +49,13 @@ func (i *ImportApi) ImportTransactions(
 	}
 
 	return connect.NewResponse(resp), nil
+}
+
+func (i *ImportApi) MarkTransactionsIgnored(
+	_ context.Context,
+	_ *connect.Request[importv1.MarkTransactionsIgnoredRequest],
+) (*connect.Response[importv1.MarkTransactionsIgnoredResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mark transactions ignored is not implemented"))
 }
 
 func (i *ImportApi) ParseTransactions(
