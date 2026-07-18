@@ -44,6 +44,7 @@ type ParseResponse struct {
 type DeduplicationItem struct {
 	CreateRequest            *transactionsv1.CreateTransactionRequest
 	DuplicationTransactionID *int64
+	Ignored                  bool
 }
 
 type Transaction struct {

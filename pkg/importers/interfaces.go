@@ -45,6 +45,13 @@ type TransactionSvc interface {
 	) (*database.Transaction, error)
 }
 
+type RuleSvc interface {
+	ProcessTransactions(
+		ctx context.Context,
+		inputTxs []*database.Transaction,
+	) ([]*database.Transaction, error)
+}
+
 type CurrencyConverterSvc interface {
 	Convert(
 		ctx context.Context,

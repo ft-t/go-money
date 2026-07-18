@@ -2,9 +2,11 @@ package importers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
@@ -18,7 +20,10 @@ import (
 	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"gorm.io/gorm/clause"
 )
+
+var ErrNoReferenceNumbers = errors.New("no valid reference numbers to ignore")
 
 type Importer struct {
 	cfg             *ImporterConfig
@@ -31,6 +36,7 @@ type ImporterConfig struct {
 	CategoriesSvc  CategoriesSvc
 	TransactionSvc TransactionSvc
 	MapperSvc      MapperSvc
+	RuleSvc        RuleSvc
 }
 
 func NewImporter(
@@ -123,7 +129,65 @@ func (i *Importer) CheckDuplicates(
 		}
 	}
 
+	for _, chunk := range lo.Chunk(allRefs, boilerplate.DefaultBatchSize) {
+		var ignoredRefs []string
+
+		if err := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+			Model(&database.ImportIgnoredTransaction{}).
+			Where("ref_key = ANY(?)", pq.Array(chunk)).
+			Pluck("ref_key", &ignoredRefs).Error; err != nil {
+			return nil, errors.Wrap(err, "failed to check ignored transactions")
+		}
+
+		for _, ref := range ignoredRefs {
+			if item, exists := refToItem[ref]; exists {
+				item.Ignored = true
+			}
+		}
+	}
+
 	return items, nil
+}
+
+func (i *Importer) MarkTransactionsIgnored(
+	ctx context.Context,
+	req *importv1.MarkTransactionsIgnoredRequest,
+) (*importv1.MarkTransactionsIgnoredResponse, error) {
+	var rows []*database.ImportIgnoredTransaction
+	seen := map[string]struct{}{}
+
+	for _, ref := range req.ReferenceNumbers {
+		trimmed := strings.TrimSpace(ref)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+
+		rows = append(rows, &database.ImportIgnoredTransaction{
+			ImportSource: req.ImportSource,
+			RefKey:       trimmed,
+			Reason:       req.Reason,
+			CreatedAt:    time.Now().UTC(),
+		})
+	}
+
+	if len(rows) == 0 {
+		return nil, ErrNoReferenceNumbers
+	}
+
+	res := database.FromContext(ctx, database.GetDb(database.DbTypeMaster)).
+		Clauses(clause.OnConflict{DoNothing: true}).
+		Create(&rows)
+	if res.Error != nil {
+		return nil, errors.Wrap(res.Error, "failed to record ignored transactions")
+	}
+
+	return &importv1.MarkTransactionsIgnoredResponse{
+		IgnoredCount: int32(res.RowsAffected),
+	}, nil
 }
 
 func (i *Importer) Import(
@@ -144,7 +208,7 @@ func (i *Importer) Import(
 	var duplicateCount int
 
 	for _, item := range parsed {
-		if item.DuplicationTransactionID != nil {
+		if item.DuplicationTransactionID != nil || item.Ignored {
 			duplicateCount += 1
 			continue
 		}
@@ -178,10 +242,18 @@ func (i *Importer) Import(
 		return nil, errors.Wrap(err, "failed to commit transaction")
 	}
 
+	var discardedCount int
+	for _, resp := range transactionResp {
+		if resp.Discarded {
+			discardedCount++
+		}
+	}
+
 	return &importv1.ImportTransactionsResponse{
-		ImportedCount:  int32(len(transactionResp)),
+		ImportedCount:  int32(len(transactionResp) - discardedCount),
 		DuplicateCount: int32(duplicateCount),
 		SkippedCount:   int32(len(allTransactions) - len(transactionResp)),
+		DiscardedCount: int32(discardedCount),
 	}, nil
 }
 
@@ -194,7 +266,7 @@ func (i *Importer) Parse(
 		return nil, err
 	}
 
-	converted, err := i.ConvertRequestsToTransactions(ctx, parsed)
+	converted, err := i.ConvertRequestsToTransactions(ctx, parsed, req.SkipRules)
 	if err != nil {
 		return nil, err
 	}
@@ -294,19 +366,25 @@ func (i *Importer) ParseInternal(
 func (i *Importer) ConvertRequestsToTransactions(
 	ctx context.Context,
 	requests []*DeduplicationItem,
+	skipRules bool,
 ) ([]*importv1.ParseTransactionsResponse_ParsedTransaction, error) {
-	var result []*importv1.ParseTransactionsResponse_ParsedTransaction
+	parsedRows := make([]*importv1.ParseTransactionsResponse_ParsedTransaction, len(requests))
+	convertedTxs := make([]*database.Transaction, len(requests))
 
-	for _, req := range requests {
+	var ruleInput []*database.Transaction
+	var ruleInputIdx []int
+
+	for idx, req := range requests {
 		if !req.CreateRequest.HasTransaction() { // it means parsing failed, but we want to show raw transaction to user, so user can decide what to do
-			result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
+			parsedRows[idx] = &importv1.ParseTransactionsResponse_ParsedTransaction{
 				DuplicateTransactionId: req.DuplicationTransactionID,
+				Ignored:                req.Ignored,
 				Transaction: i.cfg.MapperSvc.MapTransaction(ctx, &database.Transaction{
 					Title:           req.CreateRequest.Title,
 					Notes:           req.CreateRequest.Notes,
 					TransactionType: gomoneypbv1.TransactionType_TRANSACTION_TYPE_UNSPECIFIED,
 				}),
-			})
+			}
 
 			continue
 		}
@@ -322,9 +400,80 @@ func (i *Importer) ConvertRequestsToTransactions(
 			return nil, errors.Wrap(err, "failed to convert request to transaction")
 		}
 
-		result = append(result, &importv1.ParseTransactionsResponse_ParsedTransaction{
+		convertedTxs[idx] = converted
+
+		if !skipRules && req.DuplicationTransactionID == nil && !req.Ignored {
+			ruleInput = append(ruleInput, converted)
+			ruleInputIdx = append(ruleInputIdx, idx)
+		}
+	}
+
+	if len(ruleInput) > 0 {
+		processed, err := i.cfg.RuleSvc.ProcessTransactions(ctx, ruleInput)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to process transactions with rules")
+		}
+
+		for pos, idx := range ruleInputIdx {
+			convertedTxs[idx] = processed[pos]
+		}
+	}
+
+	for idx, req := range requests {
+		if parsedRows[idx] != nil { // parse-failed row already mapped
+			continue
+		}
+
+		converted := convertedTxs[idx]
+
+		appliedRules, err := mapAppliedRules(converted.RuleAppliedEvents)
+		if err != nil {
+			return nil, err
+		}
+
+		parsedRows[idx] = &importv1.ParseTransactionsResponse_ParsedTransaction{
 			Transaction:            i.cfg.MapperSvc.MapTransaction(ctx, converted),
 			DuplicateTransactionId: req.DuplicationTransactionID,
+			Ignored:                req.Ignored,
+			Discarded:              converted.Discarded,
+			AppliedRules:           appliedRules,
+		}
+	}
+
+	return parsedRows, nil
+}
+
+func mapAppliedRules(events []database.RuleAppliedEvent) ([]*importv1.AppliedRule, error) {
+	var result []*importv1.AppliedRule
+
+	for _, event := range events {
+		beforeSnap, err := history.Snapshot(event.Before)
+		if err != nil {
+			return nil, errors.Wrap(err, "snapshot before for applied rule")
+		}
+
+		afterSnap, err := history.Snapshot(event.After)
+		if err != nil {
+			return nil, errors.Wrap(err, "snapshot after for applied rule")
+		}
+
+		diff, err := history.Diff(beforeSnap, afterSnap)
+		if err != nil {
+			return nil, errors.Wrap(err, "diff for applied rule")
+		}
+
+		var diffJson string
+		if diff != nil {
+			raw, marshalErr := json.Marshal(diff)
+			if marshalErr != nil {
+				return nil, errors.Wrap(marshalErr, "marshal applied rule diff")
+			}
+			diffJson = string(raw)
+		}
+
+		result = append(result, &importv1.AppliedRule{
+			RuleId:   event.RuleID,
+			DiffJson: diffJson,
 		})
 	}
 

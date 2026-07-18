@@ -34,8 +34,37 @@ describe('TransactionSaveSession', () => {
         expect(writer.createTransaction).toHaveBeenCalledTimes(1);
         expect(writer.updateTransaction).not.toHaveBeenCalled();
         expect(applied).toEqual([41n]);
-        expect(retryResult).toEqual({ savedCount: 1 });
+        expect(retryResult).toEqual({ savedCount: 1, discardedCount: 0 });
         expect(session.getCardState(0, request)).toBe('saved');
+    });
+
+    it('reports a rule-discarded create as discarded instead of failing', async () => {
+        const writer = createWriter();
+
+        writer.createTransaction.and.resolveTo(create(CreateTransactionResponseSchema, { discarded: true }));
+        const session = new TransactionSaveSession(writer);
+        const request = createRequest('bcd');
+        const applied: bigint[] = [];
+
+        const result = await session.save([{ id: 0n, request }], (_, transaction) => applied.push(transaction.id));
+
+        expect(result).toEqual({ savedCount: 0, discardedCount: 1 });
+        expect(applied).toEqual([]);
+        expect(session.getCardState(0, request)).toBe('discarded');
+    });
+
+    it('does not resend a discarded create when the request is unchanged', async () => {
+        const writer = createWriter();
+
+        writer.createTransaction.and.resolveTo(create(CreateTransactionResponseSchema, { discarded: true }));
+        const session = new TransactionSaveSession(writer);
+        const request = createRequest('bcd');
+
+        await session.save([{ id: 0n, request }], () => undefined);
+        const retryResult = await session.save([{ id: 0n, request }], () => undefined);
+
+        expect(writer.createTransaction).toHaveBeenCalledTimes(1);
+        expect(retryResult).toEqual({ savedCount: 1, discardedCount: 0 });
     });
 
     it('updates a previously saved transaction after its request changes', async () => {
@@ -57,7 +86,7 @@ describe('TransactionSaveSession', () => {
         const changedRequest = createRequest('changed');
         const result = await session.save([{ id: 41n, request: changedRequest }], () => undefined);
 
-        expect(result).toEqual({ savedCount: 1 });
+        expect(result).toEqual({ savedCount: 1, discardedCount: 0 });
         expect(writer.updateTransaction).toHaveBeenCalledTimes(1);
         expect(writer.updateTransaction.calls.mostRecent().args[0].id).toBe(41n);
         expect(session.getCardState(0, changedRequest)).toBe('saved');
@@ -153,7 +182,7 @@ describe('TransactionSaveSession', () => {
         );
         await activeSave;
 
-        expect(concurrentResult).toEqual({ savedCount: 0 });
+        expect(concurrentResult).toEqual({ savedCount: 0, discardedCount: 0 });
         expect(writer.createTransaction).toHaveBeenCalledTimes(1);
     });
 

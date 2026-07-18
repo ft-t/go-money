@@ -145,6 +145,55 @@ func TestExecuteRule(t *testing.T) {
 		assert.EqualValues(t, "original notes", tx.Notes)
 	})
 
+	t.Run("discard halts remaining rules and groups", func(t *testing.T) {
+		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
+
+		dbRules := []*database.Rule{
+			{
+				Script:    "somescript",
+				SortOrder: 1,
+				GroupName: "a",
+			},
+			{
+				Script:    "somescript2",
+				SortOrder: 2,
+				GroupName: "a",
+			},
+			{
+				Script:    "somescript3",
+				SortOrder: 1,
+				GroupName: "b",
+			},
+		}
+		assert.NoError(t, gormDB.Create(dbRules).Error)
+
+		interpreter := NewMockInterpreter(gomock.NewController(t))
+
+		srv := rules.NewExecutor(interpreter)
+
+		tx := &database.Transaction{
+			ID:    22,
+			Title: "bcd",
+		}
+
+		interpreter.EXPECT().Run(gomock.Any(), "somescript", gomock.Any()).
+			DoAndReturn(func(ctx context.Context, _ string, transaction *database.Transaction) (bool, error) {
+				assert.NotSame(t, transaction, tx) // ensure the transaction is cloned
+
+				transaction.Discarded = true
+				return true, nil
+			})
+
+		newTx, err := srv.ProcessTransactions(context.TODO(), []*database.Transaction{tx})
+		assert.NoError(t, err)
+		assert.Len(t, newTx, 1)
+
+		assert.True(t, newTx[0].Discarded)
+		assert.Len(t, newTx[0].RuleAppliedEvents, 1)
+		assert.EqualValues(t, dbRules[0].ID, newTx[0].RuleAppliedEvents[0].RuleID)
+		assert.False(t, tx.Discarded) // original untouched
+	})
+
 	t.Run("second rule break execution", func(t *testing.T) {
 		assert.NoError(t, testingutils.FlushAllTables(cfg.Db))
 

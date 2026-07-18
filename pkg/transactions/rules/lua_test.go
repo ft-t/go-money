@@ -35,6 +35,46 @@ func TestLuaInterpreter_Run(t *testing.T) {
 	assert.True(t, result)
 }
 
+func TestDiscard(t *testing.T) {
+	t.Run("discard marks transaction", func(t *testing.T) {
+		interpreter := &LuaInterpreter{}
+
+		script := `
+		if tx:title() == "bcd" then
+			tx:discard()
+		end
+	`
+
+		tx := &database.Transaction{
+			Title: "bcd",
+		}
+
+		result, err := interpreter.Run(context.TODO(), script, tx)
+		assert.NoError(t, err)
+		assert.True(t, result)
+		assert.True(t, tx.Discarded)
+	})
+
+	t.Run("no discard when condition not met", func(t *testing.T) {
+		interpreter := &LuaInterpreter{}
+
+		script := `
+		if tx:title() == "bcd" then
+			tx:discard()
+		end
+	`
+
+		tx := &database.Transaction{
+			Title: "other",
+		}
+
+		result, err := interpreter.Run(context.TODO(), script, tx)
+		assert.NoError(t, err)
+		assert.False(t, result)
+		assert.False(t, tx.Discarded)
+	})
+}
+
 func TestTagsApi(t *testing.T) {
 	t.Run("add tags", func(t *testing.T) {
 		interpreter := &LuaInterpreter{}

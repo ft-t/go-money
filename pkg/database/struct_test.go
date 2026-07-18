@@ -25,6 +25,10 @@ func TestStruct(t *testing.T) {
 			expected: "import_deduplication",
 		},
 		{
+			val:      lo.ToPtr(database.ImportIgnoredTransaction{}).TableName(),
+			expected: "import_ignored_transactions",
+		},
+		{
 			val:      lo.ToPtr(database.DailyStat{}).TableName(),
 			expected: "daily_stat",
 		},

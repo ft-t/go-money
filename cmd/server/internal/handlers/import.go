@@ -10,6 +10,7 @@ import (
 	"github.com/ft-t/go-money/cmd/server/internal/middlewares"
 	"github.com/ft-t/go-money/pkg/auth"
 	"github.com/ft-t/go-money/pkg/boilerplate"
+	"github.com/ft-t/go-money/pkg/importers"
 )
 
 type ImportApi struct {
@@ -51,13 +52,6 @@ func (i *ImportApi) ImportTransactions(
 	return connect.NewResponse(resp), nil
 }
 
-func (i *ImportApi) MarkTransactionsIgnored(
-	_ context.Context,
-	_ *connect.Request[importv1.MarkTransactionsIgnoredRequest],
-) (*connect.Response[importv1.MarkTransactionsIgnoredResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mark transactions ignored is not implemented"))
-}
-
 func (i *ImportApi) ParseTransactions(
 	ctx context.Context,
 	c *connect.Request[importv1.ParseTransactionsRequest],
@@ -69,6 +63,26 @@ func (i *ImportApi) ParseTransactions(
 
 	resp, err := i.importSvc.Parse(ctx, c.Msg)
 	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (i *ImportApi) MarkTransactionsIgnored(
+	ctx context.Context,
+	c *connect.Request[importv1.MarkTransactionsIgnoredRequest],
+) (*connect.Response[importv1.MarkTransactionsIgnoredResponse], error) {
+	jwtData := middlewares.FromContext(ctx)
+	if jwtData.UserID == 0 {
+		return nil, connect.NewError(connect.CodePermissionDenied, auth.ErrInvalidToken)
+	}
+
+	resp, err := i.importSvc.MarkTransactionsIgnored(ctx, c.Msg)
+	if err != nil {
+		if errors.Is(err, importers.ErrNoReferenceNumbers) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

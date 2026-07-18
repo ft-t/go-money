@@ -101,6 +101,12 @@
                         @if (getErrorCount() > 0) {
                             <span class="text-red-500 text-sm ml-2">{{ getErrorCount() }} error(s)</span>
                         }
+                        @if (getRulesAppliedCount() > 0) {
+                            <span class="text-indigo-500 text-sm ml-2">{{ getRulesAppliedCount() }} rule(s) applied to {{ getRuleChangedRowsCount() }} row(s)</span>
+                        }
+                        @if (getDiscardedCount() > 0) {
+                            <span class="text-purple-500 text-sm ml-2">{{ getDiscardedCount() }} discarded</span>
+                        }
                     </div>
                     <div class="flex flex-row gap-2">
                         <p-button label="Select All" severity="secondary" (onClick)="selectAll()" />
@@ -115,16 +121,39 @@
                         <p-accordion-panel [value]="idx.toString()" [ngClass]="{ 'validation-error': item.hasValidationError }">
                             <p-accordion-header>
                                 <div class="flex flex-row gap-3 items-center w-full">
-                                    <p-checkbox [(ngModel)]="item.selected" [binary]="true" [disabled]="item.duplicateTxID !== undefined || item.hasError" (click)="$event.stopPropagation()" />
+                                    <p-checkbox [(ngModel)]="item.selected" [binary]="true" [disabled]="isExcludedFromImport(item) || item.hasError" (click)="$event.stopPropagation()" />
                                     <div class="flex flex-col gap-1 flex-1">
                                         <div class="flex flex-row gap-2 items-center">
                                             <span class="font-semibold text-gray-800 dark:text-gray-200">{{ getTransactionTitle(item.transaction) }}</span>
                                             @if (item.hasError) {
                                                 <span class="text-red-500 text-sm">PARSING ERROR</span>
                                             }
-                                            @if (item.duplicateTxID !== undefined) {
+                                            @if (isDuplicate(item)) {
                                                 <span class="text-orange-500 text-sm">DUPLICATE</span>
-                                                <a [href]="'/transactions/edit/' + item.duplicateTxID" target="_blank" class="text-blue-500 hover:underline text-sm" (click)="$event.stopPropagation()"> View #{{ item.duplicateTxID }} </a>
+                                                @if (item.duplicateTxID !== undefined) {
+                                                    <a [href]="'/transactions/edit/' + item.duplicateTxID" target="_blank" class="text-blue-500 hover:underline text-sm" (click)="$event.stopPropagation()"> View #{{ item.duplicateTxID }} </a>
+                                                }
+                                            }
+                                            @if (item.discarded) {
+                                                <span class="text-purple-500 text-sm" pTooltip="A rule called tx.discard() — this transaction will not be imported" tooltipPosition="top">DISCARDED</span>
+                                            }
+                                            @if (item.appliedRules.length > 0) {
+                                                <span class="text-indigo-500 text-sm" pTooltip="Automation rules modified this transaction" tooltipPosition="top">
+                                                    <i class="pi pi-cog text-xs"></i>
+                                                    {{ item.appliedRules.length }} rule(s)
+                                                </span>
+                                            }
+                                            @if (!isExcludedFromImport(item) && !item.hasError) {
+                                                <p-button
+                                                    label="Skip & remember"
+                                                    severity="secondary"
+                                                    size="small"
+                                                    [text]="true"
+                                                    [disabled]="isLoading"
+                                                    pTooltip="Record this transaction so future imports treat it as a duplicate"
+                                                    tooltipPosition="top"
+                                                    (click)="$event.stopPropagation(); markIgnored(item)"
+                                                />
                                             }
                                         </div>
                                         @if (!item.hasError) {
@@ -146,6 +175,21 @@
                                         <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.transaction.notes }}</div>
                                     </div>
                                 } @else {
+                                    @if (item.appliedRules.length > 0) {
+                                        <div class="mb-3 border border-indigo-200 dark:border-indigo-800 rounded p-3 flex flex-col gap-2">
+                                            <div class="text-sm font-semibold"><i class="pi pi-cog text-xs"></i> Applied automation rules</div>
+                                            @for (rule of item.appliedRules; track $index) {
+                                                <div class="flex flex-col gap-1">
+                                                    <a [href]="'/rules/edit/' + rule.ruleId" target="_blank" class="text-indigo-500 hover:underline text-sm" (click)="$event.stopPropagation()">{{ ruleTitle(rule.ruleId) }}</a>
+                                                    @if (diffOpsFor(rule).length > 0) {
+                                                        <app-diff-ops [ops]="diffOpsFor(rule)" />
+                                                    } @else if (item.discarded) {
+                                                        <div class="text-sm text-purple-500">Discarded the transaction.</div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
                                     <transaction-editor #editor [transaction]="item.transaction" [shouldShowTitle]="false" [shouldShowRefresh]="false" (transactionChanged)="syncTransactionFromEditor(item, $event)"></transaction-editor>
                                 }
                             </p-accordion-content>

@@ -17,6 +17,7 @@
 | schedule_rules | id (int) | Cron-scheduled rules |
 | users | id (int) | User authentication |
 | import_deduplication | composite | Import duplicate detection |
+| import_ignored_transactions | composite (import_source, ref_key) | User-skipped import refs ("skip & remember"); treated as duplicates on re-import |
 | service_tokens | id (uuid) | API service tokens |
 | jti_revocations | id (text) | Revoked token tracking |
 

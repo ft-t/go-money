@@ -14,6 +14,9 @@ describe('TransactionsImportComponent review header synchronisation', () => {
                 sourceCurrency: 'USD'
             }),
             selected: true,
+            ignored: false,
+            discarded: false,
+            appliedRules: [],
             hasError: false
         };
 
@@ -39,6 +42,9 @@ describe('TransactionsImportComponent review header synchronisation', () => {
         const item: TransactionItem = {
             transaction: create(TransactionSchema, { sourceAmount: '-492.72', destinationAmount: '492.72' }),
             selected: true,
+            ignored: false,
+            discarded: false,
+            appliedRules: [],
             hasError: false
         };
 
@@ -51,7 +57,7 @@ describe('TransactionsImportComponent review header synchronisation', () => {
     it('keeps the reviewed item identity and server id stable', () => {
         const component = Object.create(TransactionsImportComponent.prototype) as TransactionsImportComponent;
         const original = create(TransactionSchema, { id: 5n, title: 'Parsed title' });
-        const item: TransactionItem = { transaction: original, selected: true, hasError: false };
+        const item: TransactionItem = { transaction: original, selected: true, ignored: false, discarded: false, appliedRules: [], hasError: false };
 
         component.syncTransactionFromEditor(item, create(TransactionSchema, { id: 0n, title: 'Edited title' }));
 

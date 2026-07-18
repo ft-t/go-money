@@ -50,6 +50,7 @@
 | [Transaction Types](business-logic/transactions/types.md) | expense, income, transfer, adjustment behavior |
 | [Amount Calculations](business-logic/transactions/amount-calculations.md) | base currency conversion, FX, formulas |
 | [Double-Entry](business-logic/double-entry/overview.md) | debit/credit rules, ledger entries |
+| [Import Deduplication](business-logic/transactions/import-deduplication.md) | import dedup, internal_reference_numbers, skip & remember, import_ignored_transactions, MarkTransactionsIgnored |
 
 ### "I need to understand accounts"
 | Document | Keywords |
@@ -144,3 +145,4 @@ WHERE type IN (1, 4)               -- Assets and liabilities (for net worth)
 | schema/tables/stats.md | business-logic/statistics/daily-stats.md |
 | analytics/common-queries.md | mcp/examples.md |
 | api/authentication.md | api/endpoints.md |
+| business-logic/transactions/import-deduplication.md | schema/QUICK-REF.md (import_ignored_transactions) |

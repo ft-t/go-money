@@ -276,6 +276,25 @@ func TestTransactionApi_CreateTransactionsBulk(t *testing.T) {
 		assert.Equal(t, int64(2), resp.Msg.Transactions[1].Id)
 	})
 
+	t.Run("discarded transactions are omitted", func(t *testing.T) {
+		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
+		req := connect.NewRequest(&transactionsv1.CreateTransactionsBulkRequest{
+			Transactions: []*transactionsv1.CreateTransactionRequest{
+				{Title: "Transaction 1"},
+				{Title: "bcd"},
+			},
+		})
+		respMsg := []*transactionsv1.CreateTransactionResponse{
+			{Transaction: &gomoneypbv1.Transaction{Id: 1, Title: "Transaction 1"}},
+			{Discarded: true},
+		}
+		mockSvc.EXPECT().CreateBulk(gomock.Any(), req.Msg.Transactions).Return(respMsg, nil)
+		resp, err := api.CreateTransactionsBulk(ctx, req)
+		assert.NoError(t, err)
+		assert.Len(t, resp.Msg.Transactions, 1)
+		assert.Equal(t, int64(1), resp.Msg.Transactions[0].Id)
+	})
+
 	t.Run("service error", func(t *testing.T) {
 		ctx := middlewares.WithContext(context.TODO(), auth.JwtClaims{UserID: 1})
 		req := connect.NewRequest(&transactionsv1.CreateTransactionsBulkRequest{

@@ -400,10 +400,17 @@ export class TransactionUpsertComponent implements OnInit, OnDestroy {
             return;
         }
 
-        this.messageService.add({
-            severity: 'success',
-            detail: `Successfully saved ${this.targetTransaction.length} transaction(s)`
-        });
+        if (result.discardedCount > 0) {
+            this.messageService.add({
+                severity: 'warn',
+                detail: `${result.savedCount} transaction(s) saved. ${result.discardedCount} discarded by automation rules`
+            });
+        } else {
+            this.messageService.add({
+                severity: 'success',
+                detail: `Successfully saved ${this.targetTransaction.length} transaction(s)`
+            });
+        }
 
         await ReturnUrlHelper.navigateAfterSave(this.router, this.route, ['/transactions']);
     }

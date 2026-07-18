@@ -50,6 +50,7 @@ type Transaction struct {
 	CategoryID               *int32
 
 	RuleAppliedEvents []RuleAppliedEvent `gorm:"-" copy:"-"`
+	Discarded         bool               `gorm:"-"`
 }
 
 type RuleAppliedEvent struct {

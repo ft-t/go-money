@@ -78,6 +78,7 @@ func (l *LuaInterpreter) registerTransaction(state *lua.LState, wrapped *LuaTran
 		"removeAllTags":              wrapped.RemoveAllTags,
 		"transactionDateTimeAddDate": wrapped.TransactionDateTimeAddDate,
 		"transactionDateTimeSetTime": wrapped.TransactionDateTimeSetTime,
+		"discard":                    wrapped.Discard,
 	}))
 
 	ud := state.NewUserData()
