@@ -525,9 +525,14 @@ export class TransactionsImportComponent implements OnInit {
                 })
             );
 
+            const discardedByRules = transactionRequests.length - response.transactions.length;
+
             this.messageService.add({
-                severity: 'success',
-                detail: `Successfully imported ${response.transactions.length} transaction(s)`
+                severity: discardedByRules > 0 ? 'warn' : 'success',
+                detail:
+                    discardedByRules > 0
+                        ? `Imported ${response.transactions.length} transaction(s). ${discardedByRules} discarded by automation rules`
+                        : `Successfully imported ${response.transactions.length} transaction(s)`
             });
 
             this.showReview = false;

@@ -217,6 +217,14 @@ export class ScriptEditorComponent {
         });
 
         suggestions.push({
+            label: `tx:discard()`,
+            kind: kind,
+            insertText: `tx:discard()`,
+            insertTextRules: snippet,
+            documentation: `Discard the transaction - it is never created, and no further rules run for it`
+        });
+
+        suggestions.push({
             label: `tx:transactionDateTimeSetTime(12,5)`,
             kind: kind,
             insertText: `tx:transactionDateTimeSetTime(\${1:value},\${2:value})`,

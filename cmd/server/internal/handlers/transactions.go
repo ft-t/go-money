@@ -117,6 +117,10 @@ func (a *TransactionApi) CreateTransactionsBulk(
 	final := &transactionsv1.CreateTransactionsBulkResponse{}
 
 	for _, r := range resp {
+		if r.Discarded { // discarded by a rule, nothing was created
+			continue
+		}
+
 		final.Transactions = append(final.Transactions, r.Transaction)
 	}
 
