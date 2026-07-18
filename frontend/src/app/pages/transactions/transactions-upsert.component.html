@@ -11,21 +11,33 @@
             </div>
         </div>
     } @else {
-        <form>
+        <form [class.pointer-events-none]="saveSession.isSaving" [attr.aria-busy]="saveSession.isSaving">
             @for (tx of targetTransaction; track tx; let idx = $index) {
                 <div class="flex flex-col card gap-2">
                     <div class="flex flex-row gap-2 justify-between">
                         <div class="flex flex-col align-middle">
                             <div class="font-semibold align-middle text-center">{{ this.getTitle(tx) }}</div>
+                            @switch (saveSession.getCardState(idx, editor.buildTransactionRequest())) {
+                                @case ('saved') {
+                                    <span class="text-sm text-green-600 dark:text-green-400">Saved</span>
+                                }
+                                @case ('unsaved') {
+                                    <span class="text-sm text-amber-600 dark:text-amber-400">Unsaved changes</span>
+                                }
+                                @case ('failed') {
+                                    <span class="text-sm text-red-600 dark:text-red-400">Failed</span>
+                                }
+                            }
                         </div>
                         <div class="flex flex-col justify-end">
                             <div class="flex flex-row gap-4">
                                 <div class="flex flex-row gap-2">
-                                    @if (canDeleteSplit(idx, tx)) {
-                                        <p-button pTooltip="Delete split" tooltipPosition="top" icon="pi pi-minus" severity="secondary" (onClick)="deleteSplit(idx)" />
+                                    @if (canDeleteDraft(idx, tx)) {
+                                        <p-button pTooltip="Delete transaction draft" tooltipPosition="top" icon="pi pi-minus" severity="secondary" (onClick)="deleteDraft(idx)" />
                                     }
                                     <p-button pTooltip="Refresh data" tooltipPosition="top" icon="pi pi-refresh" severity="secondary" (onClick)="refresh()" />
-                                    <p-button pTooltip="Split" tooltipPosition="top" icon="pi pi-link" severity="secondary" (onClick)="addSplit()" />
+                                    <p-button pTooltip="New transaction" tooltipPosition="top" icon="pi pi-plus" severity="secondary" (onClick)="addTransaction()" />
+                                    <p-button pTooltip="Clone transaction" tooltipPosition="top" icon="pi pi-copy" severity="secondary" (onClick)="cloneTransaction(idx)" />
                                     <p-button pTooltip="Add Comission" tooltipPosition="top" icon="pi pi-cart-minus" severity="secondary" (onClick)="showCommissionSplit(idx)" />
                                     <p-button pTooltip="Snippets (Ctrl+K)" tooltipPosition="top" icon="pi pi-bookmark" severity="secondary" (onClick)="toggleSnippetSpotlight()" />
                                 </div>
@@ -38,7 +50,7 @@
                         </div>
                     </div>
 
-                    <transaction-editor #editor [transaction]="tx" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
+                    <transaction-editor #editor [transaction]="tx" [initialSkipRules]="initialSkipRules[idx]" [shouldShowTitle]="false" [shouldShowRefresh]="false"></transaction-editor>
 
                     <div class="flex flex-col justify-end gap-2">
                         <div class="flex gap-2"></div>
@@ -54,7 +66,7 @@
                     <!--                </div>-->
 
                     <div class="flex flex-col items-end gap-1">
-                        <p-button [label]="getSaveButtonLabel()" [fluid]="false" (click)="saveAll()"></p-button>
+                        <p-button [label]="getSaveButtonLabel()" [fluid]="false" [disabled]="saveSession.isSaving" (click)="saveAll()"></p-button>
                         @if (getSaveButtonDescription()) {
                             <span class="text-base text-gray-600">
                                 {{ getSaveButtonDescription() }}

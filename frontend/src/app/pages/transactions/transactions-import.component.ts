@@ -22,14 +22,11 @@ import { Message } from 'primeng/message';
 import { Tooltip } from 'primeng/tooltip';
 import { Transaction, TransactionType } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 import { TransactionsService, CreateTransactionsBulkRequestSchema } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
+import { NumberHelper } from '../../helpers/number.helper';
 import { PageConfigService } from '../../services/page-config.service';
-import {
-    TransactionsImportConfig,
-    TRANSACTIONS_IMPORT_DEFAULTS,
-    TRANSACTIONS_IMPORT_PAGE_ID,
-} from './transactions-import.config';
+import { TransactionsImportConfig, TRANSACTIONS_IMPORT_DEFAULTS, TRANSACTIONS_IMPORT_PAGE_ID } from './transactions-import.config';
 
-interface TransactionItem {
+export interface TransactionItem {
     transaction: Transaction;
     selected: boolean;
     duplicateTxID?: bigint;
@@ -59,7 +56,7 @@ export class TransactionsImportComponent implements OnInit {
     public allSources: AccountTypeEnum[] = EnumService.getImportTypes();
     public pageConfig: TransactionsImportConfig = {
         ...TRANSACTIONS_IMPORT_DEFAULTS,
-        excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters],
+        excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters]
     };
     public editingExclusions = false;
     public skipRules: boolean = false;
@@ -92,7 +89,7 @@ export class TransactionsImportComponent implements OnInit {
     }
 
     public get sources(): AccountTypeEnum[] {
-        return this.allSources.filter(s => !this.pageConfig.excludedImporters.includes(s.value));
+        return this.allSources.filter((s) => !this.pageConfig.excludedImporters.includes(s.value));
     }
 
     async ngOnInit(): Promise<void> {
@@ -101,15 +98,12 @@ export class TransactionsImportComponent implements OnInit {
 
     async loadPageConfig(): Promise<void> {
         try {
-            this.pageConfig = await this.pageConfigService.get<TransactionsImportConfig>(
-                TRANSACTIONS_IMPORT_PAGE_ID,
-                TRANSACTIONS_IMPORT_DEFAULTS,
-            );
+            this.pageConfig = await this.pageConfigService.get<TransactionsImportConfig>(TRANSACTIONS_IMPORT_PAGE_ID, TRANSACTIONS_IMPORT_DEFAULTS);
         } catch (e) {
             console.error('Failed to load transactions-import page config:', e);
             this.pageConfig = {
                 ...TRANSACTIONS_IMPORT_DEFAULTS,
-                excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters],
+                excludedImporters: [...TRANSACTIONS_IMPORT_DEFAULTS.excludedImporters]
             };
         }
         this.ensureSelectedSourceVisible();
@@ -133,7 +127,7 @@ export class TransactionsImportComponent implements OnInit {
         if (this.isExcluded(value)) {
             this.pageConfig = {
                 ...this.pageConfig,
-                excludedImporters: this.pageConfig.excludedImporters.filter(v => v !== value),
+                excludedImporters: this.pageConfig.excludedImporters.filter((v) => v !== value)
             };
             await this.savePageConfig();
             return;
@@ -144,14 +138,14 @@ export class TransactionsImportComponent implements OnInit {
             this.messageService.add({
                 severity: 'error',
                 summary: 'Cannot hide importer',
-                detail: 'At least one importer must remain visible.',
+                detail: 'At least one importer must remain visible.'
             });
             return;
         }
 
         this.pageConfig = {
             ...this.pageConfig,
-            excludedImporters: [...this.pageConfig.excludedImporters, value],
+            excludedImporters: [...this.pageConfig.excludedImporters, value]
         };
         await this.savePageConfig();
         this.ensureSelectedSourceVisible();
@@ -165,7 +159,7 @@ export class TransactionsImportComponent implements OnInit {
             this.messageService.add({
                 severity: 'error',
                 summary: 'Save failed',
-                detail: ErrorHelper.getMessage(e),
+                detail: ErrorHelper.getMessage(e)
             });
         }
     }
@@ -386,6 +380,15 @@ export class TransactionsImportComponent implements OnInit {
         }
 
         return filtered;
+    }
+
+    syncTransactionFromEditor(item: TransactionItem, transaction: Transaction): void {
+        Object.assign(item.transaction, transaction, {
+            id: item.transaction.id,
+            sourceAmount: NumberHelper.toNegativeNumber(transaction.sourceAmount),
+            destinationAmount: NumberHelper.toPositiveNumber(transaction.destinationAmount),
+            fxSourceAmount: NumberHelper.toNegativeNumber(transaction.fxSourceAmount)
+        });
     }
 
     async importSelected() {

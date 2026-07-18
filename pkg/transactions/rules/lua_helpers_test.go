@@ -96,7 +96,7 @@ func TestConvertHelpers(t *testing.T) {
 			decimal.NewFromFloat(100),
 		).Return(decimal.NewFromFloat(85.50), nil)
 
-		decimalSvc.EXPECT().GetCurrencyDecimals(gomock.Any(), "EUR").Return(2)
+		decimalSvc.EXPECT().GetCurrencyDecimals(gomock.Any(), "EUR").Return(int32(2))
 
 		interpreter := rules.NewLuaInterpreter(&rules.LuaInterpreterConfig{
 			CurrencyConverterSvc: converterSvc,
