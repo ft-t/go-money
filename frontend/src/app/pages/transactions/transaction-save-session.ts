@@ -9,7 +9,7 @@ import {
 } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/transactions/v1/transactions_pb';
 import { Transaction } from '@buf/xskydev_go-money-pb.bufbuild_es/gomoneypb/v1/transaction_pb';
 
-export type TransactionCardState = 'pending' | 'saved' | 'unsaved' | 'failed';
+export type TransactionCardState = 'pending' | 'saved' | 'unsaved' | 'failed' | 'discarded';
 
 export interface TransactionSaveWriter {
     createTransaction(request: CreateTransactionRequest): Promise<CreateTransactionResponse>;
@@ -23,6 +23,7 @@ export interface TransactionSaveItem {
 
 export interface TransactionSaveResult {
     savedCount: number;
+    discardedCount: number;
     failedIndex?: number;
     error?: unknown;
 }
@@ -36,12 +37,13 @@ export class TransactionSaveSession {
 
     async save(items: TransactionSaveItem[], apply: (index: number, transaction: Transaction) => void): Promise<TransactionSaveResult> {
         if (this.isSaving) {
-            return { savedCount: 0 };
+            return { savedCount: 0, discardedCount: 0 };
         }
 
         this.isSaving = true;
         this.states = this.states.map((state) => (state === 'failed' ? 'pending' : state));
         let savedCount = 0;
+        let discardedCount = 0;
         let currentIndex = 0;
 
         try {
@@ -58,6 +60,13 @@ export class TransactionSaveSession {
 
                 if (item.id === 0n) {
                     const response = await this.writer.createTransaction(item.request);
+
+                    if (response.discarded) {
+                        this.savedRequests[currentIndex] = clone(CreateTransactionRequestSchema, item.request);
+                        this.states[currentIndex] = 'discarded';
+                        discardedCount++;
+                        continue;
+                    }
 
                     transaction = response.transaction;
 
@@ -89,11 +98,11 @@ export class TransactionSaveSession {
                 savedCount++;
             }
 
-            return { savedCount };
+            return { savedCount, discardedCount };
         } catch (error) {
             this.states[currentIndex] = 'failed';
 
-            return { savedCount, failedIndex: currentIndex, error };
+            return { savedCount, discardedCount, failedIndex: currentIndex, error };
         } finally {
             this.isSaving = false;
         }
