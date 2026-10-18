@@ -60,15 +60,11 @@ func parseCommonTxFields(args map[string]any) (*transactionsv1.CreateTransaction
 		req.ReferenceNumber = &ref
 	}
 
-	if irnRaw, ok := args["internal_reference_numbers"].([]any); ok {
-		irn := make([]string, 0, len(irnRaw))
-		for i, v := range irnRaw {
-			s, ok := v.(string)
-			if !ok {
-				return nil, errors.Newf("internal_reference_numbers[%d] must be a string", i)
-			}
-			irn = append(irn, s)
-		}
+	irn, err := parseStringSliceArg(args, "internal_reference_numbers")
+	if err != nil {
+		return nil, err
+	}
+	if irn != nil {
 		req.InternalReferenceNumbers = irn
 	}
 
@@ -103,6 +99,38 @@ func parseInt32SliceArg(args map[string]any, key string) ([]int32, error) {
 			return nil, errors.Newf("%s[%d] must be a number", key, i)
 		}
 		out = append(out, int32(n))
+	}
+	return out, nil
+}
+
+func parseInt64SliceArg(args map[string]any, key string) ([]int64, error) {
+	raw, ok := args[key].([]any)
+	if !ok {
+		return nil, nil
+	}
+	out := make([]int64, 0, len(raw))
+	for i, v := range raw {
+		n, ok := v.(float64)
+		if !ok {
+			return nil, errors.Newf("%s[%d] must be a number", key, i)
+		}
+		out = append(out, int64(n))
+	}
+	return out, nil
+}
+
+func parseStringSliceArg(args map[string]any, key string) ([]string, error) {
+	raw, ok := args[key].([]any)
+	if !ok {
+		return nil, nil
+	}
+	out := make([]string, 0, len(raw))
+	for i, v := range raw {
+		s, ok := v.(string)
+		if !ok {
+			return nil, errors.Newf("%s[%d] must be a string", key, i)
+		}
+		out = append(out, s)
 	}
 	return out, nil
 }
@@ -373,4 +401,25 @@ func (s *Server) handleUpdateTransfer(ctx context.Context, request mcp.CallToolR
 
 func (s *Server) handleUpdateAdjustment(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return s.handleUpdate(ctx, request, "adjustment")
+}
+
+func (s *Server) handleDeleteTransactions(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	ids, err := parseInt64SliceArg(request.GetArguments(), "ids")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	if len(ids) == 0 {
+		return mcp.NewToolResultError("ids is required and must be a non-empty array"), nil
+	}
+
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+	queryCtx = database.WithContext(queryCtx, s.db)
+
+	resp, err := s.cfg.TransactionSvc.DeleteTransaction(queryCtx, &transactionsv1.DeleteTransactionsRequest{Ids: ids})
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to delete transactions: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Deleted %d transactions", resp.DeletedCount)), nil
 }

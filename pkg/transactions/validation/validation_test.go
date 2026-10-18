@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/ft-t/go-money/pkg/configuration"
@@ -204,6 +205,46 @@ func TestValidateWithdrawal(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "has currency USD, expected EUR")
+	})
+
+	t.Run("invalid - error names failing transaction", func(t *testing.T) {
+		appAcc := NewMockApplicableAccountSvc(gomock.NewController(t))
+
+		srv := validation.NewValidationService(&validation.ServiceConfig{
+			ApplicableAccountSvc: appAcc,
+		})
+
+		appAcc.EXPECT().GetApplicableAccounts(gomock.Any(), gomock.Any()).
+			Return(map[gomoneypbv1.TransactionType]*applicable_accounts.PossibleAccount{
+				gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE: {
+					SourceAccounts: map[int32]*database.Account{
+						acc[0].ID: acc[0],
+					},
+					DestinationAccounts: map[int32]*database.Account{
+						acc[3].ID: acc[3],
+					},
+				},
+			})
+
+		err := srv.Validate(context.TODO(), gormDB, &validation.Request{
+			Accounts: accountMap,
+			Txs: []*database.Transaction{
+				{
+					Title:               "Cash deposit",
+					TransactionDateTime: time.Date(2026, 9, 17, 10, 0, 0, 0, time.UTC),
+					TransactionType:     gomoneypbv1.TransactionType_TRANSACTION_TYPE_EXPENSE,
+					SourceAmount:        decimal.NewNullDecimal(decimal.NewFromInt(-55)),
+					SourceCurrency:      acc[1].Currency,
+					SourceAccountID:     acc[0].ID,
+
+					DestinationAccountID: acc[3].ID,
+					DestinationAmount:    decimal.NewNullDecimal(decimal.NewFromInt(55)),
+					DestinationCurrency:  acc[3].Currency,
+				},
+			},
+		})
+
+		assert.ErrorContains(t, err, `transaction "Cash deposit" on 2026-09-17`)
 	})
 
 	t.Run("invalid - fx amount without fx currency", func(t *testing.T) {

@@ -490,10 +490,19 @@ export class TransactionsImportComponent implements OnInit {
                 }
             });
 
+            const invalid = filteredItems.filter((item) => item.hasValidationError);
+            const names = invalid.slice(0, 3).map((item) => `${this.formatDate(item.transaction.transactionDate).slice(0, 10)} ${this.getTransactionTitle(item.transaction)}`);
+            if (invalid.length > names.length) {
+                names.push(`and ${invalid.length - names.length} more`);
+            }
+
             this.messageService.add({
                 severity: 'error',
-                detail: 'Please fix validation errors before importing'
+                summary: `${invalid.length} transaction(s) need fixing before import`,
+                detail: names.join('\n'),
+                sticky: true
             });
+            setTimeout(() => document.querySelector('app-transactions-import .validation-error')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
             return;
         }
 

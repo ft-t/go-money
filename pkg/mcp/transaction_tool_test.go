@@ -1602,3 +1602,89 @@ func TestServer_HandleUpdateExpense_Failure(t *testing.T) {
 		})
 	}
 }
+
+func TestServer_HandleDeleteTransactions_Success(t *testing.T) {
+	type tc struct {
+		name        string
+		ids         []any
+		expectedIDs []int64
+		expected    string
+	}
+
+	cases := []tc{
+		{
+			name:        "single id",
+			ids:         []any{float64(7)},
+			expectedIDs: []int64{7},
+			expected:    "Deleted 1 transactions",
+		},
+		{
+			name:        "several ids",
+			ids:         []any{float64(7), float64(12)},
+			expectedIDs: []int64{7, 12},
+			expected:    "Deleted 2 transactions",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			txSvc := NewMockTransactionService(ctrl)
+			txSvc.EXPECT().DeleteTransaction(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, req *transactionsv1.DeleteTransactionsRequest) (*transactionsv1.DeleteTransactionsResponse, error) {
+					assert.Equal(t, c.expectedIDs, req.Ids)
+					return &transactionsv1.DeleteTransactionsResponse{DeletedCount: int32(len(req.Ids))}, nil
+				})
+
+			result := callTool(t, newTxServer(t, ctrl, txSvc), "delete_transactions", map[string]any{"ids": c.ids})
+
+			assert.False(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, c.expected)
+		})
+	}
+}
+
+func TestServer_HandleDeleteTransactions_Failure(t *testing.T) {
+	type tc struct {
+		name          string
+		args          map[string]any
+		setupMock     func(*MockTransactionService)
+		expectedError string
+	}
+
+	cases := []tc{
+		{
+			name:          "missing ids",
+			args:          map[string]any{},
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "ids is required",
+		},
+		{
+			name:          "non-numeric id",
+			args:          map[string]any{"ids": []any{"7"}},
+			setupMock:     func(m *MockTransactionService) {},
+			expectedError: "ids[0] must be a number",
+		},
+		{
+			name: "service error",
+			args: map[string]any{"ids": []any{float64(7)}},
+			setupMock: func(m *MockTransactionService) {
+				m.EXPECT().DeleteTransaction(gomock.Any(), gomock.Any()).Return(nil, errors.New("db down"))
+			},
+			expectedError: "failed to delete transactions",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			txSvc := NewMockTransactionService(ctrl)
+			c.setupMock(txSvc)
+
+			result := callTool(t, newTxServer(t, ctrl, txSvc), "delete_transactions", c.args)
+
+			assert.True(t, result.IsError)
+			assert.Contains(t, result.Content[0].(mcp.TextContent).Text, c.expectedError)
+		})
+	}
+}
