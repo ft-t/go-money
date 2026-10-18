@@ -65,3 +65,28 @@ describe('TransactionsImportComponent review header synchronisation', () => {
         expect(item.transaction.id).toBe(5n);
     });
 });
+
+describe('TransactionsImportComponent invalid rows on import', () => {
+    it('names the invalid row in the error toast', async () => {
+        const component = Object.create(TransactionsImportComponent.prototype) as TransactionsImportComponent;
+        const messageService = jasmine.createSpyObj('MessageService', ['add']);
+        (component as any).messageService = messageService;
+        (component as any).editors = { toArray: () => [{ isValid: () => false }] };
+        component.hideDuplicates = false;
+        component.showErrorsOnly = false;
+        component.transactionItems = [
+            {
+                transaction: create(TransactionSchema, { title: 'Cash deposit', transactionDate: { seconds: 1789603200n, nanos: 0 } as any }),
+                selected: true,
+                ignored: false,
+                discarded: false,
+                appliedRules: [],
+                hasError: false
+            }
+        ];
+
+        await component.importSelected();
+
+        expect(messageService.add).toHaveBeenCalledWith(jasmine.objectContaining({ severity: 'error', detail: '2026-09-17 Cash deposit' }));
+    });
+});

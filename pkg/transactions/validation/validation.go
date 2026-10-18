@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+	"time"
 
 	gomoneypbv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/v1"
 	"github.com/cockroachdb/errors"
@@ -31,41 +32,52 @@ func (s *Service) Validate(
 	dbTx *gorm.DB,
 	req *Request,
 ) error {
-	accounts := req.Accounts
-	txs := req.Txs
+	applicableAccounts := s.cfg.ApplicableAccountSvc.GetApplicableAccounts(ctx, lo.Values(req.Accounts))
 
-	applicableAccounts := s.cfg.ApplicableAccountSvc.GetApplicableAccounts(ctx, lo.Values(accounts))
-
-	for _, createdTx := range txs {
-		if err := s.ValidateTransactionData(ctx, dbTx, createdTx); err != nil {
-			return errors.Wrapf(err, "failed to validate transaction")
-		}
-
-		if !req.SkipAccountsValidation {
-			if err := s.ValidateTransactionAccounts(ctx, applicableAccounts, createdTx); err != nil {
-				return errors.Wrapf(err, "failed to validate transaction accounts")
-			}
-		}
-
-		if err := s.ensureCurrencyExists(ctx, createdTx.SourceCurrency); err != nil {
-			return errors.Wrapf(err, "failed to ensure source currency exists: %s",
-				createdTx.SourceCurrency)
-		}
-
-		if err := s.ensureCurrencyExists(ctx, createdTx.DestinationCurrency); err != nil {
-			return errors.Wrapf(err, "failed to ensure destination currency exists: %s",
-				createdTx.DestinationCurrency)
-		}
-
-		if err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, accounts, map[int32]string{
-			createdTx.SourceAccountID:      createdTx.SourceCurrency,
-			createdTx.DestinationAccountID: createdTx.DestinationCurrency,
-		}); err != nil {
-			return errors.Wrapf(err,
-				"failed to ensure accounts exist and have correct currency for transaction id: %d",
-				createdTx.ID,
+	for _, createdTx := range req.Txs {
+		if err := s.validateTransaction(ctx, dbTx, req, applicableAccounts, createdTx); err != nil {
+			return errors.Wrapf(err, "transaction %q on %s",
+				createdTx.Title,
+				createdTx.TransactionDateTime.Format(time.DateOnly),
 			)
 		}
+	}
+
+	return nil
+}
+
+func (s *Service) validateTransaction(
+	ctx context.Context,
+	dbTx *gorm.DB,
+	req *Request,
+	applicableAccounts map[gomoneypbv1.TransactionType]*applicable_accounts.PossibleAccount,
+	createdTx *database.Transaction,
+) error {
+	if err := s.ValidateTransactionData(ctx, dbTx, createdTx); err != nil {
+		return errors.Wrapf(err, "failed to validate transaction")
+	}
+
+	if !req.SkipAccountsValidation {
+		if err := s.ValidateTransactionAccounts(ctx, applicableAccounts, createdTx); err != nil {
+			return errors.Wrapf(err, "failed to validate transaction accounts")
+		}
+	}
+
+	if err := s.ensureCurrencyExists(ctx, createdTx.SourceCurrency); err != nil {
+		return errors.Wrapf(err, "failed to ensure source currency exists: %s",
+			createdTx.SourceCurrency)
+	}
+
+	if err := s.ensureCurrencyExists(ctx, createdTx.DestinationCurrency); err != nil {
+		return errors.Wrapf(err, "failed to ensure destination currency exists: %s",
+			createdTx.DestinationCurrency)
+	}
+
+	if err := s.ensureAccountsExistAndCurrencyCorrect(ctx, dbTx, req.Accounts, map[int32]string{
+		createdTx.SourceAccountID:      createdTx.SourceCurrency,
+		createdTx.DestinationAccountID: createdTx.DestinationCurrency,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to ensure accounts exist and have correct currency")
 	}
 
 	return nil
