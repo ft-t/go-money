@@ -208,6 +208,29 @@ func main() {
 		AccountSvc:     accountSvc,
 	})
 
+	baseParser := importers.NewBaseParser(currencyConverter, transactionSvc, mapper)
+
+	importSvc := importers.NewImporter(
+		&importers.ImporterConfig{
+			AccountSvc:     accountSvc,
+			TagSvc:         tagSvc,
+			CategoriesSvc:  categoriesSvc,
+			TransactionSvc: transactionSvc,
+			MapperSvc:      mapper,
+			RuleSvc:        ruleEngine,
+		},
+		importers.NewFireflyImporter(
+			transactionSvc,
+			currencyConverter,
+			baseParser,
+		),
+		importers.NewPrivat24(baseParser),
+		importers.NewMono(baseParser),
+		importers.NewParibas(baseParser),
+		importers.NewRevolut(baseParser),
+		importers.NewMbank(baseParser),
+	)
+
 	if !config.MCP.Disable {
 		logger.Info().Str("path", config.MCP.DocsDir).Msg("Reading mcp docs")
 		mcpDocs, mcpErr := gomoneyMcp.ReadDocsFromPath(config.MCP.DocsDir)
@@ -228,6 +251,7 @@ func main() {
 			TagsSvc:        tagSvc,
 			TransactionSvc: transactionSvc,
 			CurrencySvc:    currencyConverter,
+			ImportSvc:      importSvc,
 		})
 
 		grpcServer.GetMux().Handle("/mcp", middlewares.HTTPAuthMiddleware(jwtService, mcpServer.Handler()))
@@ -257,29 +281,6 @@ func main() {
 	_ = handlers.NewCategoriesApi(grpcServer, categoriesSvc)
 	_ = handlers.NewMaintenanceApi(grpcServer, recalculateSvc)
 	_ = handlers.NewAnalyticsApi(grpcServer, analyticsSvc)
-
-	baseParser := importers.NewBaseParser(currencyConverter, transactionSvc, mapper)
-
-	importSvc := importers.NewImporter(
-		&importers.ImporterConfig{
-			AccountSvc:     accountSvc,
-			TagSvc:         tagSvc,
-			CategoriesSvc:  categoriesSvc,
-			TransactionSvc: transactionSvc,
-			MapperSvc:      mapper,
-			RuleSvc:        ruleEngine,
-		},
-		importers.NewFireflyImporter(
-			transactionSvc,
-			currencyConverter,
-			baseParser,
-		),
-		importers.NewPrivat24(baseParser),
-		importers.NewMono(baseParser),
-		importers.NewParibas(baseParser),
-		importers.NewRevolut(baseParser),
-		importers.NewMbank(baseParser),
-	)
 
 	_, err = handlers.NewImportApi(grpcServer, importSvc)
 	if err != nil {

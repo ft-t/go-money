@@ -539,6 +539,106 @@ Error responses:
 - Same field-required / parse errors as `create_adjustment`.
 - `"failed to update adjustment: <service error>"`.
 
+### delete_transactions
+
+Soft-delete transactions by id. Double-entry rows and account statistics are updated in the same database transaction.
+
+Example request:
+
+```json
+{ "ids": [1235, 1236] }
+```
+
+Example response:
+
+```
+Deleted 2 transactions
+```
+
+Error responses:
+
+- `"ids is required and must be a non-empty array"`.
+- `"ids[<n>] must be a number"`.
+- `"failed to delete transactions: <service error>"`.
+
+## Import Deduplication
+
+A file import gives every row one or more `internal_reference_numbers` (source name plus a hash of the raw row). The next import of the same rows is flagged as a duplicate when a transaction already carries one of those numbers, or when the number was marked ignored. A transaction created by hand or by an agent has none, so a later file import shows it again as new.
+
+To avoid that when an agent records statement rows itself:
+
+1. Call `parse_import` with the statement file.
+2. For each row the agent creates or updates, pass that row's `internal_reference_numbers` to `create_*` / `update_*`.
+3. For a row the agent decides not to record, call `mark_import_ignored` with that row's numbers.
+
+### parse_import
+
+Parse a statement exactly like the UI import preview. Nothing is saved. Required: `source` (ImportSource enum name), `content` (array, one entry per file: base64 for binary files such as xlsx, raw text for text sources). Optional: `skip_rules`, `treat_dates_as_utc`.
+
+Example request:
+
+```json
+{
+  "source": "IMPORT_SOURCE_BNP_PARIBAS_POLSKA",
+  "content": ["UEsDBBQABgAIAAAAIQ..."]
+}
+```
+
+Example response (trimmed):
+
+```json
+{
+  "transactions": [
+    {
+      "transaction": {
+        "title": "Card payment",
+        "type": "TRANSACTION_TYPE_EXPENSE",
+        "source_account_id": 3,
+        "source_amount": "-42.00",
+        "internal_reference_numbers": ["IMPORT_SOURCE_BNP_PARIBAS_POLSKA_a1b2c3..."]
+      },
+      "duplicate_transaction_id": "1001"
+    }
+  ]
+}
+```
+
+Row flags: `duplicate_transaction_id` (already imported), `ignored` (marked ignored earlier), `discarded` (a rule called `tx:discard()`).
+
+Error responses:
+
+- `"unknown source \"<name>\""`.
+- `"content is required and must be a non-empty array"`.
+- `"failed to parse import: <service error>"`.
+
+### mark_import_ignored
+
+Remember individual rows as duplicates so future imports of the same source skip them. Same as "Skip & remember" in the UI. Required: `source`, `reference_numbers` (from `parse_import`). Optional: `reason`.
+
+Example request:
+
+```json
+{
+  "source": "IMPORT_SOURCE_BNP_PARIBAS_POLSKA",
+  "reference_numbers": ["IMPORT_SOURCE_BNP_PARIBAS_POLSKA_a1b2c3..."],
+  "reason": "Recorded manually as transaction 1001"
+}
+```
+
+Example response:
+
+```
+Ignored 1 new reference numbers
+```
+
+Already-ignored numbers are skipped, so the count can be lower than the input.
+
+Error responses:
+
+- `"unknown source \"<name>\""`.
+- `"reference_numbers[<n>] must be a string"`.
+- `"failed to mark import rows ignored: <service error>"`.
+
 ## Transaction Rules
 
 Rules are Lua scripts executed against every transaction (on create and on

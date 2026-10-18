@@ -26,6 +26,7 @@ type ServerConfig struct {
 	TagsSvc        TagsService
 	TransactionSvc TransactionService
 	CurrencySvc    CurrencyConverterService
+	ImportSvc      ImportService
 }
 
 func NewServer(cfg *ServerConfig) *Server {
@@ -453,6 +454,32 @@ func (s *Server) registerTools() {
 		mcp.WithString("amount", mcp.Description("Decimal amount as string"), mcp.Required()),
 	)
 	s.mcpServer.AddTool(convertCurrencyTool, s.handleConvertCurrency)
+
+	deleteTransactionsTool := mcp.NewTool(
+		"delete_transactions",
+		mcp.WithDescription("Soft-delete transactions by id. Double-entry rows and account statistics are updated in the same database transaction. Returns how many transactions were deleted."),
+		mcp.WithArray("ids", mcp.Description("Transaction ids to delete"), mcp.Required()),
+	)
+	s.mcpServer.AddTool(deleteTransactionsTool, s.handleDeleteTransactions)
+
+	parseImportTool := mcp.NewTool(
+		"parse_import",
+		mcp.WithDescription("Parse a bank statement exactly like the UI import preview, without saving anything. Returns every parsed row with its internal_reference_numbers (the import dedup keys), duplicate_transaction_id when the row already exists, ignored when it was marked as a duplicate before, and discarded when a rule discarded it. When you create or update a transaction that represents a row, pass that row's internal_reference_numbers to create_*/update_* so a later file import detects it as a duplicate. On update_*, pass the full list: it replaces the stored one. To skip a row forever without creating a transaction, use mark_import_ignored."),
+		mcp.WithString("source", mcp.Description("Import source enum name, e.g. IMPORT_SOURCE_BNP_PARIBAS_POLSKA, IMPORT_SOURCE_REVOLUT, IMPORT_SOURCE_MBANK"), mcp.Required()),
+		mcp.WithArray("content", mcp.Description("One entry per file. Binary files (xlsx) as base64; text sources as raw text, same as the UI import"), mcp.Required()),
+		mcp.WithBoolean("skip_rules", mcp.Description("Skip rule engine if true")),
+		mcp.WithBoolean("treat_dates_as_utc", mcp.Description("Treat statement dates as UTC")),
+	)
+	s.mcpServer.AddTool(parseImportTool, s.handleParseImport)
+
+	markImportIgnoredTool := mcp.NewTool(
+		"mark_import_ignored",
+		mcp.WithDescription("Remember import rows as duplicates so future imports of the same source skip them. Same as 'Skip & remember' in the UI. Take reference_numbers from parse_import."),
+		mcp.WithString("source", mcp.Description("Import source enum name, e.g. IMPORT_SOURCE_BNP_PARIBAS_POLSKA"), mcp.Required()),
+		mcp.WithArray("reference_numbers", mcp.Description("internal_reference_numbers of the rows to ignore"), mcp.Required()),
+		mcp.WithString("reason", mcp.Description("Optional note on why the rows are ignored")),
+	)
+	s.mcpServer.AddTool(markImportIgnoredTool, s.handleMarkImportIgnored)
 }
 
 func (s *Server) registerResources() {

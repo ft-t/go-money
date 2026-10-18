@@ -4,6 +4,7 @@ import (
 	"context"
 
 	categoriesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/categories/v1"
+	importv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/import/v1"
 	rulesv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/rules/v1"
 	tagsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/tags/v1"
 	transactionsv1 "buf.build/gen/go/xskydev/go-money-pb/protocolbuffers/go/gomoneypb/transactions/v1"
@@ -41,6 +42,12 @@ type TransactionService interface {
 	Update(ctx context.Context, req *transactionsv1.UpdateTransactionRequest) (*transactionsv1.UpdateTransactionResponse, error)
 	BulkSetCategory(ctx context.Context, assignments []transactions.CategoryAssignment) error
 	BulkSetTags(ctx context.Context, assignments []transactions.TagsAssignment) error
+	DeleteTransaction(ctx context.Context, req *transactionsv1.DeleteTransactionsRequest) (*transactionsv1.DeleteTransactionsResponse, error)
+}
+
+type ImportService interface {
+	Parse(ctx context.Context, req *importv1.ParseTransactionsRequest) (*importv1.ParseTransactionsResponse, error)
+	MarkTransactionsIgnored(ctx context.Context, req *importv1.MarkTransactionsIgnoredRequest) (*importv1.MarkTransactionsIgnoredResponse, error)
 }
 
 type CurrencyConverterService interface {

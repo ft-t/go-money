@@ -50,7 +50,7 @@
 | [Transaction Types](business-logic/transactions/types.md) | expense, income, transfer, adjustment behavior |
 | [Amount Calculations](business-logic/transactions/amount-calculations.md) | base currency conversion, FX, formulas |
 | [Double-Entry](business-logic/double-entry/overview.md) | debit/credit rules, ledger entries |
-| [Import Deduplication](business-logic/transactions/import-deduplication.md) | import dedup, internal_reference_numbers, skip & remember, import_ignored_transactions, MarkTransactionsIgnored |
+| [Import Deduplication](business-logic/transactions/import-deduplication.md) | import dedup, internal_reference_numbers, skip & remember, import_ignored_transactions, MarkTransactionsIgnored, MCP parse_import, mark_import_ignored |
 
 ### "I need to understand accounts"
 | Document | Keywords |
@@ -69,7 +69,7 @@
 |----------|----------|
 | [MCP Overview](mcp/overview.md) | read-only queries, AI integration |
 | [Client Setup](mcp/client-setup.md) | `go-money-mcp-client` stdio bridge, Claude config, flags, token |
-| [Tool Reference](mcp/tool-reference.md) | query tool spec, parameters, output format |
+| [Tool Reference](mcp/tool-reference.md) | query tool spec, parameters, output format, delete_transactions, parse_import, mark_import_ignored |
 | [Query Safety](mcp/query-safety.md) | blocked statements, limits, allowed tables |
 | [Golden Rules](mcp/GOLDEN-RULES.md) | must-read for agents before generating queries |
 | [Examples](mcp/examples.md) | natural language → SQL mappings |
